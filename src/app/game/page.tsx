@@ -1,3 +1,4 @@
+
 import { redirect } from 'next/navigation';
 import { getGame, startGame, selectCategory, submitResponse, selectWinner, nextRound } from '@/app/game/actions';
 import type { GameState, Player } from '@/lib/types';
@@ -105,7 +106,8 @@ export default async function GamePage() {
       return <JudgeView gameState={gameState} judge={currentPlayer} onSelectCategory={selectCategory} onSelectWinner={selectWinner} />;
     }
     if (!isJudge && currentPlayer) {
-      return <PlayerView gameState={gameState} player={currentPlayer} onSubmitResponse={(cardText) => submitResponse(currentPlayer.id, cardText)} />;
+      // Removed onSubmitResponse prop
+      return <PlayerView gameState={gameState} player={currentPlayer} />;
     }
     // Fallback for spectators or if player role can't be determined but game is ongoing (should ideally not happen with current logic)
     return (

@@ -1,20 +1,22 @@
+
 "use client";
 
 import type { GameState, Player } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Added CardFooter
 import { useState, useTransition } from 'react';
-import { Send, Loader2, ListCollapse, VenetianMask } from 'lucide-react';
+import { Send, Loader2, ListCollapse, VenetianMask, Gavel } from 'lucide-react'; // Added Gavel, ListCollapse
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
+import { submitResponse } from '@/app/game/actions'; // Import the Server Action
 
 interface PlayerViewProps {
   gameState: GameState;
   player: Player;
-  onSubmitResponse: (cardText: string) => Promise<void>;
+  // onSubmitResponse: (cardText: string) => Promise<void>; // Removed prop
 }
 
-export default function PlayerView({ gameState, player, onSubmitResponse }: PlayerViewProps) {
+export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [selectedCard, setSelectedCard] = useState<string>('');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -27,7 +29,7 @@ export default function PlayerView({ gameState, player, onSubmitResponse }: Play
       return;
     }
     startTransition(async () => {
-      await onSubmitResponse(selectedCard);
+      await submitResponse(player.id, selectedCard); // Call Server Action directly
       toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
       setSelectedCard(''); // Clear selection after submission
     });
