@@ -8,6 +8,8 @@ import { getGame, addPlayer as addPlayerAction, resetGameForTesting } from '@/ap
 import { Users, Play, ArrowRight, RefreshCw } from 'lucide-react';
 import type { GameState } from '@/lib/types';
 
+export const dynamic = 'force-dynamic'; // Ensure the page is dynamically rendered
+
 export default async function WelcomePage({
   searchParams
 }: {
@@ -40,7 +42,7 @@ export default async function WelcomePage({
           width={438} 
           height={131} 
           className="mx-auto mb-8 rounded-lg shadow-md" 
-          priority 
+          priority // Added priority for LCP
           data-ai-hint="game logo"
         />
         <h1 className="text-6xl font-extrabold tracking-tighter text-primary mb-4 sr-only"> 
