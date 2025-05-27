@@ -1,10 +1,11 @@
+
 "use client";
 
 import type { GameState, Player, Scenario, Submission } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import { Gavel, Send, CheckCircle, Loader2, ListChecks, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
@@ -45,8 +46,10 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  // Shuffle submissions for anonymous judging
-  const shuffledSubmissions = gameState.submissions.slice().sort(() => Math.random() - 0.5);
+  // Shuffle submissions for anonymous judging, memoize to prevent re-shuffling on every render
+  const shuffledSubmissions = useMemo(() => {
+    return gameState.submissions.slice().sort(() => Math.random() - 0.5);
+  }, [gameState.submissions]);
 
   return (
     <div className="space-y-8">
@@ -109,9 +112,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               {shuffledSubmissions.length > 0 ? (
-                shuffledSubmissions.map((submission, index) => (
+                shuffledSubmissions.map((submission) => ( // Use submission.playerId as key
                   <Button
-                    key={index} // Using index as key since cardText might not be unique if players have same cards
+                    key={submission.playerId} // Changed key from index to submission.playerId
                     variant={selectedWinningCard === submission.cardText ? "default" : "outline"}
                     onClick={() => setSelectedWinningCard(submission.cardText)}
                     className={`w-full h-auto p-4 text-left text-lg whitespace-normal justify-start

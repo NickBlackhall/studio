@@ -15,7 +15,7 @@ export default async function WelcomePage({
 }: {
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const game: GameState = await getGame(); 
+  const game: GameState = await getGame();
 
   const handleAddPlayer = async (formData: FormData) => {
     "use server";
@@ -31,21 +31,23 @@ export default async function WelcomePage({
     await resetGameForTesting();
   };
 
-  const currentStep = searchParams?.step === 'setup' ? 'setup' : 'welcome';
+  // Explicitly read the step from searchParams
+  const stepParam = searchParams && typeof searchParams === 'object' ? searchParams.step : undefined;
+  const currentStep = stepParam === 'setup' ? 'setup' : 'welcome';
 
   if (currentStep === 'welcome') {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
-        <Image 
-          src="https://placehold.co/730x218.png?text=Make+It+Terrible" 
-          alt="Make It Terrible Logo" 
-          width={438} 
-          height={131} 
-          className="mx-auto mb-8 rounded-lg shadow-md" 
+        <Image
+          src="https://placehold.co/730x218.png?text=Make+It+Terrible"
+          alt="Make It Terrible Logo"
+          width={438}
+          height={131}
+          className="mx-auto mb-8 rounded-lg shadow-md"
           priority // Added priority for LCP
           data-ai-hint="game logo"
         />
-        <h1 className="text-6xl font-extrabold tracking-tighter text-primary mb-4 sr-only"> 
+        <h1 className="text-6xl font-extrabold tracking-tighter text-primary mb-4 sr-only">
           Make It Terrible
         </h1>
         <p className="text-2xl text-muted-foreground mb-12">
@@ -68,12 +70,13 @@ export default async function WelcomePage({
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
       <header className="mb-12 text-center">
         <Link href="/" passHref>
-          <Image 
-            src="https://placehold.co/730x218.png?text=Make+It+Terrible" 
-            alt="Make It Terrible Logo" 
-            width={300} 
-            height={90} 
-            className="mx-auto mb-4 rounded-lg cursor-pointer shadow-md" 
+          <Image
+            src="https://placehold.co/730x218.png?text=Make+It+Terrible"
+            alt="Make It Terrible Logo"
+            width={300}
+            height={90}
+            className="mx-auto mb-4 rounded-lg cursor-pointer shadow-md"
+            priority
             data-ai-hint="game logo"
           />
         </Link>
@@ -110,7 +113,7 @@ export default async function WelcomePage({
             ) : (
               <p className="text-muted-foreground text-center py-4">The void is empty... for now. Be the first!</p>
             )}
-            {game.players.length >= 2 && ( 
+            {game.players.length >= 2 && (
               <Link href="/game" className="mt-6 block">
                 <Button variant="default" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3">
                   <Play className="mr-2 h-6 w-6" /> Start Game
@@ -123,7 +126,7 @@ export default async function WelcomePage({
           </CardContent>
         </Card>
       </div>
-      
+
       <div className="mt-8 w-full max-w-4xl text-center">
         <form action={handleResetGame}>
           <Button variant="destructive" size="sm" type="submit" className="hover:bg-destructive/80">
