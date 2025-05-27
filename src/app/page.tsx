@@ -1,17 +1,19 @@
 
+import Link from 'next/link';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction } from '@/app/game/actions';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Users, Play } from 'lucide-react';
-import Image from 'next/image';
-import type { GameState } from '@/lib/types'; // Import GameState if needed for typing `game`
+import { Users, Play, ArrowRight } from 'lucide-react';
+import type { GameState } from '@/lib/types';
 
-export default async function WelcomePage() {
-  // getGame now ensures the game is initialized if it wasn't already.
-  // The game variable will be of type GameState (non-nullable).
-  const game: GameState = await getGame();
+export default async function WelcomePage({
+  searchParams
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
+  const game: GameState = await getGame(); // Game is initialized here if not already
 
   const handleAddPlayer = async (formData: FormData) => {
     "use server";
@@ -22,12 +24,55 @@ export default async function WelcomePage() {
     }
   };
 
+  const currentStep = searchParams?.step === 'setup' ? 'setup' : 'welcome';
+
+  if (currentStep === 'welcome') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
+        <Image 
+          src="/logo.png" 
+          alt="Make It Terrible Logo" 
+          width={438} 
+          height={131} 
+          className="mx-auto mb-8 rounded-lg" 
+          priority 
+          data-ai-hint="game logo"
+        />
+        <h1 className="text-6xl font-extrabold tracking-tighter text-primary mb-4 sr-only"> 
+          {/* Screen readers will get title from logo alt text or it can be added if logo is purely decorative */}
+          Make It Terrible
+        </h1>
+        <p className="text-2xl text-muted-foreground mb-12">
+          The game of awful choices and hilarious outcomes!
+        </p>
+        <Link href="/?step=setup">
+          <Button variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out">
+            Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
+          </Button>
+        </Link>
+         <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full">
+          <p>&copy; {new Date().getFullYear()} Make It Terrible Inc. All rights reserved (not really).</p>
+        </footer>
+      </div>
+    );
+  }
+
+  // currentStep === 'setup'
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
       <header className="mb-12 text-center">
-        <Image src="https://placehold.co/300x150.png?text=Make+It+Terrible" alt="Make It Terrible Logo" width={300} height={150} className="mx-auto mb-4 rounded-lg shadow-lg" data-ai-hint="game logo"/>
-        <h1 className="text-6xl font-extrabold tracking-tighter text-primary">Make It Terrible</h1>
-        <p className="text-xl text-muted-foreground mt-2">The game of awful choices and hilarious outcomes!</p>
+        <Link href="/" passHref>
+          <Image 
+            src="/logo.png" 
+            alt="Make It Terrible Logo" 
+            width={300} 
+            height={90} 
+            className="mx-auto mb-4 rounded-lg cursor-pointer" 
+            data-ai-hint="game logo"
+          />
+        </Link>
+        <h1 className="text-5xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
+        <p className="text-xl text-muted-foreground mt-2">Enter your details to join the game.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
@@ -59,7 +104,7 @@ export default async function WelcomePage() {
             ) : (
               <p className="text-muted-foreground text-center py-4">The void is empty... for now. Be the first!</p>
             )}
-            {game.players.length >= 2 && ( // Minimum 2 players to start
+            {game.players.length >= 2 && ( 
               <Link href="/game" className="mt-6 block">
                 <Button variant="default" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3">
                   <Play className="mr-2 h-6 w-6" /> Start Game
