@@ -18,12 +18,14 @@ import { redirect } from 'next/navigation';
 export async function getGame(): Promise<GameState> {
   let game = getInMemoryGame();
   if (!game) {
+    // If no game, initialize it without revalidating paths (to avoid render-time revalidation)
     game = initializeInMemoryGame();
   }
   return game;
 }
 
-export async function initializeGame(): Promise<GameState> {
+// This action is intended to be called by user interaction, like a button click
+export async function initializeGameAndRevalidate(): Promise<GameState> {
   const game = initializeInMemoryGame();
   revalidatePath('/');
   revalidatePath('/game');
@@ -32,7 +34,7 @@ export async function initializeGame(): Promise<GameState> {
 
 export async function addPlayer(name: string, avatar: string): Promise<Player | null> {
   const player = addPlayerToGame(name, avatar);
-  revalidatePath('/'); 
+  revalidatePath('/'); // Revalidate the welcome/setup page to show the new player
   return player;
 }
 
@@ -40,6 +42,9 @@ export async function startGame(): Promise<GameState | null> {
   const game = startGameLogic();
   if (game) {
     revalidatePath('/game');
+    // Consider redirecting to /game if not already there, or if called from welcome page
+    // For now, revalidation handles UI update if on /game.
+    // If called from /?step=setup, the link to /game becomes active.
   }
   return game;
 }
@@ -84,10 +89,9 @@ export async function getCurrentPlayer(playerId: string): Promise<Player | undef
   return game?.players.find(p => p.id === playerId);
 }
 
-export async function resetGameForTesting(): Promise<GameState> {
-  const game = initializeInMemoryGame(); // This resets the gameState variable
-  revalidatePath('/');               // Revalidate the welcome page
-  revalidatePath('/game');             // Revalidate the game page
-  // No redirect needed here, just revalidate and let the current page re-render
-  return game;
+export async function resetGameForTesting(): Promise<void> {
+  initializeInMemoryGame(); // This resets the gameState variable
+  revalidatePath('/');        // Revalidate the welcome page
+  revalidatePath('/game');      // Revalidate the game page
+  redirect('/?step=setup');   // Redirect to the setup step of the welcome page
 }
