@@ -93,5 +93,5 @@ export async function resetGameForTesting(): Promise<void> {
   initializeInMemoryGame(); // This resets the gameState variable
   revalidatePath('/');        // Revalidate the welcome page
   revalidatePath('/game');      // Revalidate the game page
-  redirect('/?step=setup');   // Redirect to the setup step of the welcome page
+  // redirect('/?step=setup');   // Temporarily removed for testing
 }
