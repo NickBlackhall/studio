@@ -91,7 +91,9 @@ export async function getCurrentPlayer(playerId: string): Promise<Player | undef
 
 export async function resetGameForTesting(): Promise<void> {
   initializeInMemoryGame(); // This resets the gameState variable
-  revalidatePath('/');        // Revalidate the welcome page
-  revalidatePath('/game');      // Revalidate the game page
+  // Temporarily commented out for debugging "Error reaching server"
+  // revalidatePath('/');        // Revalidate the welcome page
+  // revalidatePath('/game');      // Revalidate the game page
   // redirect('/?step=setup');   // Temporarily removed for testing
 }
+
