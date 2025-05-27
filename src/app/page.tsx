@@ -30,16 +30,15 @@ export default async function WelcomePage({
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
         <Image 
-          src="/logo.png" 
+          src="https://placehold.co/730x218.png" 
           alt="Make It Terrible Logo" 
-          width={438} 
-          height={131} 
+          width={438} // Scaled down from 730
+          height={131} // Scaled down from 218 (maintaining aspect ratio)
           className="mx-auto mb-8 rounded-lg" 
           priority 
           data-ai-hint="game logo"
         />
         <h1 className="text-6xl font-extrabold tracking-tighter text-primary mb-4 sr-only"> 
-          {/* Screen readers will get title from logo alt text or it can be added if logo is purely decorative */}
           Make It Terrible
         </h1>
         <p className="text-2xl text-muted-foreground mb-12">
@@ -63,10 +62,10 @@ export default async function WelcomePage({
       <header className="mb-12 text-center">
         <Link href="/" passHref>
           <Image 
-            src="/logo.png" 
+            src="https://placehold.co/730x218.png" 
             alt="Make It Terrible Logo" 
-            width={300} 
-            height={90} 
+            width={300} // Scaled down
+            height={90} // Scaled down (maintaining aspect ratio approx)
             className="mx-auto mb-4 rounded-lg cursor-pointer" 
             data-ai-hint="game logo"
           />
