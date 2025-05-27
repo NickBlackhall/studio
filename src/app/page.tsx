@@ -4,8 +4,8 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getGame, addPlayer as addPlayerAction } from '@/app/game/actions';
-import { Users, Play, ArrowRight } from 'lucide-react';
+import { getGame, addPlayer as addPlayerAction, resetGameForTesting } from '@/app/game/actions';
+import { Users, Play, ArrowRight, RefreshCw } from 'lucide-react';
 import type { GameState } from '@/lib/types';
 
 export default async function WelcomePage({
@@ -13,7 +13,7 @@ export default async function WelcomePage({
 }: {
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const game: GameState = await getGame(); // Game is initialized here if not already
+  const game: GameState = await getGame(); 
 
   const handleAddPlayer = async (formData: FormData) => {
     "use server";
@@ -24,17 +24,22 @@ export default async function WelcomePage({
     }
   };
 
+  const handleResetGame = async () => {
+    "use server";
+    await resetGameForTesting();
+  };
+
   const currentStep = searchParams?.step === 'setup' ? 'setup' : 'welcome';
 
   if (currentStep === 'welcome') {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
         <Image 
-          src="https://placehold.co/730x218.png" 
+          src="https://placehold.co/730x218.png?text=Make+It+Terrible" 
           alt="Make It Terrible Logo" 
-          width={438} // Scaled down from 730
-          height={131} // Scaled down from 218 (maintaining aspect ratio)
-          className="mx-auto mb-8 rounded-lg" 
+          width={438} 
+          height={131} 
+          className="mx-auto mb-8 rounded-lg shadow-md" 
           priority 
           data-ai-hint="game logo"
         />
@@ -62,11 +67,11 @@ export default async function WelcomePage({
       <header className="mb-12 text-center">
         <Link href="/" passHref>
           <Image 
-            src="https://placehold.co/730x218.png" 
+            src="https://placehold.co/730x218.png?text=Make+It+Terrible" 
             alt="Make It Terrible Logo" 
-            width={300} // Scaled down
-            height={90} // Scaled down (maintaining aspect ratio approx)
-            className="mx-auto mb-4 rounded-lg cursor-pointer" 
+            width={300} 
+            height={90} 
+            className="mx-auto mb-4 rounded-lg cursor-pointer shadow-md" 
             data-ai-hint="game logo"
           />
         </Link>
@@ -110,12 +115,21 @@ export default async function WelcomePage({
                 </Button>
               </Link>
             )}
-             {game.players.length < 2 && (
+             {game.players.length < 2 && game.players.length > 0 && (
                <p className="text-sm text-center mt-4 text-muted-foreground">Need at least 2 players to start the game.</p>
              )}
           </CardContent>
         </Card>
       </div>
+      
+      <div className="mt-8 w-full max-w-4xl text-center">
+        <form action={handleResetGame}>
+          <Button variant="destructive" size="sm" type="submit" className="hover:bg-destructive/80">
+            <RefreshCw className="mr-2 h-4 w-4" /> Reset Game State (For Testing)
+          </Button>
+        </form>
+      </div>
+
        <footer className="mt-12 text-center text-sm text-muted-foreground">
         <p>&copy; {new Date().getFullYear()} Make It Terrible Inc. All rights reserved (not really).</p>
       </footer>
