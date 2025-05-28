@@ -73,8 +73,14 @@ export async function getGame(): Promise<GameClientState> {
     .eq('game_id', gameId);
 
   if (playersError) {
-    console.error(`Error fetching players for game ${gameId}:`, JSON.stringify(playersError, null, 2));
-    throw new Error(`Could not fetch players. Supabase error: ${playersError.message}`);
+    // Don't throw if the column is missing during setup, just log and return empty players
+    if (playersError.message.includes("column players.game_id does not exist")) {
+        console.error("CRITICAL SCHEMA ISSUE: The 'players' table is missing the 'game_id' column. Please add it in Supabase. Proceeding with empty player list for now.");
+        playersData = [];
+    } else {
+        console.error(`Error fetching players for game ${gameId}:`, JSON.stringify(playersError, null, 2));
+        throw new Error(`Could not fetch players. Supabase error: ${playersError.message}`);
+    }
   } else {
     playersData = fetchedPlayersData || [];
     console.log(`DEBUG: getGame - Fetched ${playersData.length} players for gameId ${gameId}:`, JSON.stringify(playersData.map(p=>p.name)));
@@ -185,12 +191,13 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
     .eq('name', name)
     .single();
 
-  if (checkError && checkError.code !== 'PGRST116') { 
+  if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
     console.error('Error checking for existing player:', JSON.stringify(checkError, null, 2));
     return null;
   }
   if (existingPlayer) {
     console.warn(`Player with name ${name} already exists in game ${gameId}. Re-fetching the player.`);
+    // If player exists, just return their current data instead of erroring or re-adding
     const { data: fullExistingPlayer, error: fetchExistingError } = await supabase
         .from('players')
         .select('*')
@@ -239,6 +246,7 @@ export async function resetGameForTesting(): Promise<void> {
   const gameId = gameRow.id;
   console.log(`DEBUG: Resetting game with ID: ${gameId}`);
 
+  // Delete related data first
   const { error: deletePlayersError } = await supabase
     .from('players')
     .delete()
@@ -263,7 +271,7 @@ export async function resetGameForTesting(): Promise<void> {
     .eq('game_id', gameId);
   if (deleteWinnersError) console.error('Error deleting winners:', JSON.stringify(deleteWinnersError, null, 2));
 
-
+  // Then reset the game row itself
   const updatedGameData: TablesUpdate<'games'> = {
     game_phase: 'lobby',
     current_round: 0,
@@ -303,7 +311,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
     return getGame(); // Fallback to refetch current state
   }
 
-  if (game.game_phase !== 'lobby' && game.game_phase !== 'waiting_for_players') {
+  if (game.game_phase !== 'lobby' && game.game_phase !== 'waiting_for_players') { // 'waiting_for_players' is an old phase, can remove later
     console.warn(`DEBUG: startGame called but game ${gameId} is already in phase ${game.game_phase}. Aborting start.`);
     return getGame(); // Game already started or in an advanced phase
   }
@@ -424,7 +432,10 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
   if (handError) {
     console.error(`Error fetching hand for player ${playerId} game ${gameId}:`, JSON.stringify(handError, null, 2));
   } else if (handData) {
-    handCards = handData.map((h: any) => h.response_cards?.text).filter(text => text !== null && text !== undefined) as string[];
+    // Ensure handData is an array and response_cards is not null
+    handCards = handData
+      .map((h: any) => h.response_cards?.text)
+      .filter(text => text !== null && text !== undefined) as string[];
   }
 
   return {
@@ -437,3 +448,5 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
     isReady: data.is_ready,
   };
 }
+
+    
