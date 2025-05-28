@@ -27,17 +27,19 @@ async function getThisClientsPlayerId(gameId: string, playersInGame: PlayerClien
     return storedPlayerId;
   }
   
-  // If no valid stored ID, and if this client might be the most recent player added (a heuristic)
-  // This is imperfect. A better system might involve a session or a more robust way to claim a player identity.
+  // Fallback logic: if not stored, or stored is invalid, we might not be able to reliably identify
+  // the player without more context (e.g., if addPlayer returned the ID to be stored).
+  // For now, we'll assume if this is called, we want to try to identify.
+  // This is a simplification; a robust app might need a login or a more persistent session.
   if (playersInGame.length > 0) {
-    // console.log("GamePage: No valid storedPlayerId, attempting to identify based on player list.");
-    // This logic is still naive for multiple tabs scenarios.
-    // A more robust solution would be for addPlayer action to return the player ID, which the client then stores.
-    // For now, we'll just assume if there's one player, it's this client, or if multiple, it's harder to tell without prior ID.
-    // This part needs improvement for robust multi-client identification.
-    // Potentially, the last player who joined *from this browser session* could be it.
-    // Without that, we can't reliably pick a player.
-    return null; // Or handle this case by prompting the user to select who they are if ID is lost.
+    // This simple heuristic just picks the first player if no ID stored.
+    // This is NOT robust for multiple anonymous users on one browser.
+    // storedPlayerId = playersInGame[0].id; 
+    // localStorage.setItem(`thisPlayerId_game_${gameId}`, storedPlayerId);
+    // console.log("GamePage: No valid storedPlayerId, heuristic assigned:", storedPlayerId);
+    // return storedPlayerId;
+    console.log("GamePage: No valid storedPlayerId or player not in current game list. Cannot reliably identify player.");
+    return null;
   }
   
   return null;
@@ -61,16 +63,15 @@ export default function GamePage() {
         console.log("GamePage: Initial gameState fetched:", JSON.stringify(initialGameState, null, 2));
 
         if (initialGameState && initialGameState.gameId && initialGameState.players.length > 0) {
-          const playerId = await getThisClientsPlayerId(initialGameState.gameId, initialGameState.players);
-          console.log("GamePage: Determined thisPlayerId:", playerId);
-          if (playerId) {
-            const playerDetail = await getCurrentPlayer(playerId, initialGameState.gameId);
+          const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
+          console.log("GamePage: Player ID from storage:", playerIdFromStorage);
+          if (playerIdFromStorage && initialGameState.players.some(p => p.id === playerIdFromStorage)) {
+            const playerDetail = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
             setThisPlayer(playerDetail || null);
-            console.log("GamePage: Fetched thisPlayer details:", JSON.stringify(playerDetail, null, 2));
+            console.log("GamePage: Fetched thisPlayer details from storage ID:", JSON.stringify(playerDetail, null, 2));
           } else if (initialGameState.gamePhase !== 'lobby' && initialGameState.gamePhase !== 'winner_announcement' && initialGameState.gamePhase !== 'game_over') {
-            // Only redirect if critical player ID is missing during active game phases.
-            console.warn("GamePage: Could not determine current player ID. Redirecting to home.");
-            // router.push('/'); // Potentially problematic if game state changes rapidly
+            console.warn("GamePage: Could not determine current player ID from storage or player not in game. Redirecting to home. Game Phase:", initialGameState.gamePhase);
+            // router.push('/'); // Redirect if player can't be identified in active game
             // return;
           }
         } else if (initialGameState && initialGameState.gamePhase === 'lobby' && initialGameState.players.length === 0) {
@@ -87,7 +88,7 @@ export default function GamePage() {
       }
     }
     fetchInitialData();
-  }, [router]); // Added router to dependency array
+  }, [router]); 
 
   useEffect(() => {
     if (!gameState || !gameState.gameId || isLoading) {
@@ -98,7 +99,7 @@ export default function GamePage() {
 
     const channels = [];
 
-    // Channel for general game state changes (phase, round, judge, scenario)
+    // Channel for general game state changes
     const gameChannel = supabase
       .channel(`game-updates-${gameState.gameId}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameState.gameId}` },
@@ -106,8 +107,7 @@ export default function GamePage() {
           console.log('>>> GamePage Realtime (games sub): GAMES TABLE CHANGE DETECTED!', payload.new);
           const updatedFullGame = await getGame();
           setGameState(updatedFullGame);
-          // Re-fetch current player details as game state change might affect them (e.g., becoming judge)
-          if (thisPlayer?.id && updatedFullGame.gameId) {
+          if (thisPlayer?.id && updatedFullGame.gameId) { // Re-fetch current player if game state changes
             const playerDetail = await getCurrentPlayer(thisPlayer.id, updatedFullGame.gameId);
             setThisPlayer(playerDetail || null);
           }
@@ -119,7 +119,7 @@ export default function GamePage() {
       });
     channels.push(gameChannel);
 
-    // Channel for player list changes (joins, leaves, score updates, ready status)
+    // Channel for player list/score changes
     const playersChannel = supabase
       .channel(`players-updates-${gameState.gameId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameState.gameId}` },
@@ -140,7 +140,7 @@ export default function GamePage() {
       });
     channels.push(playersChannel);
 
-    // Channel for player hand changes
+    // Channel for player hand changes (inserts/deletes from player_hands)
     const handsChannel = supabase
       .channel(`player-hands-updates-${gameState.gameId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'player_hands', filter: `game_id=eq.${gameState.gameId}` },
@@ -148,12 +148,13 @@ export default function GamePage() {
           console.log('>>> GamePage Realtime (player_hands sub): PLAYER_HANDS TABLE CHANGE DETECTED!', payload);
           if (thisPlayer && (payload.new?.player_id === thisPlayer.id || payload.old?.player_id === thisPlayer.id)) {
             console.log(`GamePage Realtime: Hand change detected for current player ${thisPlayer.id}. Re-fetching player details.`);
-            const playerDetail = await getCurrentPlayer(thisPlayer.id, gameState.gameId); // Use current gameState.gameId
+            const playerDetail = await getCurrentPlayer(thisPlayer.id, gameState.gameId); 
             setThisPlayer(playerDetail || null);
           }
           // Also refetch full game state as player hands are part of GameClientState.players
-          const updatedFullGame = await getGame();
-          setGameState(updatedFullGame);
+          // This might be redundant if getCurrentPlayer already updated the game state for player list.
+          // const updatedFullGame = await getGame();
+          // setGameState(updatedFullGame);
         }
       )
       .subscribe((status, err) => {
@@ -162,13 +163,13 @@ export default function GamePage() {
       });
     channels.push(handsChannel);
     
-    // Channel for new submissions
+    // Channel for new submissions (inserts into responses table)
     const submissionsChannel = supabase
       .channel(`submissions-updates-${gameState.gameId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'responses', filter: `game_id=eq.${gameState.gameId}` },
         async (payload) => {
           console.log('>>> GamePage Realtime (responses sub): NEW SUBMISSION DETECTED!', payload);
-          const updatedFullGame = await getGame(); // Refetch game state to update submissions list
+          const updatedFullGame = await getGame(); 
           setGameState(updatedFullGame);
         }
       )
@@ -183,19 +184,21 @@ export default function GamePage() {
       console.log(`GamePage Realtime: Cleaning up subscriptions for gameId: ${gameState?.gameId || 'N/A'}`);
       channels.forEach(channel => supabase.removeChannel(channel).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState?.gameId, thisPlayer?.id]); // isLoading removed, thisPlayer?.id added
+
 
   const handleStartGame = async () => {
     if (gameState?.gameId) {
       startTransition(async () => {
         console.log("GamePage: Client calling startGame server action.");
-        await startGame(gameState.gameId);
-        // Realtime update should refresh game state, no explicit setGameState needed here
-        // However, refetching current player might be good if roles change
-        const updatedGs = await getGame(); // Get fresh state to ensure this client sees immediate changes
-        setGameState(updatedGs);
-        if (thisPlayer?.id && updatedGs.gameId) {
-          const playerDetail = await getCurrentPlayer(thisPlayer.id, updatedGs.gameId);
+        const updatedGs = await startGame(gameState.gameId);
+        if (updatedGs) { // If startGame returns a new state (e.g. on error or immediate feedback)
+            setGameState(updatedGs);
+        }
+        // Re-fetch current player details as roles change (judge assignment)
+        if (thisPlayer?.id && gameState.gameId) { // use gameState.gameId as updatedGs might be null
+          const playerDetail = await getCurrentPlayer(thisPlayer.id, gameState.gameId);
           setThisPlayer(playerDetail || null);
         }
       });
@@ -206,16 +209,18 @@ export default function GamePage() {
     if (gameState?.gameId) {
       startTransition(async () => {
         await selectCategory(gameState.gameId, category);
-        // Realtime update takes care of game state
+        // Realtime update takes care of most game state refreshes.
+        // However, specifically fetch the current player's hand if needed, as that might not trigger general game state update.
+        // For now, relying on general game state update.
       });
     }
   };
 
-  const handleSubmitResponse = async (cardText: string) => { // cardText is actually cardId from PlayerView
-    if (thisPlayer && gameState && gameState.currentRound > 0 && cardText) {
+  const handleSubmitResponse = async (cardId: string) => { 
+    if (thisPlayer && gameState && gameState.currentRound > 0 && cardId) {
       startTransition(async () => {
-        await submitResponse(thisPlayer.id, cardText, gameState.gameId, gameState.currentRound);
-        // Realtime update for game state, local player hand update is handled by subscription
+        await submitResponse(thisPlayer.id, cardId, gameState.gameId, gameState.currentRound);
+        // Realtime update for game state. Player hand update also handled by subscription.
       });
     }
   };
@@ -265,32 +270,33 @@ export default function GamePage() {
     );
   }
   
-  if (gameState.gamePhase === 'lobby' && gameState.players.length === 0) {
+  // If in lobby on /game page (e.g., redirected here before game started by another player)
+  if (gameState.gamePhase === 'lobby' && gameState.players.length > 0) {
+    const enoughPlayers = gameState.players.length >= 2;
      return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-        <Image src="https://placehold.co/150x150.png?text=Empty!" alt="Empty Lobby" width={150} height={150} className="mb-6 rounded-lg shadow-md" data-ai-hint="empty lobby"/>
-        <h1 className="text-4xl font-bold text-primary mb-4">Lobby is Empty!</h1>
-        <p className="text-lg text-muted-foreground mb-8">
-          No players have joined the game yet. Head to the welcome page to join!
-        </p>
-        <Link href="/">
-          <Button variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-lg">
-            <Home className="mr-2 h-5 w-5" /> Go to Welcome Page
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  if (gameState.gamePhase === 'lobby' && gameState.players.length < 2) {
-    return (
          <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-            <Image src="https://placehold.co/150x150.png?text=Waiting" alt="Waiting for players" width={150} height={150} className="mb-6 rounded-lg shadow-md" data-ai-hint="waiting players"/>
-            <h1 className="text-4xl font-bold text-primary mb-4">Waiting for More Players...</h1>
+            <Image 
+              src={enoughPlayers ? "https://placehold.co/150x150.png?text=Ready%3F" : "https://placehold.co/150x150.png?text=Waiting"} 
+              alt={enoughPlayers ? "Ready to play" : "Waiting for players"} 
+              width={150} height={150} className="mb-6 rounded-lg shadow-md" 
+              data-ai-hint={enoughPlayers ? "game start" : "waiting players"}
+            />
+            <h1 className="text-4xl font-bold text-primary mb-4">
+              {enoughPlayers ? "Ready to Make it Terrible?" : "Waiting for More Players..."}
+            </h1>
             <p className="text-lg text-muted-foreground mb-8">
-            Need at least 2 players to start. Currently {gameState.players.length} in lobby.
+            {gameState.players.length} players are in the lobby. 
+            {enoughPlayers ? " Let the chaos begin!" : " Need at least 2 to start."}
             </p>
-            <Scoreboard players={gameState.players} currentJudgeId={gameState.currentJudgeId} />
+            {enoughPlayers && (
+                <Button onClick={handleStartGame} disabled={isPending} variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-xl px-8 py-6">
+                    {isPending ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-2 h-6 w-6" />} 
+                    Start Game Now!
+                </Button>
+            )}
+            <div className="mt-8 w-full max-w-md">
+              <Scoreboard players={gameState.players} currentJudgeId={gameState.currentJudgeId} />
+            </div>
              <Link href="/?step=setup" className="mt-6">
                 <Button variant="outline" size="sm">
                     Back to Lobby Setup
@@ -300,23 +306,19 @@ export default function GamePage() {
     );
   }
   
-  if (gameState.gamePhase === 'lobby' && gameState.players.length >= 2) {
-    return (
-         <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-            <Image src="https://placehold.co/150x150.png?text=Ready%3F" alt="Ready to play" width={150} height={150} className="mb-6 rounded-lg shadow-md" data-ai-hint="game start"/>
-            <h1 className="text-4xl font-bold text-primary mb-4">Ready to Make it Terrible?</h1>
-            <p className="text-lg text-muted-foreground mb-8">
-            {gameState.players.length} players are in the lobby. Let the chaos begin!
-            </p>
-            <Button onClick={handleStartGame} disabled={isPending} variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-xl px-8 py-6">
-                {isPending ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-2 h-6 w-6" />} 
-                Start Game Now!
-            </Button>
-            <Scoreboard players={gameState.players} currentJudgeId={gameState.currentJudgeId} />
+  // If game hasn't properly started (e.g. no judge assigned yet from lobby action) but not in lobby phase
+  if (gameState.gamePhase === 'lobby' && gameState.players.length === 0) {
+     // This case should be handled by the initial redirect if lobby is empty
+     return (
+        <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
+          <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
+          <p className="text-xl text-muted-foreground">Preparing game...</p>
         </div>
-    );
+     );
   }
 
+
+  // Fallback if thisPlayer is somehow null but game is active
   if (!thisPlayer && (gameState.gamePhase !== 'winner_announcement' && gameState.gamePhase !== 'game_over')) {
      console.warn("GamePage: thisPlayer object is null. Game state:", JSON.stringify(gameState, null, 2));
      return (
@@ -335,7 +337,6 @@ export default function GamePage() {
 
   const renderGameContent = () => {
     if (!thisPlayer && (gameState.gamePhase !== 'winner_announcement' && gameState.gamePhase !== 'game_over')) {
-        // This case should be caught by the loading/redirect logic above, but as a fallback:
         return <div className="text-center text-destructive">Error: Could not identify your player. Please return to lobby.</div>;
     }
 
@@ -346,7 +347,7 @@ export default function GamePage() {
       return <JudgeView gameState={gameState} judge={thisPlayer} onSelectCategory={handleSelectCategory} onSelectWinner={handleSelectWinner} />;
     }
     if (!isJudge && thisPlayer) {
-      return <PlayerView gameState={gameState} player={thisPlayer} onSubmitResponse={handleSubmitResponse} />;
+      return <PlayerView gameState={gameState} player={thisPlayer} />;
     }
     // Fallback for spectators or if player role can't be determined
     return (
@@ -377,9 +378,4 @@ export default function GamePage() {
     </div>
   );
 }
-
-// Add export const dynamic for Server Components that need dynamic rendering
-// This page is a client component, so force-dynamic isn't applicable here in the same way.
-// However, server actions it calls are dynamic by nature.
-// export const dynamic = 'force-dynamic'; // Not needed for client components like this
-
+export const dynamic = 'force-dynamic';

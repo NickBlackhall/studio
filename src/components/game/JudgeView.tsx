@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { GameClientState, PlayerClientState } from '@/lib/types'; // Updated types
+import type { GameClientState, PlayerClientState } from '@/lib/types'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,11 +9,12 @@ import { useState, useTransition, useMemo, useEffect } from 'react';
 import { Gavel, Send, CheckCircle, Loader2, ListChecks, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
+// No need to import selectCategory from actions if it's passed as a prop
 
 interface JudgeViewProps {
-  gameState: GameClientState; // Updated type
-  judge: PlayerClientState;    // Updated type
-  onSelectCategory: (category: string) => Promise<void>; // category is string
+  gameState: GameClientState; 
+  judge: PlayerClientState;    
+  onSelectCategory: (category: string) => Promise<void>; // Prop for server action
   onSelectWinner: (cardText: string) => Promise<void>;
 }
 
@@ -25,7 +26,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const { toast } = useToast();
 
   useEffect(() => {
-    // If categories are available and none is selected, select the first one by default
     if (gameState.categories.length > 0 && !selectedCategory) {
       // setSelectedCategory(gameState.categories[0]); // Optionally auto-select
     }
@@ -37,7 +37,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       return;
     }
     startTransitionCategory(async () => {
-      await onSelectCategory(selectedCategory);
+      await onSelectCategory(selectedCategory); // Call the passed server action
       toast({ title: "Category Selected!", description: `Scenario from "${selectedCategory}" is up!` });
     });
   };
@@ -49,7 +49,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     }
     startTransitionWinner(async () => {
       await onSelectWinner(selectedWinningCard);
-      // Toast for winner announcement will be handled on the main game page or WinnerDisplay component
     });
   };
 
@@ -126,7 +125,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               {shuffledSubmissions.length > 0 ? (
                 shuffledSubmissions.map((submission) => (
                   <Button
-                    key={submission.playerId + submission.cardText} // Ensure key is unique if card texts could be identical (though unlikely for one player's submissions)
+                    key={submission.playerId + submission.cardText} 
                     variant={selectedWinningCard === submission.cardText ? "default" : "outline"}
                     onClick={() => setSelectedWinningCard(submission.cardText)}
                     className={`w-full h-auto p-4 text-left text-lg whitespace-normal justify-start
