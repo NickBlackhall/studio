@@ -31,8 +31,11 @@ export default async function WelcomePage({
     await resetGameForTesting();
   };
 
-  // Directly use searchParams.step, providing a default if it's not 'setup'
-  const currentStep = searchParams?.step === 'setup' ? 'setup' : 'welcome';
+  // Explicitly handle searchParams and the step value
+  const currentSearchParams = searchParams || {}; // Ensure it's an object
+  const stepValue = currentSearchParams.step;   // Access the step property
+  // Determine currentStep, ensuring stepValue is a string and matches 'setup'
+  const currentStep = typeof stepValue === 'string' && stepValue === 'setup' ? 'setup' : 'welcome';
 
   if (currentStep === 'welcome') {
     return (
