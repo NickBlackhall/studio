@@ -8,20 +8,22 @@ import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw, Loader2 } from 'lucide-react';
-import type { GameState } from '@/lib/types';
+import type { GameClientState } from '@/lib/types'; // Updated to GameClientState
 import CurrentYear from '@/components/CurrentYear';
+import { supabase } from '@/lib/supabaseClient'; // Import Supabase client
 
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useTransition } from 'react';
 
 export default function WelcomePage() {
   const searchParams = useSearchParams();
-  const step = searchParams.get('step');
+  const step = searchParams?.step;
 
-  const [game, setGame] = useState<GameState | null>(null);
+  const [game, setGame] = useState<GameClientState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPendingAction, startTransition] = useTransition();
 
+  // Effect to fetch initial game data and set up realtime listener
   useEffect(() => {
     async function fetchGameData() {
       setIsLoading(true);
@@ -30,13 +32,86 @@ export default function WelcomePage() {
         setGame(gameState);
       } catch (error) {
         console.error("Failed to fetch game state:", error);
-        setGame(null); // Set to null or an error state
+        setGame(null);
       } finally {
         setIsLoading(false);
       }
     }
     fetchGameData();
-  }, []); // Fetch game state on initial component mount
+  }, []);
+
+  // Effect for Supabase realtime subscriptions
+  useEffect(() => {
+    if (!game || !game.gameId) return; // Don't subscribe if no game or gameId
+
+    console.log(`Setting up Supabase realtime subscription for gameId: ${game.gameId}`);
+
+    const playersChannel = supabase
+      .channel(`players-lobby-${game.gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'players',
+          filter: `game_id=eq.${game.gameId}`, // Only for players in the current game
+        },
+        (payload) => {
+          console.log('Realtime: Player change received!', payload);
+          // Re-fetch game state to update the UI with the latest player list
+          async function fetchAndUpdate() {
+            const updatedGame = await getGame();
+            setGame(updatedGame);
+          }
+          fetchAndUpdate();
+        }
+      )
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`Successfully subscribed to players-lobby-${game.gameId}!`);
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Realtime subscription error:', status, err);
+        }
+      });
+
+    // Also listen to changes on the 'games' table for game phase changes, etc.
+    // This helps if another player starts the game.
+    const gameChannel = supabase
+      .channel(`game-state-${game.gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'games',
+          filter: `id=eq.${game.gameId}`,
+        },
+        (payload) => {
+          console.log('Realtime: Game state change received!', payload);
+          async function fetchAndUpdate() {
+            const updatedGame = await getGame();
+            setGame(updatedGame);
+          }
+          fetchAndUpdate();
+        }
+      )
+      .subscribe((status, err) => {
+         if (status === 'SUBSCRIBED') {
+          console.log(`Successfully subscribed to game-state-${game.gameId}!`);
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Realtime subscription error (game state):', status, err);
+        }
+      });
+
+    // Cleanup function to remove the channel when the component unmounts or gameId changes
+    return () => {
+      console.log(`Cleaning up Supabase realtime subscriptions for gameId: ${game.gameId}`);
+      supabase.removeChannel(playersChannel);
+      supabase.removeChannel(gameChannel);
+    };
+  }, [game?.gameId]); // Re-run effect if game.gameId changes
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
@@ -44,7 +119,7 @@ export default function WelcomePage() {
     if (name && avatar) {
       startTransition(async () => {
         await addPlayerAction(name, avatar);
-        // Re-fetch game state to update the UI
+        // Re-fetch game state to update the UI for the current client immediately
         const updatedGame = await getGame();
         setGame(updatedGame);
       });
@@ -55,10 +130,7 @@ export default function WelcomePage() {
     startTransition(async () => {
       await resetGameForTesting();
       // The resetGameForTesting action already redirects to '/?step=setup'.
-      // The useEffect will re-run on the new page load caused by the redirect.
-      // If it didn't redirect, we'd fetch here:
-      // const freshGame = await getGame();
-      // setGame(freshGame);
+      // The useEffect for fetching data will re-run on the new page load.
     });
   };
 
@@ -78,6 +150,18 @@ export default function WelcomePage() {
       </div>
     );
   }
+
+  // If the game has started and this client is still on the setup page,
+  // perhaps redirect them to /game
+  if (game.gamePhase !== 'lobby' && step === 'setup') {
+    // Check if this player is actually in the game. If not, they stay in lobby.
+    // This redirect might need more sophisticated logic later based on actual player session.
+    // For now, a simple check can help.
+    // If we had current player ID, we could check if game.players.find(p => p.id === thisPlayerId)
+    // redirect('/game'); // Temporarily disabled, needs better logic.
+    console.log("Game phase is not lobby, but user is on setup. Current phase:", game.gamePhase);
+  }
+
 
   if (step === 'setup') {
     return (
@@ -127,7 +211,7 @@ export default function WelcomePage() {
               ) : (
                 <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
               )}
-              {game.players.length >= 2 && (
+              {game.players.length >= 2 && game.gamePhase === 'lobby' && (
                 <Link href="/game" className="mt-6 block">
                   <Button variant="default" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3" disabled={isPendingAction}>
                     {isPendingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Start Game</>}
@@ -136,6 +220,9 @@ export default function WelcomePage() {
               )}
                {game.players.length < 2 && game.players.length > 0 && (
                  <p className="text-sm text-center mt-4 text-muted-foreground">Need at least 2 players to start the game.</p>
+               )}
+               {game.gamePhase !== 'lobby' && (
+                  <p className="text-sm text-center mt-4 text-accent-foreground bg-accent p-2 rounded-md">Game in progress! State: {game.gamePhase}</p>
                )}
             </CardContent>
           </Card>
