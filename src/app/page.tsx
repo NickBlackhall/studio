@@ -1,4 +1,3 @@
-
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -7,12 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw } from 'lucide-react';
 import type { GameState } from '@/lib/types';
-import CurrentYear from '@/components/CurrentYear'; // Import the new component
+import CurrentYear from '@/components/CurrentYear';
 
 export const dynamic = 'force-dynamic';
 
 export default async function WelcomePage({
-  searchParams,
+  searchParams = {}, // Default searchParams to an empty object
 }: {
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
@@ -32,16 +31,26 @@ export default async function WelcomePage({
     await resetGameForTesting();
   };
 
-  const step = searchParams?.step;
+  // Access step directly, searchParams is guaranteed to be an object.
+  // We still check its type as it could be a string, array, or undefined.
+  const stepParam = searchParams.step;
+  let currentStep = 'welcome';
 
-  if (step === 'setup') {
+  if (typeof stepParam === 'string' && stepParam === 'setup') {
+    currentStep = 'setup';
+  } else if (Array.isArray(stepParam) && stepParam.includes('setup')) {
+    // Less likely for this use case, but handles if 'step' could be an array
+    currentStep = 'setup';
+  }
+
+  if (currentStep === 'setup') {
     // Player Setup and Lobby View
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
         <header className="mb-12 text-center">
           <Link href="/" passHref>
             <Image
-              src="https://placehold.co/730x218.png?text=Make+It+Terrible"
+              src="https://placehold.co/300x90.png?text=Make+It+Terrible"
               alt="Make It Terrible Logo"
               width={300}
               height={90}
@@ -116,7 +125,7 @@ export default async function WelcomePage({
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
       <Image
-        src="https://placehold.co/730x218.png?text=Make+It+Terrible"
+        src="https://placehold.co/438x131.png?text=Make+It+Terrible"
         alt="Make It Terrible Logo"
         width={438}
         height={131}
