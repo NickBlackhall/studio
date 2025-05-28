@@ -1,5 +1,5 @@
 
-"use client"; // Mark as a Client Component
+"use client"; 
 
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -13,18 +13,18 @@ import { supabase } from '@/lib/supabaseClient';
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useTransition } from 'react';
-
-export const dynamic = 'force-dynamic';
+import { useToast } from "@/hooks/use-toast";
 
 export default function WelcomePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const stepParam = searchParams?.get('step');
-  const step = stepParam === 'setup' ? 'setup' : 'welcome';
+  const currentStep = stepParam === 'setup' ? 'setup' : 'welcome';
 
   const [game, setGame] = useState<GameClientState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPendingAction, startTransition] = useTransition();
+  const { toast } = useToast();
 
   useEffect(() => {
     // @ts-ignore supabase client has .supabaseUrl and .supabaseKey
@@ -53,11 +53,9 @@ export default function WelcomePage() {
 
   useEffect(() => {
     if (!game || !game.gameId || isLoading) {
-      console.log("Realtime or Redirect: No game, gameId, or still loading, skipping setup.");
+      console.log("Realtime or Redirect: No game, gameId, or still loading, skipping subscription/redirect setup.");
       return;
     }
-
-    // Realtime subscription setup
     console.log(`Realtime: Setting up Supabase subscriptions for gameId: ${game.gameId}`);
 
     const playersChannel = supabase
@@ -70,15 +68,12 @@ export default function WelcomePage() {
           table: 'players',
           filter: `game_id=eq.${game.gameId}`, 
         },
-        (payload) => {
+        async (payload: any) => {
           console.log('>>> Realtime: PLAYERS TABLE CHANGE DETECTED BY SUPABASE!', payload); 
-          async function fetchAndUpdate() {
-            console.log('Realtime (players sub): Fetching updated game state due to player change...');
-            const updatedGame = await getGame(); 
-            console.log('Realtime (players sub): Updated game state from getGame():', JSON.stringify(updatedGame, null, 2));
-            setGame(updatedGame);
-          }
-          fetchAndUpdate();
+          console.log('Realtime (players sub): Fetching updated game state due to player change...');
+          const updatedGame = await getGame(); 
+          console.log('Realtime (players sub): Updated game state from getGame():', JSON.stringify(updatedGame, null, 2));
+          setGame(updatedGame);
         }
       )
       .subscribe((status, err) => {
@@ -103,23 +98,12 @@ export default function WelcomePage() {
           table: 'games',
           filter: `id=eq.${game.gameId}`,
         },
-        (payload) => {
+        async (payload: any) => {
           console.log('>>> Realtime: GAMES TABLE CHANGE DETECTED BY SUPABASE!', payload); 
-          async function fetchAndUpdate() {
-            console.log('Realtime (games sub): Fetching updated game state due to game table change...');
-            const updatedGame = await getGame();
-            console.log('Realtime (games sub): Updated game state from getGame():', JSON.stringify(updatedGame, null, 2));
-            setGame(updatedGame);
-            // REMOVED automatic redirect from here to prevent loop
-            // if (updatedGame && updatedGame.gamePhase !== 'lobby' && step === 'setup') {
-            //      const activePhasesForRedirect: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
-            //      if(activePhasesForRedirect.includes(updatedGame.gamePhase as GamePhaseClientState)) {
-            //         console.log(`Realtime (games sub): Game phase changed to ${updatedGame.gamePhase}, current step is 'setup'. Redirecting to /game.`);
-            //         router.push('/game');
-            //      }
-            // }
-          }
-          fetchAndUpdate();
+          console.log('Realtime (games sub): Fetching updated game state due to game table change...');
+          const updatedGame = await getGame();
+          console.log('Realtime (games sub): Updated game state from getGame():', JSON.stringify(updatedGame, null, 2));
+          setGame(updatedGame);
         }
       )
       .subscribe((status, err) => {
@@ -133,19 +117,7 @@ export default function WelcomePage() {
             console.error(`Realtime: Subscription detailed error (game-state-${game.gameId}):`, err);
         }
       });
-
-    // REMOVED the problematic redirect logic from the main useEffect
-    // const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
-    // if (game && activePlayingPhases.includes(game.gamePhase as GamePhaseClientState) && step === 'setup' && !isLoading) {
-    //    console.log(`Client: Game phase is ${game.gamePhase} (active), step is 'setup'. Preparing to redirect to /game.`);
-    //    const timer = setTimeout(() => {
-    //     console.log(`Client: Executing redirect to /game now.`);
-    //     router.push('/game');
-    //    }, 0);
-    //    return () => clearTimeout(timer); 
-    // }
-
-
+      
     return () => {
       console.log(`Realtime: Cleaning up Supabase subscriptions for gameId: ${game?.gameId || 'N/A'}`);
       if (playersChannel) {
@@ -155,17 +127,27 @@ export default function WelcomePage() {
         supabase.removeChannel(gameChannel).catch(err => console.error("Realtime: Error removing game channel:", err));
       }
     };
-  }, [game, game?.gameId, /* removed game.gamePhase from deps to avoid re-triggering redirect logic from here */ step, isLoading, router]);
+  }, [game, isLoading, router]); // game.gameId was simplified to game
 
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
     const avatar = formData.get('avatar') as string;
     if (name && avatar && game?.gameId) {
+      const currentLocalGameId = game.gameId; // Capture gameId before async call
       startTransition(async () => {
-        console.log(`Client: Attempting to add player ${name} for gameId ${game.gameId}`);
+        console.log(`Client: Attempting to add player ${name} for gameId ${currentLocalGameId}`);
         const result = await addPlayerAction(name, avatar);
-        console.log('Client: Add player action result:', JSON.stringify(result, null, 2));
+        console.log('Client: Add player action result:', result);
+        if (result && result.id && currentLocalGameId) {
+          const localStorageKey = `thisPlayerId_game_${currentLocalGameId}`;
+          localStorage.setItem(localStorageKey, result.id);
+          console.log(`Client: Player ID ${result.id} stored in localStorage with key ${localStorageKey}`);
+          toast({ title: "Welcome!", description: `${name} has joined the game!`});
+        } else {
+          console.error("Client: Failed to set player ID in localStorage. Player result or gameId missing.", { result, gameId: currentLocalGameId });
+          toast({ title: "Error!", description: "Could not save player session. Please try again.", variant: "destructive"});
+        }
         console.log('Client (handleAddPlayer): Fetching game state after adding player...');
         const updatedGame = await getGame();
         console.log('Client (handleAddPlayer): Game state after adding player:', JSON.stringify(updatedGame, null, 2));
@@ -173,16 +155,40 @@ export default function WelcomePage() {
       });
     } else if (!game?.gameId) {
         console.error("Client: Cannot add player: gameId is not available on client state.");
+        toast({ title: "Error!", description: "Game session not found. Please refresh.", variant: "destructive"});
     }
   };
 
   const handleResetGame = async () => {
     startTransition(async () => {
-      console.log("Client: Attempting to reset game.");
-      await resetGameForTesting();
-      console.log("Client: Reset game action called. This client should be redirected by the server action.");
+      console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
+      try {
+        await resetGameForTesting();
+        console.log("🔴 RESET (Client): resetGameForTesting server action completed. Page should redirect.");
+        // The server action now handles the redirect.
+        // No need to call getGame() or setGame() here as the page will reload.
+      } catch (error) {
+        console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
+        toast({ title: "Reset Failed", description: "Could not reset the game. Please try again.", variant: "destructive"});
+      }
     });
   };
+  
+  const handleStartGameFromLobby = async () => {
+    if (game?.gameId && game.players.length >= 2 && game.gamePhase === 'lobby') {
+      startTransition(async () => {
+        console.log(`Client: Attempting to start game ${game.gameId} from lobby.`);
+        await startGame(game.gameId); // startGame server action
+        // The game_phase change should be picked up by real-time subscription,
+        // or the navigation to /game will show the new state.
+        router.push('/game'); 
+      });
+    } else {
+      console.warn("Client: Cannot start game from lobby. Conditions not met.", game);
+      toast({ title: "Cannot Start Game", description: "Not enough players or game not in lobby phase.", variant: "destructive"});
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -206,9 +212,9 @@ export default function WelcomePage() {
   }
   
   const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
-  const isGameActive = game && activePlayingPhases.includes(game.gamePhase as GamePhaseClientState);
+  const isGameActiveAndNotLobby = game && game.gamePhase !== 'lobby' && activePlayingPhases.includes(game.gamePhase as GamePhaseClientState);
 
-  if (step === 'setup') {
+  if (currentStep === 'setup') {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
         <header className="mb-12 text-center">
@@ -224,12 +230,16 @@ export default function WelcomePage() {
             />
           </button>
           <h1 className="text-5xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-          {!isGameActive && <p className="text-xl text-muted-foreground mt-2">Enter your details to join the game.</p>}
-           {isGameActive && <p className="text-xl text-muted-foreground mt-2">A game is currently in progress!</p>}
+          {isGameActiveAndNotLobby && 
+            <p className="text-xl text-green-600 dark:text-green-400 mt-2">A game is currently in progress!</p>
+          }
+          {!isGameActiveAndNotLobby && game.gamePhase === 'lobby' &&
+            <p className="text-xl text-muted-foreground mt-2">Enter your details to join the game.</p>
+          }
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
-          {!isGameActive && (
+          {!isGameActiveAndNotLobby && game.gamePhase === 'lobby' && (
             <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
               <CardHeader className="bg-primary text-primary-foreground p-6">
                 <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
@@ -240,8 +250,8 @@ export default function WelcomePage() {
               </CardContent>
             </Card>
           )}
-          {isGameActive && (
-             <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden flex flex-col items-center justify-center p-6">
+          {isGameActiveAndNotLobby && (
+             <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden flex flex-col items-center justify-center p-6 md:col-span-2">
                 <CardTitle className="text-2xl font-bold mb-4 text-center">Game in Progress!</CardTitle>
                 <CardDescription className="text-base text-center mb-6">
                     The current game is in the "{game.gamePhase}" phase.
@@ -256,53 +266,42 @@ export default function WelcomePage() {
                 </Button>
              </Card>
           )}
-
-          <Card className="shadow-2xl border-2 border-secondary rounded-xl overflow-hidden">
-            <CardHeader className="bg-secondary text-secondary-foreground p-6">
-              <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players in Lobby ({game.players.length})</CardTitle>
-              <CardDescription className="text-secondary-foreground/80 text-base">See who's brave enough to play.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              {game.players.length > 0 ? (
-                <ul className="space-y-3">
-                  {game.players.map((player) => (
-                    <li key={player.id} className="flex items-center p-3 bg-muted rounded-lg shadow">
-                      <span className="text-4xl mr-4">{player.avatar}</span>
-                      <span className="text-xl font-medium text-foreground">{player.name}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
-              )}
-              {/* Button to go to game / start game from LOBBY */}
-              {/* This button should appear if game is in LOBBY and enough players */}
-              {(game.players.length >= 2 && game.gamePhase === 'lobby') && (
-                <Button
-                  onClick={() => router.push('/game')} 
-                  variant="default"
-                  size="lg"
-                  className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3 mt-6"
-                  disabled={isPendingAction} 
-                >
-                  {isPendingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Go to Game / Start</>}
-                </Button>
-              )}
-               {game.players.length < 2 && game.gamePhase === 'lobby' && (
-                 <p className="text-sm text-center mt-4 text-muted-foreground">Need at least 2 players to start the game.</p>
-               )}
-               {/* This button is now handled by the isGameActive block above */}
-               {/* {game.gamePhase !== 'lobby' && !isGameActive && ( 
-                  <Button 
-                    onClick={() => router.push('/game')}
-                    variant="outline"
-                    className="w-full text-primary border-primary hover:bg-primary/10 mt-4"
+          {(!isGameActiveAndNotLobby || game.gamePhase === 'lobby') && (
+            <Card className="shadow-2xl border-2 border-secondary rounded-xl overflow-hidden">
+              <CardHeader className="bg-secondary text-secondary-foreground p-6">
+                <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players in Lobby ({game.players.length})</CardTitle>
+                <CardDescription className="text-secondary-foreground/80 text-base">See who's brave enough to play.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                {game.players.length > 0 ? (
+                  <ul className="space-y-3">
+                    {game.players.map((player) => (
+                      <li key={player.id} className="flex items-center p-3 bg-muted rounded-lg shadow">
+                        <span className="text-4xl mr-4">{player.avatar}</span>
+                        <span className="text-xl font-medium text-foreground">{player.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
+                )}
+                {(game.players.length >= 2 && game.gamePhase === 'lobby') && (
+                  <Button
+                    onClick={handleStartGameFromLobby} 
+                    variant="default"
+                    size="lg"
+                    className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3 mt-6"
+                    disabled={isPendingAction} 
                   >
-                    Game in progress ({game.gamePhase}). Go to Game <ArrowRight className="ml-2 h-5 w-5" />
+                    {isPendingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Go to Game / Start</>}
                   </Button>
-               )} */}
-            </CardContent>
-          </Card>
+                )}
+                {game.players.length < 2 && game.gamePhase === 'lobby' && (
+                  <p className="text-sm text-center mt-4 text-muted-foreground">Need at least 2 players to start the game.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="mt-8 w-full max-w-4xl text-center">
@@ -320,7 +319,7 @@ export default function WelcomePage() {
     );
   }
 
-  // Default: Welcome/Entrance Screen (when step is not 'setup')
+  // Default: Welcome/Entrance Screen (when currentStep is not 'setup')
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
       <Image
