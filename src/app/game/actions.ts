@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import type { GameClientState, PlayerClientState, ScenarioClientState } from '@/lib/types';
-import type { Tables, TablesInsert } from '@/lib/database.types';
+import type { Tables, TablesInsert, TablesUpdate } from '@/lib/database.types';
 
 // Helper function to find or create a game session
 async function findOrCreateGame(): Promise<Tables<'games'>> {
@@ -30,21 +30,27 @@ async function findOrCreateGame(): Promise<Tables<'games'>> {
     const newGameData: TablesInsert<'games'> = {
       game_phase: 'lobby',
       current_round: 0,
-      // Supabase defaults will handle id, created_at, updated_at
-      // and array columns like used_scenarios, used_responses, ready_player_order
-      // if they have a default of {}
-      // Nullable fields like current_judge_id, current_scenario_id will be null by default
+      // Explicitly provide empty arrays for non-nullable array columns
+      // even if DB has a default, to be absolutely sure.
+      ready_player_order: [],
+      used_scenarios: [],
+      used_responses: [],
+      // Nullable fields like current_judge_id, current_scenario_id, 
+      // last_round_winner_player_id, overall_winner_player_id
+      // will be null by default if not provided and are nullable.
     };
     const { data: newGame, error: insertError } = await supabase
       .from('games')
       .insert(newGameData)
-      .select()
-      .single();
+      .select() // select all columns of the inserted row
+      .single(); // expect a single row to be returned
 
     if (insertError || !newGame) {
+      // Log the full error object from Supabase if it exists
       console.error('Error creating new game:', JSON.stringify(insertError, null, 2));
-      const errorMessage = insertError ? insertError.message : "New game data was null after insert.";
-      throw new Error(`Could not create a new game. Supabase error: ${errorMessage}`);
+      // Prepare a more detailed error message for the client
+      const supabaseErrorMessage = insertError ? insertError.message : "New game data was unexpectedly null after insert operation.";
+      throw new Error(`Could not create a new game. Supabase error: ${supabaseErrorMessage}`);
     }
     game = newGame;
   }
@@ -74,7 +80,7 @@ export async function getGame(): Promise<GameClientState> {
         const specificErrorMessage = "CRITICAL: The 'players' table is missing the 'game_id' column, or it's named incorrectly. Please ensure the 'players' table has a 'game_id' column of type UUID. The page will load without players for now.";
         console.error(specificErrorMessage);
         // Allow the game to proceed without players if this specific error occurs, to aid debugging.
-        playersData = [];
+        playersData = []; // Set to empty array to allow page to load
     } else {
         throw new Error(`Could not fetch players. Supabase error: ${playersError.message}`);
     }
@@ -123,7 +129,7 @@ export async function getGame(): Promise<GameClientState> {
     if (scenarioData) {
       currentScenario = {
         id: scenarioData.id,
-        category: scenarioData.category,
+        category: scenarioData.category || 'Unknown', // Ensure category is not null
         text: scenarioData.text,
       };
     }
@@ -246,7 +252,7 @@ export async function resetGameForTesting(): Promise<void> {
 
   // Reset the game row state
   // For array columns, Supabase expects {} for empty array default.
-  const updatedGameData: TablesUpdate<'games'> = {
+  const updatedGameData: Partial<TablesUpdate<'games'>> = { // Use Partial for updates
     game_phase: 'lobby',
     current_round: 0,
     current_judge_id: null,
@@ -383,7 +389,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
     console.error(`Error fetching hand for player ${playerId} game ${gameId}:`, JSON.stringify(handError, null, 2));
   }
 
-  const handCards = handData?.map((h: any) => h.response_cards.text) || [];
+  const handCards = handData?.map((h: any) => h.response_cards?.text).filter(text => text !== null && text !== undefined) || [];
 
 
   return {
@@ -396,3 +402,5 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
     isReady: data.is_ready,
   };
 }
+
+
