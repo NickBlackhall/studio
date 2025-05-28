@@ -60,7 +60,7 @@ export async function getGame(): Promise<GameClientState> {
   }
   const gameId = gameRow.id;
 
-  let playersData: Tables<'players'>[] | null = [];
+  let playersData: Tables<'players'>[] = [];
   // Fetch players for this game
   const { data: fetchedPlayersData, error: playersError } = await supabase
     .from('players')
@@ -68,21 +68,14 @@ export async function getGame(): Promise<GameClientState> {
     .eq('game_id', gameId);
 
   if (playersError) {
-    const specificErrorMessage = 'column players.game_id does not exist';
-    if (playersError.message.includes(specificErrorMessage)) {
-      console.error(`CRITICAL DATABASE SCHEMA ISSUE: The 'players' table in your Supabase database is missing the 'game_id' column (type: uuid, nullable: false). Please add or correct this column in your 'players' table in Supabase. The app will continue but no players will be loaded.`);
-      // playersData will remain null or empty, leading to an empty player list
-    } else {
-      console.error(`Error fetching players for game ${gameId}:`, JSON.stringify(playersError, null, 2));
-      throw new Error(`Could not fetch players. Supabase error: ${playersError.message}`);
-    }
+    console.error(`Error fetching players for game ${gameId}:`, JSON.stringify(playersError, null, 2));
+    throw new Error(`Could not fetch players. Supabase error: ${playersError.message}`);
   } else {
-    playersData = fetchedPlayersData;
+    playersData = fetchedPlayersData || [];
   }
 
 
-  const players: PlayerClientState[] = playersData
-    ? playersData.map(p => ({
+  const players: PlayerClientState[] = playersData.map(p => ({
         id: p.id,
         name: p.name,
         avatar: p.avatar,
@@ -90,8 +83,8 @@ export async function getGame(): Promise<GameClientState> {
         isJudge: p.id === gameRow.current_judge_id,
         hand: [], // Hand data will come from player_hands, to be implemented
         isReady: p.is_ready,
-      }))
-    : [];
+      }));
+
 
   // Fetch categories
   const { data: categoriesData, error: categoriesError } = await supabase
@@ -101,7 +94,6 @@ export async function getGame(): Promise<GameClientState> {
   if (categoriesError) {
     console.error('Error fetching categories:', categoriesError);
     // Non-fatal, game can proceed with default or empty categories
-    // throw new Error('Could not fetch categories.');
   }
   const categories = categoriesData
     ? [...new Set(categoriesData.map(c => c.category))]
@@ -164,11 +156,7 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
     .single();
 
   if (checkError && checkError.code !== 'PGRST116') { // PGRST116: 'single row not found'
-    console.error('Error checking for existing player:', checkError);
-    // Potentially check if the error is "column players.game_id does not exist"
-    if (checkError.message.includes('column players.game_id does not exist')) {
-        console.error(`CRITICAL DATABASE SCHEMA ISSUE: The 'players' table is missing the 'game_id' column. Cannot add player.`);
-    }
+    console.error('Error checking for existing player:', JSON.stringify(checkError, null, 2));
     return null;
   }
   if (existingPlayer) {
@@ -194,7 +182,6 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
     is_judge: false,
     is_ready: false,
     // joined_at will be handled by Supabase default
-    // hand is managed by player_hands table, or not used if PlayerClientState.hand is directly populated
   };
 
   const { data: newPlayer, error: insertError } = await supabase
@@ -204,12 +191,7 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
     .single();
 
   if (insertError) {
-    console.error('Error adding new player:', insertError);
-     if (insertError.message.includes('null value in column "game_id" violates not-null constraint') || insertError.message.includes("players_game_id_fkey")) {
-        console.error(`DATABASE SCHEMA ISSUE: Problem with 'game_id' in 'players' table. It might be missing, not allowing nulls correctly, or have a foreign key constraint issue. Please check its definition in Supabase.`);
-    } else if (insertError.message.includes('column "game_id" of relation "players" does not exist')) {
-         console.error(`CRITICAL DATABASE SCHEMA ISSUE: The 'players' table is missing the 'game_id' column. Cannot add player.`);
-    }
+    console.error('Error adding new player:', JSON.stringify(insertError, null, 2));
     return null;
   }
 
@@ -233,11 +215,7 @@ export async function resetGameForTesting(): Promise<void> {
     .eq('game_id', gameId);
 
   if (deletePlayersError) {
-    if (deletePlayersError.message.includes('column players.game_id does not exist')) {
-      console.error(`CRITICAL DATABASE SCHEMA ISSUE during reset: The 'players' table is missing the 'game_id' column. Cannot delete players effectively.`);
-    } else {
-      console.error('Error deleting players:', deletePlayersError);
-    }
+    console.error('Error deleting players:', JSON.stringify(deletePlayersError, null, 2));
   }
 
 
@@ -382,3 +360,5 @@ export async function getCurrentPlayer(playerId: string): Promise<PlayerClientSt
     isReady: data.is_ready,
   };
 }
+
+    
