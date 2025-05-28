@@ -241,6 +241,11 @@ export async function resetGameForTesting(): Promise<void> {
   const gameRow = await findOrCreateGame(); 
   if (!gameRow || !gameRow.id) {
     console.error('Failed to find or create a game session for reset.');
+    // If no game is found, we can't reset much, but we should still try to redirect
+    // to a clean state to avoid getting stuck.
+    revalidatePath('/');
+    revalidatePath('/game');
+    redirect('/?step=setup');
     return;
   }
   const gameId = gameRow.id;
