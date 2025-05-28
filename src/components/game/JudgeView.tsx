@@ -1,19 +1,19 @@
 
 "use client";
 
-import type { GameState, Player, Scenario, Submission } from '@/lib/types';
+import type { GameClientState, PlayerClientState } from '@/lib/types'; // Updated types
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition, useMemo, useEffect } from 'react';
 import { Gavel, Send, CheckCircle, Loader2, ListChecks, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 
 interface JudgeViewProps {
-  gameState: GameState;
-  judge: Player;
-  onSelectCategory: (categoryId: string) => Promise<void>;
+  gameState: GameClientState; // Updated type
+  judge: PlayerClientState;    // Updated type
+  onSelectCategory: (category: string) => Promise<void>; // category is string
   onSelectWinner: (cardText: string) => Promise<void>;
 }
 
@@ -23,6 +23,13 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [isPendingCategory, startTransitionCategory] = useTransition();
   const [isPendingWinner, startTransitionWinner] = useTransition();
   const { toast } = useToast();
+
+  useEffect(() => {
+    // If categories are available and none is selected, select the first one by default
+    if (gameState.categories.length > 0 && !selectedCategory) {
+      // setSelectedCategory(gameState.categories[0]); // Optionally auto-select
+    }
+  }, [gameState.categories, selectedCategory]);
 
   const handleCategorySubmit = () => {
     if (!selectedCategory) {
@@ -46,8 +53,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  // Shuffle submissions for anonymous judging, memoize to prevent re-shuffling on every render
   const shuffledSubmissions = useMemo(() => {
+    if (!gameState.submissions) return [];
     return gameState.submissions.slice().sort(() => Math.random() - 0.5);
   }, [gameState.submissions]);
 
@@ -56,7 +63,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       <Card className="shadow-lg border-2 border-accent rounded-xl">
         <CardHeader className="bg-accent text-accent-foreground p-6">
           <CardTitle className="text-3xl font-bold flex items-center"><Gavel className="mr-3 h-8 w-8" /> You are the Judge!</CardTitle>
-          <CardDescription className="text-accent-foreground/80 text-base">Wield your power with terrible responsibility.</CardDescription>
+          <CardDescription className="text-accent-foreground/80 text-base">Wield your power with terrible responsibility, {judge.name}.</CardDescription>
         </CardHeader>
       </Card>
 
@@ -67,9 +74,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             <CardDescription>Choose the arena for this round's terrible choices.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory} disabled={gameState.categories.length === 0}>
               <SelectTrigger className="w-full text-lg py-3 border-2 focus:border-primary">
-                <SelectValue placeholder="Pick a category of terribleness..." />
+                <SelectValue placeholder={gameState.categories.length > 0 ? "Pick a category of terribleness..." : "Loading categories..."} />
               </SelectTrigger>
               <SelectContent>
                 {gameState.categories.map((category) => (
@@ -79,7 +86,11 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={handleCategorySubmit} disabled={isPendingCategory || !selectedCategory} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold py-3">
+            <Button 
+              onClick={handleCategorySubmit} 
+              disabled={isPendingCategory || !selectedCategory || gameState.categories.length === 0} 
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold py-3"
+            >
               {isPendingCategory ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
               Unleash Scenario
             </Button>
@@ -97,6 +108,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             <CardContent className="p-6">
               <Loader2 className="h-12 w-12 animate-spin text-accent mx-auto" />
               <p className="text-muted-foreground mt-4">Waiting for those terrible, terrible answers...</p>
+              <p className="text-sm text-muted-foreground mt-1">({gameState.submissions?.length || 0} / {gameState.players.filter(p => p.id !== judge.id).length} submitted)</p>
             </CardContent>
           </Card>
         </>
@@ -112,9 +124,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               {shuffledSubmissions.length > 0 ? (
-                shuffledSubmissions.map((submission) => ( // Use submission.playerId as key
+                shuffledSubmissions.map((submission) => (
                   <Button
-                    key={submission.playerId} // Changed key from index to submission.playerId
+                    key={submission.playerId + submission.cardText} // Ensure key is unique if card texts could be identical (though unlikely for one player's submissions)
                     variant={selectedWinningCard === submission.cardText ? "default" : "outline"}
                     onClick={() => setSelectedWinningCard(submission.cardText)}
                     className={`w-full h-auto p-4 text-left text-lg whitespace-normal justify-start
@@ -124,9 +136,13 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   </Button>
                 ))
               ) : (
-                <p className="text-muted-foreground text-center">No submissions yet, or something went wrong!</p>
+                <p className="text-muted-foreground text-center">No submissions yet, or waiting for submissions to load!</p>
               )}
-              <Button onClick={handleWinnerSubmit} disabled={isPendingWinner || !selectedWinningCard || shuffledSubmissions.length === 0} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 mt-4">
+              <Button 
+                onClick={handleWinnerSubmit} 
+                disabled={isPendingWinner || !selectedWinningCard || shuffledSubmissions.length === 0} 
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 mt-4"
+              >
                 {isPendingWinner ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" />}
                 Crown the Winner!
               </Button>
@@ -137,3 +153,4 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
+
