@@ -171,7 +171,7 @@ export async function getGame(): Promise<GameClientState> {
     lastWinner: lastWinnerDetails,
     winningPlayerId: gameRow.overall_winner_player_id,
   };
-  console.log(`DEBUG: getGame - Returning GameClientState for gameId ${gameId}`);
+  console.log(`DEBUG: getGame - Returning GameClientState for gameId ${gameId} with phase: ${gameClientState.gamePhase}`);
   return gameClientState;
 }
 
@@ -288,7 +288,14 @@ export async function resetGameForTesting(): Promise<void> {
     .from('games')
     .update(updatedGameData)
     .eq('id', gameId);
-  if (updateGameError) console.error('Error resetting game row:', JSON.stringify(updateGameError, null, 2));
+
+  if (updateGameError) {
+    console.error('CRITICAL ERROR: Failed to update game to lobby phase during reset:', JSON.stringify(updateGameError, null, 2));
+    // Not throwing here to allow redirect to still happen, so user isn't stuck on an error page
+    // but the console will show the critical failure.
+  } else {
+    console.log(`DEBUG: Game ${gameId} successfully updated to lobby phase after reset operations.`);
+  }
 
   console.log('DEBUG: Game reset complete, revalidating paths and redirecting.');
   revalidatePath('/');
@@ -311,7 +318,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
     return getGame(); // Fallback to refetch current state
   }
 
-  if (game.game_phase !== 'lobby' && game.game_phase !== 'waiting_for_players') { // 'waiting_for_players' is an old phase, can remove later
+  if (game.game_phase !== 'lobby') {
     console.warn(`DEBUG: startGame called but game ${gameId} is already in phase ${game.game_phase}. Aborting start.`);
     return getGame(); // Game already started or in an advanced phase
   }
@@ -324,8 +331,6 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
 
   if (playersFetchError || !players || players.length < 2) {
     console.error(`Error fetching players or not enough players for game ${gameId}: ${JSON.stringify(playersFetchError, null, 2)} Players found: ${players?.length}`);
-    // Optionally, you could set game_phase back to 'lobby' or 'waiting_for_players' if it got stuck.
-    // For now, just return current state.
     return getGame();
   }
 
@@ -337,7 +342,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
     game_phase: 'category_selection',
     current_judge_id: firstJudgeId,
     current_round: 1, // Start round 1
-    // We will deal cards in a separate step or later in this function
+    // TODO: Deal cards
   };
 
   const { error: updateError } = await supabase
@@ -391,11 +396,6 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
   console.log(`DEBUG: nextRound action called for game ${gameId}`);
   // Rotate judge, increment round, clear round-specific game state, set game_phase 'category_selection'
   const game = await getGame();
-  // Note: The game_phase check for 'lobby' here might not be what's intended
-  // if nextRound is only callable from within an active game.
-  // if (game?.gamePhase === 'lobby') { 
-  //    redirect('/?step=setup'); 
-  // }
   revalidatePath('/game');
   return game;
 }
