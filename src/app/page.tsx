@@ -72,7 +72,7 @@ export default function WelcomePage() {
           filter: `game_id=eq.${game.gameId}`, // Only for the current game
         },
         (payload) => {
-          console.log('Realtime: Player change received on players table!', payload);
+          console.log('>>> Realtime: PLAYERS TABLE CHANGE DETECTED BY SUPABASE!', payload); // MORE PROMINENT LOG
           async function fetchAndUpdate() {
             console.log('Realtime (players sub): Fetching updated game state due to player change...');
             const updatedGame = await getGame(); // Server Action
@@ -105,7 +105,7 @@ export default function WelcomePage() {
           filter: `id=eq.${game.gameId}`,
         },
         (payload) => {
-          console.log('Realtime: Game state change received on games table!', payload);
+          console.log('>>> Realtime: GAMES TABLE CHANGE DETECTED BY SUPABASE!', payload); // MORE PROMINENT LOG
           async function fetchAndUpdate() {
             console.log('Realtime (games sub): Fetching updated game state due to game table change...');
             const updatedGame = await getGame();
@@ -328,6 +328,5 @@ export default function WelcomePage() {
     </div>
   );
 }
-
 
     
