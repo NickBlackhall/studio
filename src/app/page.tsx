@@ -7,7 +7,7 @@ import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw, Loader2 } from 'lucide-react';
-import type { GameClientState } from '@/lib/types';
+import type { GameClientState, GamePhaseClientState } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
 import { supabase } from '@/lib/supabaseClient'; 
 
@@ -20,6 +20,8 @@ export default function WelcomePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const stepParam = searchParams?.get('step');
+  const step = stepParam === 'setup' ? 'setup' : 'welcome';
+
 
   const [game, setGame] = useState<GameClientState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,15 +62,18 @@ export default function WelcomePage() {
     }
 
     // Redirection logic
-    if (game.gamePhase !== 'lobby' && stepParam === 'setup') {
-      console.log(`Client: Game phase is ${game.gamePhase}, step is 'setup'. Preparing to redirect to /game.`);
-      // Defer the navigation slightly to ensure it's outside the current render cycle
-      const timer = setTimeout(() => {
+    // Only redirect to /game from /?step=setup if the game is in an active playing phase.
+    // Allow access to setup page if game is in lobby, winner_announcement, or game_over.
+    const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
+    if (game && activePlayingPhases.includes(game.gamePhase as GamePhaseClientState) && step === 'setup' && !isLoading) {
+       console.log(`Client: Game phase is ${game.gamePhase} (active), step is 'setup'. Preparing to redirect to /game.`);
+       const timer = setTimeout(() => {
         console.log(`Client: Executing redirect to /game now.`);
         router.push('/game');
-      }, 0);
-      return () => clearTimeout(timer); // Cleanup the timer if component unmounts or deps change
+       }, 0);
+       return () => clearTimeout(timer); // Cleanup the timer if component unmounts or deps change
     }
+
 
     // Realtime subscription setup
     console.log(`Realtime: Setting up Supabase subscriptions for gameId: ${game.gameId}`);
@@ -123,6 +128,14 @@ export default function WelcomePage() {
             const updatedGame = await getGame();
             console.log('Realtime (games sub): Updated game state from getGame():', JSON.stringify(updatedGame, null, 2));
             setGame(updatedGame);
+            // If game phase changes from lobby and we are on setup, redirect to game
+            if (updatedGame && updatedGame.gamePhase !== 'lobby' && step === 'setup') {
+                 const activePhasesForRedirect: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
+                 if(activePhasesForRedirect.includes(updatedGame.gamePhase as GamePhaseClientState)) {
+                    console.log(`Realtime (games sub): Game phase changed to ${updatedGame.gamePhase}, current step is 'setup'. Redirecting to /game.`);
+                    router.push('/game');
+                 }
+            }
           }
           fetchAndUpdate();
         }
@@ -148,7 +161,7 @@ export default function WelcomePage() {
         supabase.removeChannel(gameChannel).catch(err => console.error("Realtime: Error removing game channel:", err));
       }
     };
-  }, [game, game?.gameId, game?.gamePhase, stepParam, isLoading, router]); // Added game.gamePhase to dependencies
+  }, [game, game?.gameId, game?.gamePhase, step, isLoading, router]);
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
@@ -179,7 +192,7 @@ export default function WelcomePage() {
       // The resetGameForTesting action already redirects.
       // To ensure state consistency on this client after redirect, we might need to re-fetch.
       // However, the redirect to /?step=setup should trigger a fresh load.
-      console.log("Client: Reset game action called.");
+      console.log("Client: Reset game action called. This client should be redirected by the server action.");
     });
   };
 
@@ -204,7 +217,7 @@ export default function WelcomePage() {
     );
   }
   
-  if (stepParam === 'setup') {
+  if (step === 'setup') {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
         <header className="mb-12 text-center">
@@ -252,7 +265,8 @@ export default function WelcomePage() {
               ) : (
                 <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
               )}
-              {game.players.length >= 2 && game.gamePhase === 'lobby' && (
+              {/* Button to go to game / start game */}
+              {(game.players.length >= 2 && game.gamePhase === 'lobby') && (
                 <Button
                   onClick={() => router.push('/game')} 
                   variant="default"
@@ -266,6 +280,7 @@ export default function WelcomePage() {
                {game.players.length < 2 && game.players.length > 0 && game.gamePhase === 'lobby' && (
                  <p className="text-sm text-center mt-4 text-muted-foreground">Need at least 2 players to start the game.</p>
                )}
+               {/* Button to go to game if game is in progress */}
                {game.gamePhase !== 'lobby' && ( 
                   <Button 
                     onClick={() => router.push('/game')}
