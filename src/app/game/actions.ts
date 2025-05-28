@@ -30,9 +30,9 @@ async function findOrCreateGame(): Promise<Tables<'games'>> {
     const newGameData: TablesInsert<'games'> = {
       game_phase: 'lobby',
       current_round: 0,
-      used_scenarios: [], // Initialize empty array
-      used_responses: [], // Initialize empty array
-      ready_player_order: [], // Initialize empty array
+      used_scenarios: [],
+      used_responses: [],
+      ready_player_order: [],
       // Supabase defaults will handle id, created_at, updated_at
       // Nullable fields like current_judge_id, current_scenario_id will be null
     };
@@ -60,16 +60,26 @@ export async function getGame(): Promise<GameClientState> {
   }
   const gameId = gameRow.id;
 
+  let playersData: Tables<'players'>[] | null = [];
   // Fetch players for this game
-  const { data: playersData, error: playersError } = await supabase
+  const { data: fetchedPlayersData, error: playersError } = await supabase
     .from('players')
     .select('*')
     .eq('game_id', gameId);
 
   if (playersError) {
-    console.error(`Error fetching players for game ${gameId}:`, JSON.stringify(playersError, null, 2));
-    throw new Error(`Could not fetch players. Supabase error: ${playersError.message}`);
+    const specificErrorMessage = 'column players.game_id does not exist';
+    if (playersError.message.includes(specificErrorMessage)) {
+      console.error(`CRITICAL DATABASE SCHEMA ISSUE: The 'players' table in your Supabase database is missing the 'game_id' column (type: uuid, nullable: false). Please add or correct this column in your 'players' table in Supabase. The app will continue but no players will be loaded.`);
+      // playersData will remain null or empty, leading to an empty player list
+    } else {
+      console.error(`Error fetching players for game ${gameId}:`, JSON.stringify(playersError, null, 2));
+      throw new Error(`Could not fetch players. Supabase error: ${playersError.message}`);
+    }
+  } else {
+    playersData = fetchedPlayersData;
   }
+
 
   const players: PlayerClientState[] = playersData
     ? playersData.map(p => ({
@@ -155,6 +165,10 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
 
   if (checkError && checkError.code !== 'PGRST116') { // PGRST116: 'single row not found'
     console.error('Error checking for existing player:', checkError);
+    // Potentially check if the error is "column players.game_id does not exist"
+    if (checkError.message.includes('column players.game_id does not exist')) {
+        console.error(`CRITICAL DATABASE SCHEMA ISSUE: The 'players' table is missing the 'game_id' column. Cannot add player.`);
+    }
     return null;
   }
   if (existingPlayer) {
@@ -191,6 +205,11 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
 
   if (insertError) {
     console.error('Error adding new player:', insertError);
+     if (insertError.message.includes('null value in column "game_id" violates not-null constraint') || insertError.message.includes("players_game_id_fkey")) {
+        console.error(`DATABASE SCHEMA ISSUE: Problem with 'game_id' in 'players' table. It might be missing, not allowing nulls correctly, or have a foreign key constraint issue. Please check its definition in Supabase.`);
+    } else if (insertError.message.includes('column "game_id" of relation "players" does not exist')) {
+         console.error(`CRITICAL DATABASE SCHEMA ISSUE: The 'players' table is missing the 'game_id' column. Cannot add player.`);
+    }
     return null;
   }
 
@@ -212,20 +231,28 @@ export async function resetGameForTesting(): Promise<void> {
     .from('players')
     .delete()
     .eq('game_id', gameId);
-  if (deletePlayersError) console.error('Error deleting players:', deletePlayersError);
+
+  if (deletePlayersError) {
+    if (deletePlayersError.message.includes('column players.game_id does not exist')) {
+      console.error(`CRITICAL DATABASE SCHEMA ISSUE during reset: The 'players' table is missing the 'game_id' column. Cannot delete players effectively.`);
+    } else {
+      console.error('Error deleting players:', deletePlayersError);
+    }
+  }
+
 
   // Delete player_hands entries for this game
   const { error: deleteHandsError } = await supabase
     .from('player_hands')
     .delete()
-    .eq('game_id', gameId);
+    .eq('game_id', gameId); // Assumes player_hands has game_id
   if (deleteHandsError) console.error('Error deleting player hands:', deleteHandsError);
 
   // Delete responses (submissions) for this game
   const { error: deleteResponsesError } = await supabase
     .from('responses')
     .delete()
-    .eq('game_id', gameId);
+    .eq('game_id', gameId); // Assumes responses has game_id
   if (deleteResponsesError) console.error('Error deleting responses:', deleteResponsesError);
 
   // Reset the game row state
