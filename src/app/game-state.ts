@@ -3,16 +3,23 @@ import type { GameState, Player, Scenario, Submission } from '@/lib/types';
 import { CATEGORIES, SCENARIOS_DATA, RESPONSE_CARDS_DATA, getShuffledDeck, generateScenarios } from '@/lib/data';
 import { CARDS_PER_HAND, POINTS_TO_WIN } from '@/lib/types';
 
+// This entire in-memory gameState will be replaced by Supabase interactions.
+// For now, we'll keep a simplified version for the code to compile,
+// but its values won't be the source of truth once Supabase is integrated.
 let gameState: GameState | null = null;
 
 export function getInMemoryGame(): GameState | null {
+  // In a Supabase world, this would fetch from the database.
+  // For now, it just returns the local variable.
   return gameState;
 }
 
+// This function will be heavily modified or replaced by functions that
+// interact with Supabase to initialize or fetch game state.
 export function initializeInMemoryGame(): GameState {
-  const scenarios = generateScenarios();
+  console.log("DEBUG: initializeInMemoryGame called - THIS WILL BE REPLACED BY SUPABASE");
+  const scenarios = generateScenarios(); // This will change to fetch from Supabase
   const initialCategories = Object.keys(scenarios);
-  // Ensure there's at least one category and one scenario for safety, though data.ts should provide.
   const defaultCategory = initialCategories.length > 0 ? initialCategories[0] : "Default Category";
   const defaultScenario = scenarios[defaultCategory]?.length > 0 ? scenarios[defaultCategory][0] : { id: 'default-s1', category: defaultCategory, text: 'Default scenario text.'};
 
@@ -20,119 +27,145 @@ export function initializeInMemoryGame(): GameState {
     players: [],
     currentRound: 0,
     currentJudgeId: null,
-    currentScenario: null, // Judge will select category, then scenario is drawn
-    gamePhase: 'welcome', // Or 'waiting_for_players' if reset is from setup
+    currentScenario: null,
+    gamePhase: 'lobby', // Default to lobby phase
     submissions: [],
-    categories: initialCategories,
-    scenariosByCategory: scenarios,
-    responseCardsDeck: getShuffledDeck(RESPONSE_CARDS_DATA),
+    categories: initialCategories, // Will be fetched
+    // scenariosByCategory: scenarios, // Will be fetched
+    // responseCardsDeck: getShuffledDeck(RESPONSE_CARDS_DATA), // Will be managed via Supabase
     lastWinner: undefined,
     winningPlayerId: null,
+    readyPlayerOrder: [], // Initialize new property
   };
-  // If called from reset on setup page, immediately go to waiting_for_players
-  if (typeof window !== 'undefined' && window.location.search.includes('step=setup')) {
-    gameState.gamePhase = 'waiting_for_players';
-  }
+  
+  // Simulating Supabase: Ensure required fields for new types are present
+  if (!gameState.categories) gameState.categories = ["Temp Category"];
+  // if (!gameState.scenariosByCategory) gameState.scenariosByCategory = {"Temp Category": [{id: 'temp-s1', category: 'Temp Category', text: 'Temp scenario'}]};
+  // if (!gameState.responseCardsDeck) gameState.responseCardsDeck = ["Temp Card 1", "Temp Card 2", "Temp Card 3", "Temp Card 4", "Temp Card 5", "Temp Card 6", "Temp Card 7"];
+
+
   return gameState;
 }
 
+// This function will also be heavily modified to add/update players in Supabase.
 export function addPlayerToGame(name: string, avatar: string): Player | null {
-  if (!gameState || gameState.gamePhase === 'welcome') { // Initialize if null or coming from initial welcome
-    initializeInMemoryGame();
+  console.log("DEBUG: addPlayerToGame called - THIS WILL BE REPLACED/AUGMENTED BY SUPABASE");
+  if (!gameState || gameState.gamePhase === 'lobby') { // Initialize if null or in lobby
+    // In a Supabase world, we'd check if a game needs to be created or fetched.
+    // For now, if gameState is null, we initialize it.
+    if (!gameState) initializeInMemoryGame();
   }
-  if (!gameState) {
-    return null; 
-  }
+  if (!gameState) return null;
+
 
   if (gameState.players.find(p => p.name.toLowerCase() === name.toLowerCase())) {
-    // Player already exists, return existing player
     return gameState.players.find(p => p.name.toLowerCase() === name.toLowerCase()) || null;
   }
   
   const newPlayerId = `player_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   
   const hand: string[] = [];
-  for (let i = 0; i < CARDS_PER_HAND; i++) {
-    if (gameState.responseCardsDeck.length > 0) {
-      hand.push(gameState.responseCardsDeck.pop()!);
-    } else {
-      // Optional: Add a fallback/dummy card if deck is empty, or handle differently
-      hand.push(`Fallback Card ${i + 1} (Deck Empty)`);
-    }
-  }
+  // Hand dealing will change significantly with Supabase (fetching cards)
+  // For now, deal dummy cards if deck is not fully implemented.
+  // const deck = gameState.responseCardsDeck || [];
+  // for (let i = 0; i < CARDS_PER_HAND; i++) {
+  //   if (deck.length > 0) {
+  //     hand.push(deck.pop()!);
+  //   } else {
+  //     hand.push(`Fallback Card ${i + 1}`);
+  //   }
+  // }
 
-  const newPlayer: Player = { id: newPlayerId, name, avatar, score: 0, isJudge: false, hand };
+  const newPlayer: Player = {
+    id: newPlayerId,
+    name,
+    avatar,
+    score: 0,
+    isJudge: false,
+    hand,
+    isReady: false // Initialize new property
+  };
   gameState.players.push(newPlayer);
 
-  if (gameState.gamePhase === 'welcome' || gameState.gamePhase === 'waiting_for_players') {
-    gameState.gamePhase = 'waiting_for_players';
-  }
+  // Game phase remains 'lobby' until explicitly started by a judge
+  // gameState.gamePhase = 'lobby';
   
   return newPlayer;
 }
 
+// This function will interact with Supabase to start the game.
 export function startGame(): GameState | null {
-  if (!gameState || gameState.players.length < 1) { // Allow starting with 1 player for testing judge view
-    if (!gameState) initializeInMemoryGame();
-    if (!gameState || gameState.players.length < 1) return gameState; // Still not enough or failed init
+  console.log("DEBUG: startGame called - THIS WILL BE MODIFIED FOR SUPABASE");
+  if (!gameState || gameState.players.filter(p => p.isReady).length < 2) { // Need at least 2 ready players
+    // In Supabase, we'd fetch the current player list and their ready statuses.
+    return gameState; // Not enough ready players
+  }
+  
+  // Assign judge based on readyPlayerOrder
+  if (gameState.readyPlayerOrder.length === 0) {
+      console.error("Cannot start game, no players in readyPlayerOrder");
+      return gameState;
+  }
+  const firstJudgeId = gameState.readyPlayerOrder[0];
+  const judgePlayer = gameState.players.find(p => p.id === firstJudgeId);
+
+  if (!judgePlayer) {
+      console.error("Cannot start game, designated judge not found in players list");
+      return gameState;
   }
 
+  gameState.players.forEach(p => p.isJudge = (p.id === firstJudgeId));
+  gameState.currentJudgeId = firstJudgeId;
+  
   gameState.gamePhase = 'category_selection';
   gameState.currentRound = 1;
-  gameState.players.forEach(p => p.isJudge = false); // Reset all judge statuses
-
-  if (gameState.players.length > 0) {
-    const currentJudgeIndex = gameState.currentJudgeId ? gameState.players.findIndex(p => p.id === gameState.currentJudgeId) : -1;
-    const nextJudgeIndex = (currentJudgeIndex + 1) % gameState.players.length;
-    gameState.players[nextJudgeIndex].isJudge = true;
-    gameState.currentJudgeId = gameState.players[nextJudgeIndex].id;
-  } else {
-    gameState.currentJudgeId = null; // No judge if no players
-  }
-
   gameState.submissions = [];
-  gameState.currentScenario = null; // Judge will select category and then a scenario is drawn
+  gameState.currentScenario = null;
   gameState.lastWinner = undefined;
   gameState.winningPlayerId = null;
 
-  // Refill hands to CARDS_PER_HAND for all players
-  gameState.players.forEach(player => {
-    const cardsNeeded = CARDS_PER_HAND - player.hand.length;
-    if (cardsNeeded > 0) {
-      for (let i = 0; i < cardsNeeded; i++) {
-        if (gameState!.responseCardsDeck.length > 0) {
-          player.hand.push(gameState!.responseCardsDeck.pop()!);
-        } else {
-          player.hand.push(`Refill Card ${i + 1} (Deck Empty)`);
-        }
-      }
-    }
-  });
+  // Deal hands to all players (will fetch from Supabase)
+  // gameState.players.forEach(player => {
+  //   const cardsNeeded = CARDS_PER_HAND - player.hand.length;
+  //   if (cardsNeeded > 0) {
+  //     for (let i = 0; i < cardsNeeded; i++) {
+  //       if (gameState!.responseCardsDeck && gameState!.responseCardsDeck.length > 0) {
+  //         player.hand.push(gameState!.responseCardsDeck.pop()!);
+  //       } else {
+  //         player.hand.push(`Refill Card ${i + 1}`);
+  //       }
+  //     }
+  //   }
+  // });
 
   return gameState;
 }
+
+
+// All subsequent functions (selectCategoryAndDrawScenario, submitPlayerResponse, etc.)
+// will also need to be adapted to fetch/update state from Supabase.
+// For brevity, their internal logic isn't fully changed yet but they'd follow a similar pattern:
+// 1. Fetch current game state from Supabase.
+// 2. Apply logic.
+// 3. Update game state in Supabase.
+// 4. Return new state (or relevant part).
 
 export function selectCategoryAndDrawScenario(categoryId: string): GameState | null {
   if (!gameState || gameState.gamePhase !== 'category_selection' || !gameState.currentJudgeId) {
     return null;
   }
-  const categoryScenarios = gameState.scenariosByCategory[categoryId];
-  if (!categoryScenarios || categoryScenarios.length === 0) {
-     // Fallback to the first available scenario from any category if selected one is empty
-     const firstPopulatedCategoryKey = Object.keys(gameState.scenariosByCategory).find(key => gameState.scenariosByCategory[key].length > 0);
-     if (firstPopulatedCategoryKey && gameState.scenariosByCategory[firstPopulatedCategoryKey].length > 0) {
-         gameState.currentScenario = gameState.scenariosByCategory[firstPopulatedCategoryKey][Math.floor(Math.random() * gameState.scenariosByCategory[firstPopulatedCategoryKey].length)];
-     } else {
-         // Ultimate fallback if all scenario data is somehow missing
-         gameState.currentScenario = { id: 'fallback-error-1', category: "Error", text: "Error: No scenarios available." };
-     }
-  } else {
-    // Pick a random scenario from the selected category
-    gameState.currentScenario = categoryScenarios[Math.floor(Math.random() * categoryScenarios.length)];
-  }
+  // Scenario drawing will fetch from Supabase scenarios based on categoryId
+  // For now, using placeholder logic
+  // const categoryScenarios = gameState.scenariosByCategory?.[categoryId];
+  // if (!categoryScenarios || categoryScenarios.length === 0) {
+  //    gameState.currentScenario = { id: 'fallback-error-1', category: "Error", text: "Error: No scenarios available for this category." };
+  // } else {
+  //   gameState.currentScenario = categoryScenarios[Math.floor(Math.random() * categoryScenarios.length)];
+  // }
+  gameState.currentScenario = { id: 'temp-scenario-id', category: categoryId, text: `A random scenario for ${categoryId} from Supabase will go here.`};
   
   gameState.gamePhase = 'player_submission';
-  gameState.submissions = []; // Clear previous submissions
+  gameState.submissions = [];
   return gameState;
 }
 
@@ -142,28 +175,23 @@ export function submitPlayerResponse(playerId: string, cardText: string): GameSt
   }
   const player = gameState.players.find(p => p.id === playerId);
   if (!player || player.isJudge) {
-    return null; // Judges don't submit, or player not found
+    return null;
   }
-
-  // Prevent duplicate submissions from the same player in a round
   if (gameState.submissions.find(s => s.playerId === playerId)) {
     return null; 
   }
-
   gameState.submissions.push({ playerId, cardText });
   
-  // Remove submitted card from hand and draw a new one
-  player.hand = player.hand.filter(card => card !== cardText);
-  if (gameState.responseCardsDeck.length > 0) {
-    player.hand.push(gameState.responseCardsDeck.pop()!);
-  } else {
-    player.hand.push("Fallback Card (Deck Empty)");
-  }
+  // Card management will be via Supabase (e.g., marking a card as used, fetching a new one)
+  // player.hand = player.hand.filter(card => card !== cardText);
+  // if (gameState.responseCardsDeck && gameState.responseCardsDeck.length > 0) {
+  //   player.hand.push(gameState.responseCardsDeck.pop()!);
+  // } else {
+  //   player.hand.push("Fallback Card (Deck Empty)");
+  // }
 
-  const nonJudgePlayers = gameState.players.filter(p => !p.isJudge);
-  // In a 1-player game (for testing), nonJudgePlayers will be 0.
-  // In a 2-player game, nonJudgePlayers will be 1.
-  if (gameState.submissions.length >= nonJudgePlayers.length) {
+  const nonJudgeReadyPlayers = gameState.players.filter(p => !p.isJudge && p.isReady);
+  if (gameState.submissions.length >= nonJudgeReadyPlayers.length) {
     gameState.gamePhase = 'judging';
   }
   return gameState;
@@ -174,33 +202,13 @@ export function selectWinningSubmission(cardText: string): GameState | null {
     return null;
   }
   const winningSubmission = gameState.submissions.find(s => s.cardText === cardText);
-  
-  if (!winningSubmission && gameState.submissions.length > 0) {
-    // If exact card text not found (e.g. if multiple identical cards somehow submitted, or slight mismatch),
-    // and submissions exist, this indicates an issue or need for more robust matching.
-    // For now, if there's only one submission, assume it's the winner.
-    // This is a fragile fallback and should be improved if card texts are not guaranteed unique.
-    if (gameState.submissions.length === 1) {
-        // Potentially pick the only submission if exact match failed but one exists.
-        // However, this path might be problematic if submissions can actually be empty here.
-        // For now, let's rely on exact match. If it fails, it's an issue.
-    }
-    // If no exact match and multiple submissions, this is an error state for now.
-    if(!winningSubmission) return null;
-  } else if (!winningSubmission && gameState.submissions.length === 0) {
-    return null; // No submissions to choose from
-  }
-  
-  if (!winningSubmission) return null; // Should be caught above, but as a safeguard.
-
+  if (!winningSubmission) return null;
 
   const winningPlayer = gameState.players.find(p => p.id === winningSubmission.playerId);
-  if (!winningPlayer) {
-    return null; // Should not happen if submission is valid
-  }
+  if (!winningPlayer) return null;
 
-  winningPlayer.score += 1;
-  gameState.lastWinner = { player: { ...winningPlayer }, cardText: winningSubmission.cardText }; // Store a copy
+  winningPlayer.score += 1; // Score update will happen in Supabase
+  gameState.lastWinner = { player: { ...winningPlayer }, cardText: winningSubmission.cardText }; 
   
   if (winningPlayer.score >= POINTS_TO_WIN) {
     gameState.winningPlayerId = winningPlayer.id;
@@ -217,49 +225,64 @@ export function advanceToNextRound(): GameState | null {
   }
 
   if (gameState.gamePhase === 'game_over') {
-    // Reset the game for a new session
+    // This will re-initialize the game state in Supabase
     return initializeInMemoryGame(); 
   }
 
-  // Rotate Judge
-  const currentJudgeIndex = gameState.players.findIndex(p => p.id === gameState.currentJudgeId);
-  if (gameState.players.length > 0) { // Ensure there are players before trying to rotate judge
-    if (gameState.players[currentJudgeIndex]) { // Check if current judge exists
-      gameState.players[currentJudgeIndex].isJudge = false;
-    }
+  // Rotate Judge based on readyPlayerOrder
+  const currentJudgeIndexInReadyOrder = gameState.readyPlayerOrder.findIndex(id => id === gameState.currentJudgeId);
+  const currentPlayersInReadyOrder = gameState.players.filter(p => gameState.readyPlayerOrder.includes(p.id) && p.isReady);
+
+  if (currentPlayersInReadyOrder.length > 0) {
+    const oldJudgePlayer = gameState.players.find(p => p.id === gameState.currentJudgeId);
+    if (oldJudgePlayer) oldJudgePlayer.isJudge = false;
     
-    const nextJudgeIndex = (currentJudgeIndex + 1) % gameState.players.length;
-    gameState.players[nextJudgeIndex].isJudge = true;
-    gameState.currentJudgeId = gameState.players[nextJudgeIndex].id;
+    const nextJudgeIndex = (currentJudgeIndexInReadyOrder + 1) % currentPlayersInReadyOrder.length;
+    const newJudgeId = gameState.readyPlayerOrder.find((id, index) => {
+        const player = gameState.players.find(p => p.id === id);
+        return player && player.isReady && index >= nextJudgeIndex; // Find the next ready player
+    }) || currentPlayersInReadyOrder[0]?.id; // Fallback to first ready player
+
+    if (newJudgeId) {
+        const newJudgePlayer = gameState.players.find(p => p.id === newJudgeId);
+        if (newJudgePlayer) newJudgePlayer.isJudge = true;
+        gameState.currentJudgeId = newJudgeId;
+    } else {
+        gameState.currentJudgeId = null; // Should not happen if ready players exist
+    }
   } else {
-      gameState.currentJudgeId = null; // No judge if no players
+      gameState.currentJudgeId = null; // No judge if no ready players
   }
 
-  // Refill hands for all players
-  gameState.players.forEach(player => {
-    const cardsNeeded = CARDS_PER_HAND - player.hand.length;
-    if (cardsNeeded > 0) {
-      for (let i = 0; i < cardsNeeded; i++) {
-        if (gameState!.responseCardsDeck.length > 0) {
-          player.hand.push(gameState!.responseCardsDeck.pop()!);
-        } else {
-          player.hand.push(`Refill Card ${i + 1} (Deck Empty)`);
-        }
-      }
-    }
-  });
+
+  // Refill hands (will be from Supabase)
+  // gameState.players.forEach(player => {
+  //   if (!player.isJudge && player.isReady) { // Only for active, non-judge players
+  //     const cardsNeeded = CARDS_PER_HAND - player.hand.length;
+  //     if (cardsNeeded > 0) {
+  //       for (let i = 0; i < cardsNeeded; i++) {
+  //         if (gameState!.responseCardsDeck && gameState!.responseCardsDeck.length > 0) {
+  //           player.hand.push(gameState!.responseCardsDeck.pop()!);
+  //         } else {
+  //           player.hand.push(`Refill Card ${i + 1}`);
+  //         }
+  //       }
+  //     }
+  //   }
+  // });
 
   gameState.currentRound += 1;
-  gameState.currentScenario = null; // New scenario will be drawn after category selection
+  gameState.currentScenario = null;
   gameState.submissions = [];
   gameState.gamePhase = 'category_selection';
   gameState.lastWinner = undefined;
-  // winningPlayerId is for game_over, not round winner, so it's not reset here
   return gameState;
 }
 
-// Utility to update the entire game state, e.g., from a loaded state. Use with caution.
+// This function would ideally not exist or be used very carefully,
+// as Supabase becomes the source of truth.
 export function updateGame(updatedState: GameState): void {
+  console.warn("DEBUG: updateGame called directly. This is for in-memory state and will be deprecated with Supabase.");
   gameState = updatedState;
 }
 
