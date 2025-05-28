@@ -1,29 +1,31 @@
 
 "use client"; // Mark as a Client Component
 
-import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw, Loader2 } from 'lucide-react';
-import type { GameClientState } from '@/lib/types'; // Updated to GameClientState
+import type { GameClientState } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
-import { supabase } from '@/lib/supabaseClient'; // Import Supabase client
+import { supabase } from '@/lib/supabaseClient';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation'; // Import useRouter
 import { useState, useEffect, useTransition } from 'react';
+
+export const dynamic = 'force-dynamic';
 
 export default function WelcomePage() {
   const searchParams = useSearchParams();
-  const step = searchParams?.step;
+  const router = useRouter(); // Get router instance
+  const step = searchParams?.get('step');
 
   const [game, setGame] = useState<GameClientState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPendingAction, startTransition] = useTransition();
 
-  // Effect to fetch initial game data and set up realtime listener
+  // Effect to fetch initial game data
   useEffect(() => {
     async function fetchGameData() {
       setIsLoading(true);
@@ -42,7 +44,10 @@ export default function WelcomePage() {
 
   // Effect for Supabase realtime subscriptions
   useEffect(() => {
-    if (!game || !game.gameId) return; // Don't subscribe if no game or gameId
+    if (!game || !game.gameId) {
+      console.log("Realtime: No game or gameId, skipping subscription setup.");
+      return;
+    }
 
     console.log(`Setting up Supabase realtime subscription for gameId: ${game.gameId}`);
 
@@ -51,14 +56,13 @@ export default function WelcomePage() {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
+          event: '*',
           schema: 'public',
           table: 'players',
-          filter: `game_id=eq.${game.gameId}`, // Only for players in the current game
+          filter: `game_id=eq.${game.gameId}`,
         },
         (payload) => {
           console.log('Realtime: Player change received!', payload);
-          // Re-fetch game state to update the UI with the latest player list
           async function fetchAndUpdate() {
             const updatedGame = await getGame();
             setGame(updatedGame);
@@ -71,12 +75,13 @@ export default function WelcomePage() {
           console.log(`Successfully subscribed to players-lobby-${game.gameId}!`);
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('Realtime subscription error:', status, err);
+          console.error('Realtime subscription error (players):', status, err);
+        }
+         if (err) {
+            console.error('Realtime subscription detailed error (players):', err);
         }
       });
 
-    // Also listen to changes on the 'games' table for game phase changes, etc.
-    // This helps if another player starts the game.
     const gameChannel = supabase
       .channel(`game-state-${game.gameId}`)
       .on(
@@ -103,34 +108,41 @@ export default function WelcomePage() {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error('Realtime subscription error (game state):', status, err);
         }
+        if (err) {
+            console.error('Realtime subscription detailed error (game state):', err);
+        }
       });
 
-    // Cleanup function to remove the channel when the component unmounts or gameId changes
     return () => {
       console.log(`Cleaning up Supabase realtime subscriptions for gameId: ${game.gameId}`);
-      supabase.removeChannel(playersChannel);
-      supabase.removeChannel(gameChannel);
+      supabase.removeChannel(playersChannel).catch(err => console.error("Error removing players channel:", err));
+      supabase.removeChannel(gameChannel).catch(err => console.error("Error removing game channel:", err));
     };
-  }, [game?.gameId]); // Re-run effect if game.gameId changes
+  }, [game?.gameId]);
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
     const avatar = formData.get('avatar') as string;
-    if (name && avatar) {
+    if (name && avatar && game?.gameId) { // Ensure gameId is present
       startTransition(async () => {
         await addPlayerAction(name, avatar);
-        // Re-fetch game state to update the UI for the current client immediately
-        const updatedGame = await getGame();
-        setGame(updatedGame);
+        // Realtime should handle the update, but direct fetch can be a fallback
+        // const updatedGame = await getGame();
+        // setGame(updatedGame);
       });
+    } else if (!game?.gameId) {
+        console.error("Cannot add player: gameId is not available.");
     }
   };
 
   const handleResetGame = async () => {
     startTransition(async () => {
       await resetGameForTesting();
-      // The resetGameForTesting action already redirects to '/?step=setup'.
-      // The useEffect for fetching data will re-run on the new page load.
+      // The resetGameForTesting action already redirects.
+      // To ensure state consistency on this client after redirect, we might need to re-fetch.
+      // However, the redirect to /?step=setup should trigger a fresh load.
+      const freshGame = await getGame(); // Fetch fresh state after reset
+      setGame(freshGame);
     });
   };
 
@@ -151,15 +163,19 @@ export default function WelcomePage() {
     );
   }
 
-  // If the game has started and this client is still on the setup page,
-  // perhaps redirect them to /game
-  if (game.gamePhase !== 'lobby' && step === 'setup') {
-    // Check if this player is actually in the game. If not, they stay in lobby.
-    // This redirect might need more sophisticated logic later based on actual player session.
-    // For now, a simple check can help.
-    // If we had current player ID, we could check if game.players.find(p => p.id === thisPlayerId)
-    // redirect('/game'); // Temporarily disabled, needs better logic.
-    console.log("Game phase is not lobby, but user is on setup. Current phase:", game.gamePhase);
+  if (game.gamePhase !== 'lobby' && step === 'setup' && !isLoading) {
+     // If game has started and user is on setup page, redirect them to the game page.
+     // This might happen if they bookmark /?step=setup or use back button.
+     // Ensure a player exists for this client session to avoid redirecting spectators who landed on setup.
+     // This logic might need refinement based on how currentPlayerId is managed across sessions.
+     console.log(`Game phase is ${game.gamePhase}, attempting to redirect to /game from setup.`);
+     router.push('/game');
+     return (
+        <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+            <p className="text-xl text-muted-foreground">Redirecting to game...</p>
+        </div>
+     );
   }
 
 
@@ -167,17 +183,17 @@ export default function WelcomePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
         <header className="mb-12 text-center">
-          <Link href="/" passHref>
+          <button onClick={() => router.push('/')} className="cursor-pointer">
             <Image
               src="https://placehold.co/300x90.png?text=Logo"
               alt="Make It Terrible Logo Placeholder"
               width={300}
               height={90}
-              className="mx-auto mb-4 rounded-lg cursor-pointer shadow-md"
+              className="mx-auto mb-4 rounded-lg shadow-md"
               data-ai-hint="game logo"
               priority
             />
-          </Link>
+          </button>
           <h1 className="text-5xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
           <p className="text-xl text-muted-foreground mt-2">Enter your details to join the game.</p>
         </header>
@@ -212,13 +228,17 @@ export default function WelcomePage() {
                 <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
               )}
               {game.players.length >= 2 && game.gamePhase === 'lobby' && (
-                <Link href="/game" className="mt-6 block">
-                  <Button variant="default" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3" disabled={isPendingAction}>
-                    {isPendingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Start Game</>}
-                  </Button>
-                </Link>
+                <Button 
+                  onClick={() => router.push('/game')} 
+                  variant="default" 
+                  size="lg" 
+                  className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3 mt-6" 
+                  disabled={isPendingAction}
+                >
+                  {isPendingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Start Game</>}
+                </Button>
               )}
-               {game.players.length < 2 && game.players.length > 0 && (
+               {game.players.length < 2 && game.players.length > 0 && game.gamePhase === 'lobby' && (
                  <p className="text-sm text-center mt-4 text-muted-foreground">Need at least 2 players to start the game.</p>
                )}
                {game.gamePhase !== 'lobby' && (
@@ -261,15 +281,20 @@ export default function WelcomePage() {
       <p className="text-2xl text-muted-foreground mb-12">
         The game of awful choices and hilarious outcomes!
       </p>
-      <Link href="/?step=setup">
-        <Button variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out">
-          Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
-        </Button>
-      </Link>
+      <Button 
+        onClick={() => router.push('/?step=setup')} 
+        variant="default" 
+        size="lg" 
+        className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
+      >
+        Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
+      </Button>
        <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full">
         <p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p>
       </footer>
     </div>
   );
 }
+    
+
     
