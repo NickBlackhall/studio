@@ -1,41 +1,85 @@
 
+"use client"; // Mark as a Client Component
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2 } from 'lucide-react';
 import type { GameState } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
 
-export const dynamic = 'force-dynamic'; // Ensures dynamic rendering
+import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useTransition } from 'react';
 
-export default async function WelcomePage({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
-  const game: GameState = await getGame();
+export default function WelcomePage() {
+  const searchParams = useSearchParams();
+  const step = searchParams.get('step');
+
+  const [game, setGame] = useState<GameState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPendingAction, startTransition] = useTransition();
+
+  useEffect(() => {
+    async function fetchGameData() {
+      setIsLoading(true);
+      try {
+        const gameState = await getGame();
+        setGame(gameState);
+      } catch (error) {
+        console.error("Failed to fetch game state:", error);
+        setGame(null); // Set to null or an error state
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchGameData();
+  }, []); // Fetch game state on initial component mount
 
   const handleAddPlayer = async (formData: FormData) => {
-    "use server";
     const name = formData.get('name') as string;
     const avatar = formData.get('avatar') as string;
     if (name && avatar) {
-      await addPlayerAction(name, avatar);
+      startTransition(async () => {
+        await addPlayerAction(name, avatar);
+        // Re-fetch game state to update the UI
+        const updatedGame = await getGame();
+        setGame(updatedGame);
+      });
     }
   };
 
   const handleResetGame = async () => {
-    "use server";
-    await resetGameForTesting();
+    startTransition(async () => {
+      await resetGameForTesting();
+      // The resetGameForTesting action already redirects to '/?step=setup'.
+      // The useEffect will re-run on the new page load caused by the redirect.
+      // If it didn't redirect, we'd fetch here:
+      // const freshGame = await getGame();
+      // setGame(freshGame);
+    });
   };
 
-  const step = searchParams?.step;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-xl text-muted-foreground">Loading Game...</p>
+      </div>
+    );
+  }
+
+  if (!game) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
+        <p className="text-xl text-destructive">Could not load game data. Please try refreshing.</p>
+      </div>
+    );
+  }
 
   if (step === 'setup') {
-    // Player Setup and Lobby View
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
         <header className="mb-12 text-center">
@@ -85,8 +129,8 @@ export default async function WelcomePage({
               )}
               {game.players.length >= 2 && (
                 <Link href="/game" className="mt-6 block">
-                  <Button variant="default" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3">
-                    <Play className="mr-2 h-6 w-6" /> Start Game
+                  <Button variant="default" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3" disabled={isPendingAction}>
+                    {isPendingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Start Game</>}
                   </Button>
                 </Link>
               )}
@@ -98,9 +142,9 @@ export default async function WelcomePage({
         </div>
 
         <div className="mt-8 w-full max-w-4xl text-center">
-          <form action={handleResetGame}>
-            <Button variant="destructive" size="sm" type="submit" className="hover:bg-destructive/80">
-              <RefreshCw className="mr-2 h-4 w-4" /> Reset Game State (For Testing)
+          <form onSubmit={(e) => { e.preventDefault(); if (!isPendingAction) handleResetGame(); }}>
+            <Button variant="destructive" size="sm" type="submit" className="hover:bg-destructive/80" disabled={isPendingAction}>
+              {isPendingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Reset Game State (For Testing)</>}
             </Button>
           </form>
         </div>
@@ -122,7 +166,7 @@ export default async function WelcomePage({
         height={131}
         className="mx-auto mb-8 rounded-lg shadow-md"
         data-ai-hint="game logo large"
-        priority 
+        priority
       />
       <h1 className="text-6xl font-extrabold tracking-tighter text-primary mb-4 sr-only">
         Make It Terrible
@@ -141,3 +185,4 @@ export default async function WelcomePage({
     </div>
   );
 }
+    
