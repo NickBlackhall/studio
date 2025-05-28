@@ -11,7 +11,7 @@ import type { GameState } from '@/lib/types';
 export const dynamic = 'force-dynamic'; // Ensure the page is dynamically rendered
 
 export default async function WelcomePage({
-  searchParams
+  searchParams,
 }: {
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
@@ -31,9 +31,8 @@ export default async function WelcomePage({
     await resetGameForTesting();
   };
 
-  // Explicitly read the step from searchParams
-  const stepParam = searchParams && typeof searchParams === 'object' ? searchParams.step : undefined;
-  const currentStep = stepParam === 'setup' ? 'setup' : 'welcome';
+  // Directly use searchParams.step, providing a default if it's not 'setup'
+  const currentStep = searchParams?.step === 'setup' ? 'setup' : 'welcome';
 
   if (currentStep === 'welcome') {
     return (
@@ -44,7 +43,7 @@ export default async function WelcomePage({
           width={438}
           height={131}
           className="mx-auto mb-8 rounded-lg shadow-md"
-          priority // Added priority for LCP
+          priority
           data-ai-hint="game logo"
         />
         <h1 className="text-6xl font-extrabold tracking-tighter text-primary mb-4 sr-only">
