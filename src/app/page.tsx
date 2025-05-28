@@ -16,8 +16,6 @@ export default async function WelcomePage({
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  const { step } = searchParams; // Destructure step directly
-
   const game: GameState = await getGame();
 
   const handleAddPlayer = async (formData: FormData) => {
@@ -34,6 +32,8 @@ export default async function WelcomePage({
     await resetGameForTesting();
   };
 
+  const step = searchParams?.step;
+
   if (step === 'setup') {
     // Player Setup and Lobby View
     return (
@@ -41,7 +41,7 @@ export default async function WelcomePage({
         <header className="mb-12 text-center">
           <Link href="/" passHref>
             <Image
-              src="https://placehold.co/300x90.png"
+              src="https://placehold.co/300x90.png?text=Logo"
               alt="Make It Terrible Logo Placeholder"
               width={300}
               height={90}
@@ -116,13 +116,13 @@ export default async function WelcomePage({
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
       <Image
-        src="https://placehold.co/438x131.png"
+        src="https://placehold.co/730x218.png?text=Make+It+Terrible"
         alt="Make It Terrible Logo Placeholder"
         width={438}
         height={131}
         className="mx-auto mb-8 rounded-lg shadow-md"
-        priority
-        data-ai-hint="game logo"
+        data-ai-hint="game logo large"
+        priority 
       />
       <h1 className="text-6xl font-extrabold tracking-tighter text-primary mb-4 sr-only">
         Make It Terrible
