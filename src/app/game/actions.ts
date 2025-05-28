@@ -310,8 +310,13 @@ export async function resetGameForTesting() {
       return;
     }
   } catch (e: any) {
-    console.error('🔴 RESET (Server): Exception during game fetch for reset:', e.message);
-    throw new Error(`Exception during game fetch for reset: ${e.message}`);
+    // Check if the caught error is the special NEXT_REDIRECT error
+    // The digest property is a common way to identify these special errors thrown by redirect()
+    if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
+      throw e; // Re-throw to let Next.js handle the redirect
+    }
+    console.error('🔴 RESET (Server): Exception during initial game fetch for reset:', e.message);
+    throw new Error(`Exception during initial game fetch for reset: ${e.message}`);
   }
   
   const gameId = gameToReset.id;
@@ -343,7 +348,8 @@ export async function resetGameForTesting() {
 
   if (deleteGameError) {
     console.error(`🔴 RESET (Server): CRITICAL ERROR: Failed to DELETE game row ${gameId}:`, JSON.stringify(deleteGameError, null, 2));
-    throw new Error(`Failed to delete game row ${gameId}: ${deleteGameError.message}`);
+    // Not throwing an error here to allow redirect, but logging it.
+    // The redirect will likely lead to a new game being created if findOrCreateGame is robust.
   } else {
     console.log(`🔴 RESET (Server): Game row ${gameId} successfully DELETED.`);
   }
@@ -711,5 +717,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
     isReady: playerData.is_ready,
   };
 }
+
+    
 
     
