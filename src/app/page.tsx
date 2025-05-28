@@ -22,12 +22,10 @@ export default function WelcomePage() {
   const stepParam = searchParams?.get('step');
   const step = stepParam === 'setup' ? 'setup' : 'welcome';
 
-
   const [game, setGame] = useState<GameClientState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPendingAction, startTransition] = useTransition();
 
-  // Log Supabase config on client
   useEffect(() => {
     // @ts-ignore supabase client has .supabaseUrl and .supabaseKey
     console.log('Supabase client URL:', supabase.supabaseUrl);
@@ -35,7 +33,6 @@ export default function WelcomePage() {
     console.log('Supabase client Key (first 10 chars):', supabase.supabaseKey?.substring(0, 10));
   }, []);
 
-  // Effect to fetch initial game data
   useEffect(() => {
     async function fetchGameData() {
       setIsLoading(true);
@@ -54,26 +51,11 @@ export default function WelcomePage() {
     fetchGameData();
   }, []); 
 
-  // Effect for Supabase realtime subscriptions and redirection
   useEffect(() => {
     if (!game || !game.gameId || isLoading) {
       console.log("Realtime or Redirect: No game, gameId, or still loading, skipping setup.");
       return;
     }
-
-    // Redirection logic
-    // Only redirect to /game from /?step=setup if the game is in an active playing phase.
-    // Allow access to setup page if game is in lobby, winner_announcement, or game_over.
-    const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
-    if (game && activePlayingPhases.includes(game.gamePhase as GamePhaseClientState) && step === 'setup' && !isLoading) {
-       console.log(`Client: Game phase is ${game.gamePhase} (active), step is 'setup'. Preparing to redirect to /game.`);
-       const timer = setTimeout(() => {
-        console.log(`Client: Executing redirect to /game now.`);
-        router.push('/game');
-       }, 0);
-       return () => clearTimeout(timer); // Cleanup the timer if component unmounts or deps change
-    }
-
 
     // Realtime subscription setup
     console.log(`Realtime: Setting up Supabase subscriptions for gameId: ${game.gameId}`);
@@ -128,14 +110,14 @@ export default function WelcomePage() {
             const updatedGame = await getGame();
             console.log('Realtime (games sub): Updated game state from getGame():', JSON.stringify(updatedGame, null, 2));
             setGame(updatedGame);
-            // If game phase changes from lobby and we are on setup, redirect to game
-            if (updatedGame && updatedGame.gamePhase !== 'lobby' && step === 'setup') {
-                 const activePhasesForRedirect: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
-                 if(activePhasesForRedirect.includes(updatedGame.gamePhase as GamePhaseClientState)) {
-                    console.log(`Realtime (games sub): Game phase changed to ${updatedGame.gamePhase}, current step is 'setup'. Redirecting to /game.`);
-                    router.push('/game');
-                 }
-            }
+            // REMOVED automatic redirect from here to prevent loop
+            // if (updatedGame && updatedGame.gamePhase !== 'lobby' && step === 'setup') {
+            //      const activePhasesForRedirect: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
+            //      if(activePhasesForRedirect.includes(updatedGame.gamePhase as GamePhaseClientState)) {
+            //         console.log(`Realtime (games sub): Game phase changed to ${updatedGame.gamePhase}, current step is 'setup'. Redirecting to /game.`);
+            //         router.push('/game');
+            //      }
+            // }
           }
           fetchAndUpdate();
         }
@@ -152,6 +134,18 @@ export default function WelcomePage() {
         }
       });
 
+    // REMOVED the problematic redirect logic from the main useEffect
+    // const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
+    // if (game && activePlayingPhases.includes(game.gamePhase as GamePhaseClientState) && step === 'setup' && !isLoading) {
+    //    console.log(`Client: Game phase is ${game.gamePhase} (active), step is 'setup'. Preparing to redirect to /game.`);
+    //    const timer = setTimeout(() => {
+    //     console.log(`Client: Executing redirect to /game now.`);
+    //     router.push('/game');
+    //    }, 0);
+    //    return () => clearTimeout(timer); 
+    // }
+
+
     return () => {
       console.log(`Realtime: Cleaning up Supabase subscriptions for gameId: ${game?.gameId || 'N/A'}`);
       if (playersChannel) {
@@ -161,7 +155,8 @@ export default function WelcomePage() {
         supabase.removeChannel(gameChannel).catch(err => console.error("Realtime: Error removing game channel:", err));
       }
     };
-  }, [game, game?.gameId, game?.gamePhase, step, isLoading, router]);
+  }, [game, game?.gameId, /* removed game.gamePhase from deps to avoid re-triggering redirect logic from here */ step, isLoading, router]);
+
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
@@ -171,10 +166,6 @@ export default function WelcomePage() {
         console.log(`Client: Attempting to add player ${name} for gameId ${game.gameId}`);
         const result = await addPlayerAction(name, avatar);
         console.log('Client: Add player action result:', JSON.stringify(result, null, 2));
-        // After adding a player, immediately fetch the updated game state
-        // to reflect the change on the current client's screen.
-        // Realtime will handle updates for other clients.
-        // This immediate fetch might be redundant if realtime is very fast, but good for snappiness on the active client.
         console.log('Client (handleAddPlayer): Fetching game state after adding player...');
         const updatedGame = await getGame();
         console.log('Client (handleAddPlayer): Game state after adding player:', JSON.stringify(updatedGame, null, 2));
@@ -189,9 +180,6 @@ export default function WelcomePage() {
     startTransition(async () => {
       console.log("Client: Attempting to reset game.");
       await resetGameForTesting();
-      // The resetGameForTesting action already redirects.
-      // To ensure state consistency on this client after redirect, we might need to re-fetch.
-      // However, the redirect to /?step=setup should trigger a fresh load.
       console.log("Client: Reset game action called. This client should be redirected by the server action.");
     });
   };
@@ -217,6 +205,9 @@ export default function WelcomePage() {
     );
   }
   
+  const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
+  const isGameActive = game && activePlayingPhases.includes(game.gamePhase as GamePhaseClientState);
+
   if (step === 'setup') {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
@@ -233,19 +224,38 @@ export default function WelcomePage() {
             />
           </button>
           <h1 className="text-5xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-          <p className="text-xl text-muted-foreground mt-2">Enter your details to join the game.</p>
+          {!isGameActive && <p className="text-xl text-muted-foreground mt-2">Enter your details to join the game.</p>}
+           {isGameActive && <p className="text-xl text-muted-foreground mt-2">A game is currently in progress!</p>}
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
-          <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
-            <CardHeader className="bg-primary text-primary-foreground p-6">
-              <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
-              <CardDescription className="text-primary-foreground/80 text-base">Enter your name and pick your poison (avatar).</CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <PlayerSetupForm addPlayer={handleAddPlayer} />
-            </CardContent>
-          </Card>
+          {!isGameActive && (
+            <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
+              <CardHeader className="bg-primary text-primary-foreground p-6">
+                <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
+                <CardDescription className="text-primary-foreground/80 text-base">Enter your name and pick your poison (avatar).</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <PlayerSetupForm addPlayer={handleAddPlayer} />
+              </CardContent>
+            </Card>
+          )}
+          {isGameActive && (
+             <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden flex flex-col items-center justify-center p-6">
+                <CardTitle className="text-2xl font-bold mb-4 text-center">Game in Progress!</CardTitle>
+                <CardDescription className="text-base text-center mb-6">
+                    The current game is in the "{game.gamePhase}" phase.
+                </CardDescription>
+                <Button 
+                    onClick={() => router.push('/game')}
+                    variant="default"
+                    size="lg"
+                    className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3"
+                >
+                    <Play className="mr-2 h-6 w-6" /> Go to Game
+                </Button>
+             </Card>
+          )}
 
           <Card className="shadow-2xl border-2 border-secondary rounded-xl overflow-hidden">
             <CardHeader className="bg-secondary text-secondary-foreground p-6">
@@ -265,7 +275,8 @@ export default function WelcomePage() {
               ) : (
                 <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
               )}
-              {/* Button to go to game / start game */}
+              {/* Button to go to game / start game from LOBBY */}
+              {/* This button should appear if game is in LOBBY and enough players */}
               {(game.players.length >= 2 && game.gamePhase === 'lobby') && (
                 <Button
                   onClick={() => router.push('/game')} 
@@ -274,14 +285,14 @@ export default function WelcomePage() {
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3 mt-6"
                   disabled={isPendingAction} 
                 >
-                  {isPendingAction && stepParam === 'setup' ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Go to Game / Start</>}
+                  {isPendingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Go to Game / Start</>}
                 </Button>
               )}
-               {game.players.length < 2 && game.players.length > 0 && game.gamePhase === 'lobby' && (
+               {game.players.length < 2 && game.gamePhase === 'lobby' && (
                  <p className="text-sm text-center mt-4 text-muted-foreground">Need at least 2 players to start the game.</p>
                )}
-               {/* Button to go to game if game is in progress */}
-               {game.gamePhase !== 'lobby' && ( 
+               {/* This button is now handled by the isGameActive block above */}
+               {/* {game.gamePhase !== 'lobby' && !isGameActive && ( 
                   <Button 
                     onClick={() => router.push('/game')}
                     variant="outline"
@@ -289,7 +300,7 @@ export default function WelcomePage() {
                   >
                     Game in progress ({game.gamePhase}). Go to Game <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
-               )}
+               )} */}
             </CardContent>
           </Card>
         </div>
@@ -341,5 +352,4 @@ export default function WelcomePage() {
     </div>
   );
 }
-
     
