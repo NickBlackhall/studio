@@ -10,10 +10,10 @@ import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
 import PlayerView from '@/components/game/PlayerView';
 import WinnerDisplay from '@/components/game/WinnerDisplay';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, Play, Loader2 } from 'lucide-react';
+import { Home, Play, Loader2, UserCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,21 +37,21 @@ export default function GamePage() {
         console.log("GamePage: Initial gameState fetched:", initialGameState ? `ID: ${initialGameState.gameId}, Phase: ${initialGameState.gamePhase}, Players: ${initialGameState.players.length}` : "null");
 
         if (initialGameState && initialGameState.gameId) {
-          localGameId = initialGameState.gameId; // Store for localStorage key
+          localGameId = initialGameState.gameId; 
           const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${localGameId}`);
           console.log(`GamePage: For gameId ${localGameId}, player ID from storage: ${playerIdFromStorage}`);
 
           if (playerIdFromStorage) {
-            // Check if player is in the fetched game state's player list
             const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
             if (playerInGameList) {
                 console.log(`GamePage: Player ${playerIdFromStorage} found in initial game state players list.`);
-                setThisPlayer(playerInGameList); // Use player data from game state if available
+                // Ensure hand is an array even if fetched player details are minimal initially
+                setThisPlayer({ ...playerInGameList, hand: playerInGameList.hand || [] });
             } else {
-                // If not in the list, try fetching directly (could be a slight sync issue)
                 console.log(`GamePage: Player ${playerIdFromStorage} NOT in initial game state players list. Attempting direct fetch.`);
                 const playerDetail = await getCurrentPlayer(playerIdFromStorage, localGameId);
-                setThisPlayer(playerDetail || null);
+                 // Ensure hand is an array even if fetched player details are minimal initially
+                setThisPlayer(playerDetail ? { ...playerDetail, hand: playerDetail.hand || [] } : null);
                 console.log("GamePage: Fetched thisPlayer details directly:", playerDetail ? playerDetail.id : "null");
             }
           } else {
@@ -66,7 +66,7 @@ export default function GamePage() {
       } catch (error) {
         console.error("GamePage: Error fetching initial data:", error);
         toast({ title: "Error Loading Game", description: "Could not fetch game data. Please try refreshing.", variant: "destructive" });
-        setThisPlayer(null); // Ensure thisPlayer is null on error
+        setThisPlayer(null); 
       } finally {
         setIsLoading(false);
         console.log("GamePage: Initial data fetch sequence ended.");
@@ -74,94 +74,83 @@ export default function GamePage() {
     }
     fetchInitialData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]); // Runs once on mount
+  }, [router]); 
 
   useEffect(() => {
     if (!gameState || !gameState.gameId) {
       console.log("GamePage Realtime: Skipping subscription setup (no game/gameId).");
       return;
     }
-    const gameId = gameState.gameId; // stable gameId for subscriptions
+    const gameId = gameState.gameId; 
     console.log(`GamePage Realtime: Setting up subscriptions for gameId: ${gameId}`);
 
-    const channels = [];
+    const channelsToSubscribe = [
+      { table: 'games', filter: `id=eq.${gameId}`, eventName: 'game-updates' },
+      { table: 'players', filter: `game_id=eq.${gameId}`, eventName: 'players-updates' },
+      { table: 'player_hands', filter: `game_id=eq.${gameId}`, eventName: 'player-hands-updates' },
+      { table: 'responses', filter: `game_id=eq.${gameId}`, eventName: 'submissions-updates' },
+    ];
 
-    const commonPayloadHandler = async (payloadOrigin: string, payload: any) => {
-      console.log(`>>> GamePage Realtime (${payloadOrigin} sub): CHANGE DETECTED!`, payload);
+    const commonPayloadHandler = async (originTable: string, payload: any) => {
+      console.log(`>>> GamePage Realtime (${originTable} sub for game ${gameId}): CHANGE DETECTED!`, payload);
       try {
         const updatedFullGame = await getGame();
         setGameState(updatedFullGame);
-        console.log(`GamePage Realtime: Game state updated from ${payloadOrigin} event. Phase: ${updatedFullGame?.gamePhase}, Players: ${updatedFullGame?.players?.length}`);
+        console.log(`GamePage Realtime: Game state updated from ${originTable} event. GameID: ${updatedFullGame?.gameId}, Phase: ${updatedFullGame?.gamePhase}, Players: ${updatedFullGame?.players?.length}`);
         
         if (thisPlayer?.id && updatedFullGame?.gameId) {
-          const latestPlayerDetails = await getCurrentPlayer(thisPlayer.id, updatedFullGame.gameId);
-          setThisPlayer(latestPlayerDetails || null);
-           console.log(`GamePage Realtime: Refreshed thisPlayer details. ID: ${latestPlayerDetails?.id}, Hand: ${latestPlayerDetails?.hand?.length}`);
+          // Only refresh current player if gameId matches, critical for stability
+          if (updatedFullGame.gameId === gameId) {
+            const latestPlayerDetails = await getCurrentPlayer(thisPlayer.id, updatedFullGame.gameId);
+            setThisPlayer(latestPlayerDetails ? { ...latestPlayerDetails, hand: latestPlayerDetails.hand || [] } : null);
+            console.log(`GamePage Realtime: Refreshed thisPlayer details. ID: ${latestPlayerDetails?.id}, Hand: ${latestPlayerDetails?.hand?.length}`);
+          } else {
+            console.warn(`GamePage Realtime: Game ID mismatch after update. Current Game: ${gameId}, Updated Game: ${updatedFullGame.gameId}. Not refreshing thisPlayer.`);
+          }
         }
       } catch (error) {
-        console.error(`GamePage Realtime: Error processing ${payloadOrigin} update:`, error);
+        console.error(`GamePage Realtime: Error processing ${originTable} update:`, error);
       }
     };
 
-    const gameChannel = supabase
-      .channel(`game-updates-${gameId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
-        (payload) => commonPayloadHandler('games', payload)
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') console.log(`GamePage Realtime: Subscribed to game-updates-${gameId}`);
-        if (err) console.error(`GamePage Realtime: Error on game-updates-${gameId} subscription:`, err);
-      });
-    channels.push(gameChannel);
+    const activeChannels: any[] = [];
 
-    const playersChannel = supabase
-      .channel(`players-updates-${gameId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameId}` },
-        (payload) => commonPayloadHandler('players', payload)
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') console.log(`GamePage Realtime: Subscribed to players-updates-${gameId}`);
-        if (err) console.error(`GamePage Realtime: Error on players-updates-${gameId} subscription:`, err);
-      });
-    channels.push(playersChannel);
-
-    const handsChannel = supabase
-      .channel(`player-hands-updates-${gameId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_hands', filter: `game_id=eq.${gameId}` },
-         (payload) => commonPayloadHandler('player_hands', payload)
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') console.log(`GamePage Realtime: Subscribed to player-hands-updates-${gameId}`);
-        if (err) console.error(`GamePage Realtime: Error on player-hands-updates-${gameId} subscription:`, err);
-      });
-    channels.push(handsChannel);
-    
-    const submissionsChannel = supabase
-      .channel(`submissions-updates-${gameId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'responses', filter: `game_id=eq.${gameId}` },
-        (payload) => commonPayloadHandler('responses', payload)
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') console.log(`GamePage Realtime: Subscribed to submissions-updates-${gameId}`);
-        if (err) console.error(`GamePage Realtime: Error on submissions-updates-${gameId} subscription:`, err);
-      });
-    channels.push(submissionsChannel);
-
+    channelsToSubscribe.forEach(({ table, filter, eventName }) => {
+      const channel = supabase
+        .channel(`${eventName}-${gameId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table, filter },
+          (payload) => commonPayloadHandler(table, payload)
+        )
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') console.log(`GamePage Realtime: Subscribed to ${eventName}-${gameId}`);
+          if (err) console.error(`GamePage Realtime: Error on ${eventName}-${gameId} subscription:`, err);
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error(`GamePage Realtime: Channel error for ${eventName}-${gameId}: ${status}`, err);
+          }
+        });
+      activeChannels.push(channel);
+    });
 
     return () => {
       console.log(`GamePage Realtime: Cleaning up subscriptions for gameId: ${gameId}`);
-      channels.forEach(channel => supabase.removeChannel(channel).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
+      activeChannels.forEach(channel => supabase.removeChannel(channel).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState?.gameId]); // Re-subscribe if gameId changes (e.g. after a full reset that creates a new game)
+  }, [gameState?.gameId, thisPlayer?.id]); // Added thisPlayer?.id to re-evaluate if player changes
 
 
   const handleStartGame = async () => {
     if (gameState?.gameId && gameState.gamePhase === 'lobby') {
       startTransition(async () => {
         console.log("GamePage: Client calling startGame server action.");
-        await startGame(gameState.gameId);
-        // State update will be handled by realtime subscription
+        try {
+          await startGame(gameState.gameId);
+          // State update will be handled by realtime subscription
+          toast({ title: "Game Starting!", description: "The judge is being assigned and cards dealt." });
+        } catch (error: any) {
+          console.error("GamePage: Error starting game:", error);
+          toast({title: "Cannot Start", description: error.message || "Failed to start game.", variant: "destructive"});
+        }
       });
     } else {
       toast({title: "Cannot Start", description: "Game not in lobby or no game ID.", variant: "destructive"})
@@ -171,55 +160,65 @@ export default function GamePage() {
   const handleSelectCategory = async (category: string) => {
     if (gameState?.gameId) {
       startTransition(async () => {
-        await selectCategory(gameState.gameId, category);
+        try {
+          await selectCategory(gameState.gameId, category);
+           toast({ title: "Category Selected!", description: `Scenario from "${category}" is up!` });
+        } catch (error: any) {
+          console.error("GamePage: Error selecting category:", error);
+          toast({title: "Category Error", description: error.message || "Failed to select category.", variant: "destructive"});
+        }
       });
     }
   };
 
-  const handleSubmitResponse = async (cardText: string) => { 
-    // Note: We need the card ID, not text, if submissions are by ID.
-    // For now, assuming cardText is what we used for PlayerView to select from hand.
-    // This needs to be aligned with how cards are represented in PlayerView.
-    // Let's assume PlayerView provides the actual card text from the player's hand.
-    if (thisPlayer && gameState && gameState.currentRound > 0 && cardText && gameState.currentScenario) {
-        const { data: handCard, error: handCardError } = await supabase
+  const handleSubmitResponse = async (responseCardText: string) => { 
+    if (thisPlayer && gameState && gameState.currentRound > 0 && responseCardText && gameState.currentScenario) {
+        // Find the card ID from the player's hand that matches the submitted text.
+        // This assumes `thisPlayer.hand` contains the text of the cards.
+        // And `player_hands` table is used to link `player_id` to `response_card_id`.
+        // We need to query `player_hands` JOIN `response_cards` or have card IDs in `thisPlayer.hand`.
+        
+        // For now, we need to get the actual response_card_id that corresponds to the text.
+        // This is a temporary lookup. Ideally, PlayerView passes the ID.
+        const { data: cardData, error: cardError } = await supabase
             .from('player_hands')
-            .select('response_card_id')
+            .select('response_card_id, response_cards!inner(text)')
             .eq('player_id', thisPlayer.id)
             .eq('game_id', gameState.gameId)
-            // We need to find the card_id that corresponds to cardText
-            // This requires joining with response_cards table or having card_id in player.hand
-            // For now, this is a placeholder. PlayerView should pass card_id.
-            // Let's assume cardText IS the ID for now, and fix PlayerView if needed.
-            // This part is problematic and needs card ID to be passed from PlayerView
-            // For now, this will likely fail or be incorrect.
-            // A better approach would be for PlayerView to pass the response_card_id.
-            // Let's assume `cardText` is actually the card_id for now for the server action call.
-            // The PlayerView needs to be updated to store and pass card_id.
+            .eq('response_cards.text', responseCardText) 
+            .single();
 
-        // This part of the logic is flawed without knowing the card_id.
-        // For the purpose of this commit, we'll assume cardText is the response_card_id,
-        // which is INCORRECT based on current types but allows the action to be called.
-        // THIS NEEDS TO BE FIXED IN PlayerView.tsx to pass the actual card_id.
-        const cardIdToSubmit = cardText; // Placeholder - this should be the actual ID
-
-        if (!cardIdToSubmit) {
-            toast({title: "Error", description: "Could not identify the card to submit.", variant: "destructive"});
+        if (cardError || !cardData) {
+            console.error("Error finding card ID for submission:", cardError);
+            toast({title: "Submission Error", description: "Could not find the card you tried to submit.", variant: "destructive"});
             return;
         }
+        const cardIdToSubmit = cardData.response_card_id;
 
         startTransition(async () => {
-            await submitResponse(thisPlayer.id, cardIdToSubmit, gameState.gameId, gameState.currentRound);
+            try {
+              await submitResponse(thisPlayer.id, cardIdToSubmit, gameState.gameId, gameState.currentRound);
+              toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
+            } catch (error: any) {
+              console.error("GamePage: Error submitting response:", error);
+              toast({title: "Submit Error", description: error.message || "Failed to submit response.", variant: "destructive"});
+            }
         });
     } else {
-        toast({title: "Cannot Submit", description: "Submission conditions not met.", variant: "destructive"});
+        toast({title: "Cannot Submit", description: "Submission conditions not met (no player, game, round, card, or scenario).", variant: "destructive"});
     }
   };
   
-  const handleSelectWinner = async (cardText: string) => {
+  const handleSelectWinner = async (winningCardText: string) => {
     if (gameState?.gameId) {
       startTransition(async () => {
-        await selectWinner(cardText, gameState.gameId);
+        try {
+          await selectWinner(winningCardText, gameState.gameId);
+          // Winner announcement will be driven by game state change
+        } catch (error: any) {
+          console.error("GamePage: Error selecting winner:", error);
+          toast({title: "Winner Selection Error", description: error.message || "Failed to select winner.", variant: "destructive"});
+        }
       });
     }
   };
@@ -227,7 +226,13 @@ export default function GamePage() {
   const handleNextRound = async () => {
     if (gameState?.gameId) {
       startTransition(async () => {
-        await nextRound(gameState.gameId);
+        try {
+          await nextRound(gameState.gameId);
+          toast({ title: "Next Round!", description: "The terror continues..." });
+        } catch (error: any) {
+          console.error("GamePage: Error starting next round:", error);
+          toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
+        }
       });
     }
   };
@@ -259,6 +264,7 @@ export default function GamePage() {
     );
   }
   
+  // Lobby view specific to the /game page (before game officially starts by this client)
   if (gameState.gamePhase === 'lobby' && gameState.players.length > 0) {
     const enoughPlayers = gameState.players.length >= 2;
      return (
@@ -334,7 +340,6 @@ export default function GamePage() {
       return <JudgeView gameState={gameState} judge={thisPlayer} onSelectCategory={handleSelectCategory} onSelectWinner={handleSelectWinner} />;
     }
     if (!isJudge && thisPlayer) {
-      // Pass handleSubmitResponse to PlayerView
       return <PlayerView gameState={gameState} player={thisPlayer} onSubmitResponse={handleSubmitResponse} />;
     }
     return (
@@ -358,8 +363,22 @@ export default function GamePage() {
           </Link>
         </div>
       </aside>
-      <main className="flex-grow w-full md:w-2/3 lg:w-3/4">
-        {isPending && <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-50"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}
+      <main className="flex-grow w-full md:w-2/3 lg:w-3/4 relative"> {/* Added relative for pending loader positioning */}
+        {isPending && (
+            <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        )}
+        {thisPlayer && (
+          <Card className="mb-4 bg-muted border-primary shadow">
+            <CardContent className="p-3 flex items-center justify-center text-center">
+              <UserCircle className="h-5 w-5 mr-2 text-primary" />
+              <p className="text-sm text-primary font-medium">
+                You are: <span className="text-2xl mx-1">{thisPlayer.avatar}</span><strong>{thisPlayer.name}</strong>
+              </p>
+            </CardContent>
+          </Card>
+        )}
         {renderGameContent()}
       </main>
     </div>
@@ -367,3 +386,5 @@ export default function GamePage() {
 }
 export const dynamic = 'force-dynamic';
 
+
+      
