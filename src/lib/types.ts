@@ -1,34 +1,29 @@
 
-export interface Player {
-  id: string; // This will likely be the Supabase user ID or a generated UUID
+// We will rely on database.types.ts for the core database object.
+// These types can be specific to application logic or client-side state if needed.
+
+export interface PlayerClientState { // Example if we need client-specific player view models
+  id: string;
   name: string;
   avatar: string;
   score: number;
-  is_judge: boolean; // Column name often uses snake_case in DB
-  hand: string[]; // Array of response card TEXTS. We'll fetch card IDs from Supabase later.
-  is_ready: boolean; 
-  // game_id?: string; // Foreign key if players are in a global table linked to a game
+  isJudge: boolean;
+  hand: string[]; // Array of response card TEXTS (derived from player_hands and response_cards)
+  isReady: boolean;
 }
 
-export interface Scenario {
-  id: string; 
+export interface ScenarioClientState { // Example
+  id: string;
   category: string;
   text: string;
 }
 
-export interface ResponseCard {
-  id: string; 
-  text: string;
+export interface SubmissionClientState { // Example
+  playerId: string;
+  cardText: string;
 }
 
-export interface Submission {
-  player_id: string; // Foreign key to player
-  card_text: string; 
-  // scenario_id?: string; // Foreign key to scenario
-  // game_id?: string; // Foreign key to game
-}
-
-export type GamePhase =
+export type GamePhaseClientState =
   | "lobby"
   | "category_selection"
   | "player_submission"
@@ -36,33 +31,42 @@ export type GamePhase =
   | "winner_announcement"
   | "game_over";
 
-// This will represent a row in a 'games' table in Supabase
-export interface Game {
-  id: string; // Primary key for the game session (e.g., a short unique code or UUID)
-  current_round: number;
-  current_judge_id: string | null; // Foreign key to player
-  current_scenario_id: string | null; // Foreign key to scenario
-  game_phase: GamePhase;
-  // submissions might be a separate table linking to game_id, player_id, card_id
-  last_winner_player_id?: string | null;
-  last_winner_card_text?: string | null;
-  winning_player_id?: string | null;
-  ready_player_order: string[]; // Array of player_ids in the order they became ready
-  // players: Player[]; // Player data will be in its own table, linked by game_id if needed
-  // categories: string[]; // Will be derived from Supabase scenarios
-  // scenariosByCategory: Record<string, Scenario[]>; // Will be fetched as needed
-  // responseCardsDeck: string[]; // Deck management will change with Supabase
-  created_at?: string;
-  updated_at?: string;
+
+export interface GameClientState { // Represents the overall game state as the client might see it
+  gameId: string;
+  players: PlayerClientState[];
+  currentRound: number;
+  currentJudgeId: string | null;
+  currentScenario: ScenarioClientState | null;
+  gamePhase: GamePhaseClientState;
+  submissions: SubmissionClientState[]; // Player submissions for the current round
+  
+  // For displaying winner announcement
+  lastWinner?: {
+    player: PlayerClientState;
+    cardText: string;
+  };
+  
+  // For game over state
+  winningPlayerId?: string | null; 
+
+  // For lobby/category selection
+  categories: string[]; // List of available categories
+  
+  // Not directly from DB Game row, but useful for client logic
+  // scenariosByCategory?: Record<string, ScenarioClientState[]>;
+  // responseCardsDeck?: string[]; // Deck is now managed server-side with DB
+  readyPlayerOrder?: string[];
 }
 
 
-export const POINTS_TO_WIN = 3; 
+export const POINTS_TO_WIN = 3;
 export const CARDS_PER_HAND = 5;
 
-
-// Placeholder for Supabase generated types. We will run a command to generate this.
-// For now, it allows the createClient<Database> to compile.
+// The main Database types are now in src/lib/database.types.ts
+// This keeps a clean separation.
+// If you had Json or other generic types here, they can remain if used by client state,
+// or be removed if database.types.ts covers them.
 export type Json =
   | string
   | number
@@ -71,27 +75,3 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
-  public: {
-    Tables: {
-      // We will define these based on your actual table names later
-      // e.g., games: { Row: Game; Insert: Partial<Game>; Update: Partial<Game> };
-      // e.g., players: { Row: Player; Insert: Partial<Player>; Update: Partial<Player> };
-      // e.g., scenarios: { Row: Scenario; Insert: Partial<Scenario>; Update: Partial<Scenario> };
-      // e.g., response_cards: { Row: ResponseCard; Insert: Partial<ResponseCard>; Update: Partial<ResponseCard> };
-      // e.g., submissions: { Row: Submission; Insert: Partial<Submission>; Update: Partial<Submission> };
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
