@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw } from 'lucide-react';
 import type { GameState } from '@/lib/types';
-import { useState, useEffect } from 'react';
+import CurrentYear from '@/components/CurrentYear'; // Import the new component
 
 export const dynamic = 'force-dynamic';
 
@@ -33,16 +33,6 @@ export default async function WelcomePage({
   };
 
   const step = searchParams?.step;
-
-  // Component to handle year rendering on client to avoid hydration mismatch
-  const CurrentYear = () => {
-    const [year, setYear] = useState<number | null>(null);
-    useEffect(() => {
-      setYear(new Date().getFullYear());
-    }, []);
-    return year ? <>{year}</> : <span>{new Date().getFullYear()}</span>; // Fallback for SSR, though useEffect runs client-side
-  };
-
 
   if (step === 'setup') {
     // Player Setup and Lobby View
