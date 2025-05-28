@@ -11,9 +11,9 @@ import CurrentYear from '@/components/CurrentYear';
 export const dynamic = 'force-dynamic';
 
 export default async function WelcomePage({
-  searchParams = {}, // Default searchParams to an empty object
+  searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const game: GameState = await getGame();
 
@@ -31,17 +31,7 @@ export default async function WelcomePage({
     await resetGameForTesting();
   };
 
-  // Access step directly, searchParams is guaranteed to be an object.
-  // We still check its type as it could be a string, array, or undefined.
-  const stepParam = searchParams.step;
-  let currentStep = 'welcome';
-
-  if (typeof stepParam === 'string' && stepParam === 'setup') {
-    currentStep = 'setup';
-  } else if (Array.isArray(stepParam) && stepParam.includes('setup')) {
-    // Less likely for this use case, but handles if 'step' could be an array
-    currentStep = 'setup';
-  }
+  const currentStep = searchParams?.step === 'setup' ? 'setup' : 'welcome';
 
   if (currentStep === 'setup') {
     // Player Setup and Lobby View
@@ -50,7 +40,7 @@ export default async function WelcomePage({
         <header className="mb-12 text-center">
           <Link href="/" passHref>
             <Image
-              src="https://placehold.co/300x90.png?text=Make+It+Terrible"
+              src="/logo.png"
               alt="Make It Terrible Logo"
               width={300}
               height={90}
@@ -125,7 +115,7 @@ export default async function WelcomePage({
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
       <Image
-        src="https://placehold.co/438x131.png?text=Make+It+Terrible"
+        src="/logo.png"
         alt="Make It Terrible Logo"
         width={438}
         height={131}
