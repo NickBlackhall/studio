@@ -12,7 +12,7 @@ import CurrentYear from '@/components/CurrentYear';
 import { supabase } from '@/lib/supabaseClient'; 
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
 
 export const dynamic = 'force-dynamic';
@@ -35,25 +35,25 @@ export default function WelcomePage() {
     console.log('Supabase client Key (first 10 chars):', supabase.supabaseKey?.substring(0, 10));
   }, []);
 
-  useEffect(() => {
-    async function fetchInitialData() {
-      setIsLoading(true);
-      try {
-        console.log("Client: Initial fetchGameData triggered.");
-        const gameState = await getGame();
-        console.log("Client: Initial game state fetched:", JSON.stringify(gameState, null, 2));
-        setGame(gameState);
-      } catch (error) {
-        console.error("Client: Failed to fetch initial game state:", error);
-        toast({ title: "Load Error", description: `Could not load game: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive"});
-        setGame(null); 
-      } finally {
-        setIsLoading(false);
-      }
+  const fetchGameData = useCallback(async (origin: string = "initial") => {
+    console.log(`Client: Initial fetchGameData triggered from ${origin}.`);
+    setIsLoading(true);
+    try {
+      const gameState = await getGame();
+      console.log(`Client: Initial game state fetched (from ${origin}):`, JSON.stringify(gameState, null, 2));
+      setGame(gameState);
+    } catch (error) {
+      console.error(`Client: Failed to fetch initial game state (from ${origin}):`, error);
+      toast({ title: "Load Error", description: `Could not load game: ${error instanceof Error ? error.message : String(error)}`, variant: "destructive"});
+      setGame(null); 
+    } finally {
+      setIsLoading(false);
     }
-    fetchInitialData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, [toast]);
+
+  useEffect(() => {
+    fetchGameData("useEffect[] mount");
+  }, [fetchGameData]); 
 
   useEffect(() => {
     if (!game || !game.gameId || isLoading) {
@@ -61,16 +61,22 @@ export default function WelcomePage() {
       return;
     }
     console.log(`Realtime: Setting up Supabase subscriptions for gameId: ${game.gameId}`);
+    
+    const activeGamePhasesForRedirect: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
+    if (currentStep === 'setup' && game.gamePhase && activeGamePhasesForRedirect.includes(game.gamePhase as GamePhaseClientState)) {
+      console.log(`Client: Game phase is ${game.gamePhase} (active), step is 'setup'. Displaying 'Go to Game' option.`);
+      // No automatic redirect, user has control via buttons on setup page
+    }
 
     const handleRealtimeUpdate = async (source: string, payload: any) => {
       console.log(`>>> Realtime: ${source.toUpperCase()} TABLE CHANGE DETECTED BY SUPABASE!`, payload);
-      console.log(`Realtime (${source} sub): Fetching updated game state due to ${source} change...`);
+      console.log(`Realtime (${source} sub for game ${game.gameId}): Fetching updated game state due to ${source} change...`);
       try {
         const updatedGame = await getGame();
-        console.log(`Realtime (${source} sub): Updated game state from getGame():`, JSON.stringify(updatedGame, null, 2));
+        console.log(`Realtime (${source} sub for game ${game.gameId}): Updated game state from getGame():`, JSON.stringify(updatedGame, null, 2));
         setGame(updatedGame);
       } catch (error) {
-        console.error(`Realtime (${source} sub): Error fetching game state after update:`, error);
+        console.error(`Realtime (${source} sub for game ${game.gameId}): Error fetching game state after update:`, error);
       }
     };
 
@@ -122,26 +128,19 @@ export default function WelcomePage() {
         }
       });
       
-    const activeGamePhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
-    if (game && activeGamePhases.includes(game.gamePhase as GamePhaseClientState) && currentStep === 'setup' && !isLoading) {
-        console.log(`Client: Game phase is ${game.gamePhase} (active), step is 'setup'. This page will show lobby, use Go to Game or Reset.`);
-        // No automatic redirect, user can choose to reset or go to game.
-    }
-      
     return () => {
       console.log(`Realtime: Cleaning up Supabase subscriptions for gameId: ${game?.gameId || 'N/A'}`);
-      supabase.removeChannel(playersChannel).catch(err => console.error("Realtime: Error removing players channel:", err));
-      supabase.removeChannel(gameChannel).catch(err => console.error("Realtime: Error removing game channel:", err));
+      if (playersChannel) supabase.removeChannel(playersChannel).catch(err => console.error("Realtime: Error removing players channel:", err));
+      if (gameChannel) supabase.removeChannel(gameChannel).catch(err => console.error("Realtime: Error removing game channel:", err));
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.gameId, isLoading]); // game.gameId simplified
+  }, [game, currentStep, isLoading, router]);
 
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
     const avatar = formData.get('avatar') as string;
     if (name && avatar && game?.gameId) {
-      const currentLocalGameId = game.gameId; // Capture gameId before async call
+      const currentLocalGameId = game.gameId; 
       startTransition(async () => {
         console.log(`Client: Attempting to add player ${name} for gameId ${currentLocalGameId}`);
         try {
@@ -151,8 +150,14 @@ export default function WelcomePage() {
             const localStorageKey = `thisPlayerId_game_${currentLocalGameId}`;
             localStorage.setItem(localStorageKey, result.id);
             console.log(`Client: Player ID ${result.id} stored in localStorage with key ${localStorageKey}`);
+            
+            // Re-fetch game state to update current client's view immediately
+            // Realtime will handle other clients.
+            console.log("Client (handleAddPlayer): Fetching game state after adding player...");
+            const updatedGame = await getGame();
+            console.log("Client (handleAddPlayer): Game state after adding player:", JSON.stringify(updatedGame, null, 2));
+            setGame(updatedGame);
             toast({ title: "Welcome!", description: `${name} has joined the game!`});
-            // No need to call getGame() here, realtime should update the view
           } else {
             console.error("Client: Failed to add player or set player ID in localStorage.", { result, gameId: currentLocalGameId });
             toast({ title: "Error!", description: "Could not add player or save session. Please try again.", variant: "destructive"});
@@ -169,23 +174,31 @@ export default function WelcomePage() {
   };
 
   const handleResetGame = async () => {
-    console.log("🔴 RESET (Client): Attempting to reset game.");
+    console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
     startTransition(async () => {
-      console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
       try {
         await resetGameForTesting();
-        console.log("🔴 RESET (Client): resetGameForTesting server action completed successfully (server should have redirected).");
-        // The server action now handles the redirect.
-        // The page will reload, and initial fetchGameData will get the new state.
-        // We can show a temporary toast.
+        console.log("🔴 RESET (Client): resetGameForTesting server action presumably completed (server should have redirected).");
+        // The toast might not be seen if redirect is very fast, but good for debugging if redirect fails.
         toast({ title: "Game Resetting...", description: "The game is being reset. The page will reload."});
-      } catch (error) {
-        console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
-        toast({
-          title: "Reset Failed",
-          description: `Could not reset the game. ${error instanceof Error ? error.message : String(error)}`,
-          variant: "destructive",
-        });
+        // No need to call fetchGameData here, as redirect will cause a full page reload and re-fetch.
+      } catch (error: any) {
+        // Check if the error is the special NEXT_REDIRECT error
+        if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+          console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+          // Re-throw if necessary for Next.js to handle, or just let it propagate
+          // For client-side, usually just not showing an error toast is enough.
+          // If `await resetGameForTesting()` itself throws the redirect error that isn't caught by Next.js router,
+          // then we might not even reach here if the navigation happens properly.
+          // The key is to not treat redirect as a "failure".
+        } else {
+          console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
+          toast({
+            title: "Reset Failed",
+            description: `Could not reset the game. ${error instanceof Error ? error.message : String(error)}`,
+            variant: "destructive",
+          });
+        }
       }
     });
   };
@@ -196,6 +209,7 @@ export default function WelcomePage() {
         console.log(`Client: Attempting to start game ${game.gameId} from lobby.`);
         try {
           await startGame(game.gameId);
+          // After starting the game, navigate to the /game page
           router.push('/game'); 
         } catch (error) {
             console.error("Client: Error starting game from lobby:", error);
@@ -239,7 +253,7 @@ export default function WelcomePage() {
         <header className="mb-12 text-center">
           <button onClick={() => router.push('/')} className="cursor-pointer">
             <Image
-              src="https://placehold.co/300x90.png?text=Logo"
+              src="https://placehold.co/300x90.png?text=Make+It+Terrible"
               alt="Make It Terrible Logo Placeholder"
               width={300}
               height={90}
@@ -281,8 +295,8 @@ export default function WelcomePage() {
           )}
           {isGameActiveAndNotLobby && ! (game.gamePhase === 'lobby') && (
              <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden flex flex-col items-center justify-center p-6 md:col-span-2">
-                {/* Content removed as per new logic, main message shown above form */}
-                <PlayerSetupForm addPlayer={handleAddPlayer} /> {/* Still show form if user insists on joining */}
+                <p className="text-center text-lg text-foreground mb-4">A game is already in progress. You can join the lobby and wait for the next game, or reset if you're testing.</p>
+                <PlayerSetupForm addPlayer={handleAddPlayer} />
              </Card>
           )}
 
@@ -312,7 +326,7 @@ export default function WelcomePage() {
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3 mt-6"
                   disabled={isPendingAction} 
                 >
-                  {isPendingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Go to Game / Start</>}
+                  {isPendingAction && game.gamePhase === 'lobby' ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Go to Game / Start</>}
                 </Button>
               )}
               {game.players.length < 2 && game.gamePhase === 'lobby' && (
@@ -330,7 +344,7 @@ export default function WelcomePage() {
             className="hover:bg-destructive/80" 
             disabled={isPendingAction}
           >
-            {isPendingAction && game?.gameId /* cheap way to check if reset is the current pending action */ ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Reset Game State (For Testing)</>}
+            {isPendingAction && game.gamePhase !== 'lobby' /* Heuristic: check if a non-reset action might be pending */ ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Reset Game State (For Testing)</>}
           </Button>
         </div>
 
@@ -341,6 +355,7 @@ export default function WelcomePage() {
     );
   }
 
+  // Welcome Screen (currentStep === 'welcome')
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
       <Image
