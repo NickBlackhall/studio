@@ -1,11 +1,12 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getGame, addPlayer as addPlayerAction, resetGameForTesting } from '@/app/game/actions';
+// import { getGame, addPlayer as addPlayerAction, resetGameForTesting } from '@/app/game/actions'; // Temporarily remove
 import { Users, Play, ArrowRight, RefreshCw } from 'lucide-react';
-import type { GameState } from '@/lib/types';
+// import type { GameState } from '@/lib/types'; // Temporarily remove
 import CurrentYear from '@/components/CurrentYear';
 
 export const dynamic = 'force-dynamic';
@@ -15,32 +16,32 @@ export default async function WelcomePage({
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  const game: GameState = await getGame();
+  // const game: GameState = await getGame(); // Temporarily comment out
 
   const handleAddPlayer = async (formData: FormData) => {
     "use server";
     const name = formData.get('name') as string;
     const avatar = formData.get('avatar') as string;
     if (name && avatar) {
-      await addPlayerAction(name, avatar);
+      // await addPlayerAction(name, avatar); // Temporarily comment out
+      console.log("Simulating add player:", name, avatar);
     }
   };
 
   const handleResetGame = async () => {
     "use server";
-    await resetGameForTesting();
+    // await resetGameForTesting(); // Temporarily comment out
+    console.log("Simulating reset game");
   };
 
-  const currentStep = searchParams?.step === 'setup' ? 'setup' : 'welcome';
-
-  if (currentStep === 'setup') {
+  if (searchParams?.step === 'setup') {
     // Player Setup and Lobby View
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
         <header className="mb-12 text-center">
           <Link href="/" passHref>
             <Image
-              src="/logo.png"
+              src="https://placehold.co/300x90.png?text=Logo" 
               alt="Make It Terrible Logo"
               width={300}
               height={90}
@@ -70,7 +71,7 @@ export default async function WelcomePage({
               <CardDescription className="text-secondary-foreground/80 text-base">See who's brave enough to play.</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              {game.players.length > 0 ? (
+              {/* {game.players.length > 0 ? ( // Temporarily removed
                 <ul className="space-y-3">
                   {game.players.map((player) => (
                     <li key={player.id} className="flex items-center p-3 bg-muted rounded-lg shadow">
@@ -79,19 +80,20 @@ export default async function WelcomePage({
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">The void is empty... for now. Be the first!</p>
-              )}
-              {game.players.length >= 2 && (
+              ) : ( */}
+                <p className="text-muted-foreground text-center py-4">Player list temporarily disabled.</p>
+              {/* )} */}
+              {/* {game.players.length >= 2 && ( // Temporarily removed
                 <Link href="/game" className="mt-6 block">
                   <Button variant="default" size="lg" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3">
                     <Play className="mr-2 h-6 w-6" /> Start Game
                   </Button>
                 </Link>
               )}
-               {game.players.length < 2 && game.players.length > 0 && (
+               {game.players.length < 2 && game.players.length > 0 && ( // Temporarily removed
                  <p className="text-sm text-center mt-4 text-muted-foreground">Need at least 2 players to start the game.</p>
-               )}
+               )} */}
+               <p className="text-sm text-center mt-4 text-muted-foreground">Start game logic temporarily disabled.</p>
             </CardContent>
           </Card>
         </div>
@@ -115,7 +117,7 @@ export default async function WelcomePage({
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
       <Image
-        src="/logo.png"
+        src="https://placehold.co/438x131.png?text=Logo" 
         alt="Make It Terrible Logo"
         width={438}
         height={131}
