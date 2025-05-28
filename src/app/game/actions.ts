@@ -22,7 +22,7 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
 
   if (lobbyError) {
     console.error("🔴 GAME (Server): Error fetching lobby games:", JSON.stringify(lobbyError, null, 2));
-    // Continue to try other methods, don't throw yet
+    // Continue to try other methods
   }
 
   if (lobbyGames && lobbyGames.length > 0) {
@@ -58,6 +58,7 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
     used_scenarios: [],   
     used_responses: [],   
     updated_at: new Date().toISOString(),
+    // Ensure all non-nullable fields without a DB default are covered if not already
   };
   const { data: newGame, error: createError } = await supabase
     .from('games')
@@ -81,7 +82,6 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
 export async function getGame(): Promise<GameClientState> {
   const gameRow = await findOrCreateGame();
   if (!gameRow || !gameRow.id) {
-    // This should ideally not happen if findOrCreateGame is robust
     throw new Error('Failed to find or create a game session in getGame.');
   }
   const gameId = gameRow.id;
@@ -98,7 +98,7 @@ export async function getGame(): Promise<GameClientState> {
     if (playersError.message.includes('column players.game_id does not exist')) {
         console.error("🔴 CRITICAL SCHEMA ERROR: The 'players' table is missing the 'game_id' column. Please add it in your Supabase dashboard.");
     }
-    // Don't throw, allow page to potentially load with empty player list if it's a non-critical fetch error
+    // Don't throw, allow page to potentially load with empty player list
   } else {
     playersData = fetchedPlayersData || [];
   }
@@ -235,7 +235,7 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
     .eq('name', name)
     .single();
 
-  if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
+  if (checkError && checkError.code !== 'PGRST116') { 
     console.error('🔴 PLAYER (Server): Error checking for existing player:', JSON.stringify(checkError, null, 2));
     throw new Error(`Error checking for existing player: ${checkError.message}`);
   }
@@ -285,9 +285,9 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
 }
 
 export async function resetGameForTesting() {
-  console.log("🔴 RESET (Server): resetGameForTesting action called");
-
+  console.log("🔴 RESET (Server): SIMPLIFIED resetGameForTesting action called");
   let gameToReset: Tables<'games'> | null = null;
+
   try {
     console.log("🔴 RESET (Server): Finding the oldest game to reset...");
     const { data: existingGames, error: fetchError } = await supabase
@@ -298,7 +298,6 @@ export async function resetGameForTesting() {
 
     if (fetchError) {
       console.error("🔴 RESET (Server): Error fetching oldest game:", JSON.stringify(fetchError, null, 2));
-      // Re-throw the specific error if it's a redirect, otherwise throw a new one.
       if (typeof fetchError.message === 'string' && fetchError.message.includes('NEXT_REDIRECT')) {
           throw fetchError;
       }
@@ -307,26 +306,16 @@ export async function resetGameForTesting() {
 
     if (!existingGames || existingGames.length === 0) {
       console.log('🔴 RESET (Server): No existing game found to reset. A new game will be created on next load if needed.');
+      revalidatePath('/');
+      revalidatePath('/game');
       redirect('/?step=setup');
-      return; // Should be unreachable due to redirect
+      return; 
     }
     
     gameToReset = existingGames[0];
     const gameId = gameToReset.id;
     console.log(`🔴 RESET (Server): Found game to reset: ID ${gameId}, Current Phase: ${gameToReset.game_phase}`);
-
-    // Delete related data first
-    const relatedTables = ['player_hands', 'responses', 'winners', 'players'];
-    for (const table of relatedTables) {
-      console.log(`🔴 RESET (Server): Clearing ${table} for game ${gameId}`);
-      const { error: deleteError } = await supabase.from(table).delete().eq('game_id', gameId);
-      if (deleteError) {
-        console.error(`🔴 RESET (Server): Error clearing ${table} for game ${gameId}:`, JSON.stringify(deleteError, null, 2));
-        // Don't throw, attempt to continue reset
-      }
-    }
     
-    // Now, delete the game row itself
     console.log(`🔴 RESET (Server): Attempting to DELETE game row ${gameId}...`);
     const { error: deleteGameError } = await supabase
         .from('games')
@@ -341,20 +330,19 @@ export async function resetGameForTesting() {
     }
 
   } catch (e: any) {
+    console.error('🔴 RESET (Server): Unexpected exception during reset process:', e.message, e.stack);
     if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
-      // This is a redirect error, re-throw it to let Next.js handle it.
       throw e; 
     }
-    console.error('🔴 RESET (Server): Unexpected exception during reset process:', e.message, e.stack);
-    // Rethrow other errors so the client knows the reset failed
-    throw new Error(`Unexpected error during reset: ${e.message}`);
+    throw new Error(`Unexpected error during reset: ${e.message || 'Unknown error'}`);
   }
 
-  console.log('🔴 RESET (Server): Minimal reset process complete, revalidating paths and redirecting.');
+  console.log('🔴 RESET (Server): Reset process complete, revalidating paths and redirecting.');
   revalidatePath('/');
   revalidatePath('/game');
   redirect('/?step=setup');
 }
+
 
 async function dealCardsFromSupabase(gameId: string, count: number, existingUsedResponses: string[]): Promise<{ dealtCardIds: string[], updatedUsedResponses: string[] }> {
   console.log(`🔴 CARDS (Server): Dealing ${count} cards for game ${gameId}. Current used_responses for this dealing op: ${existingUsedResponses.length}`);
@@ -370,17 +358,13 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
     return { dealtCardIds: [], updatedUsedResponses: existingUsedResponses };
   }
   
-  // This is the authoritative list of used cards from the DB for this game
   const currentUsedResponsesInGame = gameData.used_responses || [];
-  
-  // Combine with any cards just used in this transaction but not yet committed to games.used_responses
   const allKnownUsedResponses = [...new Set([...currentUsedResponsesInGame, ...existingUsedResponses])];
   console.log(`🔴 CARDS (Server): Total known used cards (DB + current op) for game ${gameId}: ${allKnownUsedResponses.length}`);
 
-
   const notInFilterValue = allKnownUsedResponses.length > 0 
     ? `(${allKnownUsedResponses.map(id => `'${id}'`).join(',')})` 
-    : `('')`; // Handle empty array case to avoid invalid SQL
+    : `('')`; 
 
   const { data: availableCards, error: fetchError } = await supabase
     .from('response_cards')
@@ -398,13 +382,10 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
     return { dealtCardIds: [], updatedUsedResponses: allKnownUsedResponses };
   }
 
-  // Shuffle available cards to get random ones
   const shuffledAvailableCards = [...availableCards].sort(() => 0.5 - Math.random());
   const cardsToDeal = shuffledAvailableCards.slice(0, count);
   const dealtCardIds = cardsToDeal.map(c => c.id);
   
-  // The updatedUsedResponses returned here will be the new comprehensive list
-  // to be stored back in the 'games' table by the calling function.
   const finalUsedResponses = [...new Set([...allKnownUsedResponses, ...dealtCardIds])];
 
   console.log(`🔴 CARDS (Server): Dealt ${dealtCardIds.length} cards for game ${gameId}: ${JSON.stringify(dealtCardIds)}. New total used_responses count for game update: ${finalUsedResponses.length}`);
@@ -430,9 +411,9 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
       .from('players')
       .select('id')
       .eq('game_id', gameId)
-      .order('joined_at', { ascending: true }); // Use joined_at to determine first player
+      .order('joined_at', { ascending: true }); 
 
-    if (playersFetchError || !players || players.length < 2) { // Typically need at least 2 players
+    if (playersFetchError || !players || players.length < 2) { 
       console.error(`🔴 START (Server): Error fetching players or not enough players (need at least 2) for game ${gameId}: ${JSON.stringify(playersFetchError, null, 2)} Players found: ${players?.length}`);
       throw new Error(`Not enough players to start game (found ${players?.length || 0}, need at least 2). Or ${playersFetchError?.message}`);
     }
@@ -440,13 +421,12 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
     const firstJudgeId = players[0].id;
     console.log(`🔴 START (Server): Assigning player ${firstJudgeId} as the first judge for game ${gameId}`);
 
-    // Deal cards to non-judge players
     let accumulatedUsedResponses = game.used_responses || [];
     for (const player of players) {
       if (player.id !== firstJudgeId) { 
         console.log(`🔴 START (Server): Dealing cards to player ${player.id}`);
         const { dealtCardIds, updatedUsedResponses } = await dealCardsFromSupabase(gameId, CARDS_PER_HAND, accumulatedUsedResponses);
-        accumulatedUsedResponses = updatedUsedResponses; // Keep track of all cards used in this whole operation
+        accumulatedUsedResponses = updatedUsedResponses; 
 
         if (dealtCardIds.length > 0) {
           const handInserts = dealtCardIds.map(cardId => ({
@@ -457,7 +437,6 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
           const { error: handInsertError } = await supabase.from('player_hands').insert(handInserts);
           if (handInsertError) {
             console.error(`🔴 START (Server) CARDS: Error inserting hand for player ${player.id}:`, JSON.stringify(handInsertError, null, 2));
-            // Potentially throw or handle, depending on desired strictness
           } else {
             console.log(`🔴 START (Server) CARDS: Successfully dealt ${dealtCardIds.length} cards to player ${player.id}`);
           }
@@ -470,9 +449,9 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
     const gameUpdates: TablesUpdate<'games'> = {
       game_phase: 'category_selection',
       current_judge_id: firstJudgeId,
-      current_round: 1, // Start with round 1
+      current_round: 1, 
       updated_at: new Date().toISOString(),
-      used_responses: accumulatedUsedResponses, // Store the final list of all used cards
+      used_responses: accumulatedUsedResponses, 
     };
 
     const { error: updateError } = await supabase
@@ -491,7 +470,6 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
 
   revalidatePath('/');
   revalidatePath('/game');
-  // No need to return game state here, Realtime will trigger client update
   return null; 
 }
 
@@ -501,7 +479,7 @@ export async function selectCategory(gameId: string, category: string): Promise<
   
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('used_scenarios, current_judge_id') // Ensure we have current_judge_id if needed for validation
+    .select('used_scenarios, current_judge_id') 
     .eq('id', gameId)
     .single();
 
@@ -510,22 +488,15 @@ export async function selectCategory(gameId: string, category: string): Promise<
     throw new Error(`Failed to fetch game for category selection: ${gameError?.message || 'Game not found'}`);
   }
 
-  // Add validation: only current judge can select category
-  // const { data: authData } = await supabase.auth.getUser(); // Example if using Supabase Auth
-  // if (!authData || authData.user?.id !== game.current_judge_id) {
-  //   throw new Error("Only the current judge can select a category.");
-  // }
-
   const usedScenarios = game.used_scenarios || [];
   const notInScenarioFilterValue = usedScenarios.length > 0 
     ? `(${usedScenarios.map(id => `'${id}'`).join(',')})` 
-    : `('')`; // Handle empty array for .not('id', 'in', filter)
+    : `('')`; 
 
   let query = supabase
     .from('scenarios')
     .select('id')
     .eq('category', category);
-    //.eq('is_active', true); // Assuming scenarios don't have is_active, or add if needed
   
   if (usedScenarios.length > 0) {
     query = query.not('id', 'in', notInScenarioFilterValue);
@@ -540,8 +511,6 @@ export async function selectCategory(gameId: string, category: string): Promise<
 
   if (!scenarios || scenarios.length === 0) {
     console.warn(`🔴 CATEGORY (Server): No unused scenarios for category ${category}. Consider resetting used_scenarios or adding more.`);
-    // Potentially reset used_scenarios for this category if all are used, or throw an error
-    // For now, we throw an error.
     throw new Error(`No new scenarios available in category "${category}". The Judge might need to pick another!`);
   }
 
@@ -569,7 +538,7 @@ export async function selectCategory(gameId: string, category: string): Promise<
   console.log(`🔴 CATEGORY (Server): Game ${gameId} moved to player_submission with scenario ${newScenarioId}`);
   
   revalidatePath('/game');
-  return getGame(); // Return the updated game state
+  return getGame(); 
 }
 
 
@@ -597,7 +566,6 @@ export async function submitResponse(playerId: string, responseCardText: string,
     throw new Error("Judges cannot submit response cards.");
   }
 
-  // Find the response_card_id based on the text from player's hand
   const { data: handCardData, error: handCardError } = await supabase
     .from('player_hands')
     .select('response_card_id, response_cards!inner(text)')
@@ -614,14 +582,13 @@ export async function submitResponse(playerId: string, responseCardText: string,
   console.log(`🔴 SUBMIT (Server): Player ${playerId} submitted card ID ${responseCardId} (text: "${responseCardText}")`);
 
 
-  // Check if player has already submitted for this round
   const { data: existingSubmission, error: checkSubmissionError } = await supabase
     .from('responses')
     .select('id')
     .eq('game_id', gameId)
     .eq('player_id', playerId)
     .eq('round_number', currentRound)
-    .maybeSingle(); // Use maybeSingle to avoid error if no submission found
+    .maybeSingle(); 
 
   if (checkSubmissionError) {
     console.error(`🔴 SUBMIT (Server): Error checking for existing submission for player ${playerId}:`, JSON.stringify(checkSubmissionError, null, 2));
@@ -647,7 +614,6 @@ export async function submitResponse(playerId: string, responseCardText: string,
     throw new Error(`Failed to insert submission: ${insertError.message}`);
   }
 
-  // Delete played card from hand
   const { error: deleteHandError } = await supabase
     .from('player_hands')
     .delete()
@@ -657,10 +623,8 @@ export async function submitResponse(playerId: string, responseCardText: string,
 
   if (deleteHandError) {
     console.error(`🔴 SUBMIT (Server): Error deleting card ${responseCardId} from hand of ${playerId}:`, JSON.stringify(deleteHandError, null, 2));
-    // Potentially handle this error more gracefully
   }
 
-  // Mark this response card ID as used for the game and deal a new card
   let gameUsedResponses = gameData.used_responses || [];
   const { dealtCardIds, updatedUsedResponses: finalUsedResponsesAfterPlayAndDeal } = await dealCardsFromSupabase(gameId, 1, [...gameUsedResponses, responseCardId]);
   
@@ -679,7 +643,6 @@ export async function submitResponse(playerId: string, responseCardText: string,
     console.warn(`🔴 SUBMIT (Server): Could not deal new card to player ${playerId}, no cards available.`);
   }
   
-  // Update the game's used_responses list
   const { error: gameUpdateError } = await supabase
       .from('games')
       .update({ used_responses: finalUsedResponsesAfterPlayAndDeal, updated_at: new Date().toISOString() })
@@ -688,13 +651,11 @@ export async function submitResponse(playerId: string, responseCardText: string,
       console.error(`🔴 SUBMIT (Server): Error updating game.used_responses:`, JSON.stringify(gameUpdateError, null, 2));
   }
 
-
-  // Check if all non-judge players have submitted
   const { data: nonJudgePlayers, error: playersError } = await supabase
     .from('players')
     .select('id')
     .eq('game_id', gameId)
-    .neq('id', gameData.current_judge_id || '00000000-0000-0000-0000-000000000000'); // Ensure null judge_id doesn't break query
+    .neq('id', gameData.current_judge_id || '00000000-0000-0000-0000-000000000000'); 
 
   if (playersError) {
     console.error('🔴 SUBMIT (Server): Error fetching players to check submissions:', JSON.stringify(playersError, null, 2));
@@ -705,7 +666,7 @@ export async function submitResponse(playerId: string, responseCardText: string,
 
   const { data: submissions, error: submissionsError } = await supabase
     .from('responses')
-    .select('player_id', { count: 'exact' }) // Ensure count is fetched
+    .select('player_id', { count: 'exact' }) 
     .eq('game_id', gameId)
     .eq('round_number', currentRound);
   
@@ -725,14 +686,13 @@ export async function submitResponse(playerId: string, responseCardText: string,
       .eq('id', gameId);
     if (phaseUpdateError) {
       console.error('🔴 SUBMIT (Server): Error updating game phase to judging:', JSON.stringify(phaseUpdateError, null, 2));
-      // Potentially throw error
     }
   } else {
      console.log(`🔴 SUBMIT (Server): Waiting for more submissions. ${submittedPlayerIds.length}/${nonJudgePlayerIds.length} submitted for round ${currentRound}.`);
   }
 
   revalidatePath('/game');
-  return getGame(); // Return updated game state
+  return getGame(); 
 }
 
 
@@ -741,7 +701,7 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
   
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, current_judge_id, players!inner(id, score)') // Fetch players for score update, ensure inner join if players must exist
+    .select('current_round, current_judge_id, players!inner(id, score)') 
     .eq('id', gameId)
     .single();
 
@@ -750,7 +710,6 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
     throw new Error(`Failed to fetch game for winner selection: ${gameError?.message || 'Game not found'}`);
   }
   
-  // Find the submission based on card text and current round
   const { data: winningSubmissionData, error: submissionError } = await supabase
     .from('responses')
     .select('player_id, response_card_id, response_cards!inner(text)')
@@ -767,7 +726,6 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
   const winningPlayerId = winningSubmissionData.player_id;
   const winningResponseCardId = winningSubmissionData.response_card_id;
 
-  // Update winner's score
   const winnerPlayerRecord = game.players.find(p => p.id === winningPlayerId);
   if (!winnerPlayerRecord) {
     console.error(`🔴 WINNER (Server): Winning player ${winningPlayerId} not found in game players list.`);
@@ -781,12 +739,10 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
 
   if (scoreUpdateError) {
     console.error(`🔴 WINNER (Server): Error updating score for player ${winningPlayerId}:`, JSON.stringify(scoreUpdateError, null, 2));
-    // Potentially throw error
   } else {
     console.log(`🔴 WINNER (Server): Player ${winningPlayerId} score updated to ${newScore}.`);
   }
 
-  // Log the winner for the round
   const { error: winnerInsertError } = await supabase
     .from('winners')
     .insert({
@@ -798,10 +754,8 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
 
   if (winnerInsertError) {
     console.error(`🔴 WINNER (Server): Error inserting round winner into 'winners' table:`, JSON.stringify(winnerInsertError, null, 2));
-    // Potentially handle this
   }
 
-  // Check for game over condition
   let newGamePhase: GamePhaseClientState = 'winner_announcement';
   let overallWinnerPlayerId: string | null = null;
 
@@ -811,11 +765,10 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
     console.log(`🔴 WINNER (Server): Player ${winningPlayerId} has reached ${newScore} points and won the game!`);
   }
 
-  // Update game state
   const gameUpdates: TablesUpdate<'games'> = {
     game_phase: newGamePhase,
     last_round_winner_player_id: winningPlayerId,
-    last_round_winning_card_text: winningCardText, // Store the winning card text
+    last_round_winning_card_text: winningCardText, 
     overall_winner_player_id: overallWinnerPlayerId,
     updated_at: new Date().toISOString(),
   };
@@ -832,7 +785,7 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
   console.log(`🔴 WINNER (Server): Game ${gameId} moved to ${newGamePhase}. Winner of round ${game.current_round} is ${winningPlayerId}.`);
 
   revalidatePath('/game');
-  return getGame(); // Return updated game state
+  return getGame(); 
 }
 
 
@@ -841,7 +794,7 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
 
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('*') // Fetch all game data
+    .select('*') 
     .eq('id', gameId)
     .single();
   
@@ -850,10 +803,8 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     throw new Error(`Failed to fetch game for next round: ${gameError?.message || 'Game not found'}`);
   }
 
-  // Handle game over: reset to lobby (could redirect to a different "Play Again?" screen)
   if (game.game_phase === 'game_over') {
     console.log(`🔴 NEXT ROUND (Server): Game ${gameId} is over. Resetting to lobby (minimal).`);
-    // Minimal reset, for full reset, client should use resetGameForTesting via UI
     const { error: resetToLobbyError } = await supabase
       .from('games')
       .update({ 
@@ -861,13 +812,11 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
         current_round: 0, 
         current_judge_id: null, 
         current_scenario_id: null,
-        // Consider clearing ready_player_order, used_scenarios, used_responses too or handle in resetGameForTesting
         ready_player_order: [], 
         last_round_winner_player_id: null,
         last_round_winning_card_text: null,
         overall_winner_player_id: null,
         updated_at: new Date().toISOString(),
-        // Potentially clear used_scenarios and used_responses or handle this more strategically
        })
       .eq('id', gameId);
     if (resetToLobbyError) {
@@ -875,8 +824,8 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     }
     revalidatePath('/');
     revalidatePath('/game');
-    redirect('/?step=setup'); // Redirect to lobby setup page
-    return null; // Redirect will handle it
+    redirect('/?step=setup'); 
+    return null; 
   }
   
   if (game.game_phase !== 'winner_announcement') {
@@ -884,14 +833,13 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     throw new Error("Cannot start next round, current round not finished.");
   }
 
-  // Determine next judge
   const { data: players, error: playersFetchError } = await supabase
     .from('players')
-    .select('id, joined_at') // Use joined_at or ready_player_order from 'games' table for judge rotation
+    .select('id, joined_at') 
     .eq('game_id', gameId)
-    .order('joined_at', { ascending: true }); // Simple rotation based on join order for now
+    .order('joined_at', { ascending: true }); 
 
-  if (playersFetchError || !players || players.length < 2) { // Need at least 2 players to continue
+  if (playersFetchError || !players || players.length < 2) { 
     console.error(`🔴 NEXT ROUND (Server): Error fetching players or not enough players for game ${gameId}:`, JSON.stringify(playersFetchError, null, 2));
     throw new Error(`Not enough players for next round (need at least 2). Or ${playersFetchError?.message}`);
   }
@@ -902,12 +850,10 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     if (currentJudgeIndex !== -1) {
       nextJudgeId = players[(currentJudgeIndex + 1) % players.length].id;
     } else {
-      // Current judge not found in active players, assign first player as judge
       nextJudgeId = players[0].id;
       console.warn(`🔴 NEXT ROUND (Server): Current judge ${game.current_judge_id} not found. Assigning first player ${nextJudgeId}.`);
     }
   } else {
-    // No current judge (should not happen if game is in 'winner_announcement'), assign first player
     nextJudgeId = players[0].id;
     console.warn(`🔴 NEXT ROUND (Server): No current judge. Assigning first player ${nextJudgeId}.`);
   }
@@ -917,10 +863,7 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     game_phase: 'category_selection',
     current_judge_id: nextJudgeId,
     current_round: game.current_round + 1,
-    current_scenario_id: null, // Clear current scenario for new round
-    // Keep last_round_winner details until the next winner is chosen, or clear them if desired
-    // last_round_winner_player_id: null, 
-    // last_round_winning_card_text: null,
+    current_scenario_id: null, 
     updated_at: new Date().toISOString(),
   };
 
@@ -936,7 +879,7 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
   console.log(`🔴 NEXT ROUND (Server): Game ${gameId} advanced to round ${game.current_round + 1}. Judge: ${nextJudgeId}, Phase: category_selection.`);
 
   revalidatePath('/game');
-  return getGame(); // Return updated game state
+  return getGame(); 
 }
 
 export async function getCurrentPlayer(playerId: string, gameId: string): Promise<PlayerClientState | undefined> {
@@ -961,22 +904,20 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
 
   if (gameFetchError || !gameData) {
     console.error(`Error fetching game data for judge check (player ${playerId}, game ${gameId}):`, JSON.stringify(gameFetchError, null, 2));
-    // Don't return undefined yet, player data might still be useful
   }
   
-  // Fetch player's hand
   let handCards: string[] = [];
   const { data: handData, error: handError } = await supabase
     .from('player_hands')
-    .select('response_card_id, response_cards (text)') // Assumes a relationship 'response_cards' on 'response_card_id'
+    .select('response_card_id, response_cards (text)') 
     .eq('player_id', playerId)
-    .eq('game_id', gameId); // Filter by game_id if player_hands has it
+    .eq('game_id', gameId); 
 
   if (handError) {
     console.error(`Error fetching hand for player ${playerId} game ${gameId}:`, JSON.stringify(handError, null, 2));
   } else if (handData) {
     handCards = handData
-      .map((h: any) => h.response_cards?.text) // Access text through the relationship
+      .map((h: any) => h.response_cards?.text) 
       .filter(text => text !== null && text !== undefined) as string[];
   }
 
@@ -990,5 +931,4 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
     isReady: playerData.is_ready,
   };
 }
-
     
