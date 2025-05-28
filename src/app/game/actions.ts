@@ -35,7 +35,7 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
     game_phase: 'lobby',
     current_round: 0, 
     ready_player_order: [],
-    used_scenarios: [],
+    // used_scenarios: [], // As per user finding, removing this line
     used_responses: [],
     // current_judge_id, current_scenario_id, etc., will be null by default in DB
   };
@@ -247,31 +247,32 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
   return newPlayer;
 }
 
-// SIMPLIFIED Reset: Focuses on setting the main game row to 'lobby'.
-// Does NOT delete related player/hand/response/winner data to reduce complexity and potential failure points.
-export async function resetGameForTesting(): Promise<void> {
-  console.log("🔴 RESET (Server): Simplified resetGameForTesting action called");
-  
+
+export async function resetGameForTesting() {
+  console.log("🔴 RESET (Server): resetGameForTesting action called");
+
   let gameToReset: Tables<'games'> | null = null;
   try {
+    console.log("🔴 RESET (Server): Finding the oldest existing game...");
     const { data: existingGames, error: fetchError } = await supabase
       .from('games')
-      .select('id, game_phase') 
+      .select('id, game_phase') // Only select necessary fields
       .order('created_at', { ascending: true })
       .limit(1);
 
     if (fetchError) {
-      console.error('🔴 RESET (Server): Error fetching game to reset:', JSON.stringify(fetchError, null, 2));
-      // Don't throw, try to redirect
+      console.error("🔴 RESET (Server): Error fetching game to reset:", JSON.stringify(fetchError, null, 2));
+      // Don't throw, try to redirect to allow user to retry or see a stable page
       redirect('/?step=setup'); 
       return;
     }
+
     if (existingGames && existingGames.length > 0) {
       gameToReset = existingGames[0];
       console.log(`🔴 RESET (Server): Found game to reset with ID: ${gameToReset.id}, current phase: ${gameToReset.game_phase}`);
     } else {
       console.log('🔴 RESET (Server): No existing game found to reset. One will be created on next load if needed.');
-      revalidatePath('/'); 
+      revalidatePath('/'); // Revalidate paths to ensure UI consistency
       revalidatePath('/game');
       redirect('/?step=setup');
       return;
@@ -282,6 +283,7 @@ export async function resetGameForTesting(): Promise<void> {
     return;
   }
 
+  // If, after all that, gameToReset is still null (e.g., error case not leading to immediate return)
   if (!gameToReset || !gameToReset.id) {
     console.error('🔴 RESET (Server): CRITICAL - Could not identify a game to reset after fetch logic.');
     redirect('/?step=setup');
@@ -289,34 +291,31 @@ export async function resetGameForTesting(): Promise<void> {
   }
   
   const gameId = gameToReset.id;
-  console.log(`🔴 RESET (Server): Attempting to reset game ${gameId} to lobby phase (simplified).`);
+  console.log(`🔴 RESET (Server): Proceeding to reset game ID: ${gameId}`);
 
-  // Simplified reset: ONLY update the games table.
-  // We are deliberately NOT deleting players, hands, etc., to reduce failure points for now.
-  // The game logic in getGame() should then fetch an empty player list for a 'lobby' phase game if players are not explicitly cleaned.
-  // Or, ideally, we add player cleanup back once this core reset of game_phase works.
-  
-  // For a more complete reset, you would uncomment and ensure these delete operations work:
-  // console.log(`🔴 RESET (Server): Deleting from player_hands for game ${gameId}...`);
-  // const { error: deleteHandsError } = await supabase.from('player_hands').delete().eq('game_id', gameId);
-  // if (deleteHandsError) console.error('🔴 RESET (Server): Error deleting player_hands:', JSON.stringify(deleteHandsError, null, 2));
-  // else console.log(`🔴 RESET (Server): player_hands deleted for game ${gameId}.`);
+  // Define deletions in order of dependency (child tables before parent tables if FKs are enforced)
+  const deletionOrder = [
+    { name: 'player_hands', table: 'player_hands' as keyof Database['public']['Tables'] },
+    { name: 'responses (submissions)', table: 'responses' as keyof Database['public']['Tables'] },
+    { name: 'winners', table: 'winners' as keyof Database['public']['Tables'] },
+    { name: 'players', table: 'players' as keyof Database['public']['Tables'] },
+  ];
 
-  // console.log(`🔴 RESET (Server): Deleting responses (submissions) for game ${gameId}...`);
-  // const { error: deleteResponsesError } = await supabase.from('responses').delete().eq('game_id', gameId);
-  // if (deleteResponsesError) console.error('🔴 RESET (Server): Error deleting responses:', JSON.stringify(deleteResponsesError, null, 2));
-  // else console.log(`🔴 RESET (Server): responses (submissions) deleted for game ${gameId}.`);
-  
-  // console.log(`🔴 RESET (Server): Deleting winners for game ${gameId}...`);
-  // const { error: deleteWinnersError } = await supabase.from('winners').delete().eq('game_id', gameId);
-  // if (deleteWinnersError) console.error('🔴 RESET (Server): Error deleting winners:', JSON.stringify(deleteWinnersError, null, 2));
-  // else console.log(`🔴 RESET (Server): winners deleted for game ${gameId}.`);
+  for (const item of deletionOrder) {
+    console.log(`🔴 RESET (Server): Deleting from ${item.name} for game ${gameId}...`);
+    const { error: deleteError } = await supabase.from(item.table).delete().eq('game_id', gameId);
+    if (deleteError) {
+      // Log error but continue trying to reset other parts.
+      // A failure here might mean the table doesn't exist or game_id column is missing,
+      // which is okay if we're trying to be thorough.
+      console.error(`🔴 RESET (Server): Error deleting ${item.name}:`, JSON.stringify(deleteError, null, 2));
+    } else {
+      console.log(`🔴 RESET (Server): ${item.name} deleted for game ${gameId}.`);
+    }
+  }
 
-  // console.log(`🔴 RESET (Server): Deleting players for game ${gameId}...`);
-  // const { error: deletePlayersError } = await supabase.from('players').delete().eq('game_id', gameId);
-  // if (deletePlayersError) console.error('🔴 RESET (Server): Error deleting players:', JSON.stringify(deletePlayersError, null, 2));
-  // else console.log(`🔴 RESET (Server): Players deleted for game ${gameId}.`);
-
+  // Now, reset the main game row to a fresh 'lobby' state
+  console.log(`🔴 RESET (Server): Attempting to update game ${gameId} to lobby phase.`);
   const updatedGameData: TablesUpdate<'games'> = {
     game_phase: 'lobby',
     current_round: 0,
@@ -326,7 +325,7 @@ export async function resetGameForTesting(): Promise<void> {
     last_round_winner_player_id: null,
     last_round_winning_card_text: null,
     overall_winner_player_id: null,
-    used_scenarios: [],
+    // used_scenarios: [], // As per user finding, removing this line.
     used_responses: [],
     updated_at: new Date().toISOString(), // Force update timestamp
   };
@@ -335,16 +334,17 @@ export async function resetGameForTesting(): Promise<void> {
     .from('games')
     .update(updatedGameData)
     .eq('id', gameId)
-    .select()
+    .select() // Select the updated row to confirm changes
     .single();
 
   if (updateGameError) {
     console.error(`🔴 RESET (Server): CRITICAL ERROR: Failed to update game to lobby phase during reset for game ID ${gameId}:`, JSON.stringify(updateGameError, null, 2));
+    // Even if update fails, try to redirect so user isn't stuck on an error page
   } else {
     console.log(`🔴 RESET (Server): Game ${gameId} successfully updated to lobby phase after reset operations. Updated row:`, JSON.stringify(updatedGameRow, null, 2));
   }
   
-  // Verification
+  // Verification step (optional but good for debugging)
   const { data: verifyGame, error: verifyError } = await supabase
     .from('games')
     .select('game_phase, current_round, current_judge_id')
@@ -356,7 +356,8 @@ export async function resetGameForTesting(): Promise<void> {
   } else if (verifyGame) {
     console.log(`🔴 RESET (Server): Verification - Game phase is now: ${verifyGame.game_phase}, Round: ${verifyGame.current_round}, Judge: ${verifyGame.current_judge_id}`);
   } else {
-    console.warn("🔴 RESET (Server): Verification - Game not found after reset attempt. This might be okay if no game existed.");
+    // This case might happen if the game row itself was somehow deleted or if gameId became invalid
+    console.warn("🔴 RESET (Server): Verification - Game not found after reset attempt. This might be okay if no game existed or it was deleted as part of a broader (unintended) cascade.");
   }
 
   console.log('🔴 RESET (Server): Game reset operations complete, revalidating paths and redirecting.');
@@ -364,6 +365,7 @@ export async function resetGameForTesting(): Promise<void> {
   revalidatePath('/game');
   redirect('/?step=setup');
 }
+
 
 
 // Placeholder actions for now, to be implemented with Supabase
@@ -514,10 +516,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
   let handCards: string[] = [];
   const { data: handData, error: handError } = await supabase
     .from('player_hands')
-    .select(`
-      response_card_id,
-      response_cards ( text )
-    `)
+    .select('response_card_id, response_cards ( text )')
     .eq('player_id', playerId)
     .eq('game_id', gameId); // Ensure hand is for the correct game
 
