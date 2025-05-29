@@ -111,7 +111,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     .eq('game_id', gameId);
 
   if (playersError) {
-    console.error(`Error fetching players for game ${gameId}:`, JSON.stringify(playersError, null, 2));
+    console.error(`DEBUG: getGame - Error fetching players for game ${gameId}:`, JSON.stringify(playersError, null, 2));
     if (playersError.message.includes('column players.game_id does not exist')) {
         console.error("🔴 CRITICAL SCHEMA ERROR: The 'players' table is missing the 'game_id' column. Please add it in your Supabase dashboard.");
     }
@@ -262,7 +262,7 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
     .eq('name', name)
     .single();
 
-  if (checkError && checkError.code !== 'PGRST116') { 
+  if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
     console.error('🔴 PLAYER (Server): Error checking for existing player:', JSON.stringify(checkError, null, 2));
     throw new Error(`Error checking for existing player: ${checkError.message}`);
   }
@@ -450,7 +450,7 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
     query = query.not('id', 'in', `(${allKnownUsedResponses.join(',')})`);
   }
 
-  const { data: availableCards, error: fetchError } = await query.limit(count + 50); 
+  const { data: availableCards, error: fetchError } = await query.limit(count + 50); // Fetch more to ensure randomness
 
   if (fetchError) {
     console.error(`🔴 CARDS (Server): Error fetching available response cards for game ${gameId}:`, JSON.stringify(fetchError, null, 2));
@@ -593,7 +593,7 @@ export async function selectCategory(gameId: string, category: string): Promise<
     .eq('category', category);
   
   if (usedScenarios.length > 0) {
-    query = query.not('id', 'in', `(${usedScenarios.map(id => `'${id}'`).join(',')})`);
+    query = query.not('id', 'in', `(${usedScenarios.join(',')})`);
   }
 
   const { data: scenarios, error: scenarioFetchError } = await query;
@@ -624,6 +624,7 @@ export async function selectCategory(gameId: string, category: string): Promise<
       current_scenario_id: scenarioToUse.id,
       game_phase: 'player_submission',
       updated_at: new Date().toISOString(),
+      // Not updating used_scenarios here, as we are intentionally re-using
     };
      const { error: updateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
      if (updateError) throw new Error(`Failed to update game after category selection (recycle): ${updateError.message}`);
@@ -1104,5 +1105,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
     isReady: playerData.is_ready,
   };
 }
+
+    
 
     
