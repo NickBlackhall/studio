@@ -37,10 +37,18 @@ export default function WelcomePage() {
       const gameState = await getGame();
       console.log(`Client: Initial game state fetched (from ${origin}):`, gameState ? `ID: ${gameState.gameId}, Phase: ${gameState.gamePhase}, Players: ${gameState.players.length}` : "null");
       setGame(gameState);
+
       if (gameState?.gameId) {
         const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${gameState.gameId}`);
         if (playerIdFromStorage) {
           setThisPlayerId(playerIdFromStorage);
+          // Ensure thisPlayerId is updated if the game state has the player
+          const playerExistsInGame = gameState.players.some(p => p.id === playerIdFromStorage);
+          if (!playerExistsInGame) {
+            // Player might have been removed by reset, clear local storage
+            // localStorage.removeItem(`thisPlayerId_game_${gameState.gameId}`);
+            // setThisPlayerId(null); // This might be too aggressive, let's re-evaluate if needed
+          }
         } else {
           setThisPlayerId(null);
         }
@@ -55,21 +63,13 @@ export default function WelcomePage() {
   }, [toast]);
 
   useEffect(() => {
-    console.log('Supabase client URL:', supabase.supabaseUrl);
-    const key = supabase.auth['supabaseKey' as keyof typeof supabase.auth] || (supabase.auth as any).api?.config?.supabaseKey;
-    console.log('Supabase client Key (first 10 chars):', key ? key.substring(0, 10) : 'Key not readily available');
-    fetchGameData("useEffect[] mount");
-  }, [fetchGameData]);
-
-  useEffect(() => {
-    // CRITICAL GUARD: Only set up subscriptions if game and game.gameId are defined and not loading
+    // Guard for initial render or if game/gameId isn't ready
     if (!game || !game.gameId || isLoading) {
-      console.log(`Realtime or Redirect: No game, gameId, or still loading, skipping real-time setup on WelcomePage for gameId: ${game?.gameId || 'N/A'}`);
+      console.log(`Realtime or Redirect: No game, gameId, or still loading, skipping setup for gameId: ${game?.gameId || 'N/A'} on WelcomePage`);
       return;
     }
-    
     console.log(`Realtime: Setting up Supabase subscriptions on WelcomePage for gameId: ${game.gameId}`);
-    hasAutoNavigatedToGame.current = false; // Reset auto-navigation flag when subscriptions are set up for a new gameId
+    hasAutoNavigatedToGame.current = false;
 
     const handleGameUpdate = async (originTable: string, payload: any) => {
       console.log(`>>> Realtime: ${originTable.toUpperCase()} TABLE CHANGE DETECTED BY SUPABASE! (Lobby page for game ${game.gameId}) Payload:`, payload);
@@ -80,7 +80,10 @@ export default function WelcomePage() {
         setGame(updatedGame);
 
         // Auto-navigation for players in lobby when game starts
-        if (currentStep === 'setup' && updatedGame.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(updatedGame.gamePhase) && !hasAutoNavigatedToGame.current) {
+        if (currentStep === 'setup' && 
+            updatedGame.gamePhase !== 'lobby' && 
+            ACTIVE_PLAYING_PHASES.includes(updatedGame.gamePhase as GamePhaseClientState) && // Added type assertion
+            !hasAutoNavigatedToGame.current) {
           console.log(`Client: Game phase is ${updatedGame.gamePhase} (active), step is 'setup'. Auto-navigating to /game.`);
           hasAutoNavigatedToGame.current = true;
           router.push('/game');
@@ -129,11 +132,19 @@ export default function WelcomePage() {
       supabase.removeChannel(playersChannel).catch(err => console.error("Realtime: Error removing players channel on WelcomePage:", err));
       supabase.removeChannel(gameChannel).catch(err => console.error("Realtime: Error removing game channel on WelcomePage:", err));
     };
-  }, [game, fetchGameData, router, currentStep]); // Removed activePlayingPhases to simplify deps if not strictly needed here for conditions
+  }, [game, fetchGameData, router, currentStep, isLoading]); 
+
+  useEffect(() => {
+    console.log('Supabase client URL:', supabase.supabaseUrl);
+    // const key = supabase.auth['supabaseKey' as keyof typeof supabase.auth] || (supabase.auth as any).api?.config?.supabaseKey;
+    // console.log('Supabase client Key (first 10 chars):', key ? key.substring(0, 10) : 'Key not readily available');
+    fetchGameData("useEffect[] mount");
+  }, [fetchGameData]);
+
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
-    const avatar = formData.get('avatar') as string;
+    const avatar = formData.get('avatar') as string; // This will be an image path like "/avatar1.png"
 
     if (!name.trim() || !avatar) {
         toast({ title: "Missing Info", description: "Please enter your name and select an avatar.", variant: "destructive" });
@@ -158,6 +169,7 @@ export default function WelcomePage() {
           setThisPlayerId(newPlayer.id);
           console.log(`Client: Player ID ${newPlayer.id} stored in localStorage with key ${localStorageKey}`);
           
+          // Fetching game state to update the UI immediately for the current client
           console.log("Client (handleAddPlayer): Fetching game state after adding player...");
           const updatedGame = await getGame(game.gameId); 
           setGame(updatedGame);
@@ -180,8 +192,9 @@ export default function WelcomePage() {
         try {
             await resetGameForTesting();
         } catch (error: any) {
-            if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+            if (error && typeof (error as any).digest === 'string' && (error as any).digest.startsWith('NEXT_REDIRECT')) {
                 console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+                 // No toast needed for redirects
             } else {
                 console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
                 toast({
@@ -209,6 +222,7 @@ export default function WelcomePage() {
     startTransition(async () => {
       try {
         await togglePlayerReadyStatus(player.id, game.gameId, player.isReady); 
+        // The real-time subscription will handle updating the game state for all clients
       } catch (error: any) {
         console.error("Client: Error toggling ready status:", error);
         toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
@@ -228,7 +242,7 @@ export default function WelcomePage() {
   if (!game || !game.gameId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} data-ai-hint="game logo"/>
+        <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} data-ai-hint="game logo large"/>
         <p className="text-xl text-destructive mt-4">Could not load game data. Please try refreshing.</p>
         <p className="text-sm text-muted-foreground mt-2">Check browser console and server logs for errors.</p>
          <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
@@ -239,7 +253,7 @@ export default function WelcomePage() {
   }
   
   if (currentStep === 'setup') {
-    const gameIsActive = ACTIVE_PLAYING_PHASES.includes(game.gamePhase);
+    const gameIsActive = ACTIVE_PLAYING_PHASES.includes(game.gamePhase as GamePhaseClientState);
     const enoughPlayers = game.players.length >= MIN_PLAYERS_TO_START;
     const allPlayersReady = enoughPlayers && game.players.every(p => p.isReady);
 
@@ -249,11 +263,13 @@ export default function WelcomePage() {
         lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - game.players.length} more...`;
       } else if (!allPlayersReady) {
         const unreadyCount = game.players.filter(p => !p.isReady).length;
-        lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready... Game will start automatically.`;
+        lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready... Game will start automatically when all are ready.`;
       } else {
+        // This state (all players ready, but still in lobby) should be brief as the game auto-starts
         lobbyMessage = "All players ready! Starting game..."; 
       }
     }
+
 
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
@@ -270,7 +286,7 @@ export default function WelcomePage() {
             />
           </button>
           <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-          {gameIsActive && (
+          {gameIsActive && ( // Game is active (e.g. category_selection) and user is on setup page
             <div className="my-4 p-4 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 rounded-md shadow-lg">
                 <p className="font-bold text-lg">Game in Progress!</p>
                 <p className="text-md">The current game is in the "{game.gamePhase}" phase.</p>
@@ -285,7 +301,7 @@ export default function WelcomePage() {
             </div>
           )}
           {(!gameIsActive && game.gamePhase === 'lobby') &&
-            <p className="text-xl text-muted-foreground mt-2">Enter your details to join, then click your "Ready" button!</p>
+            <p className="text-xl text-muted-foreground mt-2">Enter your details to join, then click your avatar to signal you're ready!</p>
           }
         </header>
 
@@ -294,7 +310,7 @@ export default function WelcomePage() {
             <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
               <CardHeader className="bg-primary text-primary-foreground p-6">
                 <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
-                <CardDescription className="text-primary-foreground/80 text-base">Enter your name and pick your poison (avatar).</CardDescription>
+                <CardDescription className="text-primary-foreground/80 text-base">Enter your name and pick your avatar.</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <PlayerSetupForm addPlayer={handleAddPlayer} />
@@ -312,7 +328,7 @@ export default function WelcomePage() {
             <CardHeader className="bg-secondary text-secondary-foreground p-6">
               <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players in Lobby ({game.players.length})</CardTitle>
                <CardDescription className="text-secondary-foreground/80 text-base">
-                {game.gamePhase === 'lobby' ? "Click your button to ready up! Game starts automatically when all are ready." : "Current players in game."}
+                {game.gamePhase === 'lobby' ? "Click your ready button! Game starts automatically when all are ready." : "Current players in game."}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
@@ -321,7 +337,17 @@ export default function WelcomePage() {
                   {game.players.map((player: PlayerClientState) => (
                     <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
                       <div className="flex items-center">
-                        <span className="text-4xl mr-4">{player.avatar}</span>
+                        {player.avatar.startsWith('/') ? (
+                          <Image 
+                            src={player.avatar} 
+                            alt={`${player.name}'s avatar`} 
+                            width={40} // Consistent size
+                            height={40}
+                            className="mr-3 rounded-md object-cover" // Added rounded-md
+                          />
+                        ) : (
+                          <span className="text-3xl mr-3">{player.avatar}</span> // Fallback for old emoji avatars
+                        )}
                         <span className="text-xl font-medium text-foreground">{player.name}</span>
                       </div>
                       {game.gamePhase === 'lobby' && (
@@ -332,9 +358,9 @@ export default function WelcomePage() {
                               variant={player.isReady ? "default" : "outline"}
                               size="sm"
                               className={cn(
-                                "px-3 py-1 text-xs", 
+                                "px-3 py-1 text-xs font-semibold", 
                                 player.isReady 
-                                  ? "bg-green-500 hover:bg-green-600 text-white" 
+                                  ? "bg-green-500 hover:bg-green-600 text-white border-green-600" 
                                   : "border-primary text-primary hover:bg-primary/10"
                                 )}
                               disabled={isProcessingAction}
@@ -366,9 +392,9 @@ export default function WelcomePage() {
             variant="destructive"
             size="sm"
             className="hover:bg-destructive/80"
-            disabled={isProcessingAction} 
+            disabled={isProcessingAction || isLoading } 
           >
-            {isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game State (For Testing)
+            { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game State (For Testing)
           </Button>
         </div>
 
@@ -382,13 +408,12 @@ export default function WelcomePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
       <Image
-        src="/logo.png"
+        src="/logo.png" // Updated to use actual logo
         alt="Make It Terrible Logo"
-        width={365}
+        width={365} // Adjusted based on previous dimensions, can be tweaked
         height={109}
         className="mx-auto mb-8"
-        data-ai-hint="game logo large"
-        priority
+        priority // Added priority for LCP
       />
       <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">
         Make It Terrible
@@ -410,4 +435,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-

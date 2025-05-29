@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -9,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { cn } from '@/lib/utils';
 import { UserPlus, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 
 interface PlayerSetupFormProps {
@@ -42,7 +44,7 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
 
     const formData = new FormData();
     formData.append('name', name);
-    formData.append('avatar', selectedAvatar);
+    formData.append('avatar', selectedAvatar); // selectedAvatar is now an image path e.g., "/avatar1.png"
 
     startTransition(async () => {
       await addPlayer(formData);
@@ -50,7 +52,7 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
         title: "Welcome!",
         description: `${name} has joined the game!`,
       });
-      setName(''); // Reset name for next player, if any
+      // setName(''); // Optionally reset name for next player
     });
   };
 
@@ -72,19 +74,25 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
 
       <div className="space-y-2">
         <Label className="text-lg font-medium text-foreground">Choose Your Avatar</Label>
-        <div className="grid grid-cols-5 gap-3 p-3 bg-muted rounded-lg border-2">
-          {AVATARS.map((avatar) => (
+        <div className="grid grid-cols-5 gap-2 p-2 bg-muted rounded-lg border-2">
+          {AVATARS.map((avatarPath, index) => (
             <button
-              key={avatar}
+              key={avatarPath}
               type="button"
-              onClick={() => setSelectedAvatar(avatar)}
+              onClick={() => setSelectedAvatar(avatarPath)}
               className={cn(
-                "text-4xl p-2 rounded-md transition-all duration-200 ease-in-out transform hover:scale-125 focus:outline-none focus:ring-4",
-                selectedAvatar === avatar ? 'bg-accent ring-4 ring-accent-foreground scale-110' : 'bg-background hover:bg-foreground/10'
+                "p-1 rounded-md transition-all duration-200 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-4 aspect-square flex items-center justify-center",
+                selectedAvatar === avatarPath ? 'bg-accent ring-4 ring-accent-foreground scale-105' : 'bg-background hover:bg-foreground/10'
               )}
-              aria-label={`Select avatar ${avatar}`}
+              aria-label={`Select avatar ${index + 1}`}
             >
-              {avatar}
+              <Image 
+                src={avatarPath} 
+                alt={`Avatar ${index + 1}`} 
+                width={48}  // Adjusted size for better visibility
+                height={48}
+                className="object-contain"
+              />
             </button>
           ))}
         </div>

@@ -1,7 +1,9 @@
+
 import type { Player } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Award, Gavel, UserCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
 
 interface ScoreboardProps {
   players: Player[];
@@ -40,7 +42,17 @@ export default function Scoreboard({ players, currentJudgeId }: ScoreboardProps)
             `}
           >
             <div className="flex items-center">
-              <span className="text-3xl mr-3">{player.avatar}</span>
+              {player.avatar.startsWith('/') ? (
+                <Image 
+                  src={player.avatar} 
+                  alt={`${player.name}'s avatar`} 
+                  width={36} 
+                  height={36} 
+                  className="mr-3 rounded-md object-cover"
+                />
+              ) : (
+                <span className="text-3xl mr-3">{player.avatar}</span> // Fallback for old emoji avatars
+              )}
               <div>
                 <span className="text-lg font-semibold text-foreground">{player.name}</span>
                 {player.id === currentJudgeId && (
