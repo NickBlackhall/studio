@@ -59,7 +59,13 @@ export interface GameClientState { // Represents the overall game state as the c
 
 export const POINTS_TO_WIN = 3;
 export const CARDS_PER_HAND = 5;
-export const MIN_PLAYERS_TO_START = 2; // Added for clarity
+export const MIN_PLAYERS_TO_START = 2;
+
+export const ACTIVE_PLAYING_PHASES: GamePhaseClientState[] = [
+  'category_selection', 
+  'player_submission', 
+  'judging'
+];
 
 // The main Database types are now in src/lib/database.types.ts
 // This keeps a clean separation.
@@ -72,4 +78,3 @@ export type Json =
   | null
   | { [key: string]: Json | undefined }
   | Json[]
-
