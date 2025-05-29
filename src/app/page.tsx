@@ -5,9 +5,10 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus } from '@/app/game/actions'; // Removed startGame import
+import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, ThumbsDown, CheckSquare, XSquare } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
+import { MIN_PLAYERS_TO_START } from '@/lib/types'; // Added import
 import CurrentYear from '@/components/CurrentYear';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils'; 
@@ -21,17 +22,16 @@ export const dynamic = 'force-dynamic';
 export default function WelcomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const stepParam = searchParams?.get('step'); // Use optional chaining
 
   const [game, setGame] = useState<GameClientState | null>(null);
   const [thisPlayerId, setThisPlayerId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // const [isStartingGame, setIsStartingGame] = useState(false); // Removed as startGame is now automatic
   const [isPendingAction, startTransition] = useTransition();
   const { toast } = useToast();
 
   const [hasAutoNavigated, setHasAutoNavigated] = useState(false);
-
-  const stepParam = searchParams?.get('step');
+  
   const currentStep = stepParam === 'setup' ? 'setup' : 'welcome';
 
   const fetchGameData = useCallback(async (origin: string = "initial") => {
@@ -45,9 +45,6 @@ export default function WelcomePage() {
         const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${gameState.gameId}`);
         if (playerIdFromStorage) {
           setThisPlayerId(playerIdFromStorage);
-           // Fetch full player details to ensure isReady status is up-to-date for 'thisPlayer'
-           const thisPlayerDetail = gameState.players.find(p => p.id === playerIdFromStorage);
-           // We'll rely on real-time updates to refresh the full 'game' object which includes player details
         } else {
           setThisPlayerId(null);
         }
@@ -63,90 +60,63 @@ export default function WelcomePage() {
 
   useEffect(() => {
     console.log('Supabase client URL:', supabase.supabaseUrl);
-    console.log('Supabase client Key (first 10 chars):', supabase.auth.getSession() ? 'Session available' : supabase.auth.currentSession?.access_token.substring(0,10) || 'No session');
+    console.log('Supabase client Key (first 10 chars):', supabase.auth.getSession ? (supabase.auth.getSession() ? 'Session available' : 'No session method yet') : 'No getSession method');
     fetchGameData("useEffect[] mount");
   }, [fetchGameData]);
 
-  // Effect for Supabase Realtime subscriptions
   useEffect(() => {
     if (!game || !game.gameId || isLoading) {
-      console.log("Realtime or Redirect: No game, gameId, or still loading, skipping setup.");
+      console.log("Realtime or Redirect: No game, gameId, or still loading, skipping real-time setup on WelcomePage.");
       return;
     }
     const gameId = game.gameId;
     console.log(`Realtime: Setting up Supabase subscriptions on WelcomePage for gameId: ${gameId}`);
 
     const commonPayloadHandler = async (sourceTable: string, payload: any) => {
-      console.log(`>>> Realtime: ${sourceTable.toUpperCase()} TABLE CHANGE DETECTED BY SUPABASE on WelcomePage! Payload:`, payload);
+      console.log(`>>> Realtime (${sourceTable} sub for game ${gameId} on WelcomePage): CHANGE DETECTED! Payload:`, payload);
       try {
-        const updatedGame = await getGame(gameId); // Fetch based on the known stable gameId
+        const updatedGame = await getGame(gameId);
         console.log(`Realtime (${sourceTable} sub for game ${gameId} on WelcomePage): Updated game state from getGame():`, updatedGame ? `ID: ${updatedGame.gameId}, Phase: ${updatedGame.gamePhase}, Players: ${updatedGame.players.length}` : "null" );
         setGame(updatedGame); 
       } catch (error) {
         console.error(`Realtime (${sourceTable} sub for game ${gameId} on WelcomePage): Error fetching game state after ${sourceTable} update:`, error);
       }
     };
-
+    
     const playersChannel = supabase
       .channel(`players-lobby-${game.gameId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'players',
-          filter: `game_id=eq.${game.gameId}`,
-        },
+        { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${game.gameId}` },
         (payload: any) => {
-          console.log(`>>> Realtime: PLAYERS TABLE CHANGE DETECTED BY SUPABASE! `, payload);
-          console.log(`Realtime (players sub for game ${game.gameId} on WelcomePage): Fetching updated game state due to players change...`);
-          getGame(game.gameId).then(updatedGame => {
-            console.log(`Realtime (players sub for game ${game.gameId} on WelcomePage): Updated game state from getGame():`, updatedGame ? `ID: ${updatedGame.gameId}, Phase: ${updatedGame.gamePhase}, Players: ${updatedGame.players.length}`: "null");
-            setGame(updatedGame);
-          }).catch(err => console.error("Error in players subscription getGame call:", err));
+            console.log(`>>> Realtime: PLAYERS TABLE CHANGE DETECTED BY SUPABASE! (Lobby page for game ${game.gameId})`, payload);
+            commonPayloadHandler('players', payload);
         }
       )
       .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`Realtime: Successfully subscribed to players-lobby-${game.gameId} on WelcomePage!`);
-        }
+        if (status === 'SUBSCRIBED') console.log(`Realtime: Successfully subscribed to players-lobby-${game.gameId} on WelcomePage!`);
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Realtime: Subscription error (players-lobby-${game.gameId}):`, status, err);
+          console.error(`Realtime: Subscription error (players-lobby-${game.gameId} on WelcomePage):`, status, err);
         }
-         if (err) {
-            console.error(`Realtime: Subscription detailed error (players-lobby-${game.gameId}):`, err);
-        }
+         if (err) console.error(`Realtime: Subscription detailed error (players-lobby-${game.gameId} on WelcomePage):`, err);
       });
 
     const gameChannel = supabase
       .channel(`game-state-lobby-${game.gameId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE', // Only listen for updates to the game row itself
-          schema: 'public',
-          table: 'games',
-          filter: `id=eq.${game.gameId}`,
-        },
+        { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${game.gameId}` },
          (payload: any) => {
-          console.log(`>>> Realtime: GAMES TABLE CHANGE DETECTED BY SUPABASE! `, payload);
-          console.log(`Realtime (games sub for game ${game.gameId} on WelcomePage): Fetching updated game state due to games change...`);
-          getGame(game.gameId).then(updatedGame => {
-            console.log(`Realtime (games sub for game ${game.gameId} on WelcomePage): Updated game state from getGame():`, updatedGame ? `ID: ${updatedGame.gameId}, Phase: ${updatedGame.gamePhase}, Players: ${updatedGame.players.length}`: "null");
-            setGame(updatedGame);
-          }).catch(err => console.error("Error in games subscription getGame call:", err));
+          console.log(`>>> Realtime: GAMES TABLE CHANGE DETECTED BY SUPABASE! (Lobby page for game ${game.gameId})`, payload);
+          commonPayloadHandler('games', payload);
          }
       )
       .subscribe((status, err) => {
-         if (status === 'SUBSCRIBED') {
-          console.log(`Realtime: Successfully subscribed to game-state-lobby-${game.gameId} on WelcomePage!`);
-        }
+         if (status === 'SUBSCRIBED') console.log(`Realtime: Successfully subscribed to game-state-lobby-${game.gameId} on WelcomePage!`);
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Realtime: Subscription error (game-state-lobby-${game.gameId}):`, status, err);
+          console.error(`Realtime: Subscription error (game-state-lobby-${game.gameId} on WelcomePage):`, status, err);
         }
-        if (err) {
-            console.error(`Realtime: Subscription detailed error (game-state-lobby-${game.gameId}):`, err);
-        }
+        if (err) console.error(`Realtime: Subscription detailed error (game-state-lobby-${game.gameId} on WelcomePage):`, err);
       });
 
     return () => {
@@ -154,28 +124,25 @@ export default function WelcomePage() {
       supabase.removeChannel(playersChannel).catch(err => console.error("Realtime: Error removing players channel on WelcomePage:", err));
       supabase.removeChannel(gameChannel).catch(err => console.error("Realtime: Error removing game channel on WelcomePage:", err));
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.gameId]); // Removed isLoading to prevent re-subscribing too often during load
+  }, [game, isLoading]);
 
-  // Effect for automatic navigation when game starts
+
   useEffect(() => {
-    const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging', 'winner_announcement', 'game_over'];
-    const step = searchParams?.get('step');
-
-    if (game && activePlayingPhases.includes(game.gamePhase) && step === 'setup' && !isLoading && !hasAutoNavigated) {
+    const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
+    
+    if (game && activePlayingPhases.includes(game.gamePhase) && currentStep === 'setup' && !isLoading && !hasAutoNavigated) {
         console.log(`Client: Game phase is ${game.gamePhase} (active), step is 'setup'. Auto-navigating to /game.`);
-        setHasAutoNavigated(true);
+        setHasAutoNavigated(true); 
         setTimeout(() => {
             router.push('/game');
-        }, 100); // Small delay to ensure state updates process
+        }, 100); 
     }
 
     if (game && game.gamePhase === 'lobby' && hasAutoNavigated) {
         console.log("Client: Game returned to lobby. Resetting auto-navigation flag.");
         setHasAutoNavigated(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game, searchParams, isLoading, router]); // hasAutoNavigated removed from dep array to allow re-navigation if game state changes appropriately
+  }, [game, currentStep, isLoading, router, hasAutoNavigated]);
 
 
   const handleAddPlayer = async (formData: FormData) => {
@@ -192,7 +159,7 @@ export default function WelcomePage() {
         return;
     }
 
-    const currentLocalGameId = game.gameId; // Capture gameId before async operation
+    const currentLocalGameId = game.gameId;
     console.log(`Client: Attempting to add player ${name} (avatar: ${avatar}) for gameId ${currentLocalGameId}`);
     startTransition(async () => {
       try {
@@ -205,12 +172,11 @@ export default function WelcomePage() {
           setThisPlayerId(newPlayer.id);
           console.log(`Client: Player ID ${newPlayer.id} stored in localStorage with key ${localStorageKey}`);
           
-          // Re-fetch game data to update the lobby for the current client immediately.
-          // Realtime should handle other clients if set up correctly.
-          console.log("Client (handleAddPlayer): Fetching game state after adding player...");
-          const updatedGame = await getGame(currentLocalGameId); // Use captured gameId
-          console.log("Client (handleAddPlayer): Game state after adding player:", updatedGame ? `ID: ${updatedGame.gameId}, Phase: ${updatedGame.gamePhase}, Players: ${updatedGame.players.length}` : "null");
+          // Re-fetch is now handled by real-time or the commonPayloadHandler if needed
+          // For immediate feedback on the current client:
+          const updatedGame = await getGame(currentLocalGameId); 
           setGame(updatedGame);
+          console.log("Client (handleAddPlayer): Game state after adding player (direct fetch for current client):", updatedGame ? `ID: ${updatedGame.gameId}, Phase: ${updatedGame.gamePhase}, Players: ${updatedGame.players.length}` : "null");
           toast({ title: "Welcome!", description: `${name} has joined. Click 'Ready' when you are!` });
           
         } else {
@@ -219,25 +185,21 @@ export default function WelcomePage() {
         }
       } catch (error: any) {
           console.error("Client: Error calling addPlayerAction:", error);
-          toast({ title: "Error Adding Player", description: error.message || String(error), variant: "destructive"});
+          const errorMsg = error.message || String(error);
+          toast({ title: "Error Adding Player", description: errorMsg, variant: "destructive"});
       }
     });
   };
 
  const handleResetGame = async () => {
     console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
-    setIsLoading(true); // Show loading state during reset
+    setIsLoading(true); 
     try {
       await resetGameForTesting();
-      // Redirect is handled by the server action. If it completes,
-      // this component instance will likely unmount or re-render due to navigation.
-      // A fetchGameData here might be redundant if redirect is guaranteed and fast.
       console.log("🔴 RESET (Client): resetGameForTesting server action likely initiated redirect.");
-      // No explicit fetchGameData needed here as redirect should handle it.
     } catch (error: any) {
        if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
         console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-        // This is an expected outcome for a redirect, no toast needed.
       } else {
         console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
         toast({
@@ -246,19 +208,6 @@ export default function WelcomePage() {
           variant: "destructive",
         });
       }
-    } finally {
-      // Only set isLoading to false if it wasn't a redirect that unmounts the component
-      // For now, assume redirect or subsequent load will handle UI.
-      // If errors happen and no redirect, ensure loading is false.
-      if (!(typeof (event?.target as any)?.digest === 'string' && (event?.target as any).digest.startsWith('NEXT_REDIRECT'))) {
-         // A bit of a guess here, the error object structure might vary.
-         // The goal is to only set isLoading false if no redirect happened.
-      }
-      // A more robust way might be to simply always call fetchGameData,
-      // as the redirect might take a moment.
-      // Or, let the redirect fully handle the re-render.
-      // For now, let's assume redirect handles it or fetch on next load.
-      // setIsLoading(false); // Re-evaluate if loading spinner gets stuck on non-redirect errors.
     }
   };
 
@@ -275,10 +224,7 @@ export default function WelcomePage() {
     console.log(`Client: Toggling ready status for player ${player.name} (ID: ${player.id}) from ${player.isReady} for game ${game.gameId}`);
     startTransition(async () => {
       try {
-        // Pass the current gameId to the action
         await togglePlayerReadyStatus(player.id, game.gameId, player.isReady); 
-        // Real-time updates should refresh the game state, including this player's ready status
-        // and potentially trigger game start if all conditions are met on the server.
         toast({
           title: player.isReady ? "Status: Not Ready" : "Status: Ready!",
           description: `You've changed your ready status.`,
@@ -303,7 +249,7 @@ export default function WelcomePage() {
   if (!game) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <Image src="/logo.png" alt="Make It Terrible Logo" width={150} height={45} data-ai-hint="game logo" />
+        <Image src="/logo.png" alt="Make It Terrible Logo" width={219} height={65} data-ai-hint="game logo" />
         <p className="text-xl text-destructive mt-4">Could not load game data. Please try refreshing.</p>
         <p className="text-sm text-muted-foreground mt-2">Check browser console and server logs for errors.</p>
          <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
@@ -314,14 +260,24 @@ export default function WelcomePage() {
   }
   
   const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
-  // const isGameActiveAndNotLobby = activePlayingPhases.includes(game.gamePhase as GamePhaseClientState);
 
   if (currentStep === 'setup') {
     const allPlayersReady = game.players.length >= MIN_PLAYERS_TO_START && game.players.every(p => p.isReady);
     const enoughPlayers = game.players.length >= MIN_PLAYERS_TO_START;
-
-    // Determine if the game is in an active playing phase (not lobby, winner_announcement, or game_over)
     const gameIsActuallyPlaying = activePlayingPhases.includes(game.gamePhase);
+
+    let lobbyMessage = "";
+    if (game.gamePhase === 'lobby') {
+      if (!enoughPlayers) {
+        lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - game.players.length} more...`;
+      } else if (!allPlayersReady) {
+        const unreadyCount = game.players.filter(p => !p.isReady).length;
+        lobbyMessage = `Waiting for ${unreadyCount} more player${unreadyCount > 1 ? 's' : ''} to be ready...`;
+      } else {
+        lobbyMessage = "All players ready! Starting game..."; // Game should auto-start via server action
+      }
+    }
+
 
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
@@ -344,9 +300,9 @@ export default function WelcomePage() {
                 <p className="text-md">The current game is in the "{game.gamePhase}" phase.</p>
                  <Button
                     onClick={() => router.push('/game')}
-                    variant="default" // Changed to default for more prominence
-                    size="lg" // Made larger
-                    className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90" // Styled like other primary action buttons
+                    variant="default" 
+                    size="lg" 
+                    className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90" 
                 >
                     Go to Current Game <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -383,7 +339,7 @@ export default function WelcomePage() {
             <CardHeader className="bg-secondary text-secondary-foreground p-6">
               <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players in Lobby ({game.players.length})</CardTitle>
               <CardDescription className="text-secondary-foreground/80 text-base">
-                {game.gamePhase === 'lobby' ? "Click the button to ready up! Game starts when all are ready." : "Current players in game."}
+                {game.gamePhase === 'lobby' ? "Click the button to ready up! Game starts automatically when all are ready." : "Current players in game."}
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
@@ -395,7 +351,7 @@ export default function WelcomePage() {
                         <span className="text-4xl mr-4">{player.avatar}</span>
                         <span className="text-xl font-medium text-foreground">{player.name}</span>
                       </div>
-                      {game.gamePhase === 'lobby' && ( // Only show ready button if in lobby
+                      {game.gamePhase === 'lobby' && (
                         <div className="flex items-center space-x-2">
                           {player.id === thisPlayerId ? (
                             <Button 
@@ -424,14 +380,8 @@ export default function WelcomePage() {
               ) : (
                 <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
               )}
-              {game.gamePhase === 'lobby' && !allPlayersReady && enoughPlayers && (
-                 <p className="text-sm text-center mt-4 text-yellow-600 dark:text-yellow-400 animate-pulse">Waiting for all {game.players.length} players to be ready...</p>
-              )}
-              {game.gamePhase === 'lobby' && allPlayersReady && (
-                  <p className="text-sm text-center mt-4 text-green-500 dark:text-green-400 font-bold">All players ready! Starting game soon...</p>
-              )}
-              {game.gamePhase === 'lobby' && !enoughPlayers && (
-                <p className="text-sm text-center mt-4 text-muted-foreground">Need at least {MIN_PLAYERS_TO_START} players to start the game.</p>
+              {game.gamePhase === 'lobby' && lobbyMessage && (
+                 <p className="text-sm text-center mt-4 text-yellow-600 dark:text-yellow-400 animate-pulse font-semibold">{lobbyMessage}</p>
               )}
             </CardContent>
           </Card>
@@ -445,7 +395,7 @@ export default function WelcomePage() {
             className="hover:bg-destructive/80"
             disabled={isPendingAction} 
           >
-            {isPendingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game State (For Testing)
+            {isPendingAction && game?.gamePhase !== 'lobby' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game State (For Testing)
           </Button>
         </div>
 
@@ -456,7 +406,6 @@ export default function WelcomePage() {
     );
   }
 
-  // Welcome Screen (currentStep === 'welcome')
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
       <Image
@@ -488,4 +437,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
