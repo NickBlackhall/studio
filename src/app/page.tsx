@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, startGame, togglePlayerReadyStatus } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, ThumbsUp, ThumbsDown } from 'lucide-react';
-import type { GameClientState, GamePhaseClientState, PlayerClientState } from '@/lib/types';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, ThumbsDown, CheckSquare, XSquare } from 'lucide-react';
+import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
 import { supabase } from '@/lib/supabaseClient';
+import { cn } from '@/lib/utils'; // Added this import
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useTransition } from 'react';
@@ -18,8 +19,8 @@ import { useToast } from "@/hooks/use-toast";
 export const dynamic = 'force-dynamic';
 
 export default function WelcomePage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [game, setGame] = useState<GameClientState | null>(null);
   const [thisPlayerId, setThisPlayerId] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export default function WelcomePage() {
     // @ts-ignore
     // console.log('Supabase client Key (first 10 chars):', supabase.supabaseKey?.substring(0, 10));
   }, []);
-  
+
   const fetchGameData = useCallback(async (origin: string = "initial") => {
     console.log(`Client: Initial fetchGameData triggered from ${origin}.`);
     setIsLoading(true);
@@ -50,7 +51,6 @@ export default function WelcomePage() {
         if (playerIdFromStorage) {
           setThisPlayerId(playerIdFromStorage);
         } else {
-          // If no player ID in storage for this game, clear it to be safe
           setThisPlayerId(null);
         }
       }
@@ -76,8 +76,7 @@ export default function WelcomePage() {
     console.log(`Realtime: Setting up Supabase subscriptions on WelcomePage for gameId: ${gameId}`);
 
     const commonPayloadHandler = async (sourceTable: string, payload: any) => {
-      console.log(`>>> Realtime: ${sourceTable.toUpperCase()} TABLE CHANGE DETECTED BY SUPABASE on WelcomePage!`);
-      console.log(`Realtime (${sourceTable} sub for game ${gameId} on WelcomePage): Fetching updated game state due to ${sourceTable} change...`);
+      console.log(`>>> Realtime: ${sourceTable.toUpperCase()} TABLE CHANGE DETECTED BY SUPABASE on WelcomePage! Payload:`, payload);
       try {
         const updatedGame = await getGame(gameId);
         console.log(`Realtime (${sourceTable} sub for game ${gameId} on WelcomePage): Updated game state from getGame():`, JSON.stringify(updatedGame, null, 2));
@@ -112,7 +111,7 @@ export default function WelcomePage() {
       });
 
     const gameChannel = supabase
-      .channel(`game-state-lobby-${game.gameId}`) 
+      .channel(`game-state-lobby-${game.gameId}`)
       .on(
         'postgres_changes',
         {
@@ -158,7 +157,7 @@ export default function WelcomePage() {
     }
 
     const currentLocalGameId = game.gameId;
-    console.log(`Client: Attempting to add player ${name} for gameId ${currentLocalGameId}`);
+    console.log(`Client: Attempting to add player ${name} (avatar: ${avatar}) for gameId ${currentLocalGameId}`);
     startTransition(async () => {
       try {
         const newPlayer = await addPlayerAction(name, avatar);
@@ -170,6 +169,7 @@ export default function WelcomePage() {
           setThisPlayerId(newPlayer.id);
           console.log(`Client: Player ID ${newPlayer.id} stored in localStorage with key ${localStorageKey}`);
           
+          // Re-fetch game data to update the lobby for the current client immediately
           console.log("Client (handleAddPlayer): Fetching game state after adding player...");
           const updatedGame = await getGame(currentLocalGameId);
           console.log("Client (handleAddPlayer): Game state after adding player:", JSON.stringify(updatedGame, null, 2));
@@ -186,15 +186,18 @@ export default function WelcomePage() {
     });
   };
 
-  const handleResetGame = async () => {
+ const handleResetGame = async () => {
     console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
     startTransition(async () => {
       try {
         await resetGameForTesting();
         console.log("🔴 RESET (Client): resetGameForTesting server action likely initiated redirect.");
+        // The redirect in the server action will cause a page reload, 
+        // so fetchGameData() or setting state here might be redundant or not even run.
       } catch (error: any) {
          if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+          // This is an expected outcome for a redirect, no toast needed.
         } else {
           console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
           toast({
@@ -209,7 +212,6 @@ export default function WelcomePage() {
 
  const handleStartGameFromLobby = async () => {
     if (game?.gameId && game.players.length >= 2 && game.gamePhase === 'lobby') {
-      // Check if all players are ready
       const allPlayersReady = game.players.every(p => p.isReady);
       if (!allPlayersReady) {
         toast({ title: "Not Yet!", description: "All players must be ready before starting the game.", variant: "destructive"});
@@ -235,19 +237,21 @@ export default function WelcomePage() {
       }
     } else {
       console.warn("Client: Cannot start game from lobby. Conditions not met.", game);
-      toast({ title: "Cannot Start Game", description: "Not enough players or game not in lobby phase.", variant: "destructive"});
+      toast({ title: "Cannot Start Game", description: "Not enough players, game not in lobby phase, or not all players are ready.", variant: "destructive"});
     }
   };
 
   const handleToggleReady = async (player: PlayerClientState) => {
-    if (!game || !game.gameId || player.id !== thisPlayerId) return;
+    if (!game || !game.gameId || player.id !== thisPlayerId) {
+        console.warn("Client: Cannot toggle ready. No game, gameId, or player is not this player.", { game, player, thisPlayerId });
+        return;
+    }
 
-    console.log(`Client: Toggling ready status for player ${player.name} (ID: ${player.id}) from ${player.isReady}`);
+    console.log(`Client: Toggling ready status for player ${player.name} (ID: ${player.id}) from ${player.isReady} for game ${game.gameId}`);
     startTransition(async () => {
       try {
         await togglePlayerReadyStatus(player.id, game.gameId, player.isReady);
         // Real-time updates should refresh the game state, including this player's ready status.
-        // Optionally, optimistically update UI or re-fetch here if needed, but RT should handle it.
         toast({
           title: player.isReady ? "Status: Not Ready" : "Status: Ready!",
           description: `You've changed your ready status.`,
@@ -280,7 +284,7 @@ export default function WelcomePage() {
       </div>
     );
   }
-
+  
   const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
   const isGameActiveAndNotLobby = activePlayingPhases.includes(game.gamePhase as GamePhaseClientState);
 
@@ -314,13 +318,13 @@ export default function WelcomePage() {
                 </Button>
             </div>
           }
-          {(game.gamePhase === 'lobby' && !isGameActiveAndNotLobby) &&
+          {(!isGameActiveAndNotLobby) &&
             <p className="text-xl text-muted-foreground mt-2">Enter your details to join the game, then mark yourself as Ready!</p>
           }
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
-          {(game.gamePhase === 'lobby' && !isGameActiveAndNotLobby) && (
+          {(!isGameActiveAndNotLobby) && (
             <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
               <CardHeader className="bg-primary text-primary-foreground p-6">
                 <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
@@ -360,11 +364,16 @@ export default function WelcomePage() {
                              onClick={() => handleToggleReady(player)} 
                              variant={player.isReady ? "default" : "outline"}
                              size="sm"
-                             className={cn("px-3 py-1 text-xs", player.isReady ? "bg-green-500 hover:bg-green-600 text-white" : "border-primary text-primary hover:bg-primary/10")}
+                             className={cn(
+                                "px-3 py-1 text-xs", 
+                                player.isReady 
+                                  ? "bg-green-500 hover:bg-green-600 text-white" 
+                                  : "border-primary text-primary hover:bg-primary/10"
+                              )}
                              disabled={isPendingAction}
                            >
-                            {isPendingAction && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-                            {player.isReady ? <><ThumbsUp className="mr-1 h-3 w-3"/>Ready!</> : <><ThumbsDown className="mr-1 h-3 w-3"/>Not Ready</>}
+                            {isPendingAction ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (player.isReady ? <ThumbsUp className="mr-1 h-3 w-3"/> : <ThumbsDown className="mr-1 h-3 w-3"/>)}
+                            {player.isReady ? "Ready!" : "Not Ready"}
                            </Button>
                         ) : (
                            player.isReady ? <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
@@ -384,13 +393,13 @@ export default function WelcomePage() {
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3 mt-6"
                   disabled={isPendingAction || isStartingGame || !allPlayersReady}
                 >
-                  {isStartingGame || (isPendingAction && !game.players.find(p => p.id === thisPlayerId)?.isReady === undefined) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Start Game & Go to Arena</>}
+                  {isStartingGame || (isPendingAction && !game.players.find(p => p.id === thisPlayerId && p.isReady)) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-6 w-6" />} Start Game & Go to Arena
                 </Button>
               )}
               {game.players.length < 2 && game.gamePhase === 'lobby' && !isGameActiveAndNotLobby && (
                 <p className="text-sm text-center mt-4 text-muted-foreground">Need at least 2 players to start the game.</p>
               )}
-               {!allPlayersReady && game.players.length >= 2 && game.gamePhase === 'lobby' && (
+               {!allPlayersReady && game.players.length >= 2 && game.gamePhase === 'lobby' && !isGameActiveAndNotLobby && (
                  <p className="text-sm text-center mt-4 text-yellow-600 dark:text-yellow-400">Waiting for all players to be ready...</p>
                )}
             </CardContent>
@@ -403,9 +412,9 @@ export default function WelcomePage() {
             variant="destructive"
             size="sm"
             className="hover:bg-destructive/80"
-            disabled={isPendingAction}
+            disabled={isPendingAction} // Disable if any ready/unready action is pending
           >
-            {isPendingAction && game.players.find(p => p.id === thisPlayerId)?.isReady !== undefined ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Reset Game State (For Testing)</>}
+            {isPendingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game State (For Testing)
           </Button>
         </div>
 
@@ -448,4 +457,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-    
