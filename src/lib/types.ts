@@ -53,15 +53,13 @@ export interface GameClientState { // Represents the overall game state as the c
   // For lobby/category selection
   categories: string[]; // List of available categories
   
-  // Not directly from DB Game row, but useful for client logic
-  // scenariosByCategory?: Record<string, ScenarioClientState[]>;
-  // responseCardsDeck?: string[]; // Deck is now managed server-side with DB
   readyPlayerOrder?: string[];
 }
 
 
 export const POINTS_TO_WIN = 3;
 export const CARDS_PER_HAND = 5;
+export const MIN_PLAYERS_TO_START = 2; // Added for clarity
 
 // The main Database types are now in src/lib/database.types.ts
 // This keeps a clean separation.
