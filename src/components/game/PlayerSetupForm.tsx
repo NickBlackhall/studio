@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AVATARS } from '@/lib/data';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { UserPlus, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -44,7 +43,7 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
 
     const formData = new FormData();
     formData.append('name', name);
-    formData.append('avatar', selectedAvatar); // selectedAvatar is now an image path e.g., "/avatar1.png"
+    formData.append('avatar', selectedAvatar);
 
     startTransition(async () => {
       await addPlayer(formData);
@@ -81,17 +80,19 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
               type="button"
               onClick={() => setSelectedAvatar(avatarPath)}
               className={cn(
-                "p-1 rounded-md transition-all duration-200 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-4 aspect-square flex items-center justify-center",
-                selectedAvatar === avatarPath ? 'bg-accent ring-4 ring-accent-foreground scale-105' : 'bg-background hover:bg-foreground/10'
+                "p-1 rounded-md transition-all duration-200 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-2 aspect-square flex items-center justify-center",
+                selectedAvatar === avatarPath 
+                  ? 'ring-primary ring-offset-2 scale-105' // Changed: Removed bg-accent, using primary ring
+                  : 'ring-transparent hover:ring-muted-foreground/50' // Changed: transparent ring, hover shows subtle ring
               )}
               aria-label={`Select avatar ${index + 1}`}
             >
               <Image 
                 src={avatarPath} 
                 alt={`Avatar ${index + 1}`} 
-                width={48}  // Adjusted size for better visibility
+                width={48}
                 height={48}
-                className="object-contain"
+                className="object-contain rounded-sm" // Added rounded-sm to the image itself for consistency
               />
             </button>
           ))}
