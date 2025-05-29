@@ -1,26 +1,24 @@
 
 "use client";
 
-import type { GameState, Player } from '@/lib/types';
+import type { GameClientState } from '@/lib/types'; // GameState was changed to GameClientState previously
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Sparkles, Forward, RotateCcw, Loader2 } from 'lucide-react'; // Added Loader2 here
+import { Trophy, Sparkles, Forward, RotateCcw, Loader2 } from 'lucide-react';
 import { useTransition } from 'react';
-import { useToast } from '@/hooks/use-toast';
+// Removed useToast as it's handled by GamePage for nextRound now
 
 interface WinnerDisplayProps {
-  gameState: GameState;
+  gameState: GameClientState; // Changed from GameState
   onNextRound: () => Promise<void>;
 }
 
 export default function WinnerDisplay({ gameState, onNextRound }: WinnerDisplayProps) {
   const [isPending, startTransition] = useTransition();
-  const { toast } = useToast();
 
-  const handleNextRoundClick = () => {
+  const handleActionClick = () => {
     startTransition(async () => {
       await onNextRound();
-      // Toast is now handled by the GamePage after action completion
     });
   };
 
@@ -39,7 +37,7 @@ export default function WinnerDisplay({ gameState, onNextRound }: WinnerDisplayP
         </CardHeader>
         <CardContent className="p-8">
           <p className="text-xl mb-6">Congratulations on achieving peak terribleness with {overallWinner?.score} points!</p>
-          <Button onClick={handleNextRoundClick} disabled={isPending} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg font-semibold py-3 px-8">
+          <Button onClick={handleActionClick} disabled={isPending} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg font-semibold py-3 px-8">
             {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <RotateCcw className="mr-2 h-5 w-5" />}
             Play Again?
           </Button>
@@ -49,7 +47,10 @@ export default function WinnerDisplay({ gameState, onNextRound }: WinnerDisplayP
   }
   
   if (gameState.gamePhase !== 'winner_announcement' || !gameState.lastWinner) {
-    return null; // Only show if it's winner announcement phase and there's a winner
+    // This component should only be rendered if gamePhase is winner_announcement or game_over and relevant data exists.
+    // If it's rendered in other phases or without lastWinner/winningPlayerId, it's an issue with GamePage logic.
+    // console.warn("WinnerDisplay rendered in unexpected state:", gameState.gamePhase, gameState.lastWinner);
+    return null; 
   }
 
   const { player, cardText } = gameState.lastWinner;
@@ -69,10 +70,8 @@ export default function WinnerDisplay({ gameState, onNextRound }: WinnerDisplayP
           "{cardText}"
         </blockquote>
         <p className="text-xl">They now have <strong className="text-3xl">{player.score}</strong> points!</p>
-        <Button onClick={handleNextRoundClick} disabled={isPending} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg font-semibold py-3 px-8">
-          {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Forward className="mr-2 h-5 w-5" />}
-          Next Round
-        </Button>
+        {/* "Next Round" button removed for automatic transition */}
+        <p className="text-muted-foreground text-sm animate-pulse">Next round starting soon...</p>
       </CardContent>
     </Card>
   );

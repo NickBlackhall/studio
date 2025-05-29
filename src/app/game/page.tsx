@@ -1,7 +1,7 @@
 
 "use client"; 
 
-import { useEffect, useState, useTransition, useCallback } from 'react';
+import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation'; 
 import { supabase } from '@/lib/supabaseClient';
 import { 
@@ -12,7 +12,7 @@ import {
   selectWinner, 
   nextRound, 
   getCurrentPlayer,
-  resetGameForTesting // Import reset action
+  resetGameForTesting 
 } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
@@ -22,7 +22,7 @@ import WinnerDisplay from '@/components/game/WinnerDisplay';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, Play, Loader2, UserCircle, RefreshCw } from 'lucide-react'; // Import RefreshCw
+import { Home, Play, Loader2, UserCircle, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 
@@ -34,15 +34,16 @@ export default function GamePage() {
   const [isActionPending, startActionTransition] = useTransition(); 
   const router = useRouter();
   const { toast } = useToast();
+  const nextRoundTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     console.log(`GamePage: fetchGameAndPlayer called from ${origin}.`);
     setIsLoading(true);
     let localGameId: string | null = null;
     try {
-      const initialGameState = await getGame();
+      const initialGameState = await getGame(); // No argument needed if findOrCreateGame handles it
       setGameState(initialGameState);
-      console.log(`GamePage: GameState fetched (from ${origin}):`, initialGameState ? `ID: ${initialGameState.gameId}, Phase: ${initialGameState.gamePhase}, Players: ${initialGameState.players.length}` : "null");
+      console.log(`GamePage: Initial gameState fetched (from ${origin}):`, initialGameState ? `ID: ${initialGameState.gameId}, Phase: ${initialGameState.gamePhase}, Players: ${initialGameState.players.length}` : "null");
 
       if (initialGameState && initialGameState.gameId) {
         localGameId = initialGameState.gameId;
@@ -53,6 +54,7 @@ export default function GamePage() {
           const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
           if (playerInGameList) {
             console.log(`GamePage: Player ${playerIdFromStorage} found in initial game state players list.`);
+            // Ensure hand is always an array, even if null/undefined from server
             setThisPlayer({ ...playerInGameList, hand: playerInGameList.hand || [] });
           } else {
             console.log(`GamePage: Player ${playerIdFromStorage} NOT in initial game state. Attempting direct fetch for game ${localGameId}.`);
@@ -66,29 +68,33 @@ export default function GamePage() {
         }
       } else if (initialGameState && initialGameState.gamePhase === 'lobby' && initialGameState.players.length === 0) {
         console.log("GamePage: Lobby is empty or no gameId, redirecting to setup.");
+        router.push('/?step=setup'); // Ensure user is on setup if lobby is empty
+        return;
+      } else if (!initialGameState || !initialGameState.gameId) {
+        // If there's no game at all, or it's in a weird state without an ID
+        console.error("GamePage: Critical error - no gameId found after fetch. Redirecting to setup.");
+        toast({ title: "Game Not Found", description: "Could not find an active game session. Please try setting up again.", variant: "destructive" });
         router.push('/?step=setup');
         return;
       }
     } catch (error) {
       console.error(`GamePage: Error in fetchGameAndPlayer (from ${origin}):`, error);
-      toast({ title: "Error Loading Game", description: "Could not fetch game data. Please try refreshing.", variant: "destructive" });
-      setThisPlayer(null);
+      toast({ title: "Error Loading Game", description: "Could not fetch game data. Please try refreshing or resetting.", variant: "destructive" });
+      // Don't set thisPlayer to null here, might already have a value. Let it be based on fetch.
+      router.push('/?step=setup'); // Fallback to setup on critical error
     } finally {
       setIsLoading(false);
       console.log(`GamePage: fetchGameAndPlayer (from ${origin}) sequence ended.`);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, toast]); // Removed toast from deps as it should be stable, router for push
+  }, [router, toast]); 
 
   useEffect(() => {
+    console.log("GamePage: Mounting. Starting initial data fetch.");
     fetchGameAndPlayer("initial mount");
   }, [fetchGameAndPlayer]);
 
   useEffect(() => {
-    if (!gameState || !gameState.gameId || !thisPlayer?.id) {
-      console.log(`GamePage Realtime: Skipping player-specific subscription setup (no game/gameId/thisPlayerId).`);
-    }
-    
     if (!gameState || !gameState.gameId) {
       console.log("GamePage Realtime: Skipping general subscription setup (no game/gameId). Current gameState:", gameState);
       return;
@@ -98,25 +104,22 @@ export default function GamePage() {
 
     const commonPayloadHandler = async (originTable: string, payload: any) => {
       console.log(`>>> GamePage Realtime (${originTable} sub for game ${gameId}): CHANGE DETECTED!`, payload);
-      startActionTransition(async () => {
-        try {
-          const updatedFullGame = await getGame(gameId);
-          setGameState(updatedFullGame);
-          console.log(`GamePage Realtime: Game state updated from ${originTable} event. GameID: ${updatedFullGame?.gameId}, Phase: ${updatedFullGame?.gamePhase}, Players: ${updatedFullGame?.players?.length}`);
-          
-          if (thisPlayer?.id && updatedFullGame?.gameId) {
-            if (updatedFullGame.gameId === gameId) { // Ensure it's the same game
-              const latestPlayerDetails = await getCurrentPlayer(thisPlayer.id, updatedFullGame.gameId);
-              setThisPlayer(latestPlayerDetails ? { ...latestPlayerDetails, hand: latestPlayerDetails.hand || [] } : null);
-              console.log(`GamePage Realtime: Refreshed thisPlayer details. ID: ${latestPlayerDetails?.id}, Hand: ${latestPlayerDetails?.hand?.length}`);
-            } else {
-               console.warn(`GamePage Realtime: Game ID mismatch. Current: ${gameId}, Updated: ${updatedFullGame.gameId}. Not refreshing thisPlayer.`);
-            }
-          }
-        } catch (error) {
-          console.error(`GamePage Realtime: Error processing ${originTable} update for game ${gameId}:`, error);
+      
+      // Fetch the full game state to ensure UI consistency
+      const updatedFullGame = await getGame(gameId);
+      if (updatedFullGame) {
+        setGameState(updatedFullGame);
+        console.log(`GamePage Realtime: Game state updated from ${originTable} event. GameID: ${updatedFullGame.gameId}, Phase: ${updatedFullGame.gamePhase}, Players: ${updatedFullGame.players.length}`);
+        
+        // If thisPlayer exists, refresh their details
+        if (thisPlayer?.id && updatedFullGame.gameId === gameId) {
+          const latestPlayerDetails = await getCurrentPlayer(thisPlayer.id, updatedFullGame.gameId);
+          setThisPlayer(latestPlayerDetails ? { ...latestPlayerDetails, hand: latestPlayerDetails.hand || [] } : null);
+          console.log(`GamePage Realtime: Refreshed thisPlayer details. ID: ${latestPlayerDetails?.id}, Hand: ${latestPlayerDetails?.hand?.length}`);
         }
-      });
+      } else {
+        console.error(`GamePage Realtime: Failed to fetch updated game state after ${originTable} event for game ${gameId}.`);
+      }
     };
 
     const channels = [
@@ -150,9 +153,34 @@ export default function GamePage() {
     return () => {
       console.log(`GamePage Realtime: Cleaning up subscriptions for gameId: ${gameId}`);
       activeSubscriptions.forEach(sub => supabase.removeChannel(sub).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
+      if (nextRoundTimeoutRef.current) {
+        clearTimeout(nextRoundTimeoutRef.current);
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState?.gameId, thisPlayer?.id]); // Added thisPlayer?.id to re-evaluate if player changes
+  }, [gameState?.gameId, thisPlayer?.id]);
+
+
+  // Effect for timed "Next Round" transition
+  useEffect(() => {
+    if (gameState?.gamePhase === 'winner_announcement' && thisPlayer?.id === gameState.currentJudgeId) {
+      console.log(`GamePage: Player ${thisPlayer.name} is judge. Setting 5s timer for next round.`);
+      if (nextRoundTimeoutRef.current) {
+        clearTimeout(nextRoundTimeoutRef.current);
+      }
+      nextRoundTimeoutRef.current = setTimeout(() => {
+        console.log(`GamePage: Timer expired for judge ${thisPlayer.name}. Calling handleNextRound.`);
+        handleNextRound();
+      }, 5000); // 5 seconds
+    }
+
+    return () => {
+      if (nextRoundTimeoutRef.current) {
+        clearTimeout(nextRoundTimeoutRef.current);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState?.gamePhase, gameState?.currentJudgeId, thisPlayer?.id, gameState?.gameId]);
 
 
   const handleStartGame = async () => {
@@ -160,8 +188,9 @@ export default function GamePage() {
       startActionTransition(async () => {
         console.log("GamePage: Client calling startGame server action.");
         try {
-          await startGame(gameState.gameId);
+          await startGame(gameState.gameId); // This action should handle dealing cards etc.
           toast({ title: "Game Starting!", description: "The judge is being assigned and cards dealt." });
+          // Realtime updates should handle UI changes.
         } catch (error: any) {
           console.error("GamePage: Error starting game:", error);
           toast({title: "Cannot Start", description: error.message || "Failed to start game.", variant: "destructive"});
@@ -177,6 +206,7 @@ export default function GamePage() {
       startActionTransition(async () => {
         try {
           await selectCategory(gameState.gameId, category);
+          // Toast can be shown if desired, or rely on UI change
         } catch (error: any) {
           console.error("GamePage: Error selecting category:", error);
           toast({title: "Category Error", description: error.message || "Failed to select category.", variant: "destructive"});
@@ -203,35 +233,31 @@ export default function GamePage() {
       setIsLoading(true); 
       try {
         await nextRound(gameState.gameId);
+        // Realtime updates handle UI refresh
       } catch (error: any) {
         console.error("GamePage: Error starting next round:", error);
         if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+          // Let Next.js handle the redirect, don't setIsLoading(false) or toast here
+          return; 
         } else {
           toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
         }
-      } finally {
-        // Only set loading to false if it wasn't a redirect that unmounts the component.
-        // If it was a redirect, the component unmounts. If not, ensure loading is false.
-        // A simple check: if there's an error and it's not a redirect error, stop loading.
-        // If no error, assume state update or redirect handles UI.
-        if (error && !(typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT'))) {
-            setIsLoading(false); 
-        } else if (!error) {
-            // If no error and no redirect, we might need to set isLoading to false here if the component
-            // doesn't always unmount or refresh quickly enough through other means.
-            // For now, relying on redirect or realtime to refresh.
-            // However, if the action was *not* a game-over redirect, we might want to ensure isLoading is false.
-            // This path implies a normal "next round", state should update via realtime.
-            setIsLoading(false); 
-        }
-      }
+      } 
+      // If it's not a redirect that unmounted us, set loading to false.
+      // This is a bit tricky; if the component might unmount due to state change before this, it's fine.
+      // But if it doesn't, we need to ensure isLoading is reset.
+      // Given that nextRound can lead to a redirect (if game over), it's safer to not always set this.
+      // Let's rely on re-renders or specific loading state management.
+      // However, for a non-redirecting next round, we SHOULD reset loading.
+      // The check above for NEXT_REDIRECT and returning should cover the redirect case.
+      // If we reach here, it means no redirect happened.
+      setIsLoading(false);
     }
   };
 
   const handleResetGameFromGamePage = async () => {
     console.log("🔴 RESET (GamePage Client): Button clicked - calling resetGameForTesting server action.");
-    // No startTransition here, to allow redirect to happen cleanly
     setIsLoading(true);
     try {
       await resetGameForTesting();
@@ -239,7 +265,6 @@ export default function GamePage() {
     } catch (error: any) {
       if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
         console.log("🔴 RESET (GamePage Client): Caught NEXT_REDIRECT during reset. Allowing Next.js to handle navigation.");
-        // This is an expected part of the flow, do not toast.
       } else {
         console.error("🔴 RESET (GamePage Client): Error calling resetGameForTesting server action:", error);
         toast({
@@ -247,17 +272,14 @@ export default function GamePage() {
           description: `Could not reset the game. ${error.message || String(error)}`,
           variant: "destructive",
         });
+         setIsLoading(false); // Only set loading false if it wasn't a redirect that will unmount
       }
-    } finally {
-      // If not a redirect error, ensure loading is false.
-      if (!(error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT'))) {
-        setIsLoading(false);
-      }
-    }
+    } 
+    // Do not set isLoading to false here if a redirect is expected to unmount the component
   };
 
 
-  if (isLoading && (!gameState || (!thisPlayer && (gameState?.gamePhase !== 'winner_announcement' && gameState?.gamePhase !== 'game_over'))) ) {
+  if (isLoading && (!gameState || (!thisPlayer && gameState?.gamePhase !== 'winner_announcement' && gameState?.gamePhase !== 'game_over'))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
@@ -269,14 +291,14 @@ export default function GamePage() {
   if (!gameState || !gameState.gameId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-        <Image src="https://placehold.co/150x150.png?text=Uh+Oh!" alt="Error" width={150} height={150} className="mb-6 rounded-lg shadow-md" data-ai-hint="error warning"/>
+        <Image src="https://placehold.co/150x150.png?text=Uh+Oh!" alt="Error" width={150} height={150} className="mb-6" data-ai-hint="error warning"/>
         <h1 className="text-4xl font-bold text-destructive mb-4">Critical Game Error!</h1>
         <p className="text-lg text-muted-foreground mb-8">
           Could not load or initialize the game session. Please try again or reset.
         </p>
-        <Link href="/">
+        <Link href="/?step=setup">
           <Button variant="default" size="lg" className="bg-primary text-primary-foreground hover:bg-primary/80 text-lg">
-            <Home className="mr-2 h-5 w-5" /> Go to Welcome Page
+            <Home className="mr-2 h-5 w-5" /> Go to Lobby Setup
           </Button>
         </Link>
       </div>
@@ -289,7 +311,7 @@ export default function GamePage() {
             <Image 
               src={gameState.players.length >= 2 ? "https://placehold.co/150x150.png?text=Ready%3F" : "https://placehold.co/150x150.png?text=Waiting"} 
               alt={gameState.players.length >= 2 ? "Ready to play" : "Waiting for players"} 
-              width={150} height={150} className="mb-6 rounded-lg shadow-md" 
+              width={150} height={150} className="mb-6" 
               data-ai-hint={gameState.players.length >= 2 ? "game start" : "waiting players"}
             />
             <h1 className="text-4xl font-bold text-primary mb-4">
@@ -377,7 +399,7 @@ export default function GamePage() {
             variant="destructive" 
             size="sm" 
             className="w-full"
-            disabled={isLoading || isActionPending} // Disable while other actions or loading is in progress
+            disabled={isLoading || isActionPending}
           >
             { (isLoading && !isActionPending) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> } 
             Reset Game (Testing)
@@ -412,6 +434,4 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
-    
-
     
