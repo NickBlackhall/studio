@@ -1,55 +1,67 @@
 
 "use client";
 
-import type { GameClientState } from '@/lib/types'; // GameState was changed to GameClientState previously
+import type { GameClientState } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Sparkles, Forward, RotateCcw, Loader2 } from 'lucide-react';
+import { Trophy, Sparkles, CheckCircle, XCircle, Loader2 } from 'lucide-react'; // Added CheckCircle, XCircle
 import { useTransition } from 'react';
-// Removed useToast as it's handled by GamePage for nextRound now
 
 interface WinnerDisplayProps {
-  gameState: GameClientState; // Changed from GameState
-  onNextRound: () => Promise<void>;
+  gameState: GameClientState;
+  // onNextRound is still used by GamePage for timed transitions for ROUND winners
+  onNextRound: () => Promise<void>; 
+  // New handlers for GAME OVER state
+  onPlayAgainYes: () => Promise<void>;
+  onPlayAgainNo: () => Promise<void>;
 }
 
-export default function WinnerDisplay({ gameState, onNextRound }: WinnerDisplayProps) {
-  const [isPending, startTransition] = useTransition();
+export default function WinnerDisplay({ gameState, onNextRound, onPlayAgainYes, onPlayAgainNo }: WinnerDisplayProps) {
+  const [isYesPending, startYesTransition] = useTransition();
+  const [isNoPending, startNoTransition] = useTransition();
 
-  const handleActionClick = () => {
-    startTransition(async () => {
-      await onNextRound();
-    });
-  };
+  const overallWinner = gameState.winningPlayerId ? gameState.players.find(p => p.id === gameState.winningPlayerId) : null;
 
-  if (gameState.gamePhase === 'game_over' && gameState.winningPlayerId) {
-    const overallWinner = gameState.players.find(p => p.id === gameState.winningPlayerId);
+  if (gameState.gamePhase === 'game_over' && overallWinner) {
     return (
       <Card className="text-center shadow-xl border-4 border-yellow-400 rounded-xl bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-500 text-black">
         <CardHeader className="p-8">
           <Trophy className="h-24 w-24 mx-auto text-yellow-700 mb-4" />
           <CardTitle className="text-5xl font-extrabold">GAME OVER!</CardTitle>
-          {overallWinner && (
-            <CardDescription className="text-3xl font-semibold mt-2 text-yellow-800">
-              {overallWinner.avatar} {overallWinner.name} is the Grand Champion of Terribleness!
-            </CardDescription>
-          )}
+          <CardDescription className="text-3xl font-semibold mt-2 text-yellow-800">
+            {overallWinner.avatar} {overallWinner.name} is the Grand Champion of Terribleness!
+          </CardDescription>
         </CardHeader>
-        <CardContent className="p-8">
-          <p className="text-xl mb-6">Congratulations on achieving peak terribleness with {overallWinner?.score} points!</p>
-          <Button onClick={handleActionClick} disabled={isPending} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg font-semibold py-3 px-8">
-            {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <RotateCcw className="mr-2 h-5 w-5" />}
-            Play Again?
-          </Button>
+        <CardContent className="p-8 space-y-6">
+          <p className="text-xl mb-2">Congratulations on achieving peak terribleness with {overallWinner.score} points!</p>
+          <p className="text-xl font-semibold mb-4">Play Again?</p>
+          <div className="flex justify-center gap-4">
+            <Button 
+              onClick={() => startYesTransition(onPlayAgainYes)} 
+              disabled={isYesPending || isNoPending} 
+              size="lg" 
+              className="bg-green-500 hover:bg-green-600 text-white text-lg font-semibold py-3 px-6"
+            >
+              {isYesPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" />}
+              Yes!
+            </Button>
+            <Button 
+              onClick={() => startNoTransition(onPlayAgainNo)} 
+              disabled={isNoPending || isYesPending} 
+              size="lg" 
+              variant="destructive"
+              className="bg-red-500 hover:bg-red-600 text-white text-lg font-semibold py-3 px-6"
+            >
+              {isNoPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <XCircle className="mr-2 h-5 w-5" />}
+              No
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
   }
   
   if (gameState.gamePhase !== 'winner_announcement' || !gameState.lastWinner) {
-    // This component should only be rendered if gamePhase is winner_announcement or game_over and relevant data exists.
-    // If it's rendered in other phases or without lastWinner/winningPlayerId, it's an issue with GamePage logic.
-    // console.warn("WinnerDisplay rendered in unexpected state:", gameState.gamePhase, gameState.lastWinner);
     return null; 
   }
 
@@ -70,7 +82,6 @@ export default function WinnerDisplay({ gameState, onNextRound }: WinnerDisplayP
           "{cardText}"
         </blockquote>
         <p className="text-xl">They now have <strong className="text-3xl">{player.score}</strong> points!</p>
-        {/* "Next Round" button removed for automatic transition */}
         <p className="text-muted-foreground text-sm animate-pulse">Next round starting soon...</p>
       </CardContent>
     </Card>
