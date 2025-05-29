@@ -15,6 +15,7 @@ import {
   resetGameForTesting 
 } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
+import { MIN_PLAYERS_TO_START } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
 import PlayerView from '@/components/game/PlayerView';
@@ -22,7 +23,7 @@ import WinnerDisplay from '@/components/game/WinnerDisplay';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, Play, Loader2, UserCircle, RefreshCw } from 'lucide-react';
+import { Home, Play, Loader2, UserCircle, RefreshCw, Forward, RotateCcw } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 
@@ -99,7 +100,7 @@ export default function GamePage() {
   useEffect(() => {
     console.log("GamePage: Mounting. Starting initial data fetch.");
     fetchGameAndPlayer("initial mount");
-  }, [fetchGameData]);
+  }, [fetchGameAndPlayer]);
 
   useEffect(() => {
     if (!gameState || !gameState.gameId ) { 
@@ -195,7 +196,7 @@ export default function GamePage() {
         clearTimeout(nextRoundTimeoutRef.current);
       }
     };
-  }, [gameState?.gamePhase, gameState?.gameId, thisPlayer?.isJudge, thisPlayer?.name]);
+  }, [gameState?.gamePhase, gameState?.gameId, thisPlayer?.isJudge, thisPlayer?.name]); // Added thisPlayer?.name dependency for logging clarity
 
 
   const handleStartGame = async () => {
@@ -243,57 +244,49 @@ export default function GamePage() {
 
   const handleNextRound = async () => {
     if (gameState?.gameId) {
-      setIsLoading(true); // Set loading before calling server action
+      setIsLoading(true);
       try {
         console.log(`GamePage: Calling nextRound server action for game ${gameState.gameId}`);
         await nextRound(gameState.gameId);
-        // Navigation or state update will be handled by server action redirect or real-time updates
       } catch (error: any) {
         console.error("GamePage: Error starting next round:", error);
         if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          // Do not setIsLoading(false) here as page will navigate
           return; 
         } else {
           toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
-           setIsLoading(false); // Only set loading false if it's not a redirect error
         }
-      } 
-      // If not a redirect error, and no other error occurred, it might still be loading from state propagation
-      // Let's ensure isLoading is false if the try block completed without redirect or specific error
-      // This will be handled by the finally block in fetchGameAndPlayer or real-time updates setting game state
+      } finally {
+         // Only set loading to false if it's not a redirect being handled
+        const errorIsRedirect = error: any => error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT');
+        if (!errorIsRedirect(error)) { // This line might cause an error if `error` is not defined in `finally`
+           setIsLoading(false);
+        }
+      }
     }
   };
 
   const handlePlayAgainYes = async () => {
     if (gameState?.gameId) {
-      // Use startActionTransition for visual feedback if desired, or just setIsLoading
+      setIsLoading(true);
       startActionTransition(async () => {
-        setIsLoading(true);
         try {
           console.log("GamePage: Player clicked 'Yes, Play Again!'. Calling resetGameForTesting.");
-          await resetGameForTesting(); // This action handles the redirect to /?step=setup
-          // No client-side navigation needed here, server action handles it.
-          // Toast can be shown, but user will be navigated away.
+          await resetGameForTesting(); 
         } catch (error: any) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
             console.log("GamePage (handlePlayAgainYes): Caught NEXT_REDIRECT during reset. Allowing Next.js to handle navigation.");
-            // Let Next.js handle the redirect, isLoading will reset on new page load
             return;
           } else {
             console.error("GamePage: Error on 'Play Again Yes':", error);
             toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
-            setIsLoading(false); // Set loading false if it's not a redirect
+            setIsLoading(false);
           }
         } 
-        // If it wasn't a redirect and no error, still might be loading new page
-        // but for safety, if we reach here, the action is "done" from client perspective
-        // No, isLoading will be handled by the redirect and subsequent page load.
       });
     }
   };
   
-
   const handlePlayAgainNo = async () => {
     console.log("GamePage: Player clicked 'No, I'm Done'. Navigating to home.");
     router.push('/');
@@ -301,14 +294,13 @@ export default function GamePage() {
 
   const handleResetGameFromGamePage = async () => {
     console.log("🔴 RESET (GamePage Client): Button clicked - calling resetGameForTesting server action.");
+    setIsLoading(true);
     startActionTransition(async () => {
-      setIsLoading(true);
       try {
         await resetGameForTesting();
       } catch (error: any) {
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("🔴 RESET (GamePage Client): Caught NEXT_REDIRECT during reset. Allowing Next.js to handle navigation.");
-          // isLoading will reset on new page load
         } else {
           console.error("🔴 RESET (GamePage Client): Error calling resetGameForTesting server action:", error);
           toast({
@@ -318,7 +310,13 @@ export default function GamePage() {
           });
            setIsLoading(false); 
         }
-      } 
+      } finally {
+        // Ensure isLoading is false if not a redirect
+        const errorIsRedirect = error: any => error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT');
+        if (!errorIsRedirect(error)) { // This line might cause an error if `error` is not defined in `finally`
+           setIsLoading(false);
+        }
+      }
     });
   };
 
@@ -349,25 +347,20 @@ export default function GamePage() {
     );
   }
   
-  if (gameState.gamePhase === 'lobby') {
+  if (gameState.gamePhase === 'lobby' && (!thisPlayer || gameState.players.find(p => p.id === thisPlayer.id))) {
      // User is on /game, but game is in lobby phase.
+     // Or, user is identified but part of a game that is now back in lobby.
      return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Image src="/logo.png" alt="Game Logo - Lobby" width={182} height={54} className="mb-6" data-ai-hint="game logo"/>
         <h1 className="text-4xl font-bold text-primary mb-4">Lobby is Empty or Game Not Started</h1>
         <p className="text-lg text-muted-foreground mb-8">
           The game is currently in the lobby phase.
-          {gameState.players.length >= MIN_PLAYERS_TO_START ? " Click 'Start Game Now!' to begin." : " Waiting for players..."}
+          {gameState.players.length >= MIN_PLAYERS_TO_START ? " All players in the lobby must be 'Ready' for the game to start automatically." : " Waiting for players..."}
         </p>
-        {gameState.players.length >= MIN_PLAYERS_TO_START && (
-          <Button onClick={handleStartGame} disabled={isActionPending} variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-xl px-8 py-6">
-            {isActionPending ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-2 h-6 w-6" />} 
-            Start Game Now!
-          </Button>
-        )}
          <Link href="/?step=setup" className="mt-6">
             <Button variant="outline" size="sm">
-                Go to Player Setup
+                Go to Player Setup & Lobby
             </Button>
         </Link>
       </div>
@@ -390,8 +383,6 @@ export default function GamePage() {
   }
 
   const renderGameContent = () => {
-    // This condition should ideally be caught by the "Identifying player..." screen above,
-    // but as a fallback for rendering.
     if (!thisPlayer && (gameState.gamePhase !== 'winner_announcement' && gameState.gamePhase !== 'game_over')) {
         if (['category_selection', 'player_submission', 'judging'].includes(gameState.gamePhase)) {
             return <div className="text-center text-destructive">Error: Could not identify your player for this game. Please return to lobby.</div>;
@@ -401,7 +392,7 @@ export default function GamePage() {
     if (gameState.gamePhase === 'winner_announcement' || gameState.gamePhase === 'game_over') {
       return <WinnerDisplay 
                 gameState={gameState} 
-                onNextRound={handleNextRound} // Still used for timed transition on winner_announcement
+                onNextRound={handleNextRound} 
                 onPlayAgainYes={handlePlayAgainYes}
                 onPlayAgainNo={handlePlayAgainNo}
               />;
@@ -412,7 +403,6 @@ export default function GamePage() {
     if (thisPlayer && !thisPlayer.isJudge) { 
       return <PlayerView gameState={gameState} player={thisPlayer} />;
     }
-    // Fallback if thisPlayer is somehow null but game is not in a state that handles it (e.g., spectating mode if we build that)
     return (
         <Card className="text-center">
             <CardHeader><CardTitle>Waiting for Game State</CardTitle></CardHeader>
@@ -439,7 +429,7 @@ export default function GamePage() {
             variant="destructive" 
             size="sm" 
             className="w-full" 
-            disabled={isActionPending || isLoading} // Disable if any global loading or specific action pending
+            disabled={isActionPending || isLoading}
           >
             { (isLoading || isActionPending) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> } 
             Reset Game (Testing)
@@ -452,8 +442,6 @@ export default function GamePage() {
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )}
-        {/* Removed the more aggressive isLoading overlay here to rely on the specific 'Identifying player' screen */}
-
         {thisPlayer && (
           <Card className="mb-4 bg-muted border-primary shadow">
             <CardContent className="p-3 flex items-center justify-center text-center">
@@ -461,7 +449,7 @@ export default function GamePage() {
                 <Image 
                   src={thisPlayer.avatar} 
                   alt={`${thisPlayer.name}'s avatar`} 
-                  width={28} // Slightly smaller for this context
+                  width={28} 
                   height={28}
                   className="mr-2 rounded-md object-cover"
                 />
