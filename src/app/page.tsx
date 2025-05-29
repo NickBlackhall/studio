@@ -10,10 +10,10 @@ import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, ThumbsDown, Chec
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
 import { supabase } from '@/lib/supabaseClient';
-import { cn } from '@/lib/utils'; // Added this import
+import { cn } from '@/lib/utils'; 
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback, useTransition } from 'react';
+import { useState, useEffect, useCallback, useTransition, useRef } from 'react';
 import { useToast } from "@/hooks/use-toast";
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +28,8 @@ export default function WelcomePage() {
   const [isStartingGame, setIsStartingGame] = useState(false);
   const [isPendingAction, startTransition] = useTransition();
   const { toast } = useToast();
+
+  const [hasAutoNavigated, setHasAutoNavigated] = useState(false);
 
   const stepParam = searchParams?.get('step');
   const currentStep = stepParam === 'setup' ? 'setup' : 'welcome';
@@ -67,9 +69,10 @@ export default function WelcomePage() {
     fetchGameData("useEffect[] mount");
   }, [fetchGameData]);
 
+  // Effect for Supabase Realtime subscriptions
   useEffect(() => {
     if (!game || !game.gameId || isLoading) {
-      console.log("Realtime or Redirect: No game, gameId, or still loading, skipping setup.");
+      console.log("Realtime or Redirect: No game, gameId, or still loading, skipping subscription setup.");
       return;
     }
     const gameId = game.gameId;
@@ -80,7 +83,7 @@ export default function WelcomePage() {
       try {
         const updatedGame = await getGame(gameId);
         console.log(`Realtime (${sourceTable} sub for game ${gameId} on WelcomePage): Updated game state from getGame():`, JSON.stringify(updatedGame, null, 2));
-        setGame(updatedGame);
+        setGame(updatedGame); // This will trigger the auto-navigation useEffect below if conditions are met
       } catch (error) {
         console.error(`Realtime (${sourceTable} sub for game ${gameId} on WelcomePage): Error fetching game state after ${sourceTable} update:`, error);
       }
@@ -139,7 +142,38 @@ export default function WelcomePage() {
       supabase.removeChannel(playersChannel).catch(err => console.error("Realtime: Error removing players channel on WelcomePage:", err));
       supabase.removeChannel(gameChannel).catch(err => console.error("Realtime: Error removing game channel on WelcomePage:", err));
     };
-  }, [game?.gameId, isLoading]);
+  }, [game?.gameId, isLoading]); // Ensure gameId is stable before subscribing
+
+  // Effect for automatic navigation when game starts
+  useEffect(() => {
+    const step = searchParams?.get('step');
+    if (
+      game &&
+      game.gamePhase &&
+      ['category_selection', 'player_submission', 'judging'].includes(game.gamePhase as GamePhaseClientState) &&
+      step === 'setup' && // Only if currently on the setup/lobby page
+      !hasAutoNavigated   // And haven't already auto-navigated for this game start
+    ) {
+      console.log(`Client (WelcomePage): Game phase is ${game.gamePhase}, current step is 'setup'. Auto-navigating to /game.`);
+      setHasAutoNavigated(true); 
+      // Use a timeout to avoid potential issues with navigation during render cycles
+      setTimeout(() => {
+        router.push('/game');
+      }, 0);
+    }
+
+    // Reset the auto-navigation flag if game returns to lobby while on setup page
+    // or if player navigates away from setup page.
+    if (game && game.gamePhase === 'lobby' && step === 'setup') {
+      if (hasAutoNavigated) {
+        console.log("Client (WelcomePage): Game returned to lobby or setup page reloaded in lobby state. Resetting auto-navigation flag.");
+        setHasAutoNavigated(false);
+      }
+    } else if (step !== 'setup' && hasAutoNavigated) {
+      console.log("Client (WelcomePage): Navigated away from setup page. Resetting auto-navigation flag.");
+      setHasAutoNavigated(false);
+    }
+  }, [game, searchParams, router, hasAutoNavigated, setHasAutoNavigated]);
 
 
   const handleAddPlayer = async (formData: FormData) => {
@@ -170,6 +204,7 @@ export default function WelcomePage() {
           console.log(`Client: Player ID ${newPlayer.id} stored in localStorage with key ${localStorageKey}`);
           
           // Re-fetch game data to update the lobby for the current client immediately
+          // Realtime should handle other clients.
           console.log("Client (handleAddPlayer): Fetching game state after adding player...");
           const updatedGame = await getGame(currentLocalGameId);
           console.log("Client (handleAddPlayer): Game state after adding player:", JSON.stringify(updatedGame, null, 2));
@@ -191,9 +226,12 @@ export default function WelcomePage() {
     startTransition(async () => {
       try {
         await resetGameForTesting();
-        console.log("🔴 RESET (Client): resetGameForTesting server action likely initiated redirect.");
-        // The redirect in the server action will cause a page reload, 
-        // so fetchGameData() or setting state here might be redundant or not even run.
+        // Redirect is handled by the server action.
+        // If redirect is successful, this component instance might unmount or re-render significantly.
+        // We expect fetchGameData to be called on new page load if not a full unmount/remount.
+        // For safety, explicitly call fetchGameData after the action, but it might be redundant due to redirect.
+        // await fetchGameData("after resetGameForTesting"); // Re-fetch state after reset.
+        console.log("🔴 RESET (Client): resetGameForTesting server action completed (redirect should occur).");
       } catch (error: any) {
          if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
@@ -223,6 +261,8 @@ export default function WelcomePage() {
       try {
         const updatedGameState = await startGame(game.gameId); 
         if (updatedGameState && (updatedGameState.gamePhase === 'category_selection' || updatedGameState.gamePhase === 'player_submission')) {
+          // The player who clicked the button will navigate.
+          // Other players will be navigated by the useEffect watching game.gamePhase.
           router.push('/game'); 
           toast({ title: "Game Starting!", description: "Let the terrible choices begin!" });
         } else {
@@ -293,7 +333,7 @@ export default function WelcomePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
         <header className="mb-12 text-center">
-          <button onClick={() => router.push('/')} className="cursor-pointer">
+          <button onClick={() => { setHasAutoNavigated(false); router.push('/'); }} className="cursor-pointer">
             <Image
               src="/logo.png"
               alt="Make It Terrible Logo"
@@ -318,13 +358,13 @@ export default function WelcomePage() {
                 </Button>
             </div>
           }
-          {(!isGameActiveAndNotLobby) &&
+          {(!isGameActiveAndNotLobby) && (game.gamePhase === 'lobby') &&
             <p className="text-xl text-muted-foreground mt-2">Enter your details to join the game, then mark yourself as Ready!</p>
           }
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
-          {(!isGameActiveAndNotLobby) && (
+          {(!isGameActiveAndNotLobby && game.gamePhase === 'lobby') && (
             <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
               <CardHeader className="bg-primary text-primary-foreground p-6">
                 <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
@@ -335,7 +375,7 @@ export default function WelcomePage() {
               </CardContent>
             </Card>
           )}
-          {isGameActiveAndNotLobby && (
+          {isGameActiveAndNotLobby && ( // This covers situation where user lands on setup but game is active
              <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden flex flex-col items-center justify-center p-6 md:col-span-2">
                 <p className="text-center text-lg text-foreground mb-4">A game is already in progress in phase: {game.gamePhase}.</p>
                 <Button onClick={() => router.push('/game')} variant="default" size="lg" className="mb-4">
@@ -372,7 +412,7 @@ export default function WelcomePage() {
                               )}
                              disabled={isPendingAction}
                            >
-                            {isPendingAction ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (player.isReady ? <ThumbsUp className="mr-1 h-3 w-3"/> : <ThumbsDown className="mr-1 h-3 w-3"/>)}
+                            {isPendingAction && game.players.find(p => p.id === thisPlayerId)?.isReady !== player.isReady ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (player.isReady ? <ThumbsUp className="mr-1 h-3 w-3"/> : <ThumbsDown className="mr-1 h-3 w-3"/>)}
                             {player.isReady ? "Ready!" : "Not Ready"}
                            </Button>
                         ) : (
@@ -393,7 +433,8 @@ export default function WelcomePage() {
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3 mt-6"
                   disabled={isPendingAction || isStartingGame || !allPlayersReady}
                 >
-                  {isStartingGame || (isPendingAction && !game.players.find(p => p.id === thisPlayerId && p.isReady)) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-6 w-6" />} Start Game & Go to Arena
+                  {isStartingGame ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-6 w-6" />} 
+                  Start Game & Go to Arena
                 </Button>
               )}
               {game.players.length < 2 && game.gamePhase === 'lobby' && !isGameActiveAndNotLobby && (
@@ -412,9 +453,9 @@ export default function WelcomePage() {
             variant="destructive"
             size="sm"
             className="hover:bg-destructive/80"
-            disabled={isPendingAction} // Disable if any ready/unready action is pending
+            disabled={isPendingAction && !isStartingGame} 
           >
-            {isPendingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game State (For Testing)
+            {isPendingAction && !isStartingGame ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game State (For Testing)
           </Button>
         </div>
 
