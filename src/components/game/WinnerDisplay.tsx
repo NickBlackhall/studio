@@ -1,9 +1,10 @@
+
 "use client";
 
 import type { GameState, Player } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Sparkles, Forward, RotateCcw } from 'lucide-react';
+import { Trophy, Sparkles, Forward, RotateCcw, Loader2 } from 'lucide-react'; // Added Loader2 here
 import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,7 +20,7 @@ export default function WinnerDisplay({ gameState, onNextRound }: WinnerDisplayP
   const handleNextRoundClick = () => {
     startTransition(async () => {
       await onNextRound();
-      toast({ title: "Next Round!", description: "The terror continues..." });
+      // Toast is now handled by the GamePage after action completion
     });
   };
 
