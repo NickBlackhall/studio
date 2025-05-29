@@ -1,5 +1,5 @@
 
-"use client"; 
+"use client";
 
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { getGame, addPlayer as addPlayerAction, resetGameForTesting, startGame }
 import { Users, Play, ArrowRight, RefreshCw, Loader2 } from 'lucide-react';
 import type { GameClientState, GamePhaseClientState } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
-import { supabase } from '@/lib/supabaseClient'; 
+import { supabase } from '@/lib/supabaseClient';
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useTransition } from 'react';
@@ -20,13 +20,12 @@ export const dynamic = 'force-dynamic';
 export default function WelcomePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [game, setGame] = useState<GameClientState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPendingAction, startTransition] = useTransition(); // Changed from setIsPendingAction
+  const [isPendingAction, startTransition] = useTransition();
   const { toast } = useToast();
 
-  // Ensure stepParam is accessed safely after router is ready
   const [step, setStep] = useState<'welcome' | 'setup'>('welcome');
 
   useEffect(() => {
@@ -37,8 +36,8 @@ export default function WelcomePage() {
   }, []);
 
   useEffect(() => {
-    const currentStepParam = searchParams?.get('step');
-    if (currentStepParam === 'setup') {
+    const stepParam = searchParams?.get('step');
+    if (stepParam === 'setup') {
       setStep('setup');
     } else {
       setStep('welcome');
@@ -55,7 +54,7 @@ export default function WelcomePage() {
     } catch (error: any) {
       console.error(`Client: Failed to fetch initial game state (from ${origin}):`, error);
       toast({ title: "Load Error", description: `Could not load game: ${error.message || String(error)}`, variant: "destructive"});
-      setGame(null); 
+      setGame(null);
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +62,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     fetchGameData("useEffect[] mount");
-  }, [fetchGameData]); 
+  }, [fetchGameData]);
 
   useEffect(() => {
     if (!game || !game.gameId || isLoading) {
@@ -72,30 +71,39 @@ export default function WelcomePage() {
     }
     const gameId = game.gameId;
     console.log(`Realtime: Setting up Supabase subscriptions for gameId: ${gameId}`);
-    
+
     const commonPayloadHandler = async (sourceTable: string, payload: any) => {
-        console.log(`>>> Realtime: ${sourceTable.toUpperCase()} TABLE CHANGE DETECTED BY SUPABASE! Payload:`, payload.new ? payload.new : payload.old ? payload.old : payload);
-        console.log(`Realtime (${sourceTable} sub for game ${gameId}): Fetching updated game state due to ${sourceTable} change...`);
-        try {
-            const updatedGame = await getGame(gameId);
-            console.log(`Realtime (${sourceTable} sub for game ${gameId}): Updated game state from getGame():`, JSON.stringify(updatedGame, null, 2));
-            setGame(updatedGame);
-        } catch (error) {
-            console.error(`Realtime (${sourceTable} sub for game ${gameId}): Error fetching game state after ${sourceTable} update:`, error);
-        }
+      console.log(`>>> Realtime: ${sourceTable.toUpperCase()} TABLE CHANGE DETECTED BY SUPABASE! Payload:`, payload.new ? payload.new : payload.old ? payload.old : payload);
+      console.log(`Realtime (${sourceTable} sub for game ${gameId}): Fetching updated game state due to ${sourceTable} change...`);
+      try {
+        const updatedGame = await getGame(gameId);
+        console.log(`Realtime (${sourceTable} sub for game ${gameId}): Updated game state from getGame():`, JSON.stringify(updatedGame, null, 2));
+        setGame(updatedGame);
+      } catch (error) {
+        console.error(`Realtime (${sourceTable} sub for game ${gameId}): Error fetching game state after ${sourceTable} update:`, error);
+      }
     };
-    
+
     const playersChannel = supabase
       .channel(`players-lobby-${game.gameId}`)
       .on(
         'postgres_changes',
         {
-          event: '*', 
+          event: '*',
           schema: 'public',
           table: 'players',
-          filter: `game_id=eq.${game.gameId}`, 
+          filter: `game_id=eq.${game.gameId}`,
         },
-        (payload: any) => commonPayloadHandler('players', payload)
+        (payload: any) => {
+          console.log(`>>> Realtime: PLAYERS TABLE CHANGE DETECTED BY SUPABASE!`, payload);
+          console.log(`Realtime (players sub for game ${game.gameId}): Fetching updated game state due to players change...`);
+          getGame(game.gameId).then(updatedGame => {
+            console.log(`Realtime (players sub for game ${game.gameId}): Updated game state from getGame():`, JSON.stringify(updatedGame, null, 2));
+            setGame(updatedGame);
+          }).catch(error => {
+             console.error(`Realtime (players sub for game ${game.gameId}): Error fetching game state after players update:`, error);
+          });
+        }
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
@@ -114,12 +122,21 @@ export default function WelcomePage() {
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE', 
+          event: 'UPDATE',
           schema: 'public',
           table: 'games',
           filter: `id=eq.${game.gameId}`,
         },
-        (payload: any) => commonPayloadHandler('games', payload)
+        (payload: any) => {
+          console.log(`>>> Realtime: GAMES TABLE CHANGE DETECTED BY SUPABASE!`, payload);
+          console.log(`Realtime (games sub for game ${game.gameId}): Fetching updated game state due to games change...`);
+          getGame(game.gameId).then(updatedGame => {
+             console.log(`Realtime (games sub for game ${game.gameId}): Updated game state from getGame():`, JSON.stringify(updatedGame, null, 2));
+            setGame(updatedGame);
+          }).catch(error => {
+            console.error(`Realtime (games sub for game ${game.gameId}): Error fetching game state after games update:`, error);
+          });
+        }
       )
       .subscribe((status, err) => {
          if (status === 'SUBSCRIBED') {
@@ -132,16 +149,14 @@ export default function WelcomePage() {
             console.error(`Realtime: Subscription detailed error (game-state-${game.gameId}):`, err);
         }
       });
-      
-    // Cleanup function
+
     return () => {
       console.log(`Realtime: Cleaning up Supabase subscriptions for gameId: ${game?.gameId || 'N/A'}`);
       if (playersChannel) supabase.removeChannel(playersChannel).catch(err => console.error("Realtime: Error removing players channel:", err));
       if (gameChannel) supabase.removeChannel(gameChannel).catch(err => console.error("Realtime: Error removing game channel:", err));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.gameId, isLoading]);
-
+  }, [game?.gameId]); // Removed isLoading from dependencies as it caused re-subscriptions
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
@@ -156,24 +171,25 @@ export default function WelcomePage() {
         toast({ title: "Error!", description: "Game session not found. Please refresh.", variant: "destructive"});
         return;
     }
-    
-    const currentLocalGameId = game.gameId; 
-    startTransition(async () => { // Using startTransition
+
+    const currentLocalGameId = game.gameId;
+    console.log(`Client: Attempting to add player ${name} for gameId ${currentLocalGameId}`);
+    startTransition(async () => {
       try {
-        console.log(`Client: Attempting to add player ${name} for gameId ${currentLocalGameId}`);
         const newPlayer = await addPlayerAction(name, avatar);
-        console.log('Client: Add player action result:', newPlayer); 
-        
+        console.log('Client: Add player action result:', newPlayer);
+
         if (newPlayer && newPlayer.id && currentLocalGameId) {
           const localStorageKey = `thisPlayerId_game_${currentLocalGameId}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
           console.log(`Client: Player ID ${newPlayer.id} stored in localStorage with key ${localStorageKey}`);
-          
+
           console.log("Client (handleAddPlayer): Fetching game state after adding player...");
-          const updatedGame = await getGame(currentLocalGameId); 
+          const updatedGame = await getGame(currentLocalGameId);
           console.log("Client (handleAddPlayer): Game state after adding player:", JSON.stringify(updatedGame, null, 2));
           setGame(updatedGame);
-          toast({ title: "Welcome!", description: `${name} has joined the game!`});
+          // Toast for player joining can be excessive with real-time updates
+          // toast({ title: "Welcome!", description: `${name} has joined the game!`});
         } else {
           console.error("Client: Failed to add player or set player ID in localStorage.", { newPlayer, gameId: currentLocalGameId });
           toast({ title: "Error!", description: "Could not add player or save session. Please try again.", variant: "destructive"});
@@ -187,17 +203,12 @@ export default function WelcomePage() {
 
   const handleResetGame = async () => {
     console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
-    startTransition(async () => { // Using startTransition
+    startTransition(async () => {
       try {
         await resetGameForTesting();
-        // Redirect is handled by the server action.
-        // Client might re-fetch due to redirect or realtime.
-        // No explicit fetchGameData needed here if redirect is reliable.
-        // Toast for successful reset is not necessary if page reloads to clean state.
       } catch (error: any) {
         if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          // This is an expected part of the flow, so no error toast.
         } else {
           console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
           toast({
@@ -209,19 +220,20 @@ export default function WelcomePage() {
       }
     });
   };
-  
+
   const handleStartGameFromLobby = async () => {
     if (game?.gameId && game.players.length >= 2 && game.gamePhase === 'lobby') {
-      startTransition(async () => { // Using startTransition
+      console.log(`Client: User clicked 'Start Game & Go to Arena' for game ${game.gameId}. Calling startGame server action.`);
+      startTransition(async () => {
         try {
-          console.log(`Client: Attempting to start game ${game.gameId} from lobby.`);
-          const updatedGame = await startGame(game.gameId); // startGame should return the updated state
-          if (updatedGame) {
-            setGame(updatedGame); // Update local state
-            router.push('/game'); 
+          const updatedGameState = await startGame(game.gameId);
+          if (updatedGameState) {
+            // Server action revalidates and client real-time should pick up the phase change.
+            // Navigation to /game will happen due to phase change if on setup, or directly if preferred.
+            router.push('/game');
             toast({ title: "Game Starting!", description: "Let the terrible choices begin!" });
           } else {
-            throw new Error("Failed to get updated game state after starting.");
+            throw new Error("Start game action did not return updated game state.");
           }
         } catch (error: any) {
             console.error("Client: Error starting game from lobby:", error);
@@ -255,7 +267,7 @@ export default function WelcomePage() {
       </div>
     );
   }
-  
+
   const activePlayingPhases: GamePhaseClientState[] = ['category_selection', 'player_submission', 'judging'];
   const isGameActiveAndNotLobby = activePlayingPhases.includes(game.gamePhase as GamePhaseClientState);
 
@@ -265,21 +277,21 @@ export default function WelcomePage() {
         <header className="mb-12 text-center">
           <button onClick={() => router.push('/')} className="cursor-pointer">
             <Image
-              src="https://placehold.co/300x90.png?text=Make+It+Terrible" 
+              src="/logo.png"
               alt="Make It Terrible Logo"
-              width={300} 
-              height={90} 
+              width={300}
+              height={90}
               className="mx-auto mb-4 rounded-lg shadow-md"
-              data-ai-hint="game logo" 
-              priority 
+              data-ai-hint="game logo"
+              priority
             />
           </button>
-          <h1 className="text-5xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-          {isGameActiveAndNotLobby && 
+          <h1 className="text-5xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1> {/* Hidden if logo is present */}
+          {isGameActiveAndNotLobby &&
             <div className="my-4 p-4 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 rounded-md">
                 <p className="font-bold">Game in Progress!</p>
                 <p>The current game is in the "{game.gamePhase}" phase.</p>
-                <Button 
+                 <Button
                     onClick={() => router.push('/game')}
                     variant="link"
                     className="text-yellow-700 dark:text-yellow-300 hover:underline p-0 h-auto mt-1"
@@ -332,11 +344,11 @@ export default function WelcomePage() {
               )}
               {(game.players.length >= 2 && game.gamePhase === 'lobby') && (
                 <Button
-                  onClick={handleStartGameFromLobby} 
+                  onClick={handleStartGameFromLobby}
                   variant="default"
                   size="lg"
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3 mt-6"
-                  disabled={isPendingAction} 
+                  disabled={isPendingAction}
                 >
                   {isPendingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Start Game & Go to Arena</>}
                 </Button>
@@ -349,11 +361,11 @@ export default function WelcomePage() {
         </div>
 
         <div className="mt-8 w-full max-w-4xl text-center">
-          <Button 
-            onClick={handleResetGame} 
-            variant="destructive" 
-            size="sm" 
-            className="hover:bg-destructive/80" 
+          <Button
+            onClick={handleResetGame}
+            variant="destructive"
+            size="sm"
+            className="hover:bg-destructive/80"
             disabled={isPendingAction}
           >
             {isPendingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Reset Game State (For Testing)</>}
@@ -371,28 +383,27 @@ export default function WelcomePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
       <Image
-        src="https://placehold.co/438x131.png?text=Make+It+Terrible" 
+        src="/logo.png"
         alt="Make It Terrible Logo"
-        width={438} 
-        height={131} 
+        width={438}
+        height={131}
         className="mx-auto mb-8 rounded-lg shadow-md"
         data-ai-hint="game logo large"
         priority
       />
-      <h1 className="text-6xl font-extrabold tracking-tighter text-primary mb-4 sr-only">
+      <h1 className="text-6xl font-extrabold tracking-tighter text-primary mb-4 sr-only"> {/* Hidden if logo is present */}
         Make It Terrible
       </h1>
       <p className="text-2xl text-muted-foreground mb-12">
         The game of awful choices and hilarious outcomes!
       </p>
       <Button
-        onClick={() => router.push('/?step=setup')} 
+        onClick={() => router.push('/?step=setup')}
         variant="default"
         size="lg"
         className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
-        disabled={isPendingAction}
       >
-        {isPendingAction ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <>Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" /></>}
+       Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
       </Button>
        <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full">
         <p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p>
@@ -400,6 +411,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-    
-
-    
