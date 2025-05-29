@@ -73,7 +73,7 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
 
       <div className="space-y-2">
         <Label className="text-lg font-medium text-foreground">Choose Your Avatar</Label>
-        <div className="grid grid-cols-5 gap-2 p-2 bg-muted rounded-lg border-2">
+        <div className="grid grid-cols-5 gap-1 p-2 bg-muted rounded-lg border-2">
           {AVATARS.map((avatarPath, index) => (
             <button
               key={avatarPath}
@@ -82,8 +82,8 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
               className={cn(
                 "p-1 rounded-md transition-all duration-200 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-2 aspect-square flex items-center justify-center",
                 selectedAvatar === avatarPath 
-                  ? 'ring-primary ring-offset-2 scale-105' // Changed: Removed bg-accent, using primary ring
-                  : 'ring-transparent hover:ring-muted-foreground/50' // Changed: transparent ring, hover shows subtle ring
+                  ? 'ring-primary ring-offset-2 scale-105' 
+                  : 'ring-transparent hover:ring-muted-foreground/50' 
               )}
               aria-label={`Select avatar ${index + 1}`}
             >
@@ -92,7 +92,7 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
                 alt={`Avatar ${index + 1}`} 
                 width={48}
                 height={48}
-                className="object-contain rounded-sm" // Added rounded-sm to the image itself for consistency
+                className="object-contain rounded-sm"
               />
             </button>
           ))}
@@ -106,3 +106,4 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
     </form>
   );
 }
+
