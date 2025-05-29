@@ -5,8 +5,8 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getGame, addPlayer as addPlayerAction, resetGameForTesting, startGame } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare } from 'lucide-react'; // Added CheckSquare, XSquare
+import { getGame, addPlayer as addPlayerAction, resetGameForTesting, startGame, togglePlayerReadyStatus } from '@/app/game/actions';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, ThumbsUp, ThumbsDown } from 'lucide-react';
 import type { GameClientState, GamePhaseClientState, PlayerClientState } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
 import { supabase } from '@/lib/supabaseClient';
@@ -28,14 +28,14 @@ export default function WelcomePage() {
   const [isPendingAction, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const step = searchParams?.get('step');
-  const currentStep = step === 'setup' ? 'setup' : 'welcome';
+  const stepParam = searchParams?.get('step');
+  const currentStep = stepParam === 'setup' ? 'setup' : 'welcome';
 
   useEffect(() => {
     // @ts-ignore supabase client has .supabaseUrl and .supabaseKey
-    console.log('Supabase client URL:', supabase.supabaseUrl);
+    // console.log('Supabase client URL:', supabase.supabaseUrl);
     // @ts-ignore
-    console.log('Supabase client Key (first 10 chars):', supabase.supabaseKey?.substring(0, 10));
+    // console.log('Supabase client Key (first 10 chars):', supabase.supabaseKey?.substring(0, 10));
   }, []);
   
   const fetchGameData = useCallback(async (origin: string = "initial") => {
@@ -49,6 +49,9 @@ export default function WelcomePage() {
         const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${gameState.gameId}`);
         if (playerIdFromStorage) {
           setThisPlayerId(playerIdFromStorage);
+        } else {
+          // If no player ID in storage for this game, clear it to be safe
+          setThisPlayerId(null);
         }
       }
     } catch (error: any) {
@@ -66,14 +69,14 @@ export default function WelcomePage() {
 
   useEffect(() => {
     if (!game || !game.gameId || isLoading) {
-      console.log("Realtime or Redirect: No game, gameId, or still loading, skipping real-time setup for WelcomePage.");
+      console.log("Realtime or Redirect: No game, gameId, or still loading, skipping setup.");
       return;
     }
     const gameId = game.gameId;
     console.log(`Realtime: Setting up Supabase subscriptions on WelcomePage for gameId: ${gameId}`);
 
     const commonPayloadHandler = async (sourceTable: string, payload: any) => {
-      console.log(`>>> Realtime: ${sourceTable.toUpperCase()} TABLE CHANGE DETECTED BY SUPABASE on WelcomePage! Payload:`, payload.new ? payload.new : payload.old ? payload.old : payload);
+      console.log(`>>> Realtime: ${sourceTable.toUpperCase()} TABLE CHANGE DETECTED BY SUPABASE on WelcomePage!`);
       console.log(`Realtime (${sourceTable} sub for game ${gameId} on WelcomePage): Fetching updated game state due to ${sourceTable} change...`);
       try {
         const updatedGame = await getGame(gameId);
@@ -101,15 +104,15 @@ export default function WelcomePage() {
           console.log(`Realtime: Successfully subscribed to players-lobby-${game.gameId} on WelcomePage!`);
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Realtime: Subscription error (players-lobby-${game.gameId} on WelcomePage):`, status, err);
+          console.error(`Realtime: Subscription error (players-lobby-${game.gameId}):`, status, err);
         }
          if (err) {
-            console.error(`Realtime: Subscription detailed error (players-lobby-${game.gameId} on WelcomePage):`, err);
+            console.error(`Realtime: Subscription detailed error (players-lobby-${game.gameId}):`, err);
         }
       });
 
     const gameChannel = supabase
-      .channel(`game-state-lobby-${game.gameId}`) // Ensure unique channel name for lobby
+      .channel(`game-state-lobby-${game.gameId}`) 
       .on(
         'postgres_changes',
         {
@@ -125,10 +128,10 @@ export default function WelcomePage() {
           console.log(`Realtime: Successfully subscribed to game-state-lobby-${game.gameId} on WelcomePage!`);
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Realtime: Subscription error (game-state-lobby-${game.gameId} on WelcomePage):`, status, err);
+          console.error(`Realtime: Subscription error (game-state-lobby-${game.gameId}):`, status, err);
         }
         if (err) {
-            console.error(`Realtime: Subscription detailed error (game-state-lobby-${game.gameId} on WelcomePage):`, err);
+            console.error(`Realtime: Subscription detailed error (game-state-lobby-${game.gameId}):`, err);
         }
       });
 
@@ -188,7 +191,7 @@ export default function WelcomePage() {
     startTransition(async () => {
       try {
         await resetGameForTesting();
-        console.log("🔴 RESET (Client): resetGameForTesting server action completed (redirect initiated by server).");
+        console.log("🔴 RESET (Client): resetGameForTesting server action likely initiated redirect.");
       } catch (error: any) {
          if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
@@ -206,11 +209,18 @@ export default function WelcomePage() {
 
  const handleStartGameFromLobby = async () => {
     if (game?.gameId && game.players.length >= 2 && game.gamePhase === 'lobby') {
-      console.log(`Client: User clicked 'Go to Game / Start' for game ${game.gameId}. Calling startGame server action.`);
+      // Check if all players are ready
+      const allPlayersReady = game.players.every(p => p.isReady);
+      if (!allPlayersReady) {
+        toast({ title: "Not Yet!", description: "All players must be ready before starting the game.", variant: "destructive"});
+        return;
+      }
+
+      console.log(`Client: User clicked 'Start Game' for game ${game.gameId}. Calling startGame server action.`);
       setIsStartingGame(true);
       try {
         const updatedGameState = await startGame(game.gameId); 
-        if (updatedGameState && updatedGameState.gamePhase === 'category_selection') {
+        if (updatedGameState && (updatedGameState.gamePhase === 'category_selection' || updatedGameState.gamePhase === 'player_submission')) {
           router.push('/game'); 
           toast({ title: "Game Starting!", description: "Let the terrible choices begin!" });
         } else {
@@ -227,6 +237,26 @@ export default function WelcomePage() {
       console.warn("Client: Cannot start game from lobby. Conditions not met.", game);
       toast({ title: "Cannot Start Game", description: "Not enough players or game not in lobby phase.", variant: "destructive"});
     }
+  };
+
+  const handleToggleReady = async (player: PlayerClientState) => {
+    if (!game || !game.gameId || player.id !== thisPlayerId) return;
+
+    console.log(`Client: Toggling ready status for player ${player.name} (ID: ${player.id}) from ${player.isReady}`);
+    startTransition(async () => {
+      try {
+        await togglePlayerReadyStatus(player.id, game.gameId, player.isReady);
+        // Real-time updates should refresh the game state, including this player's ready status.
+        // Optionally, optimistically update UI or re-fetch here if needed, but RT should handle it.
+        toast({
+          title: player.isReady ? "Status: Not Ready" : "Status: Ready!",
+          description: `You've changed your ready status.`,
+        });
+      } catch (error: any) {
+        console.error("Client: Error toggling ready status:", error);
+        toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
+      }
+    });
   };
 
 
@@ -255,6 +285,7 @@ export default function WelcomePage() {
   const isGameActiveAndNotLobby = activePlayingPhases.includes(game.gamePhase as GamePhaseClientState);
 
   if (currentStep === 'setup') {
+    const allPlayersReady = game.players.length >= 2 && game.players.every(p => p.isReady);
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
         <header className="mb-12 text-center">
@@ -284,7 +315,7 @@ export default function WelcomePage() {
             </div>
           }
           {(game.gamePhase === 'lobby' && !isGameActiveAndNotLobby) &&
-            <p className="text-xl text-muted-foreground mt-2">Enter your details to join the game.</p>
+            <p className="text-xl text-muted-foreground mt-2">Enter your details to join the game, then mark yourself as Ready!</p>
           }
         </header>
 
@@ -312,7 +343,7 @@ export default function WelcomePage() {
           <Card className="shadow-2xl border-2 border-secondary rounded-xl overflow-hidden">
             <CardHeader className="bg-secondary text-secondary-foreground p-6">
               <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players in Lobby ({game.players.length})</CardTitle>
-              <CardDescription className="text-secondary-foreground/80 text-base">See who's brave enough to play.</CardDescription>
+              <CardDescription className="text-secondary-foreground/80 text-base">See who's brave enough to play. Click the button to ready up!</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               {game.players.length > 0 ? (
@@ -323,12 +354,20 @@ export default function WelcomePage() {
                         <span className="text-4xl mr-4">{player.avatar}</span>
                         <span className="text-xl font-medium text-foreground">{player.name}</span>
                       </div>
-                      {/* Display Ready Status Icon */}
-                      <div className="flex items-center">
-                        {player.isReady ? (
-                          <CheckSquare className="h-6 w-6 text-green-500" title="Ready" />
+                      <div className="flex items-center space-x-2">
+                        {player.id === thisPlayerId ? (
+                           <Button 
+                             onClick={() => handleToggleReady(player)} 
+                             variant={player.isReady ? "default" : "outline"}
+                             size="sm"
+                             className={cn("px-3 py-1 text-xs", player.isReady ? "bg-green-500 hover:bg-green-600 text-white" : "border-primary text-primary hover:bg-primary/10")}
+                             disabled={isPendingAction}
+                           >
+                            {isPendingAction && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                            {player.isReady ? <><ThumbsUp className="mr-1 h-3 w-3"/>Ready!</> : <><ThumbsDown className="mr-1 h-3 w-3"/>Not Ready</>}
+                           </Button>
                         ) : (
-                          <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
+                           player.isReady ? <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
                         )}
                       </div>
                     </li>
@@ -343,14 +382,17 @@ export default function WelcomePage() {
                   variant="default"
                   size="lg"
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg font-semibold py-3 mt-6"
-                  disabled={isPendingAction || isStartingGame} // TODO: Update this when ready system is in place
+                  disabled={isPendingAction || isStartingGame || !allPlayersReady}
                 >
-                  {isStartingGame ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Start Game & Go to Arena</>}
+                  {isStartingGame || (isPendingAction && !game.players.find(p => p.id === thisPlayerId)?.isReady === undefined) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Play className="mr-2 h-6 w-6" /> Start Game & Go to Arena</>}
                 </Button>
               )}
               {game.players.length < 2 && game.gamePhase === 'lobby' && !isGameActiveAndNotLobby && (
                 <p className="text-sm text-center mt-4 text-muted-foreground">Need at least 2 players to start the game.</p>
               )}
+               {!allPlayersReady && game.players.length >= 2 && game.gamePhase === 'lobby' && (
+                 <p className="text-sm text-center mt-4 text-yellow-600 dark:text-yellow-400">Waiting for all players to be ready...</p>
+               )}
             </CardContent>
           </Card>
         </div>
@@ -363,7 +405,7 @@ export default function WelcomePage() {
             className="hover:bg-destructive/80"
             disabled={isPendingAction}
           >
-            {isPendingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Reset Game State (For Testing)</>}
+            {isPendingAction && game.players.find(p => p.id === thisPlayerId)?.isReady !== undefined ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Reset Game State (For Testing)</>}
           </Button>
         </div>
 
