@@ -38,9 +38,10 @@ export default function GamePage() {
   const nextRoundTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
-    console.log(`GamePage: fetchGameAndPlayer called from ${origin}. isLoading was: ${isLoading}`);
-    // Don't set setIsLoading(true) if it's already true from another process like handleNextRound
-    if (!isLoading) setIsLoading(true); 
+    console.log(`GamePage: fetchGameAndPlayer called from ${origin}. Current isLoading state: ${isLoading}`); // Log current isLoading
+    if (!isLoading) { // Only set if not already loading
+        setIsLoading(true);
+    }
     let localGameId: string | null = null;
     try {
       const initialGameState = await getGame(); 
@@ -92,12 +93,12 @@ export default function GamePage() {
       setIsLoading(false);
       console.log(`GamePage: fetchGameAndPlayer (from ${origin}) sequence ended. isLoading: ${false}`);
     }
-  }, [router, toast, isLoading]); 
+  }, [router, toast]); // Removed isLoading from dependencies
 
   useEffect(() => {
     console.log("GamePage: Mounting. Starting initial data fetch.");
     fetchGameAndPlayer("initial mount");
-  }, [fetchGameAndPlayer]); // Corrected: fetchGameAndPlayer is stable due to useCallback
+  }, [fetchGameAndPlayer]); 
 
   useEffect(() => {
     if (!gameState || !gameState.gameId ) { 
@@ -194,7 +195,7 @@ export default function GamePage() {
         clearTimeout(nextRoundTimeoutRef.current);
       }
     };
-  }, [gameState?.gamePhase, gameState?.gameId, thisPlayer?.isJudge, thisPlayer?.name]); 
+  }, [gameState?.gamePhase, gameState?.gameId, thisPlayer?.isJudge, thisPlayer?.name]); // Added thisPlayer?.name to dependencies to avoid stale closure
 
 
   const handleStartGame = async () => {
@@ -242,33 +243,25 @@ export default function GamePage() {
 
   const handleNextRound = async () => {
     if (gameState?.gameId) {
-      setIsLoading(true); // Show loading for this transition
+      setIsLoading(true); 
       try {
         console.log(`GamePage: Calling nextRound server action for game ${gameState.gameId}`);
         await nextRound(gameState.gameId);
-        // Successful call, no explicit navigation needed from client if server action handles phase correctly
-        // The real-time updates should refresh the game state.
       } catch (error: any) {
         console.error("GamePage: Error starting next round:", error);
-        // Check if it's a Next.js redirect error
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          // Let Next.js handle the redirect, don't setIsLoading(false) yet
           return; 
         } else {
           toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
         }
       } finally {
-        // Only set isLoading to false if it wasn't a redirect that's being handled by Next.js
-        const errorIsRedirect = (e: any) => e && typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT');
-        // Check if error exists and is a redirect error
         let wasRedirect = false;
-        try { // This try-catch is to safely access 'error' if it's in scope from the above catch
-          if (error && errorIsRedirect(error)) { // 'error' from the catch block
+        try { 
+          if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) { 
             wasRedirect = true;
           }
-        } catch (e) { /* 'error' not defined in this finally block directly if no exception occurred */ }
-
+        } catch (e) { /* error not defined */ }
         if (!wasRedirect) {
            setIsLoading(false);
         }
@@ -283,27 +276,21 @@ export default function GamePage() {
       startActionTransition(async () => {
         try {
           await resetGameForTesting(); 
-          // The resetGameForTesting action should handle redirecting to '/?step=setup'
-          // No client-side navigation needed here if server action redirects.
-          // Toast will be shown by the WelcomePage after redirect if needed.
         } catch (error: any) {
-          // Check if it's a Next.js redirect error
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
             console.log("GamePage (handlePlayAgainYes): Caught NEXT_REDIRECT during reset. Allowing Next.js to handle navigation.");
-            // Let Next.js handle the redirect, setIsLoading(false) will be skipped if so.
             return; 
           } else {
             console.error("GamePage: Error on 'Play Again Yes':", error);
             toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
           }
         } finally {
-           const errorIsRedirect = (e: any) => e && typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT');
-            let wasRedirect = false;
+           let wasRedirect = false;
             try { 
-              if (error && errorIsRedirect(error)) { 
+              if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) { 
                 wasRedirect = true;
               }
-            } catch (e) { /* 'error' not defined */ }
+            } catch (e) { /* error not defined */ }
             if (!wasRedirect) {
               setIsLoading(false);
             }
@@ -335,13 +322,12 @@ export default function GamePage() {
           });
         }
       } finally {
-        const errorIsRedirect = (e: any) => e && typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT');
         let wasRedirect = false;
         try { 
-          if (error && errorIsRedirect(error)) { 
+          if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) { 
             wasRedirect = true;
           }
-        } catch (e) { /* 'error' not defined */ }
+        } catch (e) { /* error not defined */ }
         if (!wasRedirect) {
            setIsLoading(false);
         }
@@ -376,15 +362,25 @@ export default function GamePage() {
     );
   }
   
-  // If game is in lobby phase and user is on /game page.
   if (gameState.gamePhase === 'lobby') {
+     const canCurrentPlayerStart = gameState.players.length >= MIN_PLAYERS_TO_START;
      return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Image src="/logo.png" alt="Game Logo - Lobby" width={182} height={54} className="mb-6" data-ai-hint="game logo"/>
         <h1 className="text-4xl font-bold text-primary mb-4">Lobby is Empty or Game Not Started</h1>
-        <p className="text-lg text-muted-foreground mb-8">
-          The game is in the lobby phase. Players should join and ready up from the main page.
-        </p>
+        {gameState.players.length < MIN_PLAYERS_TO_START ? (
+          <p className="text-lg text-muted-foreground mb-8">
+            Waiting for at least {MIN_PLAYERS_TO_START} players to start the game. Currently {gameState.players.length} player(s).
+          </p>
+        ) : (
+          <p className="text-lg text-muted-foreground mb-8">
+            Ready to start! Click the button below.
+          </p>
+        )}
+        <Button onClick={handleStartGame} disabled={!canCurrentPlayerStart || isActionPending} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
+          {isActionPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Play className="mr-2 h-5 w-5" />}
+          Start Game Now!
+        </Button>
          <Link href="/?step=setup" className="mt-6">
             <Button variant="outline" size="sm">
                 Go to Player Setup & Lobby
@@ -410,7 +406,6 @@ export default function GamePage() {
   }
 
   const renderGameContent = () => {
-    // Guard against rendering game views if thisPlayer is still null but game isn't over
     if (!thisPlayer && (gameState.gamePhase !== 'winner_announcement' && gameState.gamePhase !== 'game_over')) {
         if (['category_selection', 'player_submission', 'judging'].includes(gameState.gamePhase)) {
              console.error("GamePage: renderGameContent - thisPlayer is null during active game phase:", gameState.gamePhase);
@@ -426,9 +421,9 @@ export default function GamePage() {
     if (gameState.gamePhase === 'winner_announcement' || gameState.gamePhase === 'game_over') {
       return <WinnerDisplay 
                 gameState={gameState} 
-                onNextRound={handleNextRound} // For timed auto-transition by judge
-                onPlayAgainYes={handlePlayAgainYes} // For "Yes" button on game_over
-                onPlayAgainNo={handlePlayAgainNo}   // For "No" button on game_over
+                onNextRound={handleNextRound} 
+                onPlayAgainYes={handlePlayAgainYes} 
+                onPlayAgainNo={handlePlayAgainNo}   
               />;
     }
     if (thisPlayer?.isJudge) { 
@@ -437,7 +432,6 @@ export default function GamePage() {
     if (thisPlayer && !thisPlayer.isJudge) { 
       return <PlayerView gameState={gameState} player={thisPlayer} />;
     }
-    // Fallback if none of the above conditions met (e.g. thisPlayer still null, or unexpected phase)
     return (
         <Card className="text-center">
             <CardHeader><CardTitle>Waiting for Game State</CardTitle></CardHeader>
