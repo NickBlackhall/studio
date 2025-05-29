@@ -94,7 +94,7 @@ export default function GamePage() {
     const commonPayloadHandler = async (originTable: string, payload: any) => {
       console.log(`>>> GamePage Realtime (${originTable} sub for game ${gameId}): CHANGE DETECTED!`, payload);
       try {
-        const updatedFullGame = await getGame();
+        const updatedFullGame = await getGame(gameId); // Pass gameId to ensure fetching current game
         setGameState(updatedFullGame);
         console.log(`GamePage Realtime: Game state updated from ${originTable} event. GameID: ${updatedFullGame?.gameId}, Phase: ${updatedFullGame?.gamePhase}, Players: ${updatedFullGame?.players?.length}`);
         
@@ -173,31 +173,9 @@ export default function GamePage() {
 
   const handleSubmitResponse = async (responseCardText: string) => { 
     if (thisPlayer && gameState && gameState.currentRound > 0 && responseCardText && gameState.currentScenario) {
-        // Find the card ID from the player's hand that matches the submitted text.
-        // This assumes `thisPlayer.hand` contains the text of the cards.
-        // And `player_hands` table is used to link `player_id` to `response_card_id`.
-        // We need to query `player_hands` JOIN `response_cards` or have card IDs in `thisPlayer.hand`.
-        
-        // For now, we need to get the actual response_card_id that corresponds to the text.
-        // This is a temporary lookup. Ideally, PlayerView passes the ID.
-        const { data: cardData, error: cardError } = await supabase
-            .from('player_hands')
-            .select('response_card_id, response_cards!inner(text)')
-            .eq('player_id', thisPlayer.id)
-            .eq('game_id', gameState.gameId)
-            .eq('response_cards.text', responseCardText) 
-            .single();
-
-        if (cardError || !cardData) {
-            console.error("Error finding card ID for submission:", cardError);
-            toast({title: "Submission Error", description: "Could not find the card you tried to submit.", variant: "destructive"});
-            return;
-        }
-        const cardIdToSubmit = cardData.response_card_id;
-
         startTransition(async () => {
             try {
-              await submitResponse(thisPlayer.id, cardIdToSubmit, gameState.gameId, gameState.currentRound);
+              await submitResponse(thisPlayer.id, responseCardText, gameState.gameId, gameState.currentRound);
               toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
             } catch (error: any) {
               console.error("GamePage: Error submitting response:", error);
@@ -231,7 +209,13 @@ export default function GamePage() {
           toast({ title: "Next Round!", description: "The terror continues..." });
         } catch (error: any) {
           console.error("GamePage: Error starting next round:", error);
-          toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
+          // Check if the error is a NEXT_REDIRECT signal
+          if (error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+            console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+            // Don't show a toast for normal redirects
+          } else {
+            toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
+          }
         }
       });
     }
@@ -340,7 +324,7 @@ export default function GamePage() {
       return <JudgeView gameState={gameState} judge={thisPlayer} onSelectCategory={handleSelectCategory} onSelectWinner={handleSelectWinner} />;
     }
     if (!isJudge && thisPlayer) {
-      return <PlayerView gameState={gameState} player={thisPlayer} onSubmitResponse={handleSubmitResponse} />;
+      return <PlayerView gameState={gameState} player={thisPlayer} />;
     }
     return (
         <Card className="text-center">
