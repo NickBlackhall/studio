@@ -4,36 +4,37 @@
 import type { GameClientState } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Sparkles, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Trophy, Sparkles, CheckCircle, XCircle, Loader2 } from 'lucide-react'; // Added Loader2
 import { useTransition } from 'react';
 import Image from 'next/image';
 
 interface WinnerDisplayProps {
   gameState: GameClientState;
-  onNextRound: () => Promise<void>; 
-  onPlayAgainYes: () => Promise<void>;
-  onPlayAgainNo: () => Promise<void>;
+  onNextRound: () => Promise<void>; // For round winners (timed auto-transition)
+  onPlayAgainYes: () => Promise<void>; // For game over - Yes
+  onPlayAgainNo: () => void; // For game over - No
 }
 
 export default function WinnerDisplay({ gameState, onNextRound, onPlayAgainYes, onPlayAgainNo }: WinnerDisplayProps) {
   const [isYesPending, startYesTransition] = useTransition();
-  const [isNoPending, startNoTransition] = useTransition();
+  const [isNoPending, startNoTransition] = useTransition(); // Though "No" is just navigation
 
   const overallWinner = gameState.winningPlayerId ? gameState.players.find(p => p.id === gameState.winningPlayerId) : null;
 
-  const renderAvatar = (avatarPath: string, playerName: string) => {
+  const renderAvatar = (avatarPath: string | null | undefined, playerName: string) => {
     if (avatarPath && avatarPath.startsWith('/')) {
       return (
         <Image
           src={avatarPath}
           alt={`${playerName}'s avatar`}
-          width={48} // Adjust size as needed
+          width={48}
           height={48}
           className="inline-block rounded-md object-contain mr-2 align-middle"
         />
       );
     }
-    return <span className="text-3xl mr-2 align-middle">{avatarPath}</span>; // Fallback for old emoji avatars or if path is not an image
+    // Fallback for emojis or if avatar is missing/not a path
+    return <span className="text-3xl mr-2 align-middle">{avatarPath || '🤔'}</span>;
   };
 
   if (gameState.gamePhase === 'game_over' && overallWinner) {
@@ -52,7 +53,7 @@ export default function WinnerDisplay({ gameState, onNextRound, onPlayAgainYes, 
           <p className="text-xl font-semibold mb-4">Play Again?</p>
           <div className="flex justify-center gap-4">
             <Button 
-              onClick={() => startYesTransition(onPlayAgainYes)} 
+              onClick={() => startYesTransition(async () => await onPlayAgainYes())} 
               disabled={isYesPending || isNoPending} 
               size="lg" 
               className="bg-green-500 hover:bg-green-600 text-white text-lg font-semibold py-3 px-6"
@@ -61,13 +62,13 @@ export default function WinnerDisplay({ gameState, onNextRound, onPlayAgainYes, 
               Yes!
             </Button>
             <Button 
-              onClick={() => startNoTransition(onPlayAgainNo)} 
+              onClick={onPlayAgainNo} // No transition needed for simple navigation
               disabled={isNoPending || isYesPending} 
               size="lg" 
               variant="destructive"
               className="bg-red-500 hover:bg-red-600 text-white text-lg font-semibold py-3 px-6"
             >
-              {isNoPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <XCircle className="mr-2 h-5 w-5" />}
+              {isNoPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <XCircle className="mr-2 h-5 w-5" />} 
               No
             </Button>
           </div>
@@ -77,7 +78,13 @@ export default function WinnerDisplay({ gameState, onNextRound, onPlayAgainYes, 
   }
   
   if (gameState.gamePhase !== 'winner_announcement' || !gameState.lastWinner) {
-    return null; 
+    // This part should ideally not be reached if the timed auto-next round works from GamePage
+    return (
+         <Card className="text-center shadow-lg border-2 border-dashed border-muted rounded-xl">
+             <CardHeader><CardTitle className="text-muted-foreground">Waiting for Game Update...</CardTitle></CardHeader>
+             <CardContent><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></CardContent>
+         </Card>
+    );
   }
 
   const { player, cardText } = gameState.lastWinner;
