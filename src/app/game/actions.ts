@@ -51,7 +51,7 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
   console.log("🔴 GAME (Server): Creating new game...");
   const newGameData: TablesInsert<'games'> = {
     game_phase: 'lobby',
-    current_round: 0, // Start at round 0 for initial setup, startGame will increment to 1
+    current_round: 0,
     ready_player_order: [], 
     used_scenarios: [],   
     used_responses: [],   
@@ -341,7 +341,7 @@ export async function resetGameForTesting() {
     const gameId = gameToReset.id;
     console.log(`🔴 RESET (Server): Found game to reset: ID ${gameId}, Current Phase: ${gameToReset.game_phase}`);
     
-    
+    // Comprehensive reset data for the games table
     const updateData: TablesUpdate<'games'> = {
       game_phase: 'lobby',
       current_round: 0,
@@ -351,7 +351,7 @@ export async function resetGameForTesting() {
       last_round_winner_player_id: null,
       last_round_winning_card_text: null,
       overall_winner_player_id: null,
-      // used_scenarios: [], // We are keeping this line commented out as per user's finding.
+      used_scenarios: [], 
       used_responses: [],
       updated_at: new Date().toISOString(),
     };
@@ -446,7 +446,7 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
     query = query.not('id', 'in', `(${allKnownUsedResponses.join(',')})`);
   }
 
-  const { data: availableCards, error: fetchError } = await query.limit(count + 50); 
+  const { data: availableCards, error: fetchError } = await query.limit(count + 50); // Fetch more to ensure randomness if many are used
 
   if (fetchError) {
     console.error(`🔴 CARDS (Server): Error fetching available response cards for game ${gameId}:`, JSON.stringify(fetchError, null, 2));
@@ -463,6 +463,9 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
   const cardsToDeal = shuffledAvailableCards.slice(0, count);
   const dealtCardIds = cardsToDeal.map(c => c.id);
   
+  // This function now returns the list of cards that were actually used in this specific dealing operation,
+  // combined with what was passed in. The caller (`startGame` or `submitResponse`) will be responsible
+  // for merging this with the game's master `used_responses` list.
   const newlyDealtAndUsedInThisOperation = [...new Set([...existingUsedResponses, ...dealtCardIds])];
 
   console.log(`🔴 CARDS (Server): Dealt ${dealtCardIds.length} cards for game ${gameId}: ${JSON.stringify(dealtCardIds)}. New total used_responses count FOR THIS OPERATION: ${newlyDealtAndUsedInThisOperation.length}`);
@@ -503,27 +506,26 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
 
     const playerHandInserts: TablesInsert<'player_hands'>[] = [];
 
+    // Deal cards to ALL players, including the judge
     for (const player of players) {
-      if (player.id !== firstJudgeId) {
-        console.log(`🔴 START (Server) CARDS: Attempting to deal ${CARDS_PER_HAND} cards to player ${player.name} (ID: ${player.id})`);
-        const { dealtCardIds, updatedUsedResponses: tempUsedAfterThisPlayer } = await dealCardsFromSupabase(gameId, CARDS_PER_HAND, accumulatedUsedResponsesForThisGameStart);
-        
-        console.log(`🔴 START (Server) CARDS: For player ${player.name}, dealCardsFromSupabase returned ${dealtCardIds.length} cards. IDs: ${JSON.stringify(dealtCardIds)}`);
+      console.log(`🔴 START (Server) CARDS: Attempting to deal ${CARDS_PER_HAND} cards to player ${player.name} (ID: ${player.id})`);
+      const { dealtCardIds, updatedUsedResponses: tempUsedAfterThisPlayer } = await dealCardsFromSupabase(gameId, CARDS_PER_HAND, accumulatedUsedResponsesForThisGameStart);
+      
+      console.log(`🔴 START (Server) CARDS: For player ${player.name}, dealCardsFromSupabase returned ${dealtCardIds.length} cards. IDs: ${JSON.stringify(dealtCardIds)}`);
 
-        if (dealtCardIds.length > 0) {
-          dealtCardIds.forEach(cardId => {
-            playerHandInserts.push({
-              game_id: gameId,
-              player_id: player.id,
-              response_card_id: cardId,
-              is_new: true, 
-            });
+      if (dealtCardIds.length > 0) {
+        dealtCardIds.forEach(cardId => {
+          playerHandInserts.push({
+            game_id: gameId,
+            player_id: player.id,
+            response_card_id: cardId,
+            is_new: true, 
           });
-          accumulatedUsedResponsesForThisGameStart = [...new Set([...accumulatedUsedResponsesForThisGameStart, ...dealtCardIds])];
-          console.log(`🔴 START (Server) CARDS: Player ${player.name} dealt ${dealtCardIds.length} cards. accumulatedUsedResponses count is now: ${accumulatedUsedResponsesForThisGameStart.length}`);
-        } else {
-           console.warn(`🔴 START (Server) CARDS: No cards dealt to player ${player.name} (ID: ${player.id}). dealCardsFromSupabase might have run out or errored.`);
-        }
+        });
+        accumulatedUsedResponsesForThisGameStart = [...new Set([...accumulatedUsedResponsesForThisGameStart, ...dealtCardIds])];
+        console.log(`🔴 START (Server) CARDS: Player ${player.name} dealt ${dealtCardIds.length} cards. accumulatedUsedResponses count is now: ${accumulatedUsedResponsesForThisGameStart.length}`);
+      } else {
+         console.warn(`🔴 START (Server) CARDS: No cards dealt to player ${player.name} (ID: ${player.id}). dealCardsFromSupabase might have run out or errored.`);
       }
     }
 
@@ -589,7 +591,6 @@ export async function selectCategory(gameId: string, category: string): Promise<
     .eq('category', category);
   
   if (usedScenarios.length > 0) {
-    // Correctly filter out used scenarios by their IDs
     query = query.not('id', 'in', `(${usedScenarios.join(',')})`);
   }
 
@@ -616,11 +617,15 @@ export async function selectCategory(gameId: string, category: string): Promise<
     }
     console.warn(`🔴 CATEGORY (Server): Re-using scenarios for category ${category} as all were marked used for this game session.`);
     scenarioToUse = anyCategoryScenarios[Math.floor(Math.random() * anyCategoryScenarios.length)];
-    
-    const gameUpdates: TablesUpdate<'games'> = {
+    // When recycling, we don't add to used_scenarios again, as it would eventually filter out all if not careful.
+    // Or, we could clear used_scenarios for this category if ALL are used, but that adds complexity.
+    // For now, just use it without re-adding to used_scenarios if it's a recycled pick.
+     const gameUpdates: TablesUpdate<'games'> = {
       current_scenario_id: scenarioToUse.id,
       game_phase: 'player_submission',
       updated_at: new Date().toISOString(),
+      // Do NOT update used_scenarios here if recycling to prevent full depletion.
+      // If we want to allow re-use of all cards after a full cycle, used_scenarios should be reset then.
     };
      const { error: updateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
      if (updateError) throw new Error(`Failed to update game after category selection (recycle): ${updateError.message}`);
@@ -680,13 +685,14 @@ export async function submitResponse(playerId: string, responseCardText: string,
     throw new Error("Judges cannot submit response cards.");
   }
 
+  // Find the response_card_id from player_hands based on player_id and card_text
   const { data: handCardEntry, error: handQueryError } = await supabase
     .from('player_hands')
-    .select('response_card_id, response_cards!inner(text)') 
+    .select('response_card_id, response_cards!inner(text)') // Ensure the join syntax is correct for your setup
     .eq('player_id', playerId)
     .eq('game_id', gameId)
     .eq('response_cards.text', responseCardText) 
-    .limit(1) 
+    .limit(1) // Should be unique for a player's hand
     .single();
 
   if (handQueryError || !handCardEntry) {
@@ -739,6 +745,7 @@ export async function submitResponse(playerId: string, responseCardText: string,
 
   if (deleteHandError) {
     console.error(`🔴 SUBMIT (Server): Error deleting card ${responseCardId} from hand of ${playerId}:`, JSON.stringify(deleteHandError, null, 2));
+    // Not throwing here, as submission was successful. Card draw might fail.
   } else {
     console.log(`🔴 SUBMIT (Server): Successfully deleted card ${responseCardId} from hand of ${playerId}.`);
   }
@@ -746,7 +753,11 @@ export async function submitResponse(playerId: string, responseCardText: string,
   let gameUsedResponses = gameData.used_responses || [];
   console.log(`🔴 SUBMIT (Server) CARDS: Player ${playerId} played card ${responseCardId}. Initial game.used_responses length: ${gameUsedResponses.length}`);
   
-  const { dealtCardIds: replacementCardIds, updatedUsedResponses: finalUsedResponsesAfterPlayAndDeal } = await dealCardsFromSupabase(gameId, 1, [...gameUsedResponses, responseCardId]);
+  // The card played (responseCardId) should definitely be added to used_responses for the game.
+  // Then, when dealing a new card, dealCardsFromSupabase will use this updated list.
+  const usedResponsesAfterPlay = [...new Set([...gameUsedResponses, responseCardId])];
+
+  const { dealtCardIds: replacementCardIds, updatedUsedResponses: finalUsedResponsesAfterPlayAndDeal } = await dealCardsFromSupabase(gameId, 1, usedResponsesAfterPlay);
   
   if (replacementCardIds.length > 0) {
     const newCardId = replacementCardIds[0];
@@ -783,7 +794,7 @@ export async function submitResponse(playerId: string, responseCardText: string,
     .from('players')
     .select('id', { count: 'exact' })
     .eq('game_id', gameId)
-    .neq('id', gameData.current_judge_id || '00000000-0000-0000-0000-000000000000');
+    .neq('id', gameData.current_judge_id || '00000000-0000-0000-0000-000000000000'); // Ensure current_judge_id is not null
 
   if (playersError || !nonJudgePlayers) {
     console.error('🔴 SUBMIT (Server): Error fetching non-judge players count:', JSON.stringify(playersError, null, 2));
@@ -1009,39 +1020,9 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
   const nextJudgePlayer = players.find(p => p.id === nextJudgeId);
   console.log(`🔴 NEXT ROUND (Server): Assigning player ${nextJudgePlayer?.name} (ID: ${nextJudgeId}) as the next judge for game ${gameId}.`);
 
-  // Deal cards to the player who was just judge (if they are not the new judge)
-  const previousJudgeId = game.current_judge_id;
-  if (previousJudgeId && previousJudgeId !== nextJudgeId) {
-      console.log(`🔴 NEXT ROUND (Server) CARDS: Dealing ${CARDS_PER_HAND} cards to previous judge ${previousJudgeId}`);
-      const { dealtCardIds, updatedUsedResponses } = await dealCardsFromSupabase(gameId, CARDS_PER_HAND, game.used_responses || []);
-      
-      if (dealtCardIds.length > 0) {
-          const handInserts: TablesInsert<'player_hands'>[] = dealtCardIds.map(cardId => ({
-            game_id: gameId,
-            player_id: previousJudgeId,
-            response_card_id: cardId,
-            is_new: true,
-          }));
-          const { error: handInsertError } = await supabase.from('player_hands').insert(handInserts);
-          if (handInsertError) {
-            console.error(`🔴 NEXT ROUND (Server) CARDS: Error inserting new hand for previous judge ${previousJudgeId}:`, JSON.stringify(handInsertError, null, 2));
-          } else {
-            console.log(`🔴 NEXT ROUND (Server) CARDS: Successfully dealt ${dealtCardIds.length} cards to previous judge ${previousJudgeId}.`);
-          }
-          
-          // Update used_responses in the games table
-          const { error: gameUpdateError } = await supabase
-              .from('games')
-              .update({ used_responses: updatedUsedResponses, updated_at: new Date().toISOString() })
-              .eq('id', gameId);
-          if (gameUpdateError) {
-              console.error(`🔴 NEXT ROUND (Server) CARDS: Error updating game.used_responses after dealing to previous judge:`, JSON.stringify(gameUpdateError, null, 2));
-          }
-      } else {
-          console.warn(`🔴 NEXT ROUND (Server) CARDS: No cards available to deal to previous judge ${previousJudgeId}.`);
-      }
-  }
-
+  // The player who was judge does NOT get a new hand dealt here.
+  // Their existing hand (which should be full as they didn't play) becomes active.
+  // Players who submitted a card already received a replacement in submitResponse.
 
   const gameUpdates: TablesUpdate<'games'> = {
     game_phase: 'category_selection',
@@ -1093,6 +1074,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
   }
   
   let handCards: string[] = [];
+  // Fetching cards for this player's hand
   const { data: handData, error: handError } = await supabase
     .from('player_hands')
     .select('response_cards (text)') // Fetches { response_cards: { text: 'Card text' } } or { response_cards: null }
@@ -1119,5 +1101,5 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
     isReady: playerData.is_ready,
   };
 }
-
     
+
