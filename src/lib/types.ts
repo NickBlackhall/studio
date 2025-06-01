@@ -6,6 +6,7 @@
 export interface PlayerHandCard { // Explicit type for cards in a player's hand
   id: string;
   text: string;
+  isNew?: boolean; // Flag for newly dealt cards
 }
 
 export interface PlayerClientState { 

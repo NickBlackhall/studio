@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { submitResponse } from '@/app/game/actions';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge'; // Import Badge
 
 interface PlayerViewProps {
   gameState: GameClientState; 
@@ -141,10 +142,15 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               key={card.id} 
               variant={selectedCardText === card.text ? "default" : "outline"}
               onClick={() => setSelectedCardText(card.text)} 
-              className={`w-full h-auto p-4 text-left text-lg whitespace-normal justify-start
-                          ${selectedCardText === card.text ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' : 'border-gray-400 hover:bg-muted/50 hover:border-foreground'}`}
+              className={cn(
+                `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative`,
+                selectedCardText === card.text ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' : 'border-gray-400 hover:bg-muted/50 hover:border-foreground'
+              )}
             >
-              {card.text} 
+              <span>{card.text}</span>
+              {card.isNew && gameState.currentRound > 1 && (
+                <Badge variant="secondary" className="absolute top-1 right-1 text-xs px-1.5 py-0.5">New</Badge>
+              )}
             </Button>
           )) : (
             <p className="text-muted-foreground text-center py-4">You're out of cards! This shouldn't happen.</p>
@@ -155,8 +161,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             onClick={handleSubmit} 
             disabled={!isSubmitButtonActive} 
             className={cn(
-              "w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 border-2 border-primary",
-              isSubmitButtonActive && 'animate-border-pulse'
+              "w-full bg-accent text-accent-foreground text-lg font-semibold py-3 border-2 border-primary",
+              isSubmitButtonActive && !isPending && 'animate-border-pulse'
             )}
           >
             {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
@@ -170,3 +176,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     
 
     
+

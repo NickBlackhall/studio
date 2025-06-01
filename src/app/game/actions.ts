@@ -117,11 +117,11 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   }
 
   const playerIds = playersData.map(p => p.id);
-  let allHandsData: { player_id: string, response_card_id: string, response_cards: { id: string, text: string | null } | null }[] = [];
+  let allHandsData: { player_id: string, response_card_id: string, is_new: boolean, response_cards: { id: string, text: string | null } | null }[] = [];
   if (playerIds.length > 0) {
     const { data: fetchedHandsData, error: handsError } = await supabase
       .from('player_hands')
-      .select('player_id, response_card_id, response_cards (id, text)') 
+      .select('player_id, response_card_id, is_new, response_cards (id, text)') 
       .in('player_id', playerIds)
       .eq('game_id', gameId); 
 
@@ -137,7 +137,8 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
       .filter(h => h.player_id === p.id && h.response_cards?.text && h.response_cards?.id)
       .map(h => ({
         id: h.response_cards!.id as string, 
-        text: h.response_cards!.text as string 
+        text: h.response_cards!.text as string,
+        isNew: h.is_new ?? false,
       }));
     return {
       id: p.id,
@@ -336,7 +337,6 @@ export async function resetGameForTesting() {
         current_judge_id: null,
         last_round_winner_player_id: null,
         overall_winner_player_id: null,
-        // updated_at: new Date().toISOString(), // Will be set in final update
       })
       .eq('id', gameId);
 
@@ -429,18 +429,15 @@ export async function resetGameForTesting() {
 
   } catch (e: any) {
     console.error('🔴 RESET (Server): Unexpected exception during reset process:', e.message, e.stack);
-    // Do not re-throw if it's a NEXT_REDIRECT, let Next.js handle it.
     if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
       throw e;
     }
-    // For other errors, re-throw to indicate failure.
     throw new Error(`Reset failed: ${e.message || 'Unknown error'}`);
   }
 
-  // Explicit revalidation before redirect
   revalidatePath('/');
   revalidatePath('/game');
-  revalidatePath('/?step=setup'); // Ensure the target path is revalidated
+  revalidatePath('/?step=setup'); 
   console.log('🔴 RESET (Server): Paths revalidated, redirecting to /?step=setup');
   redirect('/?step=setup');
 }
@@ -541,6 +538,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
             game_id: gameId,
             player_id: player.id,
             response_card_id: cardId,
+            is_new: false, // All cards are new in the first deal, but we don't show the badge for round 1.
           });
         });
         accumulatedUsedResponsesForThisGameStart = [...new Set([...accumulatedUsedResponsesForThisGameStart, ...dealtCardIds])];
@@ -717,6 +715,17 @@ export async function submitResponse(playerId: string, responseCardText: string,
     throw new Error("You have already submitted a card for this round.");
   }
 
+  // Clear is_new flag for other cards in player's hand
+  const { error: clearOldNewFlagsError } = await supabase
+    .from('player_hands')
+    .update({ is_new: false })
+    .eq('player_id', playerId)
+    .eq('game_id', gameId);
+
+  if (clearOldNewFlagsError) {
+    console.error(`🔴 SUBMIT (Server) CARDS: Error clearing is_new flags for player ${playerId}:`, JSON.stringify(clearOldNewFlagsError, null, 2));
+  }
+
   const { error: insertError } = await supabase
     .from('responses')
     .insert({
@@ -754,6 +763,7 @@ export async function submitResponse(playerId: string, responseCardText: string,
         game_id: gameId,
         player_id: playerId,
         response_card_id: newCardId,
+        is_new: true, // Mark the new card as is_new
       });
     if (newCardInsertError) {
       console.error(`🔴 SUBMIT (Server) CARDS: Error dealing new card to player ${playerId}:`, JSON.stringify(newCardInsertError, null, 2));
@@ -936,6 +946,16 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     revalidatePath('/game');
     return getGame(gameId); 
   }
+  
+  // Clear is_new flag for all cards in all players' hands for this game
+  const { error: clearAllNewFlagsError } = await supabase
+    .from('player_hands')
+    .update({ is_new: false })
+    .eq('game_id', gameId);
+
+  if (clearAllNewFlagsError) {
+    console.warn(`🔴 NEXT ROUND (Server) CARDS: Could not clear is_new flags for game ${gameId}:`, JSON.stringify(clearAllNewFlagsError, null, 2));
+  }
 
   const { data: players, error: playersFetchError } = await supabase
     .from('players')
@@ -1023,7 +1043,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
   let handCards: PlayerHandCard[] = [];
   const { data: handData, error: handError } = await supabase
     .from('player_hands')
-    .select('response_card_id, response_cards (id, text)') 
+    .select('response_card_id, is_new, response_cards (id, text)') 
     .eq('player_id', playerId)
     .eq('game_id', gameId); 
 
@@ -1033,7 +1053,11 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
     handCards = handData
       .map((h: any) => { 
         if (h.response_cards && h.response_cards.id && h.response_cards.text) {
-          return { id: h.response_cards.id, text: h.response_cards.text };
+          return { 
+            id: h.response_cards.id, 
+            text: h.response_cards.text,
+            isNew: h.is_new ?? false,
+          };
         }
         return null;
       })
@@ -1131,3 +1155,4 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   
   return getGame(gameId);
 }
+
