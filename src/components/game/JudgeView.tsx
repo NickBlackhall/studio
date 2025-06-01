@@ -144,7 +144,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                 onClick={handleWinnerSubmit} 
                 disabled={!isCrownWinnerButtonActive} 
                 className={cn(
-                  "w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 mt-4 border-2 border-primary",
+                  "w-full bg-gradient-to-br from-accent/80 via-accent to-accent/70 text-accent-foreground text-lg font-semibold py-3 mt-4 border-2 border-primary",
                   isCrownWinnerButtonActive && 'animate-border-pulse'
                 )}
               >
@@ -158,4 +158,3 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
-
