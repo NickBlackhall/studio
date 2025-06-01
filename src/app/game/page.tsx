@@ -61,7 +61,7 @@ export default function GamePage() {
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     console.log(`GamePage: fetchGameAndPlayer called from ${origin}.`);
     if (!isLoading && isMountedRef.current) { 
-        setIsLoading(true);
+        // setIsLoading(true); // Avoid flickering if already loaded
     }
     let localGameId: string | null = null;
     try {
@@ -369,7 +369,7 @@ export default function GamePage() {
             console.error("GamePage: Error on 'Play Again Yes':", error);
             if (isMountedRef.current) {
               toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
-              
+              // setIsLoading(false); // Only set isLoading false if not redirecting
             }
           }
         } finally {
@@ -379,7 +379,7 @@ export default function GamePage() {
             }
             if (!wasRedirect && isMountedRef.current) {
               setIsLoading(false);
-              hideGlobalLoader(); 
+              // hideGlobalLoader(); // Global loader might not have been shown
             }
         }
       });
@@ -412,7 +412,7 @@ export default function GamePage() {
               description: `Could not reset the game. ${error.message || String(error)}`,
               variant: "destructive",
             });
-            
+            // setIsLoading(false); // Only set if not redirecting
           }
         }
       } finally {
@@ -422,7 +422,7 @@ export default function GamePage() {
         }
         if (!wasRedirect && isMountedRef.current) {
            setIsLoading(false);
-           hideGlobalLoader();
+           // hideGlobalLoader(); // Might not have been shown
         }
       }
     });
@@ -549,20 +549,20 @@ export default function GamePage() {
             </div>
         )}
         {thisPlayer && (
-          <Card className="mb-4 bg-muted/80 border-primary/30 shadow">
-            <CardContent className="p-3 flex items-center justify-center text-center">
+          <Card className="mb-4 bg-accent text-accent-foreground shadow-lg">
+            <CardContent className="p-2 flex items-center justify-start text-left">
               {thisPlayer.avatar && thisPlayer.avatar.startsWith('/') ? (
                 <Image 
                   src={thisPlayer.avatar} 
                   alt={`${thisPlayer.name}'s avatar`} 
-                  width={28} 
-                  height={28}
-                  className="mr-2 rounded-md object-cover"
+                  width={36} 
+                  height={36}
+                  className="mr-3 rounded-md object-cover"
                 />
               ) : (
-                <span className="text-2xl mx-1">{thisPlayer.avatar}</span>
+                <span className="text-3xl mr-3">{thisPlayer.avatar}</span>
               )}
-              <p className="text-sm text-foreground font-medium">
+              <p className="text-lg text-accent-foreground font-semibold">
                 <strong>{thisPlayer.name}</strong> - {thisPlayer.score} pts
               </p>
             </CardContent>
@@ -600,4 +600,5 @@ export const dynamic = 'force-dynamic';
 
 
     
+
 
