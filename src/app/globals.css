@@ -2,10 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%; /* White */
@@ -102,8 +98,15 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-nunito), sans-serif; /* Changed from Geist Sans to Nunito */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+  }
+
+  /* Apply Fugaz One to headings and Card Titles */
+  h1, h2, h3, h4, h5, h6,
+  .card-title /* Targets ShadCN CardTitle component */ {
+    font-family: var(--font-fugaz-one), sans-serif;
   }
 }

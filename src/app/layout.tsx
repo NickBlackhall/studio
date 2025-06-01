@@ -1,19 +1,23 @@
 
 import type {Metadata} from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Fugaz_One, Nunito } from 'next/font/google'; // Changed from Geist
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const fugazOne = Fugaz_One({
+  weight: '400',
   subsets: ['latin'],
+  variable: '--font-fugaz-one',
+  display: 'swap',
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const nunito = Nunito({
   subsets: ['latin'],
+  variable: '--font-nunito',
+  weights: [300, 400, 600, 700, 800], // Added range of weights
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -28,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning={true}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
+      <body className={`${fugazOne.variable} ${nunito.variable} antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
         <LoadingProvider>
           <main className="flex-grow container mx-auto p-4">
             {children}
