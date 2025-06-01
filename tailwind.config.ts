@@ -85,13 +85,13 @@ export default {
   			},
         'border-pulse': {
           '0%, 100%': { borderColor: 'hsl(var(--primary))' },
-          '50%': { borderColor: 'hsl(var(--primary) / 0.6)' },
+          '50%': { borderColor: 'hsl(var(--primary) / 0.1)' },
         }
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
-        'border-pulse': 'border-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'border-pulse': 'border-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
   		}
   	}
   },
