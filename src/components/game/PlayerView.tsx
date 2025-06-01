@@ -137,7 +137,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               variant={selectedCardText === card.text ? "default" : "outline"}
               onClick={() => setSelectedCardText(card.text)} 
               className={`w-full h-auto p-4 text-left text-lg whitespace-normal justify-start
-                          ${selectedCardText === card.text ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' : 'border-muted hover:bg-muted/50 hover:border-foreground'}`}
+                          ${selectedCardText === card.text ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' : 'border-gray-400 hover:bg-muted/50 hover:border-foreground'}`}
             >
               {card.text} 
             </Button>
