@@ -4,7 +4,7 @@
 import type { GameClientState, PlayerClientState, PlayerHandCard } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Send, Loader2, ListCollapse, VenetianMask, Gavel } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
@@ -13,14 +13,22 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Import Badge
 
 interface PlayerViewProps {
-  gameState: GameClientState; 
-  player: PlayerClientState; 
+  gameState: GameClientState;
+  player: PlayerClientState;
 }
 
 export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [selectedCardText, setSelectedCardText] = useState<string>(''); // Stores the text of the selected card
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Client-side logging for diagnosing 'isNew' badge
+    if (player && player.hand) {
+      console.log(`CLIENT PlayerView (${player.name}): Hand data:`, JSON.stringify(player.hand.map(c => ({ id: c.id, text: c.text.substring(0,10)+"...", isNew: c.isNew })), null, 2));
+      console.log(`CLIENT PlayerView (${player.name}): Current Round: ${gameState.currentRound}`);
+    }
+  }, [player, gameState.currentRound]);
 
   const hasSubmitted = gameState.submissions.some(sub => sub.playerId === player.id && gameState.currentRound > 0);
 
@@ -37,7 +45,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       try {
         await submitResponse(player.id, selectedCardText, gameState.gameId, gameState.currentRound);
         toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
-        setSelectedCardText(''); 
+        setSelectedCardText('');
       } catch (error: any) {
         console.error("PlayerView: Error submitting response:", error);
         toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
@@ -60,7 +68,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       </Card>
     );
   }
-  
+
   if (!gameState.currentScenario && gameState.gamePhase === 'player_submission') {
      return (
        <Card className="text-center shadow-lg border-2 border-dashed border-muted rounded-xl">
@@ -92,7 +100,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       </div>
     );
   }
-  
+
   if (gameState.gamePhase === 'judging') {
      return (
       <div className="space-y-6">
@@ -137,11 +145,11 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           <CardDescription>Pick the card that best (or worst) fits the scenario.</CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-3">
-          {player.hand && player.hand.length > 0 ? player.hand.map((card: PlayerHandCard) => ( 
+          {player.hand && player.hand.length > 0 ? player.hand.map((card: PlayerHandCard) => (
             <Button
-              key={card.id} 
+              key={card.id}
               variant={selectedCardText === card.text ? "default" : "outline"}
-              onClick={() => setSelectedCardText(card.text)} 
+              onClick={() => setSelectedCardText(card.text)}
               className={cn(
                 `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative`,
                 selectedCardText === card.text ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' : 'border-gray-400 hover:bg-muted/50 hover:border-foreground'
@@ -157,9 +165,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           )}
         </CardContent>
         <CardFooter className="p-6">
-          <Button 
-            onClick={handleSubmit} 
-            disabled={!isSubmitButtonActive} 
+          <Button
+            onClick={handleSubmit}
+            disabled={!isSubmitButtonActive}
             className={cn(
               "w-full bg-accent text-accent-foreground text-lg font-semibold py-3 border-2 border-primary",
               isSubmitButtonActive && !isPending && 'animate-border-pulse'
@@ -173,7 +181,3 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 }
-    
-
-    
-
