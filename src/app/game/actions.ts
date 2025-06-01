@@ -320,6 +320,7 @@ export async function resetGameForTesting() {
       console.log('🔴 RESET (Server): No existing game found to reset. A new game will be created on next load if needed.');
       revalidatePath('/');
       revalidatePath('/game');
+      revalidatePath('/?step=setup');
       redirect('/?step=setup');
       return; 
     }
@@ -335,7 +336,7 @@ export async function resetGameForTesting() {
         current_judge_id: null,
         last_round_winner_player_id: null,
         overall_winner_player_id: null,
-        updated_at: new Date().toISOString(),
+        // updated_at: new Date().toISOString(), // Will be set in final update
       })
       .eq('id', gameId);
 
@@ -358,16 +359,14 @@ export async function resetGameForTesting() {
     }
 
     console.log(`🔴 RESET (Server): Deleting players for game_id ${gameId}...`);
-    const { error: playersDeleteError, count: deletedPlayersCount } = await supabase
+    const { error: playersDeleteError } = await supabase
       .from('players')
       .delete()
-      .eq('game_id', gameId)
-      .select(); // Using .select() with delete might not return count directly, check Supabase docs for exact behavior
+      .eq('game_id', gameId);
 
     if (playersDeleteError) {
       console.error(`🔴 RESET (Server): Error deleting players for game_id ${gameId}:`, JSON.stringify(playersDeleteError, null, 2));
     } else {
-      // Supabase delete with .select() doesn't reliably give count. We can query after.
       console.log(`🔴 RESET (Server): Player deletion attempt for game_id ${gameId} finished.`);
     }
 
@@ -424,22 +423,25 @@ export async function resetGameForTesting() {
       console.warn(`🔴 RESET (Server): Verification - Game ${gameId} not found after update attempt.`);
     }
 
-    // Introduce a small delay before redirecting
-    await new Promise(resolve => setTimeout(resolve, 500));
+    console.log('🔴 RESET (Server): Database operations complete. Preparing to revalidate and redirect.');
+    await new Promise(resolve => setTimeout(resolve, 500)); // Delay before redirect
     console.log('🔴 RESET (Server): Delay finished, proceeding with revalidation and redirect.');
-
 
   } catch (e: any) {
     console.error('🔴 RESET (Server): Unexpected exception during reset process:', e.message, e.stack);
+    // Do not re-throw if it's a NEXT_REDIRECT, let Next.js handle it.
     if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
       throw e;
     }
+    // For other errors, re-throw to indicate failure.
     throw new Error(`Reset failed: ${e.message || 'Unknown error'}`);
   }
 
-  console.log('🔴 RESET (Server): Reset process complete, revalidating paths and redirecting.');
+  // Explicit revalidation before redirect
   revalidatePath('/');
   revalidatePath('/game');
+  revalidatePath('/?step=setup'); // Ensure the target path is revalidated
+  console.log('🔴 RESET (Server): Paths revalidated, redirecting to /?step=setup');
   redirect('/?step=setup');
 }
 
@@ -1129,5 +1131,3 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   
   return getGame(gameId);
 }
-
-    
