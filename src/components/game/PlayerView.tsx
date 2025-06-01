@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { submitResponse } from '@/app/game/actions';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge'; // Import Badge
+// Removed Badge import as it's no longer used for "New" indicator
 
 interface PlayerViewProps {
   gameState: GameClientState;
@@ -18,12 +18,11 @@ interface PlayerViewProps {
 }
 
 export default function PlayerView({ gameState, player }: PlayerViewProps) {
-  const [selectedCardText, setSelectedCardText] = useState<string>(''); // Stores the text of the selected card
+  const [selectedCardText, setSelectedCardText] = useState<string>(''); 
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Client-side logging for diagnosing 'isNew' badge
     if (player && player.hand) {
       console.log(`CLIENT PlayerView (${player.name}): Hand data:`, JSON.stringify(player.hand.map(c => ({ id: c.id, text: c.text.substring(0,10)+"...", isNew: c.isNew })), null, 2));
       console.log(`CLIENT PlayerView (${player.name}): Current Round: ${gameState.currentRound}`);
@@ -145,22 +144,33 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           <CardDescription>Pick the card that best (or worst) fits the scenario.</CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-3">
-          {player.hand && player.hand.length > 0 ? player.hand.map((card: PlayerHandCard) => (
-            <Button
-              key={card.id}
-              variant={selectedCardText === card.text ? "default" : "outline"}
-              onClick={() => setSelectedCardText(card.text)}
-              className={cn(
-                `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative`,
-                selectedCardText === card.text ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' : 'border-gray-400 hover:bg-muted/50 hover:border-foreground'
-              )}
-            >
-              <span>{card.text}</span>
-              {card.isNew && gameState.currentRound > 1 && (
-                <Badge variant="secondary" className="absolute top-1 right-1 text-xs px-1.5 py-0.5">New</Badge>
-              )}
-            </Button>
-          )) : (
+          {player.hand && player.hand.length > 0 ? player.hand.map((card: PlayerHandCard) => {
+            const isNewCardVisual = card.isNew && gameState.currentRound > 1;
+            return (
+              <Button
+                key={card.id}
+                variant="outline" // Using outline to allow custom border colors to easily override
+                onClick={() => setSelectedCardText(card.text)}
+                className={cn(
+                  `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative`, // Base styles
+                  selectedCardText === card.text
+                    ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' // Selected card styles
+                    : (isNewCardVisual // Not selected, check if it's a new card
+                        ? 'border-red-500 hover:border-red-600' // New card border
+                        : 'border-gray-400 hover:border-foreground' // Default non-selected card border
+                      ),
+                  selectedCardText !== card.text && 'hover:bg-muted/50' // Common hover background for non-selected cards
+                )}
+              >
+                <span>{card.text}</span>
+                {isNewCardVisual && (
+                  <span className="absolute bottom-2 right-3 text-red-400 font-semibold text-sm">
+                    New!
+                  </span>
+                )}
+              </Button>
+            );
+          }) : (
             <p className="text-muted-foreground text-center py-4">You're out of cards! This shouldn't happen.</p>
           )}
         </CardContent>
@@ -181,3 +191,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 }
+
