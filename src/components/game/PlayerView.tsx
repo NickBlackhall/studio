@@ -98,8 +98,10 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             <CardTitle className="text-2xl font-semibold flex items-center justify-center"><Gavel className="mr-2 h-6 w-6" /> Judgment Time!</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            <p className="text-secondary-foreground/90 text-lg">All responses are in. The Judge is now deliberating. Who will be crowned the most terrible?</p>
-            <Loader2 className="h-8 w-8 animate-spin text-secondary-foreground/70 mx-auto mt-4" />
+            <p className="text-muted-foreground text-lg">
+              All responses are in. The Judge is now deliberating. Who will be crowned the most terrible?
+            </p>
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mt-4" />
           </CardContent>
         </Card>
       </div>
@@ -162,3 +164,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     
 
     
+
