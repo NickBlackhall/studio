@@ -59,7 +59,10 @@ export default function WelcomePage() {
         console.log(`Client: fetchGameData from ${origin} skipped as component is not mounted.`);
         return;
     }
-    setIsLoading(true);
+    // Only set isLoading to true for initial page loads or explicit resets
+    if (origin === "initial mount" || origin.includes("reset") || !gameRef.current?.gameId) {
+      setIsLoading(true);
+    }
 
     try {
       const fetchedGameState = await getGame();
@@ -115,7 +118,7 @@ export default function WelcomePage() {
       }
     } finally {
       if (isMountedRef.current) {
-         setIsLoading(false);
+         setIsLoading(false); // Always set to false at the end
          console.log(`Client: fetchGameData from ${origin} completed. isLoading set to false.`);
       } else {
          console.log(`Client: fetchGameData from ${origin} completed, but component unmounted. isLoading NOT set to false by this call.`);
@@ -134,6 +137,22 @@ export default function WelcomePage() {
     };
   }, [fetchGameData, currentStep]);
 
+  // useEffect for navigation when game becomes active
+  useEffect(() => {
+    const currentRenderableGame = gameRef.current;
+    console.log(`Client (useEffect nav check): Running. internalGame phase: ${internalGame?.gamePhase}, Game from ref: ${currentRenderableGame ? currentRenderableGame.gameId : 'N/A'}, Phase from ref: ${currentRenderableGame?.gamePhase}, Step: ${currentStep}, Mounted: ${isMountedRef.current}`);
+
+    if (isMountedRef.current && currentRenderableGame && currentRenderableGame.gameId &&
+        currentRenderableGame.gamePhase !== 'lobby' && 
+        ACTIVE_PLAYING_PHASES.includes(currentRenderableGame.gamePhase as GamePhaseClientState) && 
+        currentStep === 'setup') {
+      console.log(`Client (useEffect nav check): NAV CONDITION MET. Phase from ref: ${currentRenderableGame.gamePhase}, Step: ${currentStep}. Navigating to /game.`);
+      router.push('/game');
+    } else {
+      // console.log(`Client (useEffect nav check): Nav condition NOT MET. Phase from ref: ${currentRenderableGame?.gamePhase}, Step: ${currentStep}, IsLobby: ${currentRenderableGame?.gamePhase === 'lobby'}`);
+    }
+  }, [internalGame, currentStep, router]); // Depend on the whole internalGame object to catch phase changes
+
 
   useEffect(() => {
     const currentGameIdFromRef = gameRef.current?.gameId; 
@@ -148,7 +167,7 @@ export default function WelcomePage() {
     const uniqueChannelSuffix = currentThisPlayerIdFromRef || Date.now();
 
     const handlePlayersUpdate = async (payload: any) => {
-      console.log(`>>> Realtime: PLAYERS TABLE CHANGE DETECTED BY SUPABASE! `, payload);
+      console.log(`>>> Realtime: PLAYERS TABLE CHANGE DETECTED BY SUPABASE! Event: ${payload.eventType}, New data present: ${!!payload.new}`, payload.new || payload.old);
       const latestGameId = gameRef.current?.gameId;
       if (isMountedRef.current && latestGameId) { 
         console.log(`Realtime (players sub for game ${latestGameId}): Fetching updated game state due to players change...`);
@@ -159,13 +178,16 @@ export default function WelcomePage() {
     };
 
     const handleGameTableUpdate = async (payload: any) => {
-      console.log(`>>> Realtime: GAMES TABLE CHANGE DETECTED BY SUPABASE! `, payload);
+      console.log(`>>> Realtime: GAMES TABLE CHANGE DETECTED BY SUPABASE! Payload phase: ${payload.new?.game_phase}, Full payload:`, payload);
       const latestGameId = gameRef.current?.gameId;
       if (isMountedRef.current && latestGameId) { 
         console.log(`Realtime (games sub for game ${latestGameId}): Fetching updated game state due to games change...`);
         const updatedFullGame = await getGame(latestGameId); 
         if (updatedFullGame && isMountedRef.current) {
+           console.log(`Realtime (games sub for game ${latestGameId}): Fetched game state via getGame(), new phase: ${updatedFullGame.gamePhase}. Setting local game state.`);
            setGame(updatedFullGame);
+        } else if (isMountedRef.current) {
+            console.warn(`Realtime (games sub for game ${latestGameId}): updatedFullGame was null or component unmounted after fetch.`);
         }
       } else {
          console.log(`Realtime (games sub): Skipping fetch, component unmounted or gameId missing. Current gameId from ref: ${latestGameId}`);
@@ -256,17 +278,6 @@ export default function WelcomePage() {
     };
   }, [gameRef.current?.gameId, fetchGameData, currentStep, isLoading, thisPlayerIdRef.current, setGame]);
 
-  // Dedicated useEffect for navigation when game becomes active
-  useEffect(() => {
-    if (isMountedRef.current && internalGame && internalGame.gameId &&
-        internalGame.gamePhase !== 'lobby' && 
-        ACTIVE_PLAYING_PHASES.includes(internalGame.gamePhase as GamePhaseClientState) && 
-        currentStep === 'setup') {
-      console.log(`Client (useEffect on gamePhase change): Game phase is ${internalGame.gamePhase}. currentStep is ${currentStep}. Navigating to /game.`);
-      router.push('/game');
-    }
-  }, [internalGame?.gamePhase, currentStep, router, internalGame?.gameId]);
-
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
@@ -294,7 +305,9 @@ export default function WelcomePage() {
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id); 
           console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId to ${newPlayer.id} and localStorage. Now fetching game data for game ${currentGameId}.`);
-          await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); 
+          // No explicit fetchGameData here, rely on real-time or subsequent interactions.
+          // This might change if direct feedback is needed that can't be derived from real-time.
+          // For now, the player list should update via the 'players' table subscription.
         } else if (isMountedRef.current) {
           console.error('Client: Failed to add player or component unmounted. New player:', newPlayer, 'Game ID:', currentGameId, 'Mounted:', isMountedRef.current);
           toast({ title: "Error Adding Player", description: "Could not add player. Please try again.", variant: "destructive"});
@@ -316,6 +329,7 @@ export default function WelcomePage() {
       try {
         await resetGameForTesting();
         console.log("🔴 RESET (Client): resetGameForTesting server action called. Redirect should occur.");
+        // Navigation to setup is handled by the redirect in resetGameForTesting action
       } catch (error: any) {
         if (!isMountedRef.current) {
             console.warn("🔴 RESET (Client): Component unmounted during reset, skipping toast/state update.");
@@ -323,6 +337,7 @@ export default function WelcomePage() {
         }
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+          // Let Next.js handle the redirect, do not set isLoading to false here.
           return; 
         }
         console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
@@ -333,6 +348,9 @@ export default function WelcomePage() {
         });
         setIsLoading(false); 
       }
+      // If no redirect happened and no other error, ensure loading is false.
+      // However, resetGameForTesting is designed to redirect.
+      if (isMountedRef.current) setIsLoading(false);
     });
   };
 
@@ -356,16 +374,15 @@ export default function WelcomePage() {
         if (isMountedRef.current) {
           if (updatedGameState) {
             setGame(updatedGameState); 
-            // Navigation logic is now handled by the dedicated useEffect watching internalGame.gamePhase
+            console.log(`Client (handleToggleReady): Game state set after action. Phase is now: ${updatedGameState?.gamePhase}. Current step: ${currentStep}`);
+            // Navigation is now handled by the dedicated useEffect watching internalGame
           } else {
-            // If updatedGameState is null (e.g. due to a redirect in the action), 
-            // fetchGameData might still be useful if the redirect didn't occur for this client.
-            await fetchGameData(`handleToggleReady after action returned null for game ${currentGameId}`);
+            console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Re-fetching.`);
+            if (isMountedRef.current) await fetchGameData(`handleToggleReady after action returned null for game ${currentGameId}`);
           }
         }
       } catch (error: any) {
         if (isMountedRef.current) {
-          // Check if the error is due to a redirect, and don't toast if so
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
             console.log("Client (handleToggleReady): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
             return; 
@@ -446,7 +463,7 @@ export default function WelcomePage() {
             />
           </button>
           <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-           {gameIsConsideredActive && ( 
+           {gameIsConsideredActive && renderableGame.gamePhase !== 'lobby' && ( 
             <div className="my-4 p-4 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 rounded-md shadow-lg">
                 <p className="font-bold text-lg">Game in Progress!</p>
                 <p className="text-md">The current game is in the "{renderableGame.gamePhase}" phase.</p>
