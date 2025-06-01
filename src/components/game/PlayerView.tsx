@@ -151,7 +151,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           <Button 
             onClick={handleSubmit} 
             disabled={isPending || !selectedCardText || !player.hand || player.hand.length === 0 || hasSubmitted} 
-            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3"
+            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 border-2 border-accent animate-border-pulse"
           >
             {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
             {hasSubmitted ? "Already Submitted" : "Submit Your Terrible Choice"}
