@@ -315,7 +315,7 @@ export default function WelcomePage() {
 
   const handleResetGame = async () => {
     console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
-    showGlobalLoader(); // Show loader before starting action that will redirect
+    // showGlobalLoader(); // Removed to prevent stuck overlay if redirect fails
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
@@ -325,7 +325,8 @@ export default function WelcomePage() {
             return;
         }
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation. Global loader will be handled by new page.");
+          console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+          // Global loader will be handled by new page if it was shown; if not, nothing to do here.
           return; 
         }
         console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
@@ -335,7 +336,7 @@ export default function WelcomePage() {
           variant: "destructive",
         });
         if (isMountedRef.current) {
-           hideGlobalLoader(); 
+           hideGlobalLoader(); // Ensure loader is hidden if it somehow got activated and action failed before redirect
         }
       }
     });
@@ -607,5 +608,7 @@ export default function WelcomePage() {
     
 
 
+
+    
 
     

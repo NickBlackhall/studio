@@ -363,7 +363,7 @@ export default function GamePage() {
       console.log("GamePage: Player clicked 'Yes, Play Again!'. Calling resetGameForTesting.");
       if (isMountedRef.current) {
         setIsLoading(true);
-        showGlobalLoader(); // Show loader before starting action that will redirect
+        // showGlobalLoader(); // Removed to prevent stuck overlay if redirect fails
       }
       startActionTransition(async () => {
         try {
@@ -371,13 +371,13 @@ export default function GamePage() {
         } catch (error: any) {
           currentActionError = error;
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            console.log("GamePage (handlePlayAgainYes): Caught NEXT_REDIRECT during reset. Global loader shown. Allowing Next.js to handle navigation.");
+            console.log("GamePage (handlePlayAgainYes): Caught NEXT_REDIRECT during reset. Allowing Next.js to handle navigation.");
             return; 
           } else {
             console.error("GamePage: Error on 'Play Again Yes':", error);
             if (isMountedRef.current) {
               toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
-              hideGlobalLoader(); // Hide if action fails before redirect
+              hideGlobalLoader(); 
             }
           }
         } finally {
@@ -387,7 +387,7 @@ export default function GamePage() {
             }
             if (!wasRedirect && isMountedRef.current) {
               setIsLoading(false);
-              hideGlobalLoader(); // Also hide if action finishes but didn't redirect
+              hideGlobalLoader(); 
             }
         }
       });
@@ -405,7 +405,7 @@ export default function GamePage() {
     let currentActionError: any = null;
     if (isMountedRef.current) {
         setIsLoading(true);
-        showGlobalLoader();
+        // showGlobalLoader(); // Removed to prevent stuck overlay if redirect fails
     }
     startActionTransition(async () => {
       try {
@@ -413,7 +413,7 @@ export default function GamePage() {
       } catch (error: any) {
         currentActionError = error;
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          console.log("🔴 RESET (GamePage Client): Caught NEXT_REDIRECT during reset. Global loader shown. Allowing Next.js to handle navigation.");
+          console.log("🔴 RESET (GamePage Client): Caught NEXT_REDIRECT during reset. Allowing Next.js to handle navigation.");
         } else {
           console.error("🔴 RESET (GamePage Client): Error calling resetGameForTesting server action:", error);
           if (isMountedRef.current) {
@@ -607,3 +607,6 @@ export default function GamePage() {
 export const dynamic = 'force-dynamic';
 
 
+
+
+    
