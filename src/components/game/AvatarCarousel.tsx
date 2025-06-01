@@ -1,7 +1,8 @@
 
 "use client";
 
-import { AnimatePresence, motion, usePresence, wrap } from "motion/react";
+import * as MotionForReact from "motion/react";
+import { wrap } from "motion";
 import type { ForwardedRef } from "react";
 import { useState, useEffect, forwardRef } from "react";
 import Image from 'next/image';
@@ -16,14 +17,14 @@ interface AvatarCarouselProps {
   className?: string;
 }
 
-const MotionImage = motion(Image);
+const MotionImage = MotionForReact.motion(Image);
 
 const Slide = forwardRef(function Slide(
     { avatarPath, altText }: { avatarPath: string, altText: string },
     ref: ForwardedRef<HTMLDivElement>
 ) {
-    const [isPresent, safeToRemove] = usePresence();
-    const direction = typeof window !== 'undefined' ? (window as any).motionDirection : 0; // A bit of a hack to get direction if needed
+    const [isPresent, safeToRemove] = MotionForReact.usePresence();
+    const direction = typeof window !== 'undefined' ? (window as any).motionDirection : 0;
 
     useEffect(() => {
         if (!isPresent && safeToRemove) {
@@ -32,18 +33,18 @@ const Slide = forwardRef(function Slide(
     }, [isPresent, safeToRemove]);
 
     return (
-        <motion.div
+        <MotionForReact.motion.div
             ref={ref}
             initial={{ opacity: 0, x: direction * 100 }}
             animate={{
                 opacity: 1,
                 x: 0,
                 transition: {
-                    delay: 0.1, // Slightly reduced delay
+                    delay: 0.1,
                     type: "spring",
-                    stiffness: 300, // A bit stiffer for quicker settle
-                    damping: 30,    // Adjusted damping
-                    mass: 0.5,      // Lighter mass
+                    stiffness: 300,
+                    damping: 30,
+                    mass: 0.5,
                 },
             }}
             exit={{ opacity: 0, x: direction * -100, transition: { duration: 0.2 } }}
@@ -55,11 +56,12 @@ const Slide = forwardRef(function Slide(
                 width={100}
                 height={100}
                 className="object-contain rounded-md"
-                priority // Ensures the visible avatar loads quickly
+                priority
             />
-        </motion.div>
+        </MotionForReact.motion.div>
     );
 });
+Slide.displayName = "Slide";
 
 export default function AvatarCarousel({
   avatars,
@@ -69,21 +71,24 @@ export default function AvatarCarousel({
 }: AvatarCarouselProps) {
   const initialIndex = initialAvatar ? Math.max(0, avatars.indexOf(initialAvatar)) : 0;
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [direction, setDirection] = useState<1 | -1>(1);
+  const [direction, setDirection] = useState<1 | -1>(1); // direction for animation
 
-  // Ensure parent is notified of initial selection
   useEffect(() => {
     if (avatars.length > 0) {
-      onAvatarSelect(avatars[currentIndex]);
+      // Ensure initialAvatar is selected if provided and valid
+      const validInitialIndex = initialAvatar ? avatars.indexOf(initialAvatar) : -1;
+      const startIndex = validInitialIndex !== -1 ? validInitialIndex : 0;
+      if (currentIndex !== startIndex) { // Avoid redundant call if already set
+        setCurrentIndex(startIndex);
+      }
+      onAvatarSelect(avatars[startIndex]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount with the initial currentIndex
+  }, [initialAvatar, avatars]); // Ensure effect runs if initialAvatar or avatars change
 
   const handleNavigation = (newDirection: 1 | -1) => {
     if (avatars.length === 0) return;
-    // Temporary store direction for animations using a global-like hack, as usePresenceData is not directly used.
-    // This is not ideal but works for this specific structure.
-    (window as any).motionDirection = newDirection; 
+    (window as any).motionDirection = newDirection;
 
     const nextIndex = wrap(0, avatars.length -1, currentIndex + newDirection);
     setCurrentIndex(nextIndex);
@@ -108,13 +113,13 @@ export default function AvatarCarousel({
       </Button>
 
       <div className="relative w-32 h-32 overflow-hidden rounded-md flex items-center justify-center">
-        <AnimatePresence custom={direction} initial={false} mode="sync">
+        <MotionForReact.AnimatePresence custom={direction} initial={false} mode="sync">
           <Slide
-            key={currentIndex} // Important for AnimatePresence to detect changes
+            key={currentIndex} // Ensure key changes to trigger AnimatePresence
             avatarPath={avatars[currentIndex]}
             altText={`Avatar ${currentIndex + 1}`}
           />
-        </AnimatePresence>
+        </MotionForReact.AnimatePresence>
       </div>
 
       <Button
