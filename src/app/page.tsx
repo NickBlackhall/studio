@@ -63,38 +63,38 @@ export default function WelcomePage() {
     setIsLoading(true);
 
     try {
-      const gameState = await getGame();
-      console.log(`Client: Initial game state fetched (from ${origin}):`, gameState ? `ID: ${gameState.gameId}, Phase: ${gameState.gamePhase}, Players: ${gameState.players.length}` : "null");
+      const fetchedGameState = await getGame();
+      console.log(`Client: Initial game state fetched (from ${origin}):`, fetchedGameState ? `ID: ${fetchedGameState.gameId}, Phase: ${fetchedGameState.gamePhase}, Players: ${fetchedGameState.players.length}` : "null");
       
       if (!isMountedRef.current) {
         console.log(`Client: fetchGameData from ${origin} - component unmounted after getGame() call.`);
         return;
       }
 
-      setGame(gameState); 
+      setGame(fetchedGameState); 
 
-      if (gameState && gameState.gameId) {
-        const localStorageKey = `thisPlayerId_game_${gameState.gameId}`;
+      if (fetchedGameState && fetchedGameState.gameId) {
+        const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
         
-        if (gameState.players.length === 0) {
-          console.log(`Client: Fetched game state shows 0 players for game ${gameState.gameId}. Forcefully clearing localStorage and thisPlayerId (from ${origin}).`);
+        if (fetchedGameState.players.length === 0) {
+          console.log(`Client: Fetched game state shows 0 players for game ${fetchedGameState.gameId}. Forcefully clearing localStorage and thisPlayerId (from ${origin}).`);
           localStorage.removeItem(localStorageKey);
           setThisPlayerId(null);
         } else {
           const playerIdFromStorage = localStorage.getItem(localStorageKey);
-          console.log(`Client: For gameId ${gameState.gameId}, player ID from storage: ${playerIdFromStorage} (from ${origin}).`);
+          console.log(`Client: For gameId ${fetchedGameState.gameId}, player ID from storage: ${playerIdFromStorage} (from ${origin}).`);
           if (playerIdFromStorage) {
-            const playerInGame = gameState.players.find(p => p.id === playerIdFromStorage);
+            const playerInGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
             if (playerInGame) {
               setThisPlayerId(playerIdFromStorage);
               console.log(`Client: Player ${playerIdFromStorage} found in game.players list (from ${origin}).`);
             } else {
-              console.warn(`Client: Player ${playerIdFromStorage} NOT in game.players list for game ${gameState.gameId}. Clearing localStorage (from ${origin}).`);
+              console.warn(`Client: Player ${playerIdFromStorage} NOT in game.players list for game ${fetchedGameState.gameId}. Clearing localStorage (from ${origin}).`);
               localStorage.removeItem(localStorageKey);
               setThisPlayerId(null);
             }
           } else {
-            console.log(`Client: No player ID found in localStorage for game ${gameState.gameId} (from ${origin}).`);
+            console.log(`Client: No player ID found in localStorage for game ${fetchedGameState.gameId} (from ${origin}).`);
             setThisPlayerId(null);
           }
         }
@@ -103,7 +103,7 @@ export default function WelcomePage() {
 
       } else {
         setThisPlayerId(null);
-        if (gameState === null && origin !== "initial mount" && origin !== "useEffect[] mount or currentStep change to: setup") { 
+        if (fetchedGameState === null && origin !== "initial mount" && origin !== "useEffect[] mount or currentStep change to: setup") { 
             console.warn(`Client: Game state is null or no gameId from fetchGameData (origin: ${origin}). thisPlayerId set to null.`);
         }
       }
@@ -167,7 +167,7 @@ export default function WelcomePage() {
         const updatedFullGame = await getGame(latestGameId); 
         if (updatedFullGame && isMountedRef.current) {
            setGame(updatedFullGame);
-           if (updatedFullGame.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(updatedFullGame.gamePhase as GamePhaseClientState) && currentStep === 'setup') {
+           if (updatedFullGame.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(updatedFullGame.gamePhase as GamePhaseClientState) && currentStep === 'setup' && isMountedRef.current) {
              console.log(`Client: Game phase changed to ${updatedFullGame.gamePhase} (active) via Realtime G GAMES TABLE, step is 'setup'. Auto-navigating to /game.`);
              setTimeout(() => { if (isMountedRef.current) router.push('/game'); }, 0); 
            }
@@ -313,15 +313,13 @@ export default function WelcomePage() {
         const updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
         if (isMountedRef.current) {
           if (updatedGameState) {
-            setGame(updatedGameState); // Update local state (and ref) with the direct response
-            // Check if this action caused the game to start and navigate
+            setGame(updatedGameState); 
             if (updatedGameState.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(updatedGameState.gamePhase as GamePhaseClientState) && currentStep === 'setup') {
               console.log(`Client: Game phase changed to ${updatedGameState.gamePhase} (active) via togglePlayerReadyStatus action for self. Auto-navigating to /game.`);
               router.push('/game');
             }
           } else {
-            // Fallback to fetching if action didn't return state (it should)
-            await fetchGameData(`handleToggleReady after action for game ${currentGameId}`);
+            await fetchGameData(`handleToggleReady after action returned null for game ${currentGameId}`);
           }
         }
       } catch (error: any) {
@@ -558,5 +556,7 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
 
     
