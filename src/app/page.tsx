@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, ThumbsDown, CheckSquare, XSquare } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
@@ -57,10 +57,10 @@ export default function WelcomePage() {
 
   const fetchGameData = useCallback(async (origin: string = "unknown") => {
     console.log(`Client: fetchGameData triggered from ${origin}. Current gameId from ref: ${gameRef.current?.gameId}`);
-    const isInitialOrReset = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || !gameRef.current?.gameId;
+    const isInitialOrResetCall = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || !gameRef.current?.gameId;
     
-    if (isInitialOrReset && isMountedRef.current) {
-        setIsLoading(true);
+    if (isInitialOrResetCall && isMountedRef.current) {
+        // setIsLoading(true); // Only set global loader for truly initial page loads.
     }
     
     try {
@@ -77,7 +77,7 @@ export default function WelcomePage() {
       if (fetchedGameState && fetchedGameState.gameId) {
         const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
         
-        if (fetchedGameState.players.length === 0 && origin.includes("reset")) {
+        if (fetchedGameState.players.length === 0 && (origin.includes("reset") || origin.includes("handleResetGame"))) {
           console.log(`Client: Fetched game state shows 0 players for game ${fetchedGameState.gameId} after reset. Forcefully clearing localStorage and thisPlayerId (from ${origin}).`);
           localStorage.removeItem(localStorageKey);
           setThisPlayerId(null);
@@ -103,26 +103,30 @@ export default function WelcomePage() {
       } else { 
         setThisPlayerId(null);
         console.warn(`Client: Game state is null or no gameId from fetchGameData (origin: ${origin}). thisPlayerId set to null. Last good gameId from ref: ${gameRef.current?.gameId}`);
-        if (isInitialOrReset && isMountedRef.current) {
-             setGame(null); // Only set to null on critical initial/reset failures
+        if (isInitialOrResetCall && isMountedRef.current) {
+            setGame(null); 
+            toast({ title: "Game Session Error", description: "Could not initialize or find the game session. Please try refreshing or resetting.", variant: "destructive"});
         }
       }
     } catch (error: any) {
       console.error(`Client: Failed to fetch game state (from ${origin}):`, error);
       if (isMountedRef.current) {
         toast({ title: "Load Error", description: `Could not update game state: ${error.message || String(error)}`, variant: "destructive"});
-        if (isInitialOrReset) {
+        if (isInitialOrResetCall) {
           setGame(null);
           setThisPlayerId(null);
         }
       }
     } finally {
-      if (isMountedRef.current) {
-         setIsLoading(false);
-         hideGlobalLoader(); 
+      if (isInitialOrResetCall && isMountedRef.current) {
+         setIsLoading(false); // This will turn off the initial page loading spinner.
+         hideGlobalLoader(); // Ensure global loader is also hidden if it was on.
          console.log(`Client: fetchGameData from ${origin} completed. isLoading is now false.`);
+      } else if (isMountedRef.current) {
+         // For non-initial fetches (e.g., from real-time updates), we don't manage the main isLoading here.
+         console.log(`Client: fetchGameData from ${origin} (non-initial) completed.`);
       } else {
-         console.log(`Client: fetchGameData from ${origin} completed, but component unmounted. isLoading/GlobalLoader NOT set by this call.`);
+         console.log(`Client: fetchGameData from ${origin} completed, but component unmounted. Loaders NOT set by this call.`);
       }
     }
   }, [toast, setGame, setThisPlayerId, hideGlobalLoader]);
@@ -130,13 +134,15 @@ export default function WelcomePage() {
   useEffect(() => {
     isMountedRef.current = true;
     console.log(`Client: Component mounted or currentStep changed to: ${currentStep}. Fetching game data.`);
+    showGlobalLoader(); // Show loader for initial load or step change
     fetchGameData(`useEffect[] mount or currentStep change to: ${currentStep}`);
     
     return () => {
       console.log(`Client: Component unmounting or currentStep changing from: ${currentStep}. Setting isMountedRef to false.`);
       isMountedRef.current = false;
     };
-  }, [fetchGameData, currentStep]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep]);
 
 
   useEffect(() => {
@@ -259,7 +265,8 @@ export default function WelcomePage() {
         console.log(`Realtime: Skipping channel cleanup as game.gameId is missing from ref.`);
       }
     };
-  }, [gameRef.current?.gameId, thisPlayerIdRef.current, fetchGameData, currentStep, isLoading, setGame]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameRef.current?.gameId, thisPlayerIdRef.current, currentStep, isLoading]);
 
 
   const handleAddPlayer = async (formData: FormData) => {
@@ -273,7 +280,10 @@ export default function WelcomePage() {
     }
     if (!currentGameId) {
         toast({ title: "Error!", description: "Game session not found. Please refresh.", variant: "destructive"});
-        if (isMountedRef.current) await fetchGameData("handleAddPlayer_no_gameId");
+        if (isMountedRef.current) {
+            showGlobalLoader();
+            await fetchGameData("handleAddPlayer_no_gameId");
+        }
         return;
     }
     
@@ -288,7 +298,8 @@ export default function WelcomePage() {
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id); 
           console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId to ${newPlayer.id} and localStorage. Fetching game data for game ${currentGameId}.`);
-          await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`);
+          // No explicit fetch here, rely on realtime to update the player list
+          // await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); 
         } else if (isMountedRef.current) {
           console.error('Client: Failed to add player or component unmounted. New player:', newPlayer, 'Game ID:', currentGameId, 'Mounted:', isMountedRef.current);
           toast({ title: "Error Adding Player", description: "Could not add player. Please try again.", variant: "destructive"});
@@ -305,14 +316,13 @@ export default function WelcomePage() {
 
   const handleResetGame = async () => {
     console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
+    showGlobalLoader(); // Show loader before starting action that will redirect
     startPlayerActionTransition(async () => {
-      showGlobalLoader();
       try {
         await resetGameForTesting();
       } catch (error: any) {
         if (!isMountedRef.current) {
             console.warn("🔴 RESET (Client): Component unmounted during reset operation.");
-            // hideGlobalLoader(); // Loader will be hidden by the new page instance or if an error occurs below
             return;
         }
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -352,10 +362,10 @@ export default function WelcomePage() {
         if (isMountedRef.current) {
           if (updatedGameState) {
             console.log(`Client (handleToggleReady): Game state received from action. Phase is now: ${updatedGameState?.gamePhase}. Current step: ${currentStep}`);
-            setGame(updatedGameState); 
+            // setGame(updatedGameState); // Rely on real-time for this update.
           } else {
-            console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Re-fetching.`);
-            if (isMountedRef.current) await fetchGameData(`handleToggleReady after action returned null for game ${currentGameId}`);
+            console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Re-fetching if needed by real-time.`);
+            // if (isMountedRef.current) await fetchGameData(`handleToggleReady after action returned null for game ${currentGameId}`);
           }
         }
       } catch (error: any) {
@@ -374,16 +384,15 @@ export default function WelcomePage() {
   
   const renderableGame = gameRef.current; 
 
-  if (isLoading || !renderableGame ) {
+  if (isLoading && !renderableGame ) { // Only show initial full page spinner
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        {/* This full loading screen is primarily for the initial load of the page */}
+        {/* GlobalLoadingOverlay should cover this if active, but this is a fallback */}
       </div>
     );
   }
   
-
-  if (!renderableGame.gameId) {
+  if (!renderableGame || !renderableGame.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
         <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto" data-ai-hint="game logo" priority />
@@ -428,7 +437,7 @@ export default function WelcomePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
         <header className="mb-12 text-center">
-          <button onClick={() => router.push('/?step=welcome')} className="cursor-pointer">
+          <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
             <Image
               src="/logo.png"
               alt="Make It Terrible Logo"
@@ -524,7 +533,7 @@ export default function WelcomePage() {
                                 )}
                               disabled={isProcessingAction}
                             >
-                              {isProcessingAction ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (player.isReady ? <ThumbsUp className="mr-1 h-3 w-3"/> : <ThumbsDown className="mr-1 h-3 w-3"/>)}
+                              {isProcessingAction ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (player.isReady ? <ThumbsUp className="mr-1 h-3 w-3"/> : null)}
                               {player.isReady ? "Ready!" : "Tap when Ready"}
                             </Button>
                           ) : (
@@ -598,3 +607,4 @@ export default function WelcomePage() {
     
 
     
+
