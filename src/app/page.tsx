@@ -45,18 +45,16 @@ export default function WelcomePage() {
       console.log(`Client: Initial game state fetched (from ${origin}):`, gameState ? `ID: ${gameState.gameId}, Phase: ${gameState.gamePhase}, Players: ${gameState.players.length}` : "null");
       
       if (isMountedRef.current) {
-        setGame(gameState); // Set game state first
+        setGame(gameState); 
 
         if (gameState && gameState.gameId) {
           const localStorageKey = `thisPlayerId_game_${gameState.gameId}`;
           
           if (gameState.players.length === 0) {
-            // If the fetched game state has NO players, forcefully clear this client's identity for this game
             console.log(`Client: Fetched game state shows 0 players for game ${gameState.gameId}. Forcefully clearing localStorage and thisPlayerId (from ${origin}).`);
             localStorage.removeItem(localStorageKey);
             setThisPlayerId(null);
           } else {
-            // Original logic to check if stored player ID is in the fetched list
             const playerIdFromStorage = localStorage.getItem(localStorageKey);
             console.log(`Client: For gameId ${gameState.gameId}, player ID from storage: ${playerIdFromStorage} (from ${origin}).`);
             if (playerIdFromStorage) {
@@ -74,11 +72,11 @@ export default function WelcomePage() {
               setThisPlayerId(null);
             }
           }
-          console.log(`Client: thisPlayerId ultimately set to: ${localStorage.getItem(localStorageKey) || thisPlayerId || null} after fetch from ${origin}.`);
+          const finalPlayerId = isMountedRef.current ? (localStorage.getItem(localStorageKey) || thisPlayerId || null) : null;
+          console.log(`Client: thisPlayerId ultimately set to: ${finalPlayerId} after fetch from ${origin}.`);
         } else {
-          // No game or gameId, so no player identity
           setThisPlayerId(null);
-          if (gameState === null && origin !== "initial mount" && origin !== "useEffect[] mount or currentStep change to: setup") { // Avoid spam on initial load if game is truly new
+          if (gameState === null && origin !== "initial mount" && origin !== "useEffect[] mount or currentStep change to: setup") { 
              console.warn(`Client: Game state is null or no gameId from fetchGameData (origin: ${origin}). thisPlayerId set to null.`);
           }
         }
@@ -95,7 +93,7 @@ export default function WelcomePage() {
          setIsLoading(false);
       }
     }
-  }, [toast]); // Removed router from dependencies as it's stable, added thisPlayerId for logging
+  }, [toast, thisPlayerId]); 
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -108,7 +106,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     if (!game || !game.gameId || isLoading) {
-      console.log(`Realtime or Redirect: No game, gameId, or still loading, skipping setup. Game ID: ${game?.gameId || 'N/A'}, isLoading: ${isLoading} on WelcomePage (currentStep: ${currentStep})`);
+      console.log(`Realtime or Redirect: No game, gameId, or still loading, skipping setup. Game ID: ${game?.gameId || 'N/A'}, isLoading: ${isLoading} on WelcomePage (currentStep: ${currentStep}), thisPlayerId: ${thisPlayerId}`);
       return () => {};
     }
 
@@ -119,7 +117,7 @@ export default function WelcomePage() {
       console.log(`>>> Realtime: PLAYERS TABLE CHANGE DETECTED BY SUPABASE! `, payload);
       if (isMountedRef.current && game?.gameId) {
         console.log(`Realtime (players sub for game ${game.gameId}): Fetching updated game state due to players change...`);
-        await fetchGameData(`players-lobby-${game.gameId} player change`);
+        await fetchGameData(`players-lobby-${game.gameId}-${uniqueChannelSuffix} player change`);
       }
     };
 
@@ -129,15 +127,10 @@ export default function WelcomePage() {
         console.log(`Realtime (games sub for game ${game.gameId}): Fetching updated game state due to games change...`);
         const updatedFullGame = await getGame(game.gameId);
         if (updatedFullGame && isMountedRef.current) {
-           setGame(updatedFullGame); // Directly set game from this fetch
-           // The logic to redirect if game phase changes out of lobby is now implicitly handled
-           // by fetchGameData updating `game` state, and the main render logic checking `game.gamePhase`
-           // However, an explicit redirect might still be useful if `fetchGameData` isn't re-triggering a render fast enough
-           // or if other state changes depend on it.
-           // For now, we rely on fetchGameData's state update and subsequent re-render.
+           setGame(updatedFullGame); 
            if (updatedFullGame.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(updatedFullGame.gamePhase as GamePhaseClientState) && currentStep === 'setup' && isMountedRef.current) {
              console.log(`Client: Game phase changed to ${updatedFullGame.gamePhase} (active) via Realtime G GAMES TABLE, step is 'setup'. Auto-navigating to /game.`);
-             setTimeout(() => { if (isMountedRef.current) router.push('/game'); }, 0); // Keep this for explicit nav
+             setTimeout(() => { if (isMountedRef.current) router.push('/game'); }, 0); 
            }
         }
       }
@@ -178,7 +171,7 @@ export default function WelcomePage() {
       });
       
     return () => {
-      if (game?.gameId) {
+      if (game?.gameId && isMountedRef.current) { // Check isMountedRef before calling removeChannel
         console.log(`Realtime: Cleaning up Supabase subscriptions for gameId: ${game.gameId}, suffix: ${uniqueChannelSuffix} on WelcomePage (unmount/re-effect for currentStep: ${currentStep})`);
         supabase.removeChannel(playersChannel).catch(err => console.error("Realtime: Error removing players channel on WelcomePage:", err));
         supabase.removeChannel(gameChannel).catch(err => console.error("Realtime: Error removing game channel on WelcomePage:", err));
@@ -207,12 +200,11 @@ export default function WelcomePage() {
         console.log('Client: Add player action result:', newPlayer);
 
         if (newPlayer && newPlayer.id && game?.gameId && isMountedRef.current) {
-          // localStorage is now handled by fetchGameData after the action leads to a real-time update
-          // that calls fetchGameData. We don't need to set localStorage or thisPlayerId directly here.
-          // We simply rely on the real-time update to refresh the state.
-          console.log(`Client: Player ${newPlayer.id} added. Real-time update should refresh state.`);
-          // Let real-time update call fetchGameData.
-          // await fetchGameData(`handleAddPlayer after action for game ${game.gameId}`);
+          const localStorageKey = `thisPlayerId_game_${game.gameId}`;
+          localStorage.setItem(localStorageKey, newPlayer.id);
+          setThisPlayerId(newPlayer.id); 
+          console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId and localStorage. Now fetching game data.`);
+          await fetchGameData(`handleAddPlayer after action for game ${game.gameId}`); // Re-fetch to ensure client state is fully up-to-date
         } else if (isMountedRef.current) {
           toast({ title: "Error Adding Player", description: "Could not add player. Please try again.", variant: "destructive"});
         }
@@ -228,22 +220,18 @@ export default function WelcomePage() {
 
   const handleResetGame = async () => {
     console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
-    setIsLoading(true); // Set loading before starting the transition/action
+    setIsLoading(true); 
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
-        // Redirect is handled by the server action. The `useEffect` listening to `currentStep`
-        // (which changes due to redirect) will call `fetchGameData`.
         console.log("🔴 RESET (Client): resetGameForTesting server action called. Redirect should occur.");
       } catch (error: any) {
         if (isMountedRef.current) {
-          // Only set isLoading to false if not a redirect error, as redirect will unmount.
           if (!(typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT'))) {
             setIsLoading(false);
           }
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
             console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-            // Don't show toast here as page is navigating away
           } else {
             console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
             toast({
@@ -254,7 +242,6 @@ export default function WelcomePage() {
           }
         }
       }
-      // isLoading will be set to false by fetchGameData in the new page load if not a redirect error
     });
   };
 
@@ -272,7 +259,6 @@ export default function WelcomePage() {
     startPlayerActionTransition(async () => {
       try {
         await togglePlayerReadyStatus(player.id, game.gameId);
-        // State update will come via real-time subscription calling fetchGameData
       } catch (error: any) {
         console.error("Client: Error toggling ready status:", error);
         if (isMountedRef.current) {
@@ -504,3 +490,4 @@ export default function WelcomePage() {
     </div>
   );
 }
+
