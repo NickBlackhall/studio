@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { GameClientState, PlayerClientState, PlayerHandCard } from '@/lib/types'; // Updated GameState to GameClientState
+import type { GameClientState, PlayerClientState, PlayerHandCard } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useState, useTransition } from 'react';
@@ -123,7 +123,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
   return (
     <div className="space-y-6">
-      <ScenarioDisplay scenario={gameState.currentScenario} />
+      {gameState.currentScenario && <ScenarioDisplay scenario={gameState.currentScenario} />}
 
       <Card className="shadow-lg border-2 border-muted rounded-xl">
         <CardHeader className="p-6">
@@ -131,15 +131,15 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           <CardDescription>Pick the card that best (or worst) fits the scenario.</CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-3">
-          {player.hand && player.hand.length > 0 ? player.hand.map((card: PlayerHandCard) => ( // Iterate over card objects
+          {player.hand && player.hand.length > 0 ? player.hand.map((card: PlayerHandCard) => ( 
             <Button
-              key={card.id} // Use card.id for a unique key
+              key={card.id} 
               variant={selectedCardText === card.text ? "default" : "outline"}
-              onClick={() => setSelectedCardText(card.text)} // Select based on card.text
+              onClick={() => setSelectedCardText(card.text)} 
               className={`w-full h-auto p-4 text-left text-lg whitespace-normal justify-start
                           ${selectedCardText === card.text ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' : 'border-muted hover:bg-muted/50 hover:border-foreground'}`}
             >
-              {card.text} {/* Display card.text */}
+              {card.text} 
             </Button>
           )) : (
             <p className="text-muted-foreground text-center py-4">You're out of cards! This shouldn't happen.</p>
@@ -159,4 +159,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 }
+    
+
     
