@@ -132,21 +132,23 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     }
   }
 
-  // console.log(`🔴 GAME (Server) getGame - Raw hands data for game ${gameId}:`, JSON.stringify(allHandsData.map(h => ({ pId: h.player_id, cId: h.response_cards?.id, is_new: h.is_new})), null, 2));
+  // Server-side log to check `is_new` as it's fetched
+  console.log(`🔴 GAME (Server) getGame - Raw hands data for game ${gameId} BEFORE player mapping:`, JSON.stringify(allHandsData.map(h => ({ pId: h.player_id, cId: h.response_cards?.id, is_new: h.is_new})), null, 2));
 
 
   const players: PlayerClientState[] = playersData.map(p => {
     const playerHandCards: PlayerHandCard[] = allHandsData
       .filter(h => h.player_id === p.id && h.response_cards?.text && h.response_cards?.id)
       .map(h => {
-        // console.log(`🔴 GAME (Server) getGame - Mapping card for player ${p.id}: cardId ${h.response_cards?.id}, is_new from DB: ${h.is_new}`);
+        // Server-side log for each card being mapped
+        console.log(`🔴 GAME (Server) getGame - Mapping card for player ${p.id}: cardId ${h.response_cards?.id}, is_new from DB: ${h.is_new}`);
         return {
           id: h.response_cards!.id as string,
           text: h.response_cards!.text as string,
           isNew: h.is_new ?? false, // Default to false if null/undefined
         };
       });
-    // console.log(`🔴 GAME (Server) getGame - Player ${p.id} constructed hand:`, JSON.stringify(playerHandCards.map(c => ({id: c.id, isNew: c.isNew})), null, 2));
+    console.log(`🔴 GAME (Server) getGame - Player ${p.id} constructed hand:`, JSON.stringify(playerHandCards.map(c => ({id: c.id, isNew: c.isNew, text: c.text.substring(0,10)+"..."})), null, 2));
     return {
       id: p.id,
       name: p.name,
@@ -749,7 +751,6 @@ export async function submitResponse(playerId: string, responseCardText: string,
     .update({ is_new: false })
     .eq('player_id', playerId)
     .eq('game_id', gameId);
-    // Note: This clears flags for *all* cards the player holds. The new one will be inserted with is_new: true.
 
   if (clearOldNewFlagsError) {
     console.error(`🔴 SUBMIT (Server) CARDS: Error clearing is_new flags for player ${playerId}:`, JSON.stringify(clearOldNewFlagsError, null, 2));
@@ -1000,20 +1001,6 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     return getGame(gameId); // Return current state without changes
   }
 
-  // REMOVED: Global reset of is_new flags.
-  // is_new flags are managed by submitResponse and startGame.
-  // console.log(`🔴 NEXT ROUND (Server) CARDS: Setting is_new=false for ALL cards in game ${gameId}.`);
-  // const { error: clearAllNewFlagsError } = await supabase
-  //   .from('player_hands')
-  //   .update({ is_new: false })
-  //   .eq('game_id', gameId);
-  // if (clearAllNewFlagsError) {
-  //   console.warn(`🔴 NEXT ROUND (Server) CARDS: Could not clear is_new flags for game ${gameId}:`, JSON.stringify(clearAllNewFlagsError, null, 2));
-  // } else {
-  //   console.log(`🔴 NEXT ROUND (Server) CARDS: Successfully set is_new=false for all cards in game ${gameId}.`);
-  // }
-
-
   // Determine next judge
   const { data: players, error: playersFetchError } = await supabase
     .from('players')
@@ -1117,6 +1104,8 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
     handCards = handData
       .map((h: any) => { // Use 'any' for h if the structure is complex and not fully typed from select
         if (h.response_cards && h.response_cards.id && h.response_cards.text) {
+          // Server-side log for each card when fetching current player's hand
+          console.log(`🔴 GET_CUR_PLAYER (Server) CARDS: Card ${h.response_cards.id} for player ${playerId} has is_new: ${h.is_new}`);
           return {
             id: h.response_cards.id,
             text: h.response_cards.text,
@@ -1238,4 +1227,5 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   return getGame(gameId); // Return the latest game state
 }
 
+    
     
