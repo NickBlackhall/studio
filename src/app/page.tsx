@@ -41,14 +41,14 @@ export default function WelcomePage() {
     if (isMountedRef.current) {
       setInternalGame(newGameState);
     }
-  }, []);
+  }, [setInternalGame]);
 
   const setThisPlayerId = useCallback((newPlayerId: string | null) => {
     thisPlayerIdRef.current = newPlayerId;
     if (isMountedRef.current) {
       setInternalThisPlayerId(newPlayerId);
     }
-  }, []);
+  }, [setInternalThisPlayerId]);
 
 
   console.log("Supabase client URL:", supabase.supabaseUrl);
@@ -137,10 +137,10 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
-    const currentGameIdFromRef = gameRef.current?.gameId; // Use ref for initial check
+    const currentGameIdFromRef = gameRef.current?.gameId; 
     const currentThisPlayerIdFromRef = thisPlayerIdRef.current;
 
-    if (!currentGameIdFromRef || isLoading) { // Check gameId from ref
+    if (!currentGameIdFromRef || isLoading) { 
       console.log(`Realtime or Redirect: No gameId from ref, or still loading, skipping subscription setup. Game ID from ref: ${currentGameIdFromRef || 'N/A'}, isLoading: ${isLoading} on WelcomePage (currentStep: ${currentStep}), thisPlayerId from ref: ${currentThisPlayerIdFromRef}`);
       return () => {};
     }
@@ -166,8 +166,8 @@ export default function WelcomePage() {
         console.log(`Realtime (games sub for game ${latestGameId}): Fetching updated game state due to games change...`);
         const updatedFullGame = await getGame(latestGameId); 
         if (updatedFullGame && isMountedRef.current) {
-           setGame(updatedFullGame); // This uses the wrapped setter, updating state and ref
-           if (updatedFullGame.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(updatedFullGame.gamePhase as GamePhaseClientState) && currentStep === 'setup') { // Removed redundant isMountedRef check
+           setGame(updatedFullGame);
+           if (updatedFullGame.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(updatedFullGame.gamePhase as GamePhaseClientState) && currentStep === 'setup') {
              console.log(`Client: Game phase changed to ${updatedFullGame.gamePhase} (active) via Realtime G GAMES TABLE, step is 'setup'. Auto-navigating to /game.`);
              setTimeout(() => { if (isMountedRef.current) router.push('/game'); }, 0); 
            }
@@ -214,7 +214,7 @@ export default function WelcomePage() {
       });
       
     return () => {
-      const gameIdForCleanup = gameRef.current?.gameId; // Use ref for cleanup
+      const gameIdForCleanup = gameRef.current?.gameId; 
       if (gameIdForCleanup) {
         console.log(`Realtime: Cleaning up Supabase subscriptions for gameId: ${gameIdForCleanup}, suffix: ${uniqueChannelSuffix} on WelcomePage (unmount/re-effect for currentStep: ${currentStep})`);
         supabase.removeChannel(playersChannel).catch(err => console.error("Realtime: Error removing players channel on WelcomePage:", err));
@@ -223,7 +223,7 @@ export default function WelcomePage() {
         console.log(`Realtime: Skipping channel cleanup as game.gameId is missing from ref.`);
       }
     };
-  }, [gameRef.current?.gameId, fetchGameData, router, currentStep, isLoading, thisPlayerIdRef.current, setGame]); // Rely on ref.current values for deps if they gate logic
+  }, [gameRef.current?.gameId, fetchGameData, router, currentStep, isLoading, thisPlayerIdRef.current, setGame]);
 
 
   const handleAddPlayer = async (formData: FormData) => {
@@ -295,8 +295,8 @@ export default function WelcomePage() {
   };
 
   const handleToggleReady = async (player: PlayerClientState) => {
-    const currentGameId = gameRef.current?.gameId; // Use ref
-    const currentThisPlayerId = thisPlayerIdRef.current; // Use ref
+    const currentGameId = gameRef.current?.gameId; 
+    const currentThisPlayerId = thisPlayerIdRef.current; 
 
     if (!currentGameId || !currentThisPlayerId) {
         toast({ title: "Error", description: "Cannot change ready status. Game or player not identified.", variant: "destructive" });
@@ -333,7 +333,7 @@ export default function WelcomePage() {
     });
   };
   
-  const renderableGame = gameRef.current; // Use the ref's current value for rendering
+  const renderableGame = gameRef.current; 
 
   if (isLoading || !renderableGame ) {
     return (
@@ -381,7 +381,6 @@ export default function WelcomePage() {
         const unreadyCount = renderableGame.players.filter(p => !p.isReady).length;
         lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready... Game will start automatically.`;
       } else {
-        // This message might briefly appear if auto-start logic is slightly delayed
         lobbyMessage = "All players ready! Starting game...";
       }
     }
@@ -559,6 +558,5 @@ export default function WelcomePage() {
     </div>
   );
 }
-
 
     
