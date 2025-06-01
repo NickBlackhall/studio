@@ -297,9 +297,8 @@ export default function WelcomePage() {
           const localStorageKey = `thisPlayerId_game_${currentGameId}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id); 
-          console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId to ${newPlayer.id} and localStorage. Fetching game data for game ${currentGameId}.`);
-          // No explicit fetch here, rely on realtime to update the player list
-          // await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); 
+          console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId to ${newPlayer.id} and localStorage. Explicitly fetching game data for game ${currentGameId} for this client.`);
+          await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); 
         } else if (isMountedRef.current) {
           console.error('Client: Failed to add player or component unmounted. New player:', newPlayer, 'Game ID:', currentGameId, 'Mounted:', isMountedRef.current);
           toast({ title: "Error Adding Player", description: "Could not add player. Please try again.", variant: "destructive"});
@@ -362,10 +361,9 @@ export default function WelcomePage() {
         if (isMountedRef.current) {
           if (updatedGameState) {
             console.log(`Client (handleToggleReady): Game state received from action. Phase is now: ${updatedGameState?.gamePhase}. Current step: ${currentStep}`);
-            // setGame(updatedGameState); // Rely on real-time for this update.
+            // setGame(updatedGameState); // Rely on real-time for this update for other clients. The acting client gets immediate feedback from the returned state of toggle.
           } else {
-            console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Re-fetching if needed by real-time.`);
-            // if (isMountedRef.current) await fetchGameData(`handleToggleReady after action returned null for game ${currentGameId}`);
+            console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Real-time should update others.`);
           }
         }
       } catch (error: any) {
@@ -608,3 +606,6 @@ export default function WelcomePage() {
 
     
 
+
+
+    
