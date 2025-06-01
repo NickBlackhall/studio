@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { GameClientState, PlayerClientState } from '@/lib/types'; // Updated GameState to GameClientState
+import type { GameClientState, PlayerClientState, PlayerHandCard } from '@/lib/types'; // Updated GameState to GameClientState
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useState, useTransition } from 'react';
@@ -11,20 +11,19 @@ import ScenarioDisplay from './ScenarioDisplay';
 import { submitResponse } from '@/app/game/actions';
 
 interface PlayerViewProps {
-  gameState: GameClientState; // Updated GameState to GameClientState
-  player: PlayerClientState; // Updated Player to PlayerClientState
+  gameState: GameClientState; 
+  player: PlayerClientState; 
 }
 
 export default function PlayerView({ gameState, player }: PlayerViewProps) {
-  const [selectedCard, setSelectedCard] = useState<string>('');
+  const [selectedCardText, setSelectedCardText] = useState<string>(''); // Stores the text of the selected card
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  // Determine if the current player has already submitted for the current round
   const hasSubmitted = gameState.submissions.some(sub => sub.playerId === player.id && gameState.currentRound > 0);
 
   const handleSubmit = () => {
-    if (!selectedCard) {
+    if (!selectedCardText) {
       toast({ title: "Whoa there!", description: "You need to pick a card to submit.", variant: "destructive" });
       return;
     }
@@ -34,10 +33,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     }
     startTransition(async () => {
       try {
-        // Pass all required arguments: playerId, selectedCardText, gameId, currentRound
-        await submitResponse(player.id, selectedCard, gameState.gameId, gameState.currentRound);
+        await submitResponse(player.id, selectedCardText, gameState.gameId, gameState.currentRound);
         toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
-        setSelectedCard(''); // Clear selection after submission
+        setSelectedCardText(''); 
       } catch (error: any) {
         console.error("PlayerView: Error submitting response:", error);
         toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
@@ -109,7 +107,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   }
 
   if (gameState.gamePhase !== 'player_submission' || !gameState.currentScenario) {
-    // Fallback for unexpected states or if scenario isn't ready
     return (
       <Card className="text-center shadow-lg border-2 border-dashed border-muted rounded-xl">
        <CardHeader>
@@ -134,15 +131,15 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           <CardDescription>Pick the card that best (or worst) fits the scenario.</CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-3">
-          {player.hand && player.hand.length > 0 ? player.hand.map((cardText, index) => (
+          {player.hand && player.hand.length > 0 ? player.hand.map((card: PlayerHandCard) => ( // Iterate over card objects
             <Button
-              key={cardText + '-' + index} // Ensuring key is unique if card texts could repeat
-              variant={selectedCard === cardText ? "default" : "outline"}
-              onClick={() => setSelectedCard(cardText)}
+              key={card.id} // Use card.id for a unique key
+              variant={selectedCardText === card.text ? "default" : "outline"}
+              onClick={() => setSelectedCardText(card.text)} // Select based on card.text
               className={`w-full h-auto p-4 text-left text-lg whitespace-normal justify-start
-                          ${selectedCard === cardText ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' : 'border-muted hover:bg-muted/50 hover:border-foreground'}`}
+                          ${selectedCardText === card.text ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' : 'border-muted hover:bg-muted/50 hover:border-foreground'}`}
             >
-              {cardText}
+              {card.text} {/* Display card.text */}
             </Button>
           )) : (
             <p className="text-muted-foreground text-center py-4">You're out of cards! This shouldn't happen.</p>
@@ -151,7 +148,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         <CardFooter className="p-6">
           <Button 
             onClick={handleSubmit} 
-            disabled={isPending || !selectedCard || !player.hand || player.hand.length === 0 || hasSubmitted} 
+            disabled={isPending || !selectedCardText || !player.hand || player.hand.length === 0 || hasSubmitted} 
             className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3"
           >
             {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
@@ -162,5 +159,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 }
-
     

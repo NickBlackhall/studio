@@ -1,25 +1,32 @@
 
+
 // We will rely on database.types.ts for the core database object.
 // These types can be specific to application logic or client-side state if needed.
 
-export interface PlayerClientState { // Example if we need client-specific player view models
+export interface PlayerHandCard { // Explicit type for cards in a player's hand
+  id: string;
+  text: string;
+}
+
+export interface PlayerClientState { 
   id: string;
   name: string;
   avatar: string;
   score: number;
   isJudge: boolean;
-  hand: string[]; // Array of response card TEXTS (derived from player_hands and response_cards)
+  hand: PlayerHandCard[]; // Array of PlayerHandCard objects
   isReady: boolean;
 }
 
-export interface ScenarioClientState { // Example
+export interface ScenarioClientState { 
   id: string;
   category: string;
   text: string;
 }
 
-export interface SubmissionClientState { // Example
+export interface SubmissionClientState { 
   playerId: string;
+  cardId: string; // Keep track of the card ID submitted
   cardText: string;
 }
 
@@ -32,26 +39,23 @@ export type GamePhaseClientState =
   | "game_over";
 
 
-export interface GameClientState { // Represents the overall game state as the client might see it
+export interface GameClientState { 
   gameId: string;
   players: PlayerClientState[];
   currentRound: number;
   currentJudgeId: string | null;
   currentScenario: ScenarioClientState | null;
   gamePhase: GamePhaseClientState;
-  submissions: SubmissionClientState[]; // Player submissions for the current round
+  submissions: SubmissionClientState[]; 
   
-  // For displaying winner announcement
   lastWinner?: {
     player: PlayerClientState;
     cardText: string;
   };
   
-  // For game over state
   winningPlayerId?: string | null; 
 
-  // For lobby/category selection
-  categories: string[]; // List of available categories
+  categories: string[]; 
   
   readyPlayerOrder?: string[];
 }
@@ -67,10 +71,6 @@ export const ACTIVE_PLAYING_PHASES: GamePhaseClientState[] = [
   'judging'
 ];
 
-// The main Database types are now in src/lib/database.types.ts
-// This keeps a clean separation.
-// If you had Json or other generic types here, they can remain if used by client state,
-// or be removed if database.types.ts covers them.
 export type Json =
   | string
   | number
@@ -78,3 +78,4 @@ export type Json =
   | null
   | { [key: string]: Json | undefined }
   | Json[]
+
