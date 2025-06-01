@@ -84,8 +84,8 @@ export default {
   				}
   			},
         'border-pulse': {
-          '0%, 100%': { borderColor: 'hsl(var(--accent))' },
-          '50%': { borderColor: 'hsl(var(--accent) / 0.6)' },
+          '0%, 100%': { borderColor: 'hsl(var(--primary))' },
+          '50%': { borderColor: 'hsl(var(--primary) / 0.6)' },
         }
   		},
   		animation: {

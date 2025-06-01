@@ -140,7 +140,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               <Button 
                 onClick={handleWinnerSubmit} 
                 disabled={isPendingWinner || !selectedWinningCard || shuffledSubmissions.length === 0} 
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 mt-4 border-2 border-accent animate-border-pulse"
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 mt-4 border-2 border-primary animate-border-pulse"
               >
                 {isPendingWinner ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" />}
                 Crown the Winner!
