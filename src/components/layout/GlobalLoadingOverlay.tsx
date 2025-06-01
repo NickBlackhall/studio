@@ -13,7 +13,7 @@ export default function GlobalLoadingOverlay() {
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
       <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
-      <p className="text-xl text-primary font-semibold">Loading Awesomeness...</p>
+      <p className="text-xl text-primary font-semibold">Loading the terribleness...</p>
       {/* Potential for fun messages later */}
     </div>
   );

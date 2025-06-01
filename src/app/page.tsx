@@ -57,7 +57,7 @@ export default function WelcomePage() {
 
   const fetchGameData = useCallback(async (origin: string = "unknown") => {
     console.log(`Client: fetchGameData triggered from ${origin}. Current gameId from ref: ${gameRef.current?.gameId}`);
-    const isInitialOrReset = origin === "initial mount" || origin.includes("reset") || !gameRef.current?.gameId;
+    const isInitialOrReset = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || !gameRef.current?.gameId;
     
     if (isInitialOrReset && isMountedRef.current) {
         setIsLoading(true);
@@ -103,12 +103,15 @@ export default function WelcomePage() {
       } else { 
         setThisPlayerId(null);
         console.warn(`Client: Game state is null or no gameId from fetchGameData (origin: ${origin}). thisPlayerId set to null. Last good gameId from ref: ${gameRef.current?.gameId}`);
+        if (isInitialOrReset && isMountedRef.current) {
+             setGame(null); // Only set to null on critical initial/reset failures
+        }
       }
     } catch (error: any) {
       console.error(`Client: Failed to fetch game state (from ${origin}):`, error);
       if (isMountedRef.current) {
         toast({ title: "Load Error", description: `Could not update game state: ${error.message || String(error)}`, variant: "destructive"});
-        if (isInitialOrReset) { // Only set game to null if it was a critical initial load/reset that failed
+        if (isInitialOrReset) {
           setGame(null);
           setThisPlayerId(null);
         }
@@ -116,7 +119,7 @@ export default function WelcomePage() {
     } finally {
       if (isMountedRef.current) {
          setIsLoading(false);
-         hideGlobalLoader(); // Hide global loader when WelcomePage stabilizes
+         hideGlobalLoader(); 
          console.log(`Client: fetchGameData from ${origin} completed. isLoading is now false.`);
       } else {
          console.log(`Client: fetchGameData from ${origin} completed, but component unmounted. isLoading/GlobalLoader NOT set by this call.`);
@@ -127,7 +130,7 @@ export default function WelcomePage() {
   useEffect(() => {
     isMountedRef.current = true;
     console.log(`Client: Component mounted or currentStep changed to: ${currentStep}. Fetching game data.`);
-    fetchGameData(`initial mount or currentStep change to: ${currentStep}`);
+    fetchGameData(`useEffect[] mount or currentStep change to: ${currentStep}`);
     
     return () => {
       console.log(`Client: Component unmounting or currentStep changing from: ${currentStep}. Setting isMountedRef to false.`);
@@ -137,7 +140,7 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
-    const currentRenderableGame = gameRef.current; 
+    const currentRenderableGame = gameRef.current;
     console.log(`Client (useEffect nav check): Running. internalGame phase: ${internalGame?.gamePhase}, Game from ref: ${currentRenderableGame ? currentRenderableGame.gameId : 'N/A'}, Phase from ref: ${currentRenderableGame?.gamePhase}, Step: ${currentStep}, Mounted: ${isMountedRef.current}`);
 
     if (isMountedRef.current && currentRenderableGame && currentRenderableGame.gameId &&
@@ -147,8 +150,6 @@ export default function WelcomePage() {
       console.log(`Client (useEffect nav check): NAV CONDITION MET. Phase: ${currentRenderableGame.gamePhase}, Step: ${currentStep}. Showing loader and navigating to /game.`);
       showGlobalLoader();
       router.push('/game');
-    } else {
-      // console.log(`Client (useEffect nav check): Nav condition NOT MET. internalGame phase: ${internalGame?.gamePhase}, Game from ref: ${currentRenderableGame?.gamePhase}, Step: ${currentStep}, ActivePhases: ${ACTIVE_PLAYING_PHASES.join(',')}, IsLobby: ${currentRenderableGame?.gamePhase === 'lobby'}`);
     }
   }, [internalGame, currentStep, router, showGlobalLoader]);
 
@@ -258,7 +259,7 @@ export default function WelcomePage() {
         console.log(`Realtime: Skipping channel cleanup as game.gameId is missing from ref.`);
       }
     };
-  }, [gameRef.current?.gameId, fetchGameData, currentStep, isLoading, thisPlayerIdRef.current, setGame]);
+  }, [gameRef.current?.gameId, thisPlayerIdRef.current, fetchGameData, currentStep, isLoading, setGame]);
 
 
   const handleAddPlayer = async (formData: FormData) => {
@@ -311,7 +312,7 @@ export default function WelcomePage() {
       } catch (error: any) {
         if (!isMountedRef.current) {
             console.warn("🔴 RESET (Client): Component unmounted during reset operation.");
-            hideGlobalLoader(); 
+            // hideGlobalLoader(); // Loader will be hidden by the new page instance or if an error occurs below
             return;
         }
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -328,8 +329,6 @@ export default function WelcomePage() {
            hideGlobalLoader(); 
         }
       }
-      // No setIsLoading(false) here as redirect should occur. If redirect fails, loader might stick.
-      // WelcomePage's own fetchGameData will call hideGlobalLoader on new load.
     });
   };
 
@@ -354,8 +353,6 @@ export default function WelcomePage() {
           if (updatedGameState) {
             console.log(`Client (handleToggleReady): Game state received from action. Phase is now: ${updatedGameState?.gamePhase}. Current step: ${currentStep}`);
             setGame(updatedGameState); 
-            // Navigation to /game is handled by the dedicated useEffect watching internalGame
-            // If updatedGameState.gamePhase is not 'lobby', the nav effect will showGlobalLoader before navigating.
           } else {
             console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Re-fetching.`);
             if (isMountedRef.current) await fetchGameData(`handleToggleReady after action returned null for game ${currentGameId}`);
@@ -377,11 +374,10 @@ export default function WelcomePage() {
   
   const renderableGame = gameRef.current; 
 
-  if (isLoading || !renderableGame ) { // This isLoading is specific to WelcomePage's initial data load.
+  if (isLoading || !renderableGame ) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p className="text-xl text-muted-foreground">Loading Game...</p>
+        {/* This full loading screen is primarily for the initial load of the page */}
       </div>
     );
   }
@@ -460,11 +456,11 @@ export default function WelcomePage() {
           )}
           {!showPlayerSetupForm && thisPlayerObject && renderableGame.gamePhase === 'lobby' && (
             <p className="text-xl text-muted-foreground mt-2">
-              Welcome, {thisPlayerObject.name}! Click your 'Ready' button below. Game starts when all players are ready.
+              Welcome, {thisPlayerObject.name}! Tap your 'Ready' button below. Game starts when all players are ready.
             </p>
           )}
           {showPlayerSetupForm && renderableGame.gamePhase === 'lobby' && (
-             <p className="text-xl text-muted-foreground mt-2">Enter your details to join, then click your ready button!</p>
+             <p className="text-xl text-muted-foreground mt-2">Enter your details to join, then tap your ready button!</p>
           )}
         </header>
         
@@ -529,7 +525,7 @@ export default function WelcomePage() {
                               disabled={isProcessingAction}
                             >
                               {isProcessingAction ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (player.isReady ? <ThumbsUp className="mr-1 h-3 w-3"/> : <ThumbsDown className="mr-1 h-3 w-3"/>)}
-                              {player.isReady ? "Ready!" : "Click to Ready"}
+                              {player.isReady ? "Ready!" : "Tap when Ready"}
                             </Button>
                           ) : (
                             player.isReady ? <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
@@ -586,7 +582,7 @@ export default function WelcomePage() {
         The game of awful choices and hilarious outcomes!
       </p>
         <Button
-          onClick={() => router.push('/?step=setup')}
+          onClick={() => { showGlobalLoader(); router.push('/?step=setup');}}
           variant="default"
           size="lg"
           className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
