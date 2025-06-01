@@ -89,7 +89,6 @@ export default function GamePage() {
             if (!playerDetail) {
                 console.warn(`GamePage: Player ${playerIdFromStorage} could not be fetched for game ${localGameId}. Clearing localStorage.`);
                 localStorage.removeItem(`thisPlayerId_game_${localGameId}`);
-                 // showGlobalLoader(); // Already handled by router or context
                  router.push('/?step=setup'); 
                  return; 
             }
@@ -98,19 +97,16 @@ export default function GamePage() {
         } else {
           console.warn(`GamePage: No player ID found in localStorage for game ${localGameId}. Redirecting to setup.`);
           setThisPlayer(null);
-          // showGlobalLoader(); // Already handled by router or context
           router.push('/?step=setup');
           return;
         }
       } else if (initialGameState && initialGameState.gamePhase === 'lobby' && initialGameState.players.length === 0) {
         console.log("GamePage: Lobby is empty or no gameId after fetch, redirecting to setup.");
-        // showGlobalLoader();  // Already handled by router or context
         router.push('/?step=setup'); 
         return;
       } else if (!initialGameState || !initialGameState.gameId) {
         console.error("GamePage: Critical error - no gameId found after fetch. Redirecting to setup.");
         if (isMountedRef.current) toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
-        // showGlobalLoader(); // Already handled by router or context
         router.push('/?step=setup');
         return;
       }
@@ -190,7 +186,6 @@ export default function GamePage() {
         const currentPhase = gameStateRef.current?.gamePhase;
         if (currentPhase !== 'game_over') { 
             if (isMountedRef.current) toast({ title: "Game Update Error", description: "Lost connection to game, redirecting to lobby.", variant: "destructive" });
-            // showGlobalLoader(); // Already handled by router or context
             router.push('/?step=setup');
         }
       }
@@ -339,7 +334,6 @@ export default function GamePage() {
         console.error("GamePage: Error starting next round:", error);
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          // showGlobalLoader(); // Already handled by router or context
           return; 
         } else {
           if (isMountedRef.current) toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
@@ -351,7 +345,6 @@ export default function GamePage() {
         }
         if (!wasRedirect && isMountedRef.current) {
            setIsLoading(false);
-           // hideGlobalLoader(); // Not needed here as fetchGameAndPlayer will hide it
         }
       }
     }
@@ -376,7 +369,7 @@ export default function GamePage() {
             console.error("GamePage: Error on 'Play Again Yes':", error);
             if (isMountedRef.current) {
               toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
-              hideGlobalLoader(); 
+              
             }
           }
         } finally {
@@ -395,7 +388,6 @@ export default function GamePage() {
   
   const handlePlayAgainNo = () => {
     console.log("GamePage: Player clicked 'No, I'm Done'. Navigating to home.");
-    // showGlobalLoader(); // Already handled by router or context
     router.push('/');
   };
 
@@ -420,7 +412,7 @@ export default function GamePage() {
               description: `Could not reset the game. ${error.message || String(error)}`,
               variant: "destructive",
             });
-            hideGlobalLoader();
+            
           }
         }
       } finally {
@@ -454,7 +446,7 @@ export default function GamePage() {
         <p className="text-lg text-muted-foreground mb-8">
           Could not load or initialize the game session. Please try again or reset.
         </p>
-        <Link href="/?step=setup" onClick={() => { /* showGlobalLoader(); // Already handled by router or context */ }}>
+        <Link href="/?step=setup" onClick={() => {  }}>
           <Button variant="default" size="lg" className="bg-primary text-primary-foreground hover:bg-primary/80 text-lg">
             <Home className="mr-2 h-5 w-5" /> Go to Lobby Setup
           </Button>
@@ -474,7 +466,7 @@ export default function GamePage() {
             <p className="text-lg text-muted-foreground mb-8">
               The game session has been reset or ended.
             </p>
-             <Link href="/?step=setup" className="mt-6" onClick={() => { /* showGlobalLoader(); // Already handled by router or context */ }}>
+             <Link href="/?step=setup" className="mt-6" onClick={() => {  }}>
                 <Button variant="default" size="lg">
                     Go to Player Setup & Lobby
                 </Button>
@@ -491,7 +483,7 @@ export default function GamePage() {
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
           <p className="text-xl text-muted-foreground">Identifying player...</p>
           <p className="text-sm mt-2">If this persists, you might not be part of this game or try returning to the lobby.</p>
-           <Link href="/?step=setup" className="mt-4" onClick={() => { /* showGlobalLoader(); // Already handled by router or context */ }}>
+           <Link href="/?step=setup" className="mt-4" onClick={() => {  }}>
             <Button variant="outline">Go to Lobby</Button>
           </Link>
         </div>
@@ -525,7 +517,7 @@ export default function GamePage() {
             <div className="text-center py-10">
                 <h2 className="text-2xl font-semibold mb-4">Game is in Lobby</h2>
                 <p className="mb-4">The game has returned to the lobby. Please go to player setup.</p>
-                <Link href="/?step=setup" onClick={() => { /* showGlobalLoader(); // Already handled by router or context */ }}>
+                <Link href="/?step=setup" onClick={() => {  }}>
                     <Button>Go to Lobby Setup</Button>
                 </Link>
             </div>
@@ -571,7 +563,7 @@ export default function GamePage() {
                 <span className="text-2xl mx-1">{thisPlayer.avatar}</span>
               )}
               <p className="text-sm text-foreground font-medium">
-                You are: <strong>{thisPlayer.name}</strong>
+                <strong>{thisPlayer.name}</strong> - {thisPlayer.score} pts
               </p>
             </CardContent>
           </Card>
@@ -582,7 +574,7 @@ export default function GamePage() {
         <Scoreboard players={gameState.players} currentJudgeId={gameState.currentJudgeId} />
         <div className="mt-6 text-center space-y-2">
           <p className="text-sm text-muted-foreground">Round {gameState.currentRound}</p>
-          <Link href="/?step=setup" className="inline-block" onClick={() => { /* showGlobalLoader(); // Already handled by router or context */ }}>
+          <Link href="/?step=setup" className="inline-block" onClick={() => {  }}>
             <Button variant="outline" size="sm" className="border-primary/50 text-primary/80 hover:bg-primary/10 hover:text-primary">
               <Home className="mr-1 h-4 w-4" /> Exit to Lobby
             </Button>
@@ -608,3 +600,4 @@ export const dynamic = 'force-dynamic';
 
 
     
+
