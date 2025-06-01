@@ -41,14 +41,14 @@ export default function WelcomePage() {
     if (isMountedRef.current) {
       setInternalGame(newGameState);
     }
-  }, [setInternalGame]);
+  }, []);
 
   const setThisPlayerId = useCallback((newPlayerId: string | null) => {
     thisPlayerIdRef.current = newPlayerId;
     if (isMountedRef.current) {
       setInternalThisPlayerId(newPlayerId);
     }
-  }, [setInternalThisPlayerId]);
+  }, []);
 
   console.log("Supabase client URL:", supabase.supabaseUrl);
   console.log("Supabase client Key (first 10 chars):", supabase.supabaseKey.substring(0,10));
@@ -97,8 +97,8 @@ export default function WelcomePage() {
             setThisPlayerId(null);
           }
         }
-        const finalPlayerId = isMountedRef.current ? (localStorage.getItem(localStorageKey) || thisPlayerIdRef.current || null) : null;
-        console.log(`Client: thisPlayerId ultimately set to: ${finalPlayerId} after fetch from ${origin}.`);
+        const finalPlayerIdForLog = isMountedRef.current ? (localStorage.getItem(localStorageKey) || thisPlayerIdRef.current || null) : null;
+        console.log(`Client: thisPlayerId ultimately set to: ${finalPlayerIdForLog} after fetch from ${origin}.`);
 
       } else {
         setThisPlayerId(null);
@@ -166,7 +166,6 @@ export default function WelcomePage() {
         const updatedFullGame = await getGame(latestGameId); 
         if (updatedFullGame && isMountedRef.current) {
            setGame(updatedFullGame);
-           // Navigation logic moved to dedicated useEffect
         }
       } else {
          console.log(`Realtime (games sub): Skipping fetch, component unmounted or gameId missing. Current gameId from ref: ${latestGameId}`);
@@ -182,13 +181,31 @@ export default function WelcomePage() {
         handlePlayersUpdate
       )
       .subscribe((status, err) => {
-         if (status === 'SUBSCRIBED') console.log(`Realtime: Successfully subscribed to ${playersChannelName} on WelcomePage!`);
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Realtime: Subscription error (${playersChannelName}):`, status, err ? JSON.stringify(err) : 'undefined');
+        if (status === 'SUBSCRIBED') {
+          console.log(`Realtime: Successfully subscribed to ${playersChannelName} on WelcomePage!`);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error(`Realtime: Subscription error (${playersChannelName}): "${status}"`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+          if (err) {
+            console.error('Realtime: Full error object details for players channel:', err);
+            console.dir(err);
+          }
+        } else if (status === 'CLOSED') {
+          if (err) {
+            console.warn(`Realtime: Channel ${playersChannelName} closed with error:`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+            if (err) {
+              console.warn('Realtime: Full error object details for players channel (CLOSED event):', err);
+              console.dir(err);
+            }
+          } else {
+            console.info(`Realtime: Channel ${playersChannelName} is now ${status}. This is often due to explicit unsubscription or component unmount.`);
+          }
+        } else if (err) {
+           console.error(`Realtime: Unexpected error or status on ${playersChannelName} subscription (status: ${status}):`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+           if (err) {
+             console.error('Realtime: Full error object details for players channel (unexpected status):', err);
+             console.dir(err);
+           }
         }
-         if (err) {
-            console.error(`Realtime: Subscription detailed error (${playersChannelName}):`, err);
-         }
       });
 
     const gameChannelName = `game-state-lobby-${currentGameIdFromRef}-${uniqueChannelSuffix}`;
@@ -200,12 +217,30 @@ export default function WelcomePage() {
         handleGameTableUpdate
       )
       .subscribe((status, err) => {
-         if (status === 'SUBSCRIBED') console.log(`Realtime: Successfully subscribed to ${gameChannelName} on WelcomePage!`);
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Realtime: Subscription error (${gameChannelName}):`, status, err ? JSON.stringify(err) : 'undefined');
-        }
-        if (err) {
-          console.error(`Realtime: Subscription detailed error (${gameChannelName}):`, err);
+         if (status === 'SUBSCRIBED') {
+          console.log(`Realtime: Successfully subscribed to ${gameChannelName} on WelcomePage!`);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error(`Realtime: Subscription error (${gameChannelName}): "${status}"`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+          if (err) {
+            console.error('Realtime: Full error object details for games channel:', err);
+            console.dir(err);
+          }
+        } else if (status === 'CLOSED') {
+          if (err) {
+            console.warn(`Realtime: Channel ${gameChannelName} closed with error:`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+            if (err) {
+              console.warn('Realtime: Full error object details for games channel (CLOSED event):', err);
+              console.dir(err);
+            }
+          } else {
+            console.info(`Realtime: Channel ${gameChannelName} is now ${status}. This is often due to explicit unsubscription or component unmount.`);
+          }
+        } else if (err) {
+           console.error(`Realtime: Unexpected error or status on ${gameChannelName} subscription (status: ${status}):`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+           if (err) {
+             console.error('Realtime: Full error object details for games channel (unexpected status):', err);
+             console.dir(err);
+           }
         }
       });
       
@@ -219,7 +254,7 @@ export default function WelcomePage() {
         console.log(`Realtime: Skipping channel cleanup as game.gameId is missing from ref.`);
       }
     };
-  }, [gameRef.current?.gameId, fetchGameData, router, currentStep, isLoading, thisPlayerIdRef.current, setGame]);
+  }, [gameRef.current?.gameId, fetchGameData, currentStep, isLoading, thisPlayerIdRef.current, setGame]);
 
   // Dedicated useEffect for navigation when game becomes active
   useEffect(() => {
@@ -321,14 +356,21 @@ export default function WelcomePage() {
         if (isMountedRef.current) {
           if (updatedGameState) {
             setGame(updatedGameState); 
-            // Navigation logic moved to dedicated useEffect
+            // Navigation logic is now handled by the dedicated useEffect watching internalGame.gamePhase
           } else {
+            // If updatedGameState is null (e.g. due to a redirect in the action), 
+            // fetchGameData might still be useful if the redirect didn't occur for this client.
             await fetchGameData(`handleToggleReady after action returned null for game ${currentGameId}`);
           }
         }
       } catch (error: any) {
-        console.error("Client: Error toggling ready status:", error);
         if (isMountedRef.current) {
+          // Check if the error is due to a redirect, and don't toast if so
+          if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+            console.log("Client (handleToggleReady): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+            return; 
+          }
+          console.error("Client: Error toggling ready status:", error);
           toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
         }
       }
@@ -383,7 +425,7 @@ export default function WelcomePage() {
         const unreadyCount = renderableGame.players.filter(p => !p.isReady).length;
         lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready... Game will start automatically.`;
       } else {
-        lobbyMessage = "All players ready! Starting game..."; // This message might be briefly shown before navigation
+        lobbyMessage = "All players ready! Starting game..."; 
       }
     }
 
@@ -404,12 +446,12 @@ export default function WelcomePage() {
             />
           </button>
           <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-           {gameIsConsideredActive && ( // This will be true if game started but navigation hasn't happened yet
+           {gameIsConsideredActive && ( 
             <div className="my-4 p-4 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 rounded-md shadow-lg">
                 <p className="font-bold text-lg">Game in Progress!</p>
                 <p className="text-md">The current game is in the "{renderableGame.gamePhase}" phase.</p>
                  <Button
-                    onClick={() => router.push('/game')} // Manual navigation if auto fails for some reason
+                    onClick={() => router.push('/game')} 
                     variant="default"
                     size="lg"
                     className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
