@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare, HelpCircle } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
@@ -16,6 +16,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useTransition, useRef } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 
 export const dynamic = 'force-dynamic';
 
@@ -553,15 +555,24 @@ export default function WelcomePage() {
           </Card>
         </div>
 
-        <div className="mt-8 w-full max-w-4xl text-center">
+        <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80">
+                <HelpCircle className="mr-2 h-5 w-5" /> How to Play
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <HowToPlayModalContent />
+            </DialogContent>
+          </Dialog>
           <Button
             onClick={handleResetGame}
             variant="destructive"
-            size="sm"
             className="hover:bg-destructive/80"
             disabled={isProcessingAction || isLoading }
           >
-            { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game State (For Testing)
+            { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
           </Button>
         </div>
 
@@ -586,9 +597,10 @@ export default function WelcomePage() {
       <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">
         Make It Terrible
       </h1>
-      <p className="text-2xl text-muted-foreground mb-12">
+      <p className="text-2xl text-muted-foreground mb-10">
         The game of awful choices and hilarious outcomes!
       </p>
+      <div className="flex flex-col sm:flex-row items-center gap-4">
         <Button
           onClick={() => { showGlobalLoader(); router.push('/?step=setup');}}
           variant="default"
@@ -597,7 +609,18 @@ export default function WelcomePage() {
         >
           Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
         </Button>
-        <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full">
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="lg" className="text-lg px-8 py-7">
+              <HelpCircle className="mr-2 h-6 w-6" /> How to Play
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <HowToPlayModalContent />
+          </DialogContent>
+        </Dialog>
+      </div>
+      <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full">
         <p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p>
       </footer>
     </div>

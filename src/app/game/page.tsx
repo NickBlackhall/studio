@@ -23,10 +23,12 @@ import WinnerDisplay from '@/components/game/WinnerDisplay';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, Play, Loader2, RefreshCw } from 'lucide-react';
+import { Home, Play, Loader2, RefreshCw, HelpCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 
 
 export default function GamePage() {
@@ -574,16 +576,28 @@ export default function GamePage() {
         <Scoreboard players={gameState.players} currentJudgeId={gameState.currentJudgeId} />
         <div className="mt-6 text-center space-y-2">
           <p className="text-sm text-muted-foreground">Round {gameState.currentRound}</p>
-          <Link href="/?step=setup" className="inline-block" onClick={() => {  }}>
-            <Button variant="outline" size="sm" className="border-primary/50 text-primary/80 hover:bg-primary/10 hover:text-primary">
-              <Home className="mr-1 h-4 w-4" /> Exit to Lobby
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <Link href="/?step=setup" className="inline-block" onClick={() => {  }}>
+              <Button variant="outline" size="sm" className="border-primary/50 text-primary/80 hover:bg-primary/10 hover:text-primary w-full sm:w-auto">
+                <Home className="mr-1 h-4 w-4" /> Exit to Lobby
+              </Button>
+            </Link>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-accent text-accent-foreground hover:bg-accent/80 w-full sm:w-auto">
+                  <HelpCircle className="mr-2 h-4 w-4" /> How to Play
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <HowToPlayModalContent />
+              </DialogContent>
+            </Dialog>
+          </div>
           <Button 
             onClick={handleResetGameFromGamePage} 
             variant="destructive" 
             size="sm" 
-            className="w-full" 
+            className="w-full mt-2" 
             disabled={isActionPending || isLoading}
           >
             { (isActionPending || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> } 
@@ -600,5 +614,6 @@ export const dynamic = 'force-dynamic';
 
 
     
+
 
 
