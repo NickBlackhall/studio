@@ -89,7 +89,7 @@ export default function GamePage() {
             if (!playerDetail) {
                 console.warn(`GamePage: Player ${playerIdFromStorage} could not be fetched for game ${localGameId}. Clearing localStorage.`);
                 localStorage.removeItem(`thisPlayerId_game_${localGameId}`);
-                 showGlobalLoader();
+                 // showGlobalLoader(); // Already handled by router or context
                  router.push('/?step=setup'); 
                  return; 
             }
@@ -98,19 +98,19 @@ export default function GamePage() {
         } else {
           console.warn(`GamePage: No player ID found in localStorage for game ${localGameId}. Redirecting to setup.`);
           setThisPlayer(null);
-          showGlobalLoader();
+          // showGlobalLoader(); // Already handled by router or context
           router.push('/?step=setup');
           return;
         }
       } else if (initialGameState && initialGameState.gamePhase === 'lobby' && initialGameState.players.length === 0) {
         console.log("GamePage: Lobby is empty or no gameId after fetch, redirecting to setup.");
-        showGlobalLoader();
+        // showGlobalLoader();  // Already handled by router or context
         router.push('/?step=setup'); 
         return;
       } else if (!initialGameState || !initialGameState.gameId) {
         console.error("GamePage: Critical error - no gameId found after fetch. Redirecting to setup.");
-        toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
-        showGlobalLoader();
+        if (isMountedRef.current) toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
+        // showGlobalLoader(); // Already handled by router or context
         router.push('/?step=setup');
         return;
       }
@@ -124,7 +124,7 @@ export default function GamePage() {
       }
       console.log(`GamePage: fetchGameAndPlayer (from ${origin}) sequence ended. isLoading: ${false}`);
     }
-  }, [router, toast, isLoading, setGameState, setThisPlayer, hideGlobalLoader, showGlobalLoader]); 
+  }, [router, toast, isLoading, setGameState, setThisPlayer, hideGlobalLoader]); 
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -190,7 +190,7 @@ export default function GamePage() {
         const currentPhase = gameStateRef.current?.gamePhase;
         if (currentPhase !== 'game_over') { 
             if (isMountedRef.current) toast({ title: "Game Update Error", description: "Lost connection to game, redirecting to lobby.", variant: "destructive" });
-            showGlobalLoader();
+            // showGlobalLoader(); // Already handled by router or context
             router.push('/?step=setup');
         }
       }
@@ -255,7 +255,7 @@ export default function GamePage() {
       console.log(`GamePage Realtime: Cleaning up subscriptions for gameId: ${gameId}, suffix: ${uniqueChannelSuffix}`);
       activeSubscriptions.forEach(sub => supabase.removeChannel(sub).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
     };
-  }, [gameState?.gameId, setGameState, setThisPlayer, router, toast, showGlobalLoader]); 
+  }, [gameState?.gameId, setGameState, setThisPlayer, router, toast]); 
 
   useEffect(() => {
     const currentJudge = thisPlayerRef.current?.isJudge;
@@ -338,8 +338,8 @@ export default function GamePage() {
         currentActionError = error; 
         console.error("GamePage: Error starting next round:", error);
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Showing loader. Allowing Next.js to handle navigation.");
-          if (isMountedRef.current) showGlobalLoader(); // Show loader before navigating away
+          console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+          // showGlobalLoader(); // Already handled by router or context
           return; 
         } else {
           if (isMountedRef.current) toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
@@ -363,7 +363,6 @@ export default function GamePage() {
       console.log("GamePage: Player clicked 'Yes, Play Again!'. Calling resetGameForTesting.");
       if (isMountedRef.current) {
         setIsLoading(true);
-        // showGlobalLoader(); // Removed to prevent stuck overlay if redirect fails
       }
       startActionTransition(async () => {
         try {
@@ -396,7 +395,7 @@ export default function GamePage() {
   
   const handlePlayAgainNo = () => {
     console.log("GamePage: Player clicked 'No, I'm Done'. Navigating to home.");
-    if (isMountedRef.current) showGlobalLoader();
+    // showGlobalLoader(); // Already handled by router or context
     router.push('/');
   };
 
@@ -405,7 +404,6 @@ export default function GamePage() {
     let currentActionError: any = null;
     if (isMountedRef.current) {
         setIsLoading(true);
-        // showGlobalLoader(); // Removed to prevent stuck overlay if redirect fails
     }
     startActionTransition(async () => {
       try {
@@ -456,7 +454,7 @@ export default function GamePage() {
         <p className="text-lg text-muted-foreground mb-8">
           Could not load or initialize the game session. Please try again or reset.
         </p>
-        <Link href="/?step=setup" onClick={() => showGlobalLoader()}>
+        <Link href="/?step=setup" onClick={() => { /* showGlobalLoader(); // Already handled by router or context */ }}>
           <Button variant="default" size="lg" className="bg-primary text-primary-foreground hover:bg-primary/80 text-lg">
             <Home className="mr-2 h-5 w-5" /> Go to Lobby Setup
           </Button>
@@ -476,7 +474,7 @@ export default function GamePage() {
             <p className="text-lg text-muted-foreground mb-8">
               The game session has been reset or ended.
             </p>
-             <Link href="/?step=setup" className="mt-6" onClick={() => showGlobalLoader()}>
+             <Link href="/?step=setup" className="mt-6" onClick={() => { /* showGlobalLoader(); // Already handled by router or context */ }}>
                 <Button variant="default" size="lg">
                     Go to Player Setup & Lobby
                 </Button>
@@ -493,7 +491,7 @@ export default function GamePage() {
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
           <p className="text-xl text-muted-foreground">Identifying player...</p>
           <p className="text-sm mt-2">If this persists, you might not be part of this game or try returning to the lobby.</p>
-           <Link href="/?step=setup" className="mt-4" onClick={() => showGlobalLoader()}>
+           <Link href="/?step=setup" className="mt-4" onClick={() => { /* showGlobalLoader(); // Already handled by router or context */ }}>
             <Button variant="outline">Go to Lobby</Button>
           </Link>
         </div>
@@ -527,7 +525,7 @@ export default function GamePage() {
             <div className="text-center py-10">
                 <h2 className="text-2xl font-semibold mb-4">Game is in Lobby</h2>
                 <p className="mb-4">The game has returned to the lobby. Please go to player setup.</p>
-                <Link href="/?step=setup" onClick={() => showGlobalLoader()}>
+                <Link href="/?step=setup" onClick={() => { /* showGlobalLoader(); // Already handled by router or context */ }}>
                     <Button>Go to Lobby Setup</Button>
                 </Link>
             </div>
@@ -552,28 +550,7 @@ export default function GamePage() {
 
   return (
     <div className="flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 max-w-7xl mx-auto px-2">
-      <aside className="w-full md:w-1/3 lg:w-1/4">
-        <Scoreboard players={gameState.players} currentJudgeId={gameState.currentJudgeId} />
-        <div className="mt-6 text-center space-y-2">
-          <p className="text-sm text-muted-foreground">Round {gameState.currentRound}</p>
-          <Link href="/?step=setup" className="inline-block" onClick={() => showGlobalLoader()}>
-            <Button variant="outline" size="sm" className="border-primary/50 text-primary/80 hover:bg-primary/10 hover:text-primary">
-              <Home className="mr-1 h-4 w-4" /> Exit to Lobby
-            </Button>
-          </Link>
-          <Button 
-            onClick={handleResetGameFromGamePage} 
-            variant="destructive" 
-            size="sm" 
-            className="w-full" 
-            disabled={isActionPending || isLoading}
-          >
-            { (isActionPending || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> } 
-            Reset Game (Testing)
-          </Button>
-        </div>
-      </aside>
-      <main className="flex-grow w-full md:w-2/3 lg:w-3/4 relative">
+      <main className="flex-grow w-full md:w-2/3 lg:w-3/4 relative order-1 md:order-2">
         {showPendingOverlay && (
             <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -601,6 +578,27 @@ export default function GamePage() {
         )}
         {renderGameContent()}
       </main>
+      <aside className="w-full md:w-1/3 lg:w-1/4 order-2 md:order-1">
+        <Scoreboard players={gameState.players} currentJudgeId={gameState.currentJudgeId} />
+        <div className="mt-6 text-center space-y-2">
+          <p className="text-sm text-muted-foreground">Round {gameState.currentRound}</p>
+          <Link href="/?step=setup" className="inline-block" onClick={() => { /* showGlobalLoader(); // Already handled by router or context */ }}>
+            <Button variant="outline" size="sm" className="border-primary/50 text-primary/80 hover:bg-primary/10 hover:text-primary">
+              <Home className="mr-1 h-4 w-4" /> Exit to Lobby
+            </Button>
+          </Link>
+          <Button 
+            onClick={handleResetGameFromGamePage} 
+            variant="destructive" 
+            size="sm" 
+            className="w-full" 
+            disabled={isActionPending || isLoading}
+          >
+            { (isActionPending || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> } 
+            Reset Game (Testing)
+          </Button>
+        </div>
+      </aside>
     </div>
   );
 }
