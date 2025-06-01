@@ -9,12 +9,12 @@ import { useState, useTransition, useMemo, useEffect } from 'react';
 import { Gavel, Send, CheckCircle, Loader2, ListChecks, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
-// No need to import selectCategory from actions if it's passed as a prop
+import { cn } from '@/lib/utils';
 
 interface JudgeViewProps {
   gameState: GameClientState; 
   judge: PlayerClientState;    
-  onSelectCategory: (category: string) => Promise<void>; // Prop for server action
+  onSelectCategory: (category: string) => Promise<void>; 
   onSelectWinner: (cardText: string) => Promise<void>;
 }
 
@@ -37,7 +37,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       return;
     }
     startTransitionCategory(async () => {
-      await onSelectCategory(selectedCategory); // Call the passed server action
+      await onSelectCategory(selectedCategory); 
       toast({ title: "Category Selected!", description: `Scenario from "${selectedCategory}" is up!` });
     });
   };
@@ -56,6 +56,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     if (!gameState.submissions) return [];
     return gameState.submissions.slice().sort(() => Math.random() - 0.5);
   }, [gameState.submissions]);
+
+  const isUnleashScenarioButtonActive = !isPendingCategory && !!selectedCategory && gameState.categories.length > 0;
+  const isCrownWinnerButtonActive = !isPendingWinner && !!selectedWinningCard && shuffledSubmissions.length > 0;
 
   return (
     <div className="space-y-8">
@@ -87,7 +90,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             </Select>
             <Button 
               onClick={handleCategorySubmit} 
-              disabled={isPendingCategory || !selectedCategory || gameState.categories.length === 0} 
+              disabled={!isUnleashScenarioButtonActive} 
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold py-3"
             >
               {isPendingCategory ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
@@ -139,8 +142,11 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               )}
               <Button 
                 onClick={handleWinnerSubmit} 
-                disabled={isPendingWinner || !selectedWinningCard || shuffledSubmissions.length === 0} 
-                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 mt-4 border-2 border-primary animate-border-pulse"
+                disabled={!isCrownWinnerButtonActive} 
+                className={cn(
+                  "w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 mt-4 border-2 border-primary",
+                  isCrownWinnerButtonActive && 'animate-border-pulse'
+                )}
               >
                 {isPendingWinner ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" />}
                 Crown the Winner!

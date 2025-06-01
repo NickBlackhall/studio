@@ -9,6 +9,7 @@ import { Send, Loader2, ListCollapse, VenetianMask, Gavel } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { submitResponse } from '@/app/game/actions';
+import { cn } from '@/lib/utils';
 
 interface PlayerViewProps {
   gameState: GameClientState; 
@@ -42,6 +43,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       }
     });
   };
+
+  const isSubmitButtonActive = !isPending && !!selectedCardText && !!player.hand && player.hand.length > 0 && !hasSubmitted;
 
   if (gameState.gamePhase === 'category_selection') {
     return (
@@ -150,8 +153,11 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         <CardFooter className="p-6">
           <Button 
             onClick={handleSubmit} 
-            disabled={isPending || !selectedCardText || !player.hand || player.hand.length === 0 || hasSubmitted} 
-            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 border-2 border-primary animate-border-pulse"
+            disabled={!isSubmitButtonActive} 
+            className={cn(
+              "w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg font-semibold py-3 border-2 border-primary",
+              isSubmitButtonActive && 'animate-border-pulse'
+            )}
           >
             {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
             {hasSubmitted ? "Already Submitted" : "Submit Your Terrible Choice"}
@@ -164,4 +170,3 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     
 
     
-
