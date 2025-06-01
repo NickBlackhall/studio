@@ -59,7 +59,8 @@ export default function WelcomePage() {
         console.log(`Client: fetchGameData from ${origin} skipped as component is not mounted.`);
         return;
     }
-    // Only set isLoading to true for initial page loads or explicit resets
+    
+    // Only set isLoading to true for initial page loads or explicit resets, or if gameId is missing
     if (origin === "initial mount" || origin.includes("reset") || !gameRef.current?.gameId) {
       setIsLoading(true);
     }
@@ -118,13 +119,13 @@ export default function WelcomePage() {
       }
     } finally {
       if (isMountedRef.current) {
-         setIsLoading(false); // Always set to false at the end
-         console.log(`Client: fetchGameData from ${origin} completed. isLoading set to false.`);
+         setIsLoading(false);
+         console.log(`Client: fetchGameData from ${origin} completed. isLoading is now false.`);
       } else {
-         console.log(`Client: fetchGameData from ${origin} completed, but component unmounted. isLoading NOT set to false by this call.`);
+         console.log(`Client: fetchGameData from ${origin} completed, but component unmounted. isLoading NOT set by this call.`);
       }
     }
-  }, [toast, setGame, setThisPlayerId]); 
+  }, [toast, setGame, setThisPlayerId]); // Removed setIsLoading from dependency array
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -139,19 +140,19 @@ export default function WelcomePage() {
 
   // useEffect for navigation when game becomes active
   useEffect(() => {
-    const currentRenderableGame = gameRef.current;
+    const currentRenderableGame = gameRef.current; // Use ref for freshest data
     console.log(`Client (useEffect nav check): Running. internalGame phase: ${internalGame?.gamePhase}, Game from ref: ${currentRenderableGame ? currentRenderableGame.gameId : 'N/A'}, Phase from ref: ${currentRenderableGame?.gamePhase}, Step: ${currentStep}, Mounted: ${isMountedRef.current}`);
 
     if (isMountedRef.current && currentRenderableGame && currentRenderableGame.gameId &&
         currentRenderableGame.gamePhase !== 'lobby' && 
         ACTIVE_PLAYING_PHASES.includes(currentRenderableGame.gamePhase as GamePhaseClientState) && 
         currentStep === 'setup') {
-      console.log(`Client (useEffect nav check): NAV CONDITION MET. Phase from ref: ${currentRenderableGame.gamePhase}, Step: ${currentStep}. Navigating to /game.`);
+      console.log(`Client (useEffect nav check): NAV CONDITION MET. Phase: ${currentRenderableGame.gamePhase}, Step: ${currentStep}. Navigating to /game.`);
       router.push('/game');
     } else {
-      // console.log(`Client (useEffect nav check): Nav condition NOT MET. Phase from ref: ${currentRenderableGame?.gamePhase}, Step: ${currentStep}, IsLobby: ${currentRenderableGame?.gamePhase === 'lobby'}`);
+      // console.log(`Client (useEffect nav check): Nav condition NOT MET. Phase: ${currentRenderableGame?.gamePhase}, Step: ${currentStep}, ActivePhases: ${ACTIVE_PLAYING_PHASES.join(',')}, IsLobby: ${currentRenderableGame?.gamePhase === 'lobby'}`);
     }
-  }, [internalGame, currentStep, router]); // Depend on the whole internalGame object to catch phase changes
+  }, [internalGame, currentStep, router]); // Effect depends on the whole internalGame object
 
 
   useEffect(() => {
@@ -304,10 +305,8 @@ export default function WelcomePage() {
           const localStorageKey = `thisPlayerId_game_${currentGameId}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id); 
-          console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId to ${newPlayer.id} and localStorage. Now fetching game data for game ${currentGameId}.`);
-          // No explicit fetchGameData here, rely on real-time or subsequent interactions.
-          // This might change if direct feedback is needed that can't be derived from real-time.
-          // For now, the player list should update via the 'players' table subscription.
+          console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId to ${newPlayer.id} and localStorage. Fetching game data for game ${currentGameId}.`);
+          await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`);
         } else if (isMountedRef.current) {
           console.error('Client: Failed to add player or component unmounted. New player:', newPlayer, 'Game ID:', currentGameId, 'Mounted:', isMountedRef.current);
           toast({ title: "Error Adding Player", description: "Could not add player. Please try again.", variant: "destructive"});
@@ -324,33 +323,31 @@ export default function WelcomePage() {
 
   const handleResetGame = async () => {
     console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
-    setIsLoading(true); 
+    // setIsLoading(true); // Removed: The new page load will handle its own loading state.
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
-        console.log("🔴 RESET (Client): resetGameForTesting server action called. Redirect should occur.");
-        // Navigation to setup is handled by the redirect in resetGameForTesting action
+        // If resetGameForTesting successfully calls redirect(), Next.js will handle it.
+        // This part of the try block might not be reached if redirect happens.
       } catch (error: any) {
         if (!isMountedRef.current) {
-            console.warn("🔴 RESET (Client): Component unmounted during reset, skipping toast/state update.");
-            return;
+            console.warn("🔴 RESET (Client): Component unmounted during reset operation.");
+            return; // Avoid further processing if unmounted
         }
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          // Let Next.js handle the redirect, do not set isLoading to false here.
+          // No setIsLoading(false) here, as the component will unmount.
           return; 
         }
+        // Handle other errors that are not NEXT_REDIRECT
         console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
         toast({
           title: "Reset Failed",
           description: `Could not reset the game. ${error.message || String(error)}`,
           variant: "destructive",
         });
-        setIsLoading(false); 
+        if (isMountedRef.current) setIsLoading(false); // Only set false if an actual error occurred and we're not redirecting
       }
-      // If no redirect happened and no other error, ensure loading is false.
-      // However, resetGameForTesting is designed to redirect.
-      if (isMountedRef.current) setIsLoading(false);
     });
   };
 
@@ -384,7 +381,7 @@ export default function WelcomePage() {
       } catch (error: any) {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            console.log("Client (handleToggleReady): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+            console.log("Client (handleToggleReady): Caught NEXT_REDIRECT during toggle ready. Allowing Next.js to handle navigation.");
             return; 
           }
           console.error("Client: Error toggling ready status:", error);
