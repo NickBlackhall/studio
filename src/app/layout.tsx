@@ -1,6 +1,6 @@
 
 import type {Metadata} from 'next';
-import { Fugaz_One, Nunito } from 'next/font/google'; // Changed from Geist
+import { Fugaz_One, Nunito } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
@@ -16,7 +16,7 @@ const fugazOne = Fugaz_One({
 const nunito = Nunito({
   subsets: ['latin'],
   variable: '--font-nunito',
-  weights: [300, 400, 600, 700, 800], // Added range of weights
+  weight: ['300', '400', '600', '700', '800'], // Corrected 'weights' to 'weight'
   display: 'swap',
 });
 
@@ -31,8 +31,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning={true}>
-      <body className={`${fugazOne.variable} ${nunito.variable} antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
+    <html lang="en" className={`${fugazOne.variable} ${nunito.variable}`} suppressHydrationWarning={true}>
+      <body className={`antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
         <LoadingProvider>
           <main className="flex-grow container mx-auto p-4">
             {children}
