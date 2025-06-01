@@ -50,7 +50,6 @@ export default function WelcomePage() {
     }
   }, [setInternalThisPlayerId]);
 
-
   console.log("Supabase client URL:", supabase.supabaseUrl);
   console.log("Supabase client Key (first 10 chars):", supabase.supabaseKey.substring(0,10));
 
@@ -167,10 +166,7 @@ export default function WelcomePage() {
         const updatedFullGame = await getGame(latestGameId); 
         if (updatedFullGame && isMountedRef.current) {
            setGame(updatedFullGame);
-           if (updatedFullGame.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(updatedFullGame.gamePhase as GamePhaseClientState) && currentStep === 'setup' && isMountedRef.current) {
-             console.log(`Client: Game phase changed to ${updatedFullGame.gamePhase} (active) via Realtime G GAMES TABLE, step is 'setup'. Auto-navigating to /game.`);
-             setTimeout(() => { if (isMountedRef.current) router.push('/game'); }, 0); 
-           }
+           // Navigation logic moved to dedicated useEffect
         }
       } else {
          console.log(`Realtime (games sub): Skipping fetch, component unmounted or gameId missing. Current gameId from ref: ${latestGameId}`);
@@ -224,6 +220,17 @@ export default function WelcomePage() {
       }
     };
   }, [gameRef.current?.gameId, fetchGameData, router, currentStep, isLoading, thisPlayerIdRef.current, setGame]);
+
+  // Dedicated useEffect for navigation when game becomes active
+  useEffect(() => {
+    if (isMountedRef.current && internalGame && internalGame.gameId &&
+        internalGame.gamePhase !== 'lobby' && 
+        ACTIVE_PLAYING_PHASES.includes(internalGame.gamePhase as GamePhaseClientState) && 
+        currentStep === 'setup') {
+      console.log(`Client (useEffect on gamePhase change): Game phase is ${internalGame.gamePhase}. currentStep is ${currentStep}. Navigating to /game.`);
+      router.push('/game');
+    }
+  }, [internalGame?.gamePhase, currentStep, router, internalGame?.gameId]);
 
 
   const handleAddPlayer = async (formData: FormData) => {
@@ -314,10 +321,7 @@ export default function WelcomePage() {
         if (isMountedRef.current) {
           if (updatedGameState) {
             setGame(updatedGameState); 
-            if (updatedGameState.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(updatedGameState.gamePhase as GamePhaseClientState) && currentStep === 'setup') {
-              console.log(`Client: Game phase changed to ${updatedGameState.gamePhase} (active) via togglePlayerReadyStatus action for self. Auto-navigating to /game.`);
-              router.push('/game');
-            }
+            // Navigation logic moved to dedicated useEffect
           } else {
             await fetchGameData(`handleToggleReady after action returned null for game ${currentGameId}`);
           }
@@ -379,7 +383,7 @@ export default function WelcomePage() {
         const unreadyCount = renderableGame.players.filter(p => !p.isReady).length;
         lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready... Game will start automatically.`;
       } else {
-        lobbyMessage = "All players ready! Starting game...";
+        lobbyMessage = "All players ready! Starting game..."; // This message might be briefly shown before navigation
       }
     }
 
@@ -400,12 +404,12 @@ export default function WelcomePage() {
             />
           </button>
           <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-           {gameIsConsideredActive && (
+           {gameIsConsideredActive && ( // This will be true if game started but navigation hasn't happened yet
             <div className="my-4 p-4 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 rounded-md shadow-lg">
                 <p className="font-bold text-lg">Game in Progress!</p>
                 <p className="text-md">The current game is in the "{renderableGame.gamePhase}" phase.</p>
                  <Button
-                    onClick={() => router.push('/game')}
+                    onClick={() => router.push('/game')} // Manual navigation if auto fails for some reason
                     variant="default"
                     size="lg"
                     className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
@@ -556,7 +560,4 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
-
     
