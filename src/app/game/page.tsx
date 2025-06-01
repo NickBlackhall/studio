@@ -203,10 +203,28 @@ export default function GamePage() {
           (payload) => commonPayloadHandler(channelConfig.table, payload)
         )
         .subscribe((status, err) => {
-          if (status === 'SUBSCRIBED') console.log(`GamePage Realtime: Subscribed to ${channelName}`);
-          if (err) console.error(`GamePage Realtime: Error on ${channelName} subscription:`, err);
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error(`GamePage Realtime: Channel error for ${channelName}: ${status}`, err ? JSON.stringify(err, null, 2) : 'undefined');
+          if (status === 'SUBSCRIBED') {
+            console.log(`GamePage Realtime: Subscribed to ${channelName}`);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.error(`GamePage Realtime: Channel status for ${channelName}: ${status}`);
+            if (err) {
+              console.error(`GamePage Realtime: Error details for ${channelName} (status: ${status}):`, {
+                message: err.message,
+                name: err.name,
+                // stack: err.stack, // Stack can be very long, log if needed for deep debug
+                errorObject: { ...err } 
+              });
+            } else {
+              console.warn(`GamePage Realtime: ${status} for ${channelName} with no additional error object.`);
+            }
+          } else if (err) { 
+            // Catch any other errors not associated with specific statuses mentioned above
+            console.error(`GamePage Realtime: Unexpected error on ${channelName} subscription (status: ${status}):`, {
+                message: err.message,
+                name: err.name,
+                // stack: err.stack,
+                errorObject: { ...err }
+            });
           }
         });
       return channel;
