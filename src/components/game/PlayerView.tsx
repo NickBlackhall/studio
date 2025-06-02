@@ -4,47 +4,114 @@
 import type { GameClientState, PlayerClientState, PlayerHandCard } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { useState, useTransition, useEffect } from 'react';
-import { Send, Loader2, ListCollapse, VenetianMask, Gavel } from 'lucide-react';
+import { Send, Loader2, ListCollapse, VenetianMask, Gavel, Edit3, CheckSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { submitResponse } from '@/app/game/actions';
 import { cn } from '@/lib/utils';
-// Removed Badge import as it's no longer used for "New" indicator
 
 interface PlayerViewProps {
   gameState: GameClientState;
   player: PlayerClientState;
 }
 
+const CUSTOM_CARD_PLACEHOLDER = "Write your own card 📝";
+const CUSTOM_CARD_ID = "custom-write-in-card"; // A unique identifier for the custom card slot
+
 export default function PlayerView({ gameState, player }: PlayerViewProps) {
-  const [selectedCardText, setSelectedCardText] = useState<string>(''); 
+  const [selectedCardText, setSelectedCardText] = useState<string>('');
+  const [isCustomCardSelectedAsSubmissionTarget, setIsCustomCardSelectedAsSubmissionTarget] = useState<boolean>(false);
+  
+  const [isEditingCustomCard, setIsEditingCustomCard] = useState<boolean>(false);
+  const [customCardInputText, setCustomCardInputText] = useState<string>(''); // For the textarea
+  const [finalizedCustomCardText, setFinalizedCustomCardText] = useState<string>(''); // Text after "Done"
+
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (player && player.hand) {
-      console.log(`CLIENT PlayerView (${player.name}): Hand data:`, JSON.stringify(player.hand.map(c => ({ id: c.id, text: c.text.substring(0,10)+"...", isNew: c.isNew })), null, 2));
-      console.log(`CLIENT PlayerView (${player.name}): Current Round: ${gameState.currentRound}`);
+    // Reset custom card state if round changes or player becomes judge
+    if (gameState.currentRound > 0) { // Only reset if a round is active
+        setIsEditingCustomCard(false);
+        setCustomCardInputText('');
+        setFinalizedCustomCardText('');
+        setSelectedCardText('');
+        setIsCustomCardSelectedAsSubmissionTarget(false);
     }
-  }, [player, gameState.currentRound]);
+  }, [gameState.currentRound, player.isJudge]);
 
-  const hasSubmitted = gameState.submissions.some(sub => sub.playerId === player.id && gameState.currentRound > 0);
+
+  const hasSubmittedThisRound = gameState.submissions.some(
+    sub => sub.playerId === player.id && gameState.currentRound > 0 && gameState.currentRound === (gameState.submissions.find(s => s.playerId === player.id)?.cardText ? gameState.currentRound : -1) // A bit complex, but ensures check against round of submission. More direct check on response table might be better
+  ) || gameState.submissions.some(sub => sub.playerId === player.id && gameState.currentRound > 0 && (gameState.responses?.find((r: any) => r.player_id === player.id && r.round_number === gameState.currentRound) !== undefined ) );
+
+
+  const handleCustomCardEdit = () => {
+    setCustomCardInputText(finalizedCustomCardText); // Load existing finalized text for editing
+    setIsEditingCustomCard(true);
+    setSelectedCardText(''); // Deselect any other card
+    setIsCustomCardSelectedAsSubmissionTarget(false);
+  };
+
+  const handleCustomCardDone = () => {
+    if (customCardInputText.trim() === '') {
+        toast({ title: "Empty?", description: "Your custom card needs some text!", variant: "destructive"});
+        // Optionally clear finalized text if they submit empty after having text
+        setFinalizedCustomCardText('');
+    } else {
+        setFinalizedCustomCardText(customCardInputText.trim());
+    }
+    setIsEditingCustomCard(false);
+    // After "Done", automatically select this custom card for submission
+    if (customCardInputText.trim()) {
+        setSelectedCardText(customCardInputText.trim());
+        setIsCustomCardSelectedAsSubmissionTarget(true);
+    }
+  };
+  
+  const handleSelectCard = (cardText: string, isCustom: boolean) => {
+    setSelectedCardText(cardText);
+    setIsCustomCardSelectedAsSubmissionTarget(isCustom);
+     if (isCustom && !finalizedCustomCardText && !isEditingCustomCard) {
+      // If they click the placeholder for the custom card, initiate editing
+      handleCustomCardEdit();
+    }
+  };
 
   const handleSubmit = () => {
-    if (!selectedCardText) {
-      toast({ title: "Whoa there!", description: "You need to pick a card to submit.", variant: "destructive" });
+    if (!selectedCardText && !finalizedCustomCardText) {
+      toast({ title: "Whoa there!", description: "You need to pick a card or write one to submit.", variant: "destructive" });
       return;
     }
     if (!gameState.gameId || gameState.currentRound <= 0) {
       toast({ title: "Game Error", description: "Cannot submit response, game state is invalid.", variant: "destructive" });
       return;
     }
+
+    const textToSubmit = isCustomCardSelectedAsSubmissionTarget ? finalizedCustomCardText : selectedCardText;
+    if (!textToSubmit.trim()) {
+        toast({ title: "Empty Submission", description: "Your selected card is empty.", variant: "destructive"});
+        return;
+    }
+
     startTransition(async () => {
       try {
-        await submitResponse(player.id, selectedCardText, gameState.gameId, gameState.currentRound);
+        await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
         toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
+        
+        // Reset selection states
         setSelectedCardText('');
+        setIsCustomCardSelectedAsSubmissionTarget(false);
+        // Custom card text itself (finalizedCustomCardText) will be reset by useEffect on round change
+        // or could be reset here if we want it cleared immediately after submission.
+        // For now, let's keep it until next round to allow re-submission if an error occurred
+        // or if the player wants to submit the same custom card in a future (unlikely) scenario.
+        // However, for this game, it's better to clear it as they get a new card.
+        setFinalizedCustomCardText(''); 
+        setCustomCardInputText('');
+
       } catch (error: any) {
         console.error("PlayerView: Error submitting response:", error);
         toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
@@ -52,7 +119,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     });
   };
 
-  const isSubmitButtonActive = !isPending && !!selectedCardText && !!player.hand && player.hand.length > 0 && !hasSubmitted;
+  const isSubmitButtonActive = !isPending && !!selectedCardText.trim() && !hasSubmittedThisRound;
+
 
   if (gameState.gamePhase === 'category_selection') {
     return (
@@ -83,7 +151,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   }
 
 
-  if (hasSubmitted && gameState.gamePhase === 'player_submission') {
+  if (hasSubmittedThisRound && gameState.gamePhase === 'player_submission') {
     return (
       <div className="space-y-6">
         {gameState.currentScenario && <ScenarioDisplay scenario={gameState.currentScenario} />}
@@ -133,7 +201,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     );
   }
 
-
   return (
     <div className="space-y-6">
       {gameState.currentScenario && <ScenarioDisplay scenario={gameState.currentScenario} />}
@@ -141,25 +208,66 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       <Card className="shadow-lg border-2 border-muted rounded-xl">
         <CardHeader className="p-6">
           <CardTitle className="text-2xl font-semibold flex items-center"><ListCollapse className="mr-2 h-6 w-6 text-primary" /> Your Hand of Horrors</CardTitle>
-          <CardDescription>Pick the card that best (or worst) fits the scenario.</CardDescription>
+          <CardDescription>Pick a card, or write your own masterpiece of terrible.</CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-3">
-          {player.hand && player.hand.length > 0 ? player.hand.map((card: PlayerHandCard) => {
-            const isNewCardVisual = card.isNew && gameState.currentRound > 1;
+          {/* Custom Card Slot */}
+          {isEditingCustomCard ? (
+            <div className="space-y-2 p-3 border-2 border-accent rounded-md shadow-md bg-background">
+              <Textarea
+                placeholder="Make it wonderfully terrible..."
+                value={customCardInputText}
+                onChange={(e) => setCustomCardInputText(e.target.value)}
+                maxLength={100}
+                rows={3}
+                className="text-base border-muted focus:border-accent"
+              />
+              <div className="flex justify-end space-x-2">
+                <Button variant="ghost" size="sm" onClick={() => { setIsEditingCustomCard(false); setCustomCardInputText(finalizedCustomCardText); /* Revert to last finalized text if canceled */ }}>Cancel</Button>
+                <Button onClick={handleCustomCardDone} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <CheckSquare className="mr-2 h-4 w-4" /> Done
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
+              className={cn(
+                `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px]`,
+                isCustomCardSelectedAsSubmissionTarget
+                  ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
+                  : 'border-dashed border-accent hover:border-accent-foreground hover:bg-accent/10',
+                finalizedCustomCardText ? 'border-solid border-accent' : 'border-dashed border-accent' 
+              )}
+            >
+              <span>{finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER}</span>
+              {!finalizedCustomCardText && (
+                <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-accent opacity-70" />
+              )}
+               {finalizedCustomCardText && !isCustomCardSelectedAsSubmissionTarget && (
+                 <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-50 group-hover:opacity-100" onClick={(e) => {e.stopPropagation(); handleCustomCardEdit(); }}/>
+               )}
+            </Button>
+          )}
+
+          {/* Regular Hand Cards */}
+          {player.hand && player.hand.length > 0 && player.hand.map((card: PlayerHandCard) => {
+            const isNewCardVisual = card.isNew && gameState.currentRound > 1; // Only show "New!" if not the first round
             return (
               <Button
                 key={card.id}
-                variant="outline" // Using outline to allow custom border colors to easily override
-                onClick={() => setSelectedCardText(card.text)}
+                variant="outline"
+                onClick={() => handleSelectCard(card.text, false)}
                 className={cn(
-                  `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative`, // Base styles
-                  selectedCardText === card.text
-                    ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' // Selected card styles
-                    : (isNewCardVisual // Not selected, check if it's a new card
-                        ? 'border-red-500 hover:border-red-600' // New card border
-                        : 'border-gray-400 hover:border-foreground' // Default non-selected card border
+                  `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px]`,
+                  selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
+                    ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
+                    : (isNewCardVisual
+                        ? 'border-red-500 hover:border-red-600'
+                        : 'border-gray-400 hover:border-foreground'
                       ),
-                  selectedCardText !== card.text && 'hover:bg-muted/50' // Common hover background for non-selected cards
+                  selectedCardText !== card.text && 'hover:bg-muted/50'
                 )}
               >
                 <span>{card.text}</span>
@@ -170,8 +278,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 )}
               </Button>
             );
-          }) : (
-            <p className="text-muted-foreground text-center py-4">You're out of cards! This shouldn't happen.</p>
+          })}
+          {(player.hand?.length || 0) === 0 && !isEditingCustomCard && !finalizedCustomCardText && (
+             <p className="text-muted-foreground text-center py-4">You're out of pre-dealt cards! Write one above.</p>
           )}
         </CardContent>
         <CardFooter className="p-6">
@@ -184,11 +293,10 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             )}
           >
             {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
-            {hasSubmitted ? "Already Submitted" : "Submit Your Terrible Choice"}
+            {hasSubmittedThisRound ? "Already Submitted" : "Submit Your Terrible Choice"}
           </Button>
         </CardFooter>
       </Card>
     </div>
   );
 }
-
