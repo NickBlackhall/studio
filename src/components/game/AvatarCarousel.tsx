@@ -95,6 +95,7 @@ export default function AvatarCarousel({
   return (
     <div className={cn("flex items-center justify-center gap-2 w-full", className)}>
       <Button
+        type="button" // Explicitly set type to button
         variant="outline"
         size="icon"
         aria-label="Previous Avatar"
@@ -119,6 +120,7 @@ export default function AvatarCarousel({
       </div>
 
       <Button
+        type="button" // Explicitly set type to button
         variant="outline"
         size="icon"
         aria-label="Next Avatar"
