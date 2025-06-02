@@ -12,7 +12,6 @@ import { CARDS_PER_HAND, POINTS_TO_WIN, MIN_PLAYERS_TO_START } from '@/lib/types
 export async function findOrCreateGame(): Promise<Tables<'games'>> {
   console.log("🔴 GAME (Server): findOrCreateGame called. Looking for existing game...");
 
-  // Priority 1: Find the oldest game in 'lobby' phase
   const { data: lobbyGames, error: lobbyError } = await supabase
     .from('games')
     .select('*')
@@ -59,6 +58,8 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
     used_scenarios: [],
     used_responses: [],
     updated_at: new Date().toISOString(),
+    // pendingCustomCardAuthorId: null, // Initialize new fields if they were added to games table
+    // pendingCustomCardText: null,
   };
   const { data: newGame, error: createError } = await supabase
     .from('games')
@@ -131,21 +132,17 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
       allHandsData = fetchedHandsData || [];
     }
   }
-
-  // Server-side log to check `is_new` as it's fetched
   console.log(`🔴 GAME (Server) getGame - Raw hands data for game ${gameId} BEFORE player mapping:`, JSON.stringify(allHandsData.map(h => ({ pId: h.player_id, cId: h.response_cards?.id, is_new: h.is_new})), null, 2));
-
 
   const players: PlayerClientState[] = playersData.map(p => {
     const playerHandCards: PlayerHandCard[] = allHandsData
       .filter(h => h.player_id === p.id && h.response_cards?.text && h.response_cards?.id)
       .map(h => {
-        // Server-side log for each card being mapped
         console.log(`🔴 GAME (Server) getGame - Mapping card for player ${p.id}: cardId ${h.response_cards?.id}, is_new from DB: ${h.is_new}`);
         return {
           id: h.response_cards!.id as string,
           text: h.response_cards!.text as string,
-          isNew: h.is_new ?? false, // Default to false if null/undefined
+          isNew: h.is_new ?? false, 
         };
       });
     console.log(`🔴 GAME (Server) getGame - Player ${p.id} constructed hand:`, JSON.stringify(playerHandCards.map(c => ({id: c.id, isNew: c.isNew, text: c.text.substring(0,10)+"..."})), null, 2));
@@ -197,7 +194,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   }
 
   let submissions: GameClientState['submissions'] = [];
-  if ((gameRow.game_phase === 'judging' || gameRow.game_phase === 'player_submission') && gameRow.current_round > 0) {
+  if ((gameRow.game_phase === 'judging' || gameRow.game_phase === 'player_submission' || gameRow.game_phase === 'judge_approval_pending') && gameRow.current_round > 0) {
     const { data: submissionData, error: submissionError } = await supabase
       .from('responses')
       .select('player_id, response_card_id, submitted_text, response_cards(id, text)')
@@ -244,6 +241,8 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     readyPlayerOrder: gameRow.ready_player_order || [],
     lastWinner: lastWinnerDetails,
     winningPlayerId: gameRow.overall_winner_player_id,
+    // pendingCustomCardAuthorId: gameRow.pendingCustomCardAuthorId, // Populate new fields
+    // pendingCustomCardText: gameRow.pendingCustomCardText,
   };
   return gameClientState;
 }
@@ -351,6 +350,8 @@ export async function resetGameForTesting() {
         current_judge_id: null,
         last_round_winner_player_id: null,
         overall_winner_player_id: null,
+        // pendingCustomCardAuthorId: null, // Reset new fields
+        // pendingCustomCardText: null,
       })
       .eq('id', gameId);
 
@@ -398,7 +399,6 @@ export async function resetGameForTesting() {
         }
     }
 
-
     const updateData: TablesUpdate<'games'> = {
       game_phase: 'lobby',
       current_round: 0,
@@ -411,6 +411,8 @@ export async function resetGameForTesting() {
       used_scenarios: [],
       used_responses: [],
       updated_at: new Date().toISOString(),
+      // pendingCustomCardAuthorId: null, 
+      // pendingCustomCardText: null,
     };
     console.log(`🔴 RESET (Server): Attempting to update game ${gameId} to lobby phase with data:`, JSON.stringify(updateData, null, 2));
 
@@ -438,7 +440,7 @@ export async function resetGameForTesting() {
     }
 
     console.log('🔴 RESET (Server): Database operations complete. Preparing to revalidate and redirect.');
-    await new Promise(resolve => setTimeout(resolve, 500)); // Delay before redirect
+    await new Promise(resolve => setTimeout(resolve, 500)); 
     console.log('🔴 RESET (Server): Delay finished, proceeding with revalidation and redirect.');
 
   } catch (e: any) {
@@ -486,7 +488,7 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
     }
   }
 
-  const { data: availableCards, error: fetchError } = await query.limit(count + 50); // Fetch more to allow for shuffling
+  const { data: availableCards, error: fetchError } = await query.limit(count + 50); 
 
   if (fetchError) {
     console.error(`🔴 CARDS (Server): Error fetching available response cards for game ${gameId}:`, JSON.stringify(fetchError, null, 2));
@@ -501,9 +503,6 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
   const shuffledAvailableCards = [...availableCards].sort(() => 0.5 - Math.random());
   const cardsToDeal = shuffledAvailableCards.slice(0, count);
   const dealtCardIds = cardsToDeal.map(c => c.id);
-
-  // This should only include responses used in *this specific deal operation* plus what was passed in.
-  // The game.used_responses is updated separately by the calling function if needed.
   const newlyDealtAndUsedInThisOperation = [...new Set([...existingUsedResponses, ...dealtCardIds])];
 
   return { dealtCardIds, updatedUsedResponses: newlyDealtAndUsedInThisOperation };
@@ -540,13 +539,10 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
     }
 
     const firstJudgeId = players[0].id;
-
     let accumulatedUsedResponsesForThisGameStart = game.used_responses || [];
-
     const playerHandInserts: TablesInsert<'player_hands'>[] = [];
 
     for (const player of players) {
-      // For the initial deal, is_new should be false.
       const { dealtCardIds, updatedUsedResponses: tempUsedAfterThisPlayer } = await dealCardsFromSupabase(gameId, CARDS_PER_HAND, accumulatedUsedResponsesForThisGameStart);
 
       if (dealtCardIds.length > 0) {
@@ -556,7 +552,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
             game_id: gameId,
             player_id: player.id,
             response_card_id: cardId,
-            is_new: false, // Explicitly false for initial deal
+            is_new: false, 
           });
         });
         accumulatedUsedResponsesForThisGameStart = [...new Set([...accumulatedUsedResponsesForThisGameStart, ...dealtCardIds])];
@@ -569,7 +565,6 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
       const { error: allHandsInsertError } = await supabase.from('player_hands').insert(playerHandInserts);
       if (allHandsInsertError) {
         console.error(`🔴 START (Server) CARDS: Critical error inserting player hands:`, JSON.stringify(allHandsInsertError, null, 2));
-        // Potentially throw or handle this more gracefully
       } else {
         console.log(`🔴 START (Server) CARDS: Successfully inserted ${playerHandInserts.length} cards into player_hands.`);
       }
@@ -580,7 +575,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
       current_judge_id: firstJudgeId,
       current_round: 1,
       updated_at: new Date().toISOString(),
-      used_responses: accumulatedUsedResponsesForThisGameStart, // Save the used responses
+      used_responses: accumulatedUsedResponsesForThisGameStart, 
     };
 
     const { error: updateError } = await supabase
@@ -617,15 +612,11 @@ export async function selectCategory(gameId: string, category: string): Promise<
   }
 
   const usedScenarios = game.used_scenarios || [];
-
   let query = supabase
     .from('scenarios')
     .select('id, text, category');
-
-  // Always filter by category first
   query = query.eq('category', category);
 
-  // Then, if there are used scenarios, exclude them
   if (usedScenarios.length > 0) {
     const validUUIDs = usedScenarios.filter(id => typeof id === 'string' && id.match(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/));
     if (validUUIDs.length > 0) {
@@ -643,36 +634,28 @@ export async function selectCategory(gameId: string, category: string): Promise<
   let scenarioToUse: { id: string; text: string; category: string | null } | null = null;
 
   if (!scenarios || scenarios.length === 0) {
-    // No unused scenarios in this category, try to fetch *any* scenario from this category (recycling)
     console.warn(`🔴 CATEGORY (Server): No unused scenarios for category ${category}. Attempting to fetch ANY scenario from this category (recycling).`);
     const { data: anyCategoryScenarios, error: anyCategoryError } = await supabase
       .from('scenarios')
       .select('id, text, category')
-      .eq('category', category); // Only from the selected category
+      .eq('category', category); 
 
     if (anyCategoryError || !anyCategoryScenarios || anyCategoryScenarios.length === 0) {
       console.error(`🔴 CATEGORY (Server): Critical - No scenarios found for category ${category} at all, even for recycling.`, JSON.stringify(anyCategoryError, null, 2));
-      // Fallback: Try to get ANY scenario from ANY category if the chosen one is truly empty. This is a last resort.
-      // This case might be better handled by informing the judge to pick another category or seeding more scenarios.
-      // For now, we'll throw an error to make it clear.
       throw new Error(`No scenarios available in category "${category}" at all.`);
     }
-    // Pick a random one from the available (possibly already used) scenarios in this category
     scenarioToUse = anyCategoryScenarios[Math.floor(Math.random() * anyCategoryScenarios.length)];
-     // When recycling, we don't add to used_scenarios again (it might already be there, or we are explicitly allowing reuse)
      const gameUpdates: TablesUpdate<'games'> = {
       current_scenario_id: scenarioToUse.id,
       game_phase: 'player_submission',
       updated_at: new Date().toISOString(),
-      // used_scenarios: game.used_scenarios // Keep existing used_scenarios
     };
      const { error: updateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
      if (updateError) throw new Error(`Failed to update game after category selection (recycle): ${updateError.message}`);
 
   } else {
-    // We found unused scenarios
     scenarioToUse = scenarios[Math.floor(Math.random() * scenarios.length)];
-    const updatedUsedScenarios = [...new Set([...usedScenarios, scenarioToUse.id])]; // Add the newly used one
+    const updatedUsedScenarios = [...new Set([...usedScenarios, scenarioToUse.id])]; 
     const gameUpdates: TablesUpdate<'games'> = {
       current_scenario_id: scenarioToUse.id,
       game_phase: 'player_submission',
@@ -715,7 +698,6 @@ export async function submitResponse(playerId: string, responseCardText: string,
     throw new Error("Judges cannot submit response cards.");
   }
 
-  // Check if player already submitted for this round
   const { data: existingSubmission, error: checkSubmissionError } = await supabase
     .from('responses')
     .select('id')
@@ -735,15 +717,12 @@ export async function submitResponse(playerId: string, responseCardText: string,
 
   let responseCardIdToStore: string | null = null;
   let submittedTextToStore: string | null = null;
-  let cardToRemoveFromHandId: string | null = null; // Only for non-custom cards
+  let cardToRemoveFromHandId: string | null = null; 
 
   if (isCustomSubmission) {
     console.log(`🔴 SUBMIT (Server): Handling custom submission for player ${playerId}. Text: "${responseCardText}"`);
     submittedTextToStore = responseCardText;
-    // No card to remove from hand for custom submissions (as it wasn't "dealt")
-    // No responseCardId to store in `responses` as it's custom text.
   } else {
-    // Find the card ID from the player's hand based on the text (for pre-dealt cards)
     const { data: handCardEntry, error: handQueryError } = await supabase
       .from('player_hands')
       .select('response_card_id, response_cards!inner(text)')
@@ -758,11 +737,9 @@ export async function submitResponse(playerId: string, responseCardText: string,
       throw new Error(`Could not find card "${responseCardText}" in your hand.`);
     }
     responseCardIdToStore = handCardEntry.response_card_id;
-    cardToRemoveFromHandId = handCardEntry.response_card_id; // This is the card to remove from player_hands
-    // submitted_text remains null for non-custom submissions
+    cardToRemoveFromHandId = handCardEntry.response_card_id; 
   }
   
-  // Clear is_new flag for ALL cards in player's hand for this game (custom or not, this is good practice)
   console.log(`🔴 SUBMIT (Server) CARDS: Setting is_new=false for other cards of player ${playerId} in game ${gameId}.`);
   const { error: clearOldNewFlagsError } = await supabase
     .from('player_hands')
@@ -771,15 +748,13 @@ export async function submitResponse(playerId: string, responseCardText: string,
     .eq('game_id', gameId);
   if (clearOldNewFlagsError) console.error(`🔴 SUBMIT (Server) CARDS: Error clearing is_new flags for player ${playerId}:`, JSON.stringify(clearOldNewFlagsError, null, 2));
 
-
-  // Insert the submission
   const { error: insertError } = await supabase
     .from('responses')
     .insert({
       game_id: gameId,
       player_id: playerId,
-      response_card_id: responseCardIdToStore, // Will be null if custom
-      submitted_text: submittedTextToStore,     // Will be null if not custom
+      response_card_id: responseCardIdToStore, 
+      submitted_text: submittedTextToStore,     
       round_number: currentRound,
     });
 
@@ -788,7 +763,6 @@ export async function submitResponse(playerId: string, responseCardText: string,
     throw new Error(`Failed to insert submission: ${insertError.message}`);
   }
 
-  // If it was a pre-dealt card, remove it from the player's hand
   if (cardToRemoveFromHandId) {
     const { error: deleteHandError } = await supabase
       .from('player_hands')
@@ -802,10 +776,7 @@ export async function submitResponse(playerId: string, responseCardText: string,
     }
   }
 
-  // Deal a new card to the player (regardless of custom or pre-dealt submission) and mark it as 'new'
   let gameUsedResponses = gameData.used_responses || [];
-  // Add the just-played pre-dealt card's ID to the list of used responses for this deal operation if it was one
-  // Custom submissions don't have a response_card_id from the deck to add here.
   const usedResponsesBeforeNewDeal = responseCardIdToStore 
     ? [...new Set([...gameUsedResponses, responseCardIdToStore])] 
     : gameUsedResponses;
@@ -832,7 +803,6 @@ export async function submitResponse(playerId: string, responseCardText: string,
     console.warn(`🔴 SUBMIT (Server) CARDS: Could not deal new card to player ${playerId}, no cards available or error in dealCardsFromSupabase.`);
   }
   
-  // Update the game's used_responses list (includes the newly dealt card and any pre-dealt card played)
   const { error: gameUpdateError } = await supabase
       .from('games')
       .update({ used_responses: finalUsedResponsesAfterPlayAndDeal, updated_at: new Date().toISOString() })
@@ -841,7 +811,6 @@ export async function submitResponse(playerId: string, responseCardText: string,
       console.error(`🔴 SUBMIT (Server): Error updating game.used_responses:`, JSON.stringify(gameUpdateError, null, 2));
   }
 
-  // Check if all players have submitted
   const { data: nonJudgePlayers, error: playersError } = await supabase
     .from('players')
     .select('id', { count: 'exact' })
@@ -896,27 +865,25 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
     throw new Error(`Failed to fetch game for winner selection: ${gameError?.message || 'Game not found'}`);
   }
 
-  // Find the submission based on the card text. This text could be from response_cards.text OR responses.submitted_text
-  // This query needs to be flexible.
   let winningSubmissionData: { player_id: string; response_card_id: string | null; submitted_text: string | null; response_cards: { text: string | null } | null } | null = null;
+  let isCustomWinningCard = false;
   
-  // Try finding by submitted_text first (custom cards)
   const { data: customSubmission, error: customSubmissionError } = await supabase
     .from('responses')
-    .select('player_id, response_card_id, submitted_text, response_cards (text)') // response_cards might be null here
+    .select('player_id, response_card_id, submitted_text, response_cards (text)')
     .eq('game_id', gameId)
     .eq('round_number', game.current_round)
-    .eq('submitted_text', winningCardText)
+    .eq('submitted_text', winningCardText) 
     .single();
 
-  if (customSubmission && !customSubmissionError) {
+  if (customSubmission && !customSubmissionError && customSubmission.submitted_text) {
     winningSubmissionData = customSubmission;
-    console.log(`🔴 WINNER (Server): Matched winning card as custom submission (submitted_text). Player: ${winningSubmissionData.player_id}`);
+    isCustomWinningCard = true;
+    console.log(`🔴 WINNER (Server): Matched winning card as custom submission. Player: ${winningSubmissionData.player_id}`);
   } else {
-    // If not found as custom, try finding by response_cards.text (pre-dealt cards)
     const { data: preDealtSubmission, error: preDealtSubmissionError } = await supabase
       .from('responses')
-      .select('player_id, response_card_id, submitted_text, response_cards!inner(text)') // !inner ensures response_cards exists
+      .select('player_id, response_card_id, submitted_text, response_cards!inner(text)') 
       .eq('game_id', gameId)
       .eq('round_number', game.current_round)
       .eq('response_cards.text', winningCardText)
@@ -924,82 +891,158 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
 
     if (preDealtSubmission && !preDealtSubmissionError) {
       winningSubmissionData = preDealtSubmission;
-      console.log(`🔴 WINNER (Server): Matched winning card as pre-dealt card (response_cards.text). Card ID: ${winningSubmissionData.response_card_id}, Player: ${winningSubmissionData.player_id}`);
+      console.log(`🔴 WINNER (Server): Matched winning card as pre-dealt card. Card ID: ${winningSubmissionData.response_card_id}, Player: ${winningSubmissionData.player_id}`);
     } else {
       console.error(`🔴 WINNER (Server): Error finding winning submission for card text "${winningCardText}" in round ${game.current_round}. Custom error: ${JSON.stringify(customSubmissionError, null, 2)}, Pre-dealt error: ${JSON.stringify(preDealtSubmissionError, null, 2)}`);
       throw new Error(`Could not find submission matching card "${winningCardText}".`);
     }
   }
 
-  if (!winningSubmissionData) { // Should be caught by the else above, but as a safeguard
+  if (!winningSubmissionData) { 
     throw new Error(`Critical error: No winning submission found for "${winningCardText}".`);
   }
 
   const winningPlayerId = winningSubmissionData.player_id;
-  // winningResponseCardId will be null if it was a custom card (submitted_text)
-  const winningResponseCardIdForWinnersTable = winningSubmissionData.response_card_id; 
 
+  if (isCustomWinningCard) {
+    console.log(`🔴 WINNER (Server): Custom card won. Moving to 'judge_approval_pending' phase.`);
+    const gameUpdates: TablesUpdate<'games'> = {
+      game_phase: 'judge_approval_pending',
+      last_round_winner_player_id: winningPlayerId, // Store for approval phase
+      last_round_winning_card_text: winningCardText, // Store for approval phase
+      updated_at: new Date().toISOString(),
+    };
+    const { error: gameUpdateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
+    if (gameUpdateError) {
+      console.error(`🔴 WINNER (Server): Error updating game to judge_approval_pending:`, JSON.stringify(gameUpdateError, null, 2));
+      throw new Error(`Failed to update game for judge approval: ${gameUpdateError.message}`);
+    }
+  } else {
+    console.log(`🔴 WINNER (Server): Pre-dealt card won. Proceeding to winner announcement.`);
+    const { data: winnerPlayerData, error: winnerPlayerFetchError } = await supabase
+      .from('players')
+      .select('score')
+      .eq('id', winningPlayerId)
+      .single();
 
-  // Increment winner's score
+    if (winnerPlayerFetchError || !winnerPlayerData) {
+      console.error(`🔴 WINNER (Server): Error fetching winning player ${winningPlayerId} data:`, JSON.stringify(winnerPlayerFetchError, null, 2));
+      throw new Error("Winning player record not found or error fetching.");
+    }
+    const newScore = winnerPlayerData.score + 1;
+    const { error: scoreUpdateError } = await supabase.from('players').update({ score: newScore }).eq('id', winningPlayerId);
+    if (scoreUpdateError) console.error(`🔴 WINNER (Server): Error updating score for player ${winningPlayerId}:`, JSON.stringify(scoreUpdateError, null, 2));
+
+    const winningResponseCardIdForWinnersTable = winningSubmissionData.response_card_id;
+    if (winningResponseCardIdForWinnersTable) {
+      const { error: winnerInsertError } = await supabase.from('winners').insert({
+        game_id: gameId,
+        round_number: game.current_round,
+        winner_player_id: winningPlayerId,
+        winning_response_card_id: winningResponseCardIdForWinnersTable,
+      });
+      if (winnerInsertError) console.error(`🔴 WINNER (Server): Error inserting into 'winners':`, JSON.stringify(winnerInsertError, null, 2));
+    }
+
+    let newGamePhase: GamePhaseClientState = 'winner_announcement';
+    let overallWinnerPlayerId: string | null = null;
+    if (newScore >= POINTS_TO_WIN) {
+      newGamePhase = 'game_over';
+      overallWinnerPlayerId = winningPlayerId;
+    }
+
+    const gameUpdates: TablesUpdate<'games'> = {
+      game_phase: newGamePhase,
+      last_round_winner_player_id: winningPlayerId,
+      last_round_winning_card_text: winningCardText,
+      overall_winner_player_id: overallWinnerPlayerId,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: gameUpdateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
+    if (gameUpdateError) {
+      console.error(`🔴 WINNER (Server): Error updating game for winner announcement:`, JSON.stringify(gameUpdateError, null, 2));
+      throw new Error(`Failed to update game state after winner selection: ${gameUpdateError.message}`);
+    }
+  }
+
+  revalidatePath('/game');
+  return getGame(gameId);
+}
+
+export async function handleJudgeApprovalForCustomCard(gameId: string, addToDeck: boolean): Promise<GameClientState | null> {
+  console.log(`🔴 APPROVAL (Server): Judge decision for custom card. Game: ${gameId}, Add to deck: ${addToDeck}`);
+  
+  const { data: game, error: gameError } = await supabase
+    .from('games')
+    .select('current_round, last_round_winner_player_id, last_round_winning_card_text')
+    .eq('id', gameId)
+    .single();
+
+  if (gameError || !game || !game.last_round_winner_player_id || !game.last_round_winning_card_text) {
+    console.error(`🔴 APPROVAL (Server): Error fetching game or missing winner info for approval. Game ID: ${gameId}`, JSON.stringify(gameError, null, 2), game);
+    throw new Error(`Failed to fetch game or winner information for approval. Game: ${gameId}`);
+  }
+
+  const winningPlayerId = game.last_round_winner_player_id;
+  const winningCardText = game.last_round_winning_card_text;
+
+  if (addToDeck) {
+    const { data: authorPlayer, error: authorFetchError } = await supabase
+      .from('players')
+      .select('name')
+      .eq('id', winningPlayerId)
+      .single();
+    if (authorFetchError || !authorPlayer) {
+      console.error(`🔴 APPROVAL (Server): Error fetching author player ${winningPlayerId} name.`, JSON.stringify(authorFetchError, null, 2));
+      throw new Error(`Could not find author player ${winningPlayerId}.`);
+    }
+
+    const { data: newCard, error: newCardInsertError } = await supabase
+      .from('response_cards')
+      .insert({
+        text: winningCardText,
+        author_player_id: winningPlayerId,
+        author_name: authorPlayer.name,
+        is_active: true,
+      })
+      .select('id')
+      .single();
+
+    if (newCardInsertError || !newCard) {
+      console.error(`🔴 APPROVAL (Server): Error inserting new custom card into response_cards.`, JSON.stringify(newCardInsertError, null, 2));
+      throw new Error("Failed to add custom card to deck.");
+    }
+    console.log(`🔴 APPROVAL (Server): Custom card "${winningCardText}" by ${winningPlayerId} added to deck with ID: ${newCard.id}`);
+
+    const { error: winnerInsertError } = await supabase.from('winners').insert({
+      game_id: gameId,
+      round_number: game.current_round,
+      winner_player_id: winningPlayerId,
+      winning_response_card_id: newCard.id, // Use the new card's ID
+    });
+    if (winnerInsertError) {
+      console.error(`🔴 APPROVAL (Server): Error inserting round winner (for approved custom card) into 'winners'.`, JSON.stringify(winnerInsertError, null, 2));
+    }
+  } else {
+    console.log(`🔴 APPROVAL (Server): Judge chose NOT to add custom card "${winningCardText}" to the deck.`);
+    // No entry in 'winners' table for custom cards not added to deck.
+  }
+
   const { data: winnerPlayerData, error: winnerPlayerFetchError } = await supabase
     .from('players')
     .select('score')
     .eq('id', winningPlayerId)
     .single();
-
   if (winnerPlayerFetchError || !winnerPlayerData) {
-    console.error(`🔴 WINNER (Server): Error fetching winning player ${winningPlayerId} data:`, JSON.stringify(winnerPlayerFetchError, null, 2));
+    console.error(`🔴 APPROVAL (Server): Error fetching winning player ${winningPlayerId} data.`, JSON.stringify(winnerPlayerFetchError, null, 2));
     throw new Error("Winning player record not found or error fetching.");
   }
   const newScore = winnerPlayerData.score + 1;
-
-  const { error: scoreUpdateError } = await supabase
-    .from('players')
-    .update({ score: newScore })
-    .eq('id', winningPlayerId);
-
-  if (scoreUpdateError) {
-    console.error(`🔴 WINNER (Server): Error updating score for player ${winningPlayerId}:`, JSON.stringify(scoreUpdateError, null, 2));
-  }
-
-  // Record the winner for the round
-  // If it was a custom card, winning_response_card_id will be NULL.
-  // We might want to create a new response_card entry here if a custom card wins and should be added to the deck (Phase 2 of feature)
-  // For now, we just record what we have.
-  const winnerInsertPayload: TablesInsert<'winners'> = {
-    game_id: gameId,
-    round_number: game.current_round,
-    winner_player_id: winningPlayerId,
-    // This is tricky: if it's a custom card, response_card_id from `responses` table is null.
-    // The `winners` table expects a `winning_response_card_id`.
-    // For now, if it's a custom card (winningSubmissionData.response_card_id is null),
-    // we cannot satisfy the NOT NULL constraint on winners.winning_response_card_id if it exists.
-    // Assuming winners.winning_response_card_id can be NULL for now, or we need a placeholder/new card creation step.
-    // Let's assume `winning_response_card_id` in `winners` table is NOT NULL for now.
-    // This part requires a decision: if custom card wins, do we immediately add it to response_cards and get an ID?
-    // For current implementation, we'll skip inserting into `winners` if it's a custom card without an ID
-    // This means the `winners` table might only track winners of pre-dealt cards for now.
-    // This is a simplification until Phase 2 (judge approval of custom cards to deck).
-  };
-  
-  // Only insert into 'winners' if there's an actual card ID (i.e., not a custom, unapproved write-in)
-  if (winningResponseCardIdForWinnersTable) {
-    winnerInsertPayload.winning_response_card_id = winningResponseCardIdForWinnersTable;
-    const { error: winnerInsertError } = await supabase
-      .from('winners')
-      .insert(winnerInsertPayload);
-
-    if (winnerInsertError) {
-      console.error(`🔴 WINNER (Server): Error inserting round winner into 'winners' table:`, JSON.stringify(winnerInsertError, null, 2));
-    }
-  } else {
-     console.log(`🔴 WINNER (Server): Winning card was custom text ("${winningCardText}"). Not inserting into 'winners' table as there's no persisted response_card_id yet.`);
-  }
-
+  const { error: scoreUpdateError } = await supabase.from('players').update({ score: newScore }).eq('id', winningPlayerId);
+  if (scoreUpdateError) console.error(`🔴 APPROVAL (Server): Error updating score for player ${winningPlayerId}.`, JSON.stringify(scoreUpdateError, null, 2));
 
   let newGamePhase: GamePhaseClientState = 'winner_announcement';
   let overallWinnerPlayerId: string | null = null;
-
   if (newScore >= POINTS_TO_WIN) {
     newGamePhase = 'game_over';
     overallWinnerPlayerId = winningPlayerId;
@@ -1007,20 +1050,15 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
 
   const gameUpdates: TablesUpdate<'games'> = {
     game_phase: newGamePhase,
-    last_round_winner_player_id: winningPlayerId,
-    last_round_winning_card_text: winningCardText, // Storing actual winning text for display
-    overall_winner_player_id: overallWinnerPlayerId,
+    overall_winner_player_id: overallWinnerPlayerId, // Already set last_round_winner... in selectWinner
     updated_at: new Date().toISOString(),
+    // pendingCustomCardAuthorId: null, // Clear pending fields if they were used
+    // pendingCustomCardText: null,
   };
-
-  const { error: gameUpdateError } = await supabase
-    .from('games')
-    .update(gameUpdates)
-    .eq('id', gameId);
-
+  const { error: gameUpdateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
   if (gameUpdateError) {
-    console.error(`🔴 WINNER (Server): Error updating game state for winner announcement:`, JSON.stringify(gameUpdateError, null, 2));
-    throw new Error(`Failed to update game state after winner selection: ${gameUpdateError.message}`);
+    console.error(`🔴 APPROVAL (Server): Error updating game state after judge approval.`, JSON.stringify(gameUpdateError, null, 2));
+    throw new Error(`Failed to update game state after judge approval: ${gameUpdateError.message}`);
   }
 
   revalidatePath('/game');
@@ -1095,7 +1133,6 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
   const nextJudgePlayer = players.find(p => p.id === nextJudgeId);
   console.log(`🔴 NEXT ROUND (Server): Assigning player ${nextJudgePlayer?.name} (ID: ${nextJudgeId}) as the next judge for game ${gameId}. Previous judge was ${previousJudgeId}.`);
 
-
   const gameUpdates: TablesUpdate<'games'> = {
     game_phase: 'category_selection',
     current_judge_id: nextJudgeId,
@@ -1103,6 +1140,8 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     current_scenario_id: null, 
     last_round_winner_player_id: null, 
     last_round_winning_card_text: null,
+    // pendingCustomCardAuthorId: null, // Clear pending fields
+    // pendingCustomCardText: null,
     updated_at: new Date().toISOString(),
   };
 
@@ -1171,7 +1210,6 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
       })
       .filter(card => card !== null) as PlayerHandCard[];
   }
-
 
   return {
     id: playerData.id,
@@ -1270,3 +1308,6 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   
   return getGame(gameId); 
 }
+
+
+    

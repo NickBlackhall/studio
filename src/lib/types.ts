@@ -1,5 +1,4 @@
 
-
 // We will rely on database.types.ts for the core database object.
 // These types can be specific to application logic or client-side state if needed.
 
@@ -36,6 +35,7 @@ export type GamePhaseClientState =
   | "category_selection"
   | "player_submission"
   | "judging"
+  | "judge_approval_pending" // New phase for judge to approve custom card
   | "winner_announcement"
   | "game_over";
 
@@ -49,16 +49,20 @@ export interface GameClientState {
   gamePhase: GamePhaseClientState;
   submissions: SubmissionClientState[]; 
   
-  lastWinner?: {
+  lastWinner?: { // Used for display during winner_announcement and judge_approval_pending
     player: PlayerClientState;
     cardText: string;
   };
   
-  winningPlayerId?: string | null; 
+  winningPlayerId?: string | null; // Overall game winner
 
   categories: string[]; 
   
   readyPlayerOrder?: string[];
+
+  // Fields to temporarily hold custom card info for judge approval
+  pendingCustomCardAuthorId?: string | null;
+  pendingCustomCardText?: string | null;
 }
 
 
@@ -69,7 +73,8 @@ export const MIN_PLAYERS_TO_START = 2;
 export const ACTIVE_PLAYING_PHASES: GamePhaseClientState[] = [
   'category_selection', 
   'player_submission', 
-  'judging'
+  'judging',
+  'judge_approval_pending'
 ];
 
 export type Json =
@@ -80,3 +85,5 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+
+    

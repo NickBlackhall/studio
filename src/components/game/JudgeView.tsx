@@ -5,11 +5,14 @@ import type { GameClientState, PlayerClientState } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useState, useTransition, useMemo, useEffect } from 'react';
-import { Gavel, Send, CheckCircle, Loader2, ListChecks, Crown } from 'lucide-react';
+import { Gavel, Send, CheckCircle, Loader2, ListChecks, Crown, PlusCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { cn } from '@/lib/utils';
+import { handleJudgeApprovalForCustomCard } from '@/app/game/actions';
+
 
 interface JudgeViewProps {
   gameState: GameClientState; 
@@ -23,13 +26,24 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [selectedWinningCard, setSelectedWinningCard] = useState<string>('');
   const [isPendingCategory, startTransitionCategory] = useTransition();
   const [isPendingWinner, startTransitionWinner] = useTransition();
+  const [isPendingApproval, startTransitionApproval] = useTransition();
   const { toast } = useToast();
+
+  // Manage modal visibility based on game phase
+  const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
 
   useEffect(() => {
     if (gameState.categories.length > 0 && !selectedCategory) {
-      // setSelectedCategory(gameState.categories[0]); // Optionally auto-select
+      // setSelectedCategory(gameState.categories[0]); 
     }
-  }, [gameState.categories, selectedCategory]);
+     // Reset selections if phase changes away from judging or category selection
+    if (gameState.gamePhase !== 'judging') {
+        setSelectedWinningCard('');
+    }
+    if (gameState.gamePhase !== 'category_selection') {
+        setSelectedCategory('');
+    }
+  }, [gameState.categories, selectedCategory, gameState.gamePhase]);
 
   const handleCategorySubmit = () => {
     if (!selectedCategory) {
@@ -49,6 +63,19 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     }
     startTransitionWinner(async () => {
       await onSelectWinner(selectedWinningCard);
+      // Toast for selection will be handled by the outcome (approval modal or direct announcement)
+    });
+  };
+
+  const handleApprovalDecision = (addToDeck: boolean) => {
+    if (!gameState.gameId) return;
+    startTransitionApproval(async () => {
+      try {
+        await handleJudgeApprovalForCustomCard(gameState.gameId, addToDeck);
+        toast({ title: "Decision Made!", description: addToDeck ? "Card added to deck!" : "Card was for this round only."});
+      } catch (error: any) {
+        toast({ title: "Approval Error", description: error.message || "Could not process approval.", variant: "destructive"});
+      }
     });
   };
 
@@ -59,6 +86,10 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
 
   const isUnleashScenarioButtonActive = !isPendingCategory && !!selectedCategory && gameState.categories.length > 0;
   const isCrownWinnerButtonActive = !isPendingWinner && !!selectedWinningCard && shuffledSubmissions.length > 0;
+
+  const lastRoundWinnerForModal = gameState.lastWinner?.player;
+  const lastRoundCardTextForModal = gameState.lastWinner?.cardText;
+
 
   return (
     <div className="space-y-8">
@@ -155,6 +186,66 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
           </Card>
         </>
       )}
+
+      {gameState.gamePhase === 'judge_approval_pending' && gameState.currentScenario && (
+         <>
+          <ScenarioDisplay scenario={gameState.currentScenario} />
+           <Card className="text-center shadow-lg border-2 border-yellow-400 rounded-xl">
+             <CardHeader className="bg-yellow-100 dark:bg-yellow-900">
+               <CardTitle className="text-2xl font-semibold text-yellow-700 dark:text-yellow-300">Custom Card Won!</CardTitle>
+             </CardHeader>
+             <CardContent className="p-6">
+               <p className="text-lg mb-2">The winning card was a custom submission:</p>
+               <blockquote className="text-xl font-medium p-3 bg-background/30 rounded-md border border-yellow-500 my-2">
+                 "{lastRoundCardTextForModal || 'Error: Card text missing'}"
+               </blockquote>
+               <p className="text-md mb-4">
+                 Submitted by: <strong>{lastRoundWinnerForModal?.name || 'Unknown Player'}</strong>
+               </p>
+               <Loader2 className="h-8 w-8 animate-spin text-yellow-600 dark:text-yellow-400 mx-auto" />
+               <p className="text-muted-foreground mt-2">Awaiting your decision to add it to the main deck...</p>
+             </CardContent>
+           </Card>
+         </>
+      )}
+
+      <AlertDialog open={showApprovalModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl">Approve Custom Card?</AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              The winning card was a custom submission by <strong>{lastRoundWinnerForModal?.name || 'Unknown Player'}</strong>:
+              <blockquote className="my-2 p-3 border bg-muted rounded-md text-sm">
+                "{lastRoundCardTextForModal || 'Error: Card text missing'}"
+              </blockquote>
+              Do you want to add this card to the game's main deck permanently?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button 
+                variant="outline" 
+                onClick={() => handleApprovalDecision(false)} 
+                disabled={isPendingApproval}
+                className="border-destructive text-destructive-foreground hover:bg-destructive/80"
+            >
+                {isPendingApproval ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4"/>} 
+                No, Just This Round
+            </Button>
+            <Button 
+                onClick={() => handleApprovalDecision(true)} 
+                disabled={isPendingApproval}
+                className="bg-green-500 hover:bg-green-600 text-white"
+            >
+                 {isPendingApproval ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4"/>}
+                Yes, Add to Deck!
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
+
+
+    

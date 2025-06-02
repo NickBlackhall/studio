@@ -17,23 +17,22 @@ interface PlayerViewProps {
   player: PlayerClientState;
 }
 
-const CUSTOM_CARD_PLACEHOLDER = "Write your own card 📝";
-const CUSTOM_CARD_ID = "custom-write-in-card"; // A unique identifier for the custom card slot
+const CUSTOM_CARD_PLACEHOLDER = "Write your own card"; // Emoji removed
+const CUSTOM_CARD_ID = "custom-write-in-card"; 
 
 export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [selectedCardText, setSelectedCardText] = useState<string>('');
   const [isCustomCardSelectedAsSubmissionTarget, setIsCustomCardSelectedAsSubmissionTarget] = useState<boolean>(false);
   
   const [isEditingCustomCard, setIsEditingCustomCard] = useState<boolean>(false);
-  const [customCardInputText, setCustomCardInputText] = useState<string>(''); // For the textarea
-  const [finalizedCustomCardText, setFinalizedCustomCardText] = useState<string>(''); // Text after "Done"
+  const [customCardInputText, setCustomCardInputText] = useState<string>(''); 
+  const [finalizedCustomCardText, setFinalizedCustomCardText] = useState<string>(''); 
 
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
   useEffect(() => {
-    // Reset custom card state if round changes or player becomes judge
-    if (gameState.currentRound > 0) { // Only reset if a round is active
+    if (gameState.currentRound > 0) { 
         setIsEditingCustomCard(false);
         setCustomCardInputText('');
         setFinalizedCustomCardText('');
@@ -44,27 +43,25 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
 
   const hasSubmittedThisRound = gameState.submissions.some(
-    sub => sub.playerId === player.id && gameState.currentRound > 0 && gameState.currentRound === (gameState.submissions.find(s => s.playerId === player.id)?.cardText ? gameState.currentRound : -1) // A bit complex, but ensures check against round of submission. More direct check on response table might be better
+    sub => sub.playerId === player.id && gameState.currentRound > 0 && gameState.currentRound === (gameState.submissions.find(s => s.playerId === player.id)?.cardText ? gameState.currentRound : -1) 
   ) || gameState.submissions.some(sub => sub.playerId === player.id && gameState.currentRound > 0 && (gameState.responses?.find((r: any) => r.player_id === player.id && r.round_number === gameState.currentRound) !== undefined ) );
 
 
   const handleCustomCardEdit = () => {
-    setCustomCardInputText(finalizedCustomCardText); // Load existing finalized text for editing
+    setCustomCardInputText(finalizedCustomCardText); 
     setIsEditingCustomCard(true);
-    setSelectedCardText(''); // Deselect any other card
+    setSelectedCardText(''); 
     setIsCustomCardSelectedAsSubmissionTarget(false);
   };
 
   const handleCustomCardDone = () => {
     if (customCardInputText.trim() === '') {
         toast({ title: "Empty?", description: "Your custom card needs some text!", variant: "destructive"});
-        // Optionally clear finalized text if they submit empty after having text
         setFinalizedCustomCardText('');
     } else {
         setFinalizedCustomCardText(customCardInputText.trim());
     }
     setIsEditingCustomCard(false);
-    // After "Done", automatically select this custom card for submission
     if (customCardInputText.trim()) {
         setSelectedCardText(customCardInputText.trim());
         setIsCustomCardSelectedAsSubmissionTarget(true);
@@ -75,7 +72,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     setSelectedCardText(cardText);
     setIsCustomCardSelectedAsSubmissionTarget(isCustom);
      if (isCustom && !finalizedCustomCardText && !isEditingCustomCard) {
-      // If they click the placeholder for the custom card, initiate editing
       handleCustomCardEdit();
     }
   };
@@ -101,14 +97,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
         toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
         
-        // Reset selection states
         setSelectedCardText('');
         setIsCustomCardSelectedAsSubmissionTarget(false);
-        // Custom card text itself (finalizedCustomCardText) will be reset by useEffect on round change
-        // or could be reset here if we want it cleared immediately after submission.
-        // For now, let's keep it until next round to allow re-submission if an error occurred
-        // or if the player wants to submit the same custom card in a future (unlikely) scenario.
-        // However, for this game, it's better to clear it as they get a new card.
         setFinalizedCustomCardText(''); 
         setCustomCardInputText('');
 
@@ -223,7 +213,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 className="text-base border-muted focus:border-accent"
               />
               <div className="flex justify-end space-x-2">
-                <Button variant="ghost" size="sm" onClick={() => { setIsEditingCustomCard(false); setCustomCardInputText(finalizedCustomCardText); /* Revert to last finalized text if canceled */ }}>Cancel</Button>
+                <Button variant="ghost" size="sm" onClick={() => { setIsEditingCustomCard(false); setCustomCardInputText(finalizedCustomCardText); }}>Cancel</Button>
                 <Button onClick={handleCustomCardDone} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
                   <CheckSquare className="mr-2 h-4 w-4" /> Done
                 </Button>
@@ -253,7 +243,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
           {/* Regular Hand Cards */}
           {player.hand && player.hand.length > 0 && player.hand.map((card: PlayerHandCard) => {
-            const isNewCardVisual = card.isNew && gameState.currentRound > 1; // Only show "New!" if not the first round
+            const isNewCardVisual = card.isNew && gameState.currentRound > 1; 
             return (
               <Button
                 key={card.id}
@@ -264,8 +254,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
                     ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
                     : (isNewCardVisual
-                        ? 'border-red-500 hover:border-red-600'
-                        : 'border-gray-400 hover:border-foreground'
+                        ? 'border-red-500 hover:border-red-600' // Changed from accent to red for "New!"
+                        : 'border-gray-400 hover:border-foreground' // Default border
                       ),
                   selectedCardText !== card.text && 'hover:bg-muted/50'
                 )}
@@ -300,3 +290,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 }
+
+
+    
