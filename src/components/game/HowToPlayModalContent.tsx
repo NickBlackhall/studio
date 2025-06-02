@@ -34,7 +34,7 @@ export default function HowToPlayModalContent() {
                 <strong>Lobby & Player Setup:</strong>
                 <ul className="list-disc space-y-1 pl-5 mt-1 text-sm text-muted-foreground">
                   <li>Players join by entering a name and choosing an avatar.</li>
-                  <li>Each player gets {CARDS_PER_HAND} response cards in their hand.</li>
+                  <li>Each player gets {CARDS_PER_HAND} response cards in their hand, plus a special slot to write their own.</li>
                   <li>Once at least {MIN_PLAYERS_TO_START} players have joined, everyone must click their "Ready" button.</li>
                   <li>The game starts automatically when all joined players are ready.</li>
                 </ul>
@@ -56,8 +56,9 @@ export default function HowToPlayModalContent() {
                 <strong>Player Submission (Players' Turn):</strong>
                 <ul className="list-disc space-y-1 pl-5 mt-1 text-sm text-muted-foreground">
                   <li>All players (except the Judge) review the current scenario and their hand of response cards.</li>
-                  <li>Each player chooses the one card they think is the best (or worst!) fit and submits it.</li>
-                  <li>Submissions are revealed to the Judge anonymously. After submitting, players receive a new card.</li>
+                  <li>Each player chooses one pre-dealt card OR writes their own custom response in the dedicated "Write your own card" slot.</li>
+                  <li>Players submit their chosen card. Submissions are revealed to the Judge anonymously.</li>
+                  <li>After submitting a pre-dealt card, players receive a new card to replace it.</li>
                 </ul>
               </li>
               <li>
@@ -65,6 +66,7 @@ export default function HowToPlayModalContent() {
                 <ul className="list-disc space-y-1 pl-5 mt-1 text-sm text-muted-foreground">
                   <li>Once all players have submitted their cards, the Judge reviews all the anonymous responses.</li>
                   <li>The Judge then picks the single response card they deem the "winner" for that round (the most terrible, funny, clever, etc.).</li>
+                  <li><strong>If a custom-written card wins:</strong> The Judge will be prompted to decide whether to add this new card permanently to the game's main deck.</li>
                 </ul>
               </li>
               <li>
@@ -91,6 +93,7 @@ export default function HowToPlayModalContent() {
               <li><strong>Be Unexpected:</strong> Sometimes the most random card wins.</li>
               <li><strong>Embrace Absurdity:</strong> The more outlandish, the better!</li>
               <li><strong>Timing is Everything:</strong> A well-timed terrible joke can be a masterpiece.</li>
+              <li><strong>Get Creative:</strong> Your custom-written cards might be your ticket to victory and legendary status if they make it into the main deck!</li>
             </ul>
           </section>
         </div>
