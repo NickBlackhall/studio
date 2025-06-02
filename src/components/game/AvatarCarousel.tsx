@@ -39,6 +39,7 @@ const Slide = forwardRef(function Slide(
                 height={100} // Fixed height
                 className="object-contain rounded-md" // Ensure image scales nicely and has rounded corners
                 priority // Keep priority for LCP optimization if applicable
+                style={{ width: '100px', height: '100px' }} // Explicit style to match props
             />
         </div>
     );

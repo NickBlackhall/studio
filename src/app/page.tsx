@@ -396,7 +396,7 @@ export default function WelcomePage() {
   if (!renderableGame || !renderableGame.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto" data-ai-hint="game logo" priority />
+        <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
         <p className="text-xl text-destructive mt-4">Could not initialize game session. Please try refreshing.</p>
          <Button onClick={() => { showGlobalLoader(); window.location.reload(); }} variant="outline" className="mt-4">
           Refresh Page
@@ -447,6 +447,7 @@ export default function WelcomePage() {
               className="mx-auto mb-4"
               data-ai-hint="game logo"
               priority
+              style={{ height: 'auto' }}
             />
           </button>
           <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
@@ -513,6 +514,7 @@ export default function WelcomePage() {
                             width={40}
                             height={40}
                             className="mr-3 rounded-sm object-contain"
+                            style={{ width: '40px', height: '40px' }}
                           />
                         ) : (
                           <span className="text-3xl mr-3">{player.avatar}</span>
@@ -593,6 +595,7 @@ export default function WelcomePage() {
         className="mx-auto mb-8"
         data-ai-hint="game logo"
         priority
+        style={{ height: 'auto' }}
       />
       <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">
         Make It Terrible
@@ -635,3 +638,4 @@ export default function WelcomePage() {
     
 
     
+
