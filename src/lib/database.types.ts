@@ -25,7 +25,6 @@ export type Database = {
           overall_winner_player_id: string | null // uuid, FK to players.id
           used_scenarios: string[] | null // uuid[]
           used_responses: string[] | null // uuid[]
-          // room_id: string | null // text, optional if user kept it
         }
         Insert: {
           id?: string // uuid, defaults to gen_random_uuid()
@@ -41,7 +40,6 @@ export type Database = {
           overall_winner_player_id?: string | null // uuid
           used_scenarios?: string[] | null // uuid[], defaults to {}
           used_responses?: string[] | null // uuid[], defaults to {}
-          // room_id?: string | null
         }
         Update: {
           id?: string
@@ -57,14 +55,13 @@ export type Database = {
           overall_winner_player_id?: string | null
           used_scenarios?: string[] | null
           used_responses?: string[] | null
-          // room_id?: string | null
         }
-        Relationships: [] // Simplified, CLI would populate this
+        Relationships: []
       }
       players: {
         Row: {
           id: string // uuid
-          created_at: string // timestamptz (assuming user changed from timestamp)
+          created_at: string // timestamptz
           name: string // text
           game_id: string // uuid, FK to games.id
           is_judge: boolean // boolean
@@ -333,5 +330,3 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
     ? Database["public"]["Enums"][PublicEnumNameOrOptions]
     : never
-
-    
