@@ -213,13 +213,18 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl">Approve Custom Card?</AlertDialogTitle>
-            <AlertDialogDescription className="text-base">
-              The winning card was a custom submission by <strong>{lastRoundWinnerForModal?.name || 'Unknown Player'}</strong>:
-              <blockquote className="my-2 p-3 border bg-muted rounded-md text-sm">
+            {/* Replaced AlertDialogDescription with a div for better control over nesting */}
+            <div className="text-sm text-muted-foreground space-y-2 pt-2">
+              <p>
+                The winning card was a custom submission by <strong>{lastRoundWinnerForModal?.name || 'Unknown Player'}</strong>:
+              </p>
+              <blockquote className="my-1 p-3 border bg-muted rounded-md text-foreground"> {/* Ensure text is readable */}
                 "{lastRoundCardTextForModal || 'Error: Card text missing'}"
               </blockquote>
-              Do you want to add this card to the game's main deck permanently?
-            </AlertDialogDescription>
+              <p>
+                Do you want to add this card to the game's main deck permanently?
+              </p>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button 
@@ -246,6 +251,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
-
+    
 
     
