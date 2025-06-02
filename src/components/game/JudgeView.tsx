@@ -210,28 +210,27 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       )}
 
       <AlertDialog open={showApprovalModal}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl">Approve Custom Card?</AlertDialogTitle>
-            {/* Replaced AlertDialogDescription with a div for better control over nesting */}
-            <div className="text-sm text-muted-foreground space-y-2 pt-2">
-              <p>
-                The winning card was a custom submission by <strong>{lastRoundWinnerForModal?.name || 'Unknown Player'}</strong>:
-              </p>
-              <blockquote className="my-1 p-3 border bg-muted rounded-md text-foreground"> {/* Ensure text is readable */}
-                "{lastRoundCardTextForModal || 'Error: Card text missing'}"
-              </blockquote>
-              <p>
-                Do you want to add this card to the game's main deck permanently?
-              </p>
-            </div>
+        <AlertDialogContent className="border-2 border-primary rounded-xl bg-background shadow-xl p-0">
+          <AlertDialogHeader className="bg-primary text-primary-foreground p-6 rounded-t-lg">
+            <AlertDialogTitle className="text-3xl font-bold">Approve Custom Card?</AlertDialogTitle>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <div className="p-6 space-y-3 text-sm text-muted-foreground">
+            <p>
+              The winning card was a custom submission by <strong className="text-foreground">{lastRoundWinnerForModal?.name || 'Unknown Player'}</strong>:
+            </p>
+            <blockquote className="my-1 p-3 border bg-muted rounded-md text-foreground text-base">
+              "{lastRoundCardTextForModal || 'Error: Card text missing'}"
+            </blockquote>
+            <p>
+              Do you want to add this card to the game's main deck permanently?
+            </p>
+          </div>
+          <AlertDialogFooter className="p-6 bg-muted/50 rounded-b-lg">
             <Button 
                 variant="outline" 
                 onClick={() => handleApprovalDecision(false)} 
                 disabled={isPendingApproval}
-                className="border-destructive text-destructive-foreground hover:bg-destructive/80"
+                className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
             >
                 {isPendingApproval ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4"/>} 
                 No, Just This Round
