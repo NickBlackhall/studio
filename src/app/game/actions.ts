@@ -197,27 +197,23 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   }
 
   let submissions: GameClientState['submissions'] = [];
-  if ((gameStateRow.game_phase === 'judging' || gameStateRow.game_phase === 'player_submission') && gameStateRow.current_round > 0) {
+  if ((gameRow.game_phase === 'judging' || gameRow.game_phase === 'player_submission') && gameRow.current_round > 0) {
     const { data: submissionData, error: submissionError } = await supabase
       .from('responses')
       .select('player_id, response_card_id, submitted_text, response_cards(id, text)')
       .eq('game_id', gameId)
-      .eq('round_number', gameStateRow.current_round);
+      .eq('round_number', gameRow.current_round);
 
     if (submissionError) {
       console.error('DEBUG: getGame - Error fetching submissions:', JSON.stringify(submissionError, null, 2));
     } else if (submissionData) {
       submissions = submissionData.map((s: any) => {
         const cardText = s.submitted_text || s.response_cards?.text || 'Error: Card text not found';
-        // If it's a custom submission, cardId might be null, but for client state we might want a placeholder or to handle it.
-        // For now, if response_card_id is null (custom), we use a generic or specially marked ID for client display if needed,
-        // or ensure the client knows it's custom based on submitted_text presence.
-        // Here, we prioritize submitted_text. The cardId can be the original card's ID or null if custom.
-        const cardId = s.response_card_id || (s.submitted_text ? `custom-${s.player_id}-${gameStateRow.current_round}` : `error-${s.player_id}`);
+        const cardId = s.response_card_id || (s.submitted_text ? `custom-${s.player_id}-${gameRow.current_round}` : `error-${s.player_id}`);
 
         return {
           playerId: s.player_id,
-          cardId: cardId, // This will be the actual response_card_id or a generated one for custom
+          cardId: cardId,
           cardText: cardText,
         };
       });
