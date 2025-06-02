@@ -124,20 +124,34 @@ export type Database = {
           created_at: string // timestamptz
           text: string // text
           is_active: boolean // boolean
+          author_player_id: string | null // uuid, FK to players.id
+          author_name: string | null // text
         }
         Insert: {
           id?: string // uuid, defaults to gen_random_uuid()
           created_at?: string // timestamptz, defaults to now()
           text: string // text
           is_active?: boolean // boolean, defaults to true
+          author_player_id?: string | null // uuid
+          author_name?: string | null // text
         }
         Update: {
           id?: string
           created_at?: string
           text?: string
           is_active?: boolean
+          author_player_id?: string | null
+          author_name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_response_cards_author_player"
+            columns: ["author_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       player_hands: {
         Row: {
@@ -171,7 +185,8 @@ export type Database = {
           id: string // uuid
           created_at: string // timestamptz
           player_id: string // uuid, FK to players.id
-          response_card_id: string // uuid, FK to response_cards.id
+          response_card_id: string | null // uuid, FK to response_cards.id
+          submitted_text: string | null // text
           game_id: string // uuid, FK to games.id
           round_number: number // integer
         }
@@ -179,7 +194,8 @@ export type Database = {
           id?: string // uuid, defaults to gen_random_uuid()
           created_at?: string // timestamptz, defaults to now()
           player_id: string // uuid
-          response_card_id: string // uuid
+          response_card_id?: string | null // uuid
+          submitted_text?: string | null // text
           game_id: string // uuid
           round_number: number // integer
         }
@@ -187,7 +203,8 @@ export type Database = {
           id?: string
           created_at?: string
           player_id?: string
-          response_card_id?: string
+          response_card_id?: string | null
+          submitted_text?: string | null
           game_id?: string
           round_number?: number
         }
@@ -317,3 +334,4 @@ export type Enums<
     ? Database["public"]["Enums"][PublicEnumNameOrOptions]
     : never
 
+    
