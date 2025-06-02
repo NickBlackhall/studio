@@ -168,7 +168,10 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   if (categoriesError) {
     console.error('Error fetching categories:', JSON.stringify(categoriesError, null, 2));
   } else if (categoriesData) {
-    const distinctCategories = [...new Set(categoriesData.map(c => c.category).filter(c => c !== null) as string[])];
+    const distinctCategories = [...new Set(
+        categoriesData.map(c => c.category)
+                      .filter(c => c !== null && c.trim() !== '') as string[]
+    )];
     if (distinctCategories.length > 0) {
       categories = distinctCategories;
     }
@@ -1228,4 +1231,6 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
 }
 
     
+    
+
     
