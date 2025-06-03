@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare, HelpCircle, Info } from 'lucide-react'; // Changed AlertTriangle to Info
+import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
@@ -459,8 +459,24 @@ export default function WelcomePage() {
             />
           </button>
           <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-           {gameIsActuallyActive && renderableGame.gamePhase !== 'lobby' && ( 
-            <Card className="my-4 border-primary/50 bg-muted/30 shadow-md">
+           {gameIsActuallyActive && renderableGame.gamePhase !== 'lobby' && !thisPlayerObject && ( 
+            <Card className="my-6 text-center shadow-xl border-4 border-destructive rounded-xl bg-gradient-to-br from-destructive/70 via-destructive to-destructive/60 text-destructive-foreground">
+              <CardHeader className="p-6 sm:p-8">
+                <Lock className="h-16 w-16 sm:h-20 sm:w-20 mx-auto text-destructive-foreground/80 mb-3 sm:mb-4" />
+                <CardTitle className="text-3xl sm:text-4xl font-extrabold">Game in Progress!</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 sm:p-8 pt-0 sm:pt-0">
+                <p className="text-lg sm:text-xl">
+                  A game is currently underway (phase: {renderableGame.gamePhase}).
+                </p>
+                <p className="text-md sm:text-lg mt-2">
+                  New players cannot join an active game. Please wait until this game concludes or is reset by the host.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+          {gameIsActuallyActive && renderableGame.gamePhase !== 'lobby' && thisPlayerObject && (
+             <Card className="my-4 border-primary/50 bg-muted/30 shadow-md">
               <CardHeader className="p-4">
                 <CardTitle className="text-lg flex items-center font-semibold text-foreground">
                   <Info className="mr-2 h-5 w-5 text-primary" /> Game in Progress!
@@ -468,18 +484,14 @@ export default function WelcomePage() {
               </CardHeader>
               <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
                 <p>The current game is in the "{renderableGame.gamePhase}" phase.</p>
-                {thisPlayerObject ? (
                   <Button
                       onClick={() => { showGlobalLoader(); router.push('/game'); }} 
                       variant="default"
-                      size="sm" // smaller button
+                      size="sm" 
                       className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
                   >
                       Rejoin Current Game <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-                ) : (
-                  <p className="mt-2">New players cannot join an active game. Please wait until this game concludes or is reset.</p>
-                )}
               </CardContent>
             </Card>
           )}
@@ -495,7 +507,8 @@ export default function WelcomePage() {
         
         <div className={cn(
             "grid gap-8 w-full max-w-4xl",
-            showPlayerSetupForm ? "md:grid-cols-2" : "grid-cols-1" 
+            showPlayerSetupForm ? "md:grid-cols-2" : "grid-cols-1",
+            (gameIsActuallyActive && !thisPlayerObject) && "md:grid-cols-1" // Ensure player list spans full if setup form is hidden and "Game in Progress" card is shown
         )}>
           {showPlayerSetupForm && (
             <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
@@ -511,7 +524,7 @@ export default function WelcomePage() {
           
           <Card className={cn(
               "shadow-2xl border-2 border-secondary rounded-xl overflow-hidden",
-              showPlayerSetupForm || (gameIsActuallyActive && !thisPlayerObject && renderableGame.gamePhase !== 'lobby') ? "" : "md:col-span-2" 
+              (showPlayerSetupForm || (gameIsActuallyActive && !thisPlayerObject)) ? "" : "md:col-span-2" 
           )}>
             <CardHeader className="bg-secondary text-secondary-foreground p-6">
               <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({renderableGame.players.length})</CardTitle>
@@ -656,3 +669,4 @@ export default function WelcomePage() {
     
 
     
+
