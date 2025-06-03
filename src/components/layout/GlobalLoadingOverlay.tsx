@@ -9,23 +9,24 @@ export default function GlobalLoadingOverlay() {
   const [shouldRender, setShouldRender] = useState(false);
   const [opacityClass, setOpacityClass] = useState('opacity-0');
 
+  const FADE_DURATION_MS = 500; // Define duration in ms
+
   useEffect(() => {
     let fadeInTimer: NodeJS.Timeout;
     let fadeOutTimer: NodeJS.Timeout;
 
     if (isGlobalLoading) {
       setShouldRender(true);
-      // We need a slight delay to ensure the element is mounted with opacity-0
-      // before transitioning to opacity-100, otherwise the fade-in might not be visible.
+      // Increased delay to ensure opacity-0 is rendered before transitioning
       fadeInTimer = setTimeout(() => {
         setOpacityClass('opacity-100');
-      }, 10); // A small delay like 10ms is often enough
+      }, 50); // Increased from 10ms to 50ms
     } else {
       setOpacityClass('opacity-0');
       // Wait for the fade-out transition to complete before unmounting
       fadeOutTimer = setTimeout(() => {
         setShouldRender(false);
-      }, 300); // This duration should match the transition duration in className
+      }, FADE_DURATION_MS); // Match CSS duration
     }
 
     return () => {
@@ -42,9 +43,10 @@ export default function GlobalLoadingOverlay() {
     <div
       className={`
         fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background
-        transition-opacity ease-in-out duration-300
+        transition-opacity ease-in-out
         ${opacityClass}
       `}
+      style={{ transitionDuration: `${FADE_DURATION_MS}ms` }} // Apply duration via style
     >
       <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
       <p className="text-xl text-primary font-semibold">Loading the terribleness...</p>
