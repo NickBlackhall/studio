@@ -257,6 +257,12 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
   }
   const gameId = gameRow.id;
 
+  // Check if game is in lobby phase
+  if (gameRow.game_phase !== 'lobby') {
+    console.warn(`🔴 PLAYER (Server): Attempt to add player ${name} to game ${gameId} which is in phase '${gameRow.game_phase}'. Players can only join during 'lobby' phase.`);
+    throw new Error(`Game is already in progress (phase: ${gameRow.game_phase}). Cannot join now.`);
+  }
+
   const { data: existingPlayer, error: checkError } = await supabase
     .from('players')
     .select('id')
@@ -264,7 +270,7 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
     .eq('name', name)
     .single();
 
-  if (checkError && checkError.code !== 'PGRST116') {
+  if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
     console.error('🔴 PLAYER (Server): Error checking for existing player:', JSON.stringify(checkError, null, 2));
     throw new Error(`Error checking for existing player: ${checkError.message}`);
   }

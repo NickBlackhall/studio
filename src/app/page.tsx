@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare, HelpCircle } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare, HelpCircle, AlertTriangle } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
@@ -149,15 +149,26 @@ export default function WelcomePage() {
 
   useEffect(() => {
     const currentRenderableGame = gameRef.current;
-    console.log(`Client (useEffect nav check): Running. internalGame phase: ${internalGame?.gamePhase}, Game from ref: ${currentRenderableGame ? currentRenderableGame.gameId : 'N/A'}, Phase from ref: ${currentRenderableGame?.gamePhase}, Step: ${currentStep}, Mounted: ${isMountedRef.current}`);
+    const localThisPlayerId = thisPlayerIdRef.current;
+    console.log(`Client (useEffect nav check): Running. internalGame phase: ${internalGame?.gamePhase}, Game from ref: ${currentRenderableGame ? currentRenderableGame.gameId : 'N/A'}, Phase from ref: ${currentRenderableGame?.gamePhase}, Step: ${currentStep}, Mounted: ${isMountedRef.current}, thisPlayerIdRef: ${localThisPlayerId}`);
 
     if (isMountedRef.current && currentRenderableGame && currentRenderableGame.gameId &&
         currentRenderableGame.gamePhase !== 'lobby' && 
         ACTIVE_PLAYING_PHASES.includes(currentRenderableGame.gamePhase as GamePhaseClientState) && 
-        currentStep === 'setup') {
-      console.log(`Client (useEffect nav check): NAV CONDITION MET. Phase: ${currentRenderableGame.gamePhase}, Step: ${currentStep}. Showing loader and navigating to /game.`);
+        currentStep === 'setup' &&
+        localThisPlayerId // Only navigate if this player is actually part of the game
+      ) {
+      console.log(`Client (useEffect nav check): NAV CONDITION MET for existing player. Phase: ${currentRenderableGame.gamePhase}, Step: ${currentStep}, PlayerID: ${localThisPlayerId}. Showing loader and navigating to /game.`);
       showGlobalLoader();
       router.push('/game');
+    } else if (isMountedRef.current && currentRenderableGame && currentRenderableGame.gameId &&
+        currentRenderableGame.gamePhase !== 'lobby' &&
+        currentStep === 'setup' &&
+        !localThisPlayerId
+      ) {
+        console.log(`Client (useEffect nav check): Game is active (${currentRenderableGame.gamePhase}) but this user (PlayerID: ${localThisPlayerId}) is not part of it. Staying on setup page to show 'Game in Progress' message.`);
+        // User should see the message that game is in progress instead of being navigated.
+        // The PlayerSetupForm will be hidden if game is not in lobby.
     }
   }, [internalGame, currentStep, router, showGlobalLoader]);
 
@@ -303,13 +314,18 @@ export default function WelcomePage() {
           await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); 
         } else if (isMountedRef.current) {
           console.error('Client: Failed to add player or component unmounted. New player:', newPlayer, 'Game ID:', currentGameId, 'Mounted:', isMountedRef.current);
-          toast({ title: "Error Adding Player", description: "Could not add player. Please try again.", variant: "destructive"});
+          // This branch might be hit if addPlayerAction itself throws an error caught by the outer catch.
+          // The specific error from addPlayerAction will be caught by the catch block below.
         }
       } catch (error: any) {
         console.error("Client: Error calling addPlayerAction:", error);
         if (isMountedRef.current) {
           const errorMsg = error.message || String(error);
-          toast({ title: "Error Adding Player", description: errorMsg, variant: "destructive"});
+           if (errorMsg.includes("Game is already in progress")) {
+            toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
+          } else {
+            toast({ title: "Error Adding Player", description: errorMsg, variant: "destructive"});
+          }
         }
       }
     });
@@ -406,7 +422,7 @@ export default function WelcomePage() {
   }
 
   const thisPlayerObject = renderableGame.players && renderableGame.players.find(p => p.id === thisPlayerIdRef.current);
-  const gameIsConsideredActive = ACTIVE_PLAYING_PHASES.includes(renderableGame.gamePhase as GamePhaseClientState);
+  const gameIsActuallyActive = ACTIVE_PLAYING_PHASES.includes(renderableGame.gamePhase as GamePhaseClientState);
 
   if (currentStep === 'setup') {
     if (!renderableGame.players) { 
@@ -451,18 +467,22 @@ export default function WelcomePage() {
             />
           </button>
           <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-           {gameIsConsideredActive && renderableGame.gamePhase !== 'lobby' && ( 
+           {gameIsActuallyActive && renderableGame.gamePhase !== 'lobby' && ( 
             <div className="my-4 p-4 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 rounded-md shadow-lg">
-                <p className="font-bold text-lg">Game in Progress!</p>
+                <p className="font-bold text-lg flex items-center"><AlertTriangle className="mr-2 h-5 w-5" /> Game in Progress!</p>
                 <p className="text-md">The current game is in the "{renderableGame.gamePhase}" phase.</p>
-                 <Button
-                    onClick={() => { showGlobalLoader(); router.push('/game'); }} 
-                    variant="default"
-                    size="lg"
-                    className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
-                >
-                    Go to Current Game <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+                {thisPlayerObject ? (
+                  <Button
+                      onClick={() => { showGlobalLoader(); router.push('/game'); }} 
+                      variant="default"
+                      size="lg"
+                      className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
+                  >
+                      Rejoin Current Game <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                ) : (
+                  <p className="mt-2 text-sm">New players cannot join mid-game. Please wait for the next round or reset.</p>
+                )}
             </div>
           )}
           {!showPlayerSetupForm && thisPlayerObject && renderableGame.gamePhase === 'lobby' && (
@@ -493,10 +513,10 @@ export default function WelcomePage() {
           
           <Card className={cn(
               "shadow-2xl border-2 border-secondary rounded-xl overflow-hidden",
-              showPlayerSetupForm ? "" : "md:col-span-2" 
+              showPlayerSetupForm || (gameIsActuallyActive && !thisPlayerObject) ? "" : "md:col-span-2" 
           )}>
             <CardHeader className="bg-secondary text-secondary-foreground p-6">
-              <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players in Lobby ({renderableGame.players.length})</CardTitle>
+              <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({renderableGame.players.length})</CardTitle>
                 <CardDescription className="text-secondary-foreground/80 text-base">
                 {renderableGame.gamePhase === 'lobby' ? "Game starts automatically when all players are ready." : `Current game phase: ${renderableGame.gamePhase}`}
               </CardDescription>
@@ -638,4 +658,3 @@ export default function WelcomePage() {
     
 
     
-
