@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { cn } from '@/lib/utils';
 import { handleJudgeApprovalForCustomCard } from '@/app/game/actions';
+import Image from 'next/image';
 
 
 interface JudgeViewProps {
@@ -95,8 +96,31 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     <div className="space-y-8">
       <Card className="shadow-lg border-2 border-accent rounded-xl">
         <CardHeader className="bg-accent text-accent-foreground p-6">
-          <CardTitle className="text-3xl font-bold flex items-center"><Gavel className="mr-3 h-8 w-8" /> You are the Judge!</CardTitle>
-          <CardDescription className="text-accent-foreground/80 text-base">Wield your power with terrible responsibility, {judge.name}.</CardDescription>
+          <div className="flex items-center justify-between mb-1">
+            <CardTitle className="text-3xl font-bold flex items-center">
+              <Gavel className="mr-3 h-8 w-8" /> You are the Judge!
+            </CardTitle>
+            <div className="flex items-center space-x-2 text-right">
+              {judge.avatar && judge.avatar.startsWith('/') ? (
+                <Image
+                  src={judge.avatar}
+                  alt={`${judge.name}'s avatar`}
+                  width={40}
+                  height={40}
+                  className="rounded-md object-cover"
+                />
+              ) : (
+                <span className="text-4xl">{judge.avatar}</span>
+              )}
+              <div>
+                <p className="text-lg font-semibold">{judge.name}</p>
+                <p className="text-sm text-accent-foreground/90">{judge.score} pts</p>
+              </div>
+            </div>
+          </div>
+          <CardDescription className="text-accent-foreground/80 text-base">
+            Wield your power with terrible responsibility.
+          </CardDescription>
         </CardHeader>
       </Card>
 

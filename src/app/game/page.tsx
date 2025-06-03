@@ -15,7 +15,7 @@ import {
   resetGameForTesting 
 } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
-import { MIN_PLAYERS_TO_START } from '@/lib/types';
+import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
 import PlayerView from '@/components/game/PlayerView';
@@ -494,7 +494,7 @@ export default function GamePage() {
 
   const renderGameContent = () => {
     if (!thisPlayer && (gameState.gamePhase !== 'winner_announcement' && gameState.gamePhase !== 'game_over')) {
-        if (['category_selection', 'player_submission', 'judging'].includes(gameState.gamePhase)) {
+        if (ACTIVE_PLAYING_PHASES.includes(gameState.gamePhase)) {
              console.error("GamePage: renderGameContent - thisPlayer is null during active game phase:", gameState.gamePhase);
             return (
                 <Card className="text-center">
@@ -541,6 +541,10 @@ export default function GamePage() {
   };
 
   const showPendingOverlay = isActionPending && !isLoading; 
+  const shouldShowPlayerInfoBar = thisPlayer && 
+                                  !thisPlayer.isJudge && 
+                                  gameState.gamePhase !== 'winner_announcement' && 
+                                  gameState.gamePhase !== 'game_over';
 
   return (
     <div className="flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 max-w-7xl mx-auto px-2">
@@ -550,7 +554,7 @@ export default function GamePage() {
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
         )}
-        {thisPlayer && (
+        {shouldShowPlayerInfoBar && (
           <Card className="mb-4 bg-accent text-accent-foreground shadow-lg">
             <CardContent className="p-2 flex items-center justify-start text-left">
               {thisPlayer.avatar && thisPlayer.avatar.startsWith('/') ? (
@@ -614,6 +618,7 @@ export const dynamic = 'force-dynamic';
 
 
     
+
 
 
 
