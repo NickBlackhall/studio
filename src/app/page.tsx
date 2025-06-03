@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare, HelpCircle, Info, Lock, AlertTriangle } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
@@ -17,6 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
+import Scoreboard from '@/components/game/Scoreboard';
+
 
 export const dynamic = 'force-dynamic';
 
@@ -135,7 +138,7 @@ export default function WelcomePage() {
   useEffect(() => {
     isMountedRef.current = true;
     console.log(`Client: Component mounted or currentStep changed to: ${currentStep}. Fetching game data.`);
-    showGlobalLoader(); // Show loader for initial load or step change
+    showGlobalLoader(); 
     fetchGameData(`useEffect[] mount or currentStep change to: ${currentStep}`);
     
     return () => {
@@ -155,7 +158,7 @@ export default function WelcomePage() {
         currentRenderableGame.gamePhase !== 'lobby' && 
         ACTIVE_PLAYING_PHASES.includes(currentRenderableGame.gamePhase as GamePhaseClientState) && 
         currentStep === 'setup' &&
-        localThisPlayerId // Only navigate if this player is actually part of the game
+        localThisPlayerId 
       ) {
       console.log(`Client (useEffect nav check): NAV CONDITION MET for existing player. Phase: ${currentRenderableGame.gamePhase}, Step: ${currentStep}, PlayerID: ${localThisPlayerId}. Showing loader and navigating to /game.`);
       showGlobalLoader();
@@ -394,35 +397,34 @@ export default function WelcomePage() {
   const handleStartGame = async () => {
     const currentGame = gameRef.current;
     if (currentGame?.gameId && currentGame.gamePhase === 'lobby') {
-      const enoughPlayers = currentGame.players.length >= MIN_PLAYERS_TO_START;
-      const allReady = enoughPlayers && currentGame.players.every(p => p.isReady);
-      const hostPlayerId = currentGame.ready_player_order && currentGame.ready_player_order.length > 0 ? currentGame.ready_player_order[0] : null;
+        const enoughPlayers = currentGame.players.length >= MIN_PLAYERS_TO_START;
+        const allReady = enoughPlayers && currentGame.players.every(p => p.isReady);
+        const hostPlayerId = currentGame.ready_player_order && currentGame.ready_player_order.length > 0 ? currentGame.ready_player_order[0] : null;
 
-      if (thisPlayerIdRef.current !== hostPlayerId) {
-        toast({ title: "Not the Host", description: "Only the host (first player to ready up) can start the game.", variant: "warning" });
-        return;
-      }
-
-      if (enoughPlayers && allReady) {
-        showGlobalLoader();
-        startPlayerActionTransition(async () => {
-          try {
-            await startGame(currentGame.gameId);
-            // Navigation will be handled by useEffect listening to gamePhase change
-          } catch (error: any) {
-            if (isMountedRef.current) {
-              if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-                console.log("Client (handleStartGame): Caught NEXT_REDIRECT. Loader will be handled by navigation target.");
-                return;
-              }
-              toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
-              hideGlobalLoader();
-            }
-          }
-        });
-      } else {
-        toast({ title: "Cannot Start Yet", description: "Not enough players or not all players are ready.", variant: "warning" });
-      }
+        if (thisPlayerIdRef.current !== hostPlayerId) {
+            toast({ title: "Not the Host", description: "Only the host (first player to ready up) can start the game.", variant: "warning" });
+            return;
+        }
+        
+        if (enoughPlayers && allReady) {
+            showGlobalLoader();
+            startPlayerActionTransition(async () => {
+                try {
+                    await startGame(currentGame.gameId);
+                } catch (error: any) {
+                    if (isMountedRef.current) {
+                        if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+                            console.log("Client (handleStartGame): Caught NEXT_REDIRECT. Loader will be handled by navigation target.");
+                            return; 
+                        }
+                        toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
+                        hideGlobalLoader();
+                    }
+                }
+            });
+        } else {
+            toast({ title: "Cannot Start Yet", description: "Not enough players or not all players are ready.", variant: "warning" });
+        }
     }
   };
   
@@ -463,7 +465,14 @@ export default function WelcomePage() {
     const enoughPlayers = renderableGame.players.length >= MIN_PLAYERS_TO_START;
     const allPlayersReady = enoughPlayers && renderableGame.players.every(p => p.isReady);
     const hostPlayerId = renderableGame.ready_player_order && renderableGame.ready_player_order.length > 0 ? renderableGame.ready_player_order[0] : null;
-    const hostPlayer = hostPlayerId ? renderableGame.players.find(p => p.id === hostPlayerId) : null;
+    
+    let hostPlayer = null;
+    if (hostPlayerId) {
+      hostPlayer = renderableGame.players.find(p => p.id === hostPlayerId);
+      if (!hostPlayer) {
+        console.warn(`Lobby Message: Host player object NOT FOUND for hostPlayerId: ${hostPlayerId}. Players list:`, renderableGame.players.map(p => p.id));
+      }
+    }
 
 
     let lobbyMessage = "";
@@ -472,7 +481,7 @@ export default function WelcomePage() {
         lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - renderableGame.players.length} more...`;
       } else if (!allPlayersReady) {
         const unreadyCount = renderableGame.players.filter(p => !p.isReady).length;
-        lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. The host (${hostPlayer?.name || 'first to ready up'}) can then start the game.`;
+        lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. The host (${hostPlayer?.name || 'first player to ready up'}) can then start the game.`;
       } else if (hostPlayerId === thisPlayerIdRef.current) {
         lobbyMessage = "All players are ready! You can start the game now!";
       } else {
@@ -481,6 +490,9 @@ export default function WelcomePage() {
     }
 
     const showPlayerSetupForm = !thisPlayerObject && renderableGame.gamePhase === 'lobby';
+    const showGameInProgressMessage = gameIsActuallyActive && renderableGame.gamePhase !== 'lobby' && !thisPlayerObject;
+    const showRejoinGameMessage = gameIsActuallyActive && renderableGame.gamePhase !== 'lobby' && thisPlayerObject;
+
 
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
@@ -498,23 +510,23 @@ export default function WelcomePage() {
             />
           </button>
           <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-           {gameIsActuallyActive && renderableGame.gamePhase !== 'lobby' && !thisPlayerObject && ( 
+           {showGameInProgressMessage && ( 
             <Card className="my-6 text-center shadow-xl border-4 border-destructive rounded-xl bg-gradient-to-br from-destructive/70 via-destructive to-destructive/60 text-destructive-foreground">
               <CardHeader className="p-6 sm:p-8">
                 <Lock className="h-16 w-16 sm:h-20 sm:w-20 mx-auto text-destructive-foreground/80 mb-3 sm:mb-4" />
                 <CardTitle className="text-3xl sm:text-4xl font-extrabold">Game in Progress!</CardTitle>
               </CardHeader>
               <CardContent className="p-6 sm:p-8 pt-0 sm:pt-0">
-                <p className="text-lg sm:text-xl">
-                  Sorry, you'll have to wait until the next game to join.
-                </p>
-                <p className="text-md sm:text-lg mt-2">
-                  Don't like waiting? Thank the idiot who programmed this thing...
-                </p>
+                 <p className="text-lg sm:text-xl">
+                   Sorry, you'll have to wait until the next game to join.
+                 </p>
+                 <p className="text-md sm:text-lg mt-2">
+                   Don't like waiting? Thank the idiot who programmed this thing...
+                 </p>
               </CardContent>
             </Card>
           )}
-          {gameIsActuallyActive && renderableGame.gamePhase !== 'lobby' && thisPlayerObject && (
+          {showRejoinGameMessage && (
              <Card className="my-4 border-primary/50 bg-muted/30 shadow-md">
               <CardHeader className="p-4">
                 <CardTitle className="text-lg flex items-center font-semibold text-foreground">
@@ -546,8 +558,8 @@ export default function WelcomePage() {
         
         <div className={cn(
             "grid gap-8 w-full max-w-4xl",
-            showPlayerSetupForm ? "md:grid-cols-2" : "grid-cols-1",
-            (gameIsActuallyActive && !thisPlayerObject && renderableGame.gamePhase !== 'lobby') && "md:grid-cols-1"
+            (showPlayerSetupForm || showGameInProgressMessage) ? "md:grid-cols-2" : "md:grid-cols-1",
+            showGameInProgressMessage && "md:grid-cols-1" 
         )}>
           {showPlayerSetupForm && (
             <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
@@ -561,90 +573,97 @@ export default function WelcomePage() {
             </Card>
           )}
           
-          <Card className={cn(
-              "shadow-2xl border-2 border-secondary rounded-xl overflow-hidden",
-              (showPlayerSetupForm || (gameIsActuallyActive && !thisPlayerObject && renderableGame.gamePhase !== 'lobby')) ? "" : "md:col-span-2" 
-          )}>
-            <CardHeader className="bg-secondary text-secondary-foreground p-6">
-              <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({renderableGame.players.length})</CardTitle>
-                <CardDescription className="text-secondary-foreground/80 text-base">
-                {renderableGame.gamePhase === 'lobby' ? "Game starts when all players are ready and host initiates." : `Current game phase: ${renderableGame.gamePhase}`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              {renderableGame.players.length > 0 ? (
-                <ul className="space-y-3">
-                  {renderableGame.players.map((player: PlayerClientState) => (
-                    <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
-                      <div className="flex items-center">
-                        {player.avatar.startsWith('/') ? (
-                          <Image
-                            src={player.avatar}
-                            alt={`${player.name}'s avatar`}
-                            width={40}
-                            height={40}
-                            className="mr-3 rounded-sm object-contain"
-                            style={{ width: '40px', height: '40px' }}
-                          />
-                        ) : (
-                          <span className="text-3xl mr-3">{player.avatar}</span>
-                        )}
-                        <span className="text-xl font-medium text-foreground">{player.name}</span>
-                      </div>
-                      {renderableGame.gamePhase === 'lobby' && (
-                        <div className="flex items-center space-x-2">
-                          {player.id === thisPlayerIdRef.current ? (
-                            <Button
-                              onClick={() => handleToggleReady(player)}
-                              variant={player.isReady ? "default" : "outline"}
-                              size="sm"
-                              className={cn(
-                                "px-3 py-1 text-xs font-semibold",
-                                player.isReady
-                                  ? "bg-green-500 hover:bg-green-600 text-white border-green-600"
-                                  : "border-primary text-primary hover:bg-primary/10"
-                                )}
-                              disabled={isProcessingAction}
-                            >
-                              {isProcessingAction ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (player.isReady ? <ThumbsUp className="mr-1 h-3 w-3"/> : null)}
-                              {player.isReady ? "Ready!" : "Tap when Ready"}
-                            </Button>
+          {/* Players Card - Show always if game is in lobby, or if it's active and this is an existing player */}
+          { (renderableGame.gamePhase === 'lobby' || (gameIsActuallyActive && thisPlayerObject)) && (
+            <Card className={cn(
+                "shadow-2xl border-2 border-secondary rounded-xl overflow-hidden",
+                (!showPlayerSetupForm && !showGameInProgressMessage && renderableGame.gamePhase === 'lobby') && "md:col-span-2" ,
+                (showGameInProgressMessage && renderableGame.gamePhase !== 'lobby' && !thisPlayerObject) && "md:col-span-2"
+            )}>
+              <CardHeader className="bg-secondary text-secondary-foreground p-6">
+                <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({renderableGame.players.length})</CardTitle>
+                  <CardDescription className="text-secondary-foreground/80 text-base">
+                  {renderableGame.gamePhase === 'lobby' ? "Game starts when all players are ready and host initiates." : `Current game phase: ${renderableGame.gamePhase}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                {renderableGame.players.length > 0 ? (
+                  <ul className="space-y-3">
+                    {renderableGame.players.map((player: PlayerClientState) => (
+                      <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
+                        <div className="flex items-center">
+                          {player.avatar.startsWith('/') ? (
+                            <Image
+                              src={player.avatar}
+                              alt={`${player.name}'s avatar`}
+                              width={40}
+                              height={40}
+                              className="mr-3 rounded-sm object-contain"
+                              style={{ width: '40px', height: '40px' }}
+                            />
                           ) : (
-                            player.isReady ? <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
+                            <span className="text-3xl mr-3">{player.avatar}</span>
                           )}
+                          <span className="text-xl font-medium text-foreground">{player.name}</span>
                         </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
-              )}
+                        {renderableGame.gamePhase === 'lobby' && (
+                          <div className="flex items-center space-x-2">
+                            {player.id === thisPlayerIdRef.current ? (
+                              <Button
+                                onClick={() => handleToggleReady(player)}
+                                variant={player.isReady ? "default" : "outline"}
+                                size="sm"
+                                className={cn(
+                                  "px-3 py-1 text-xs font-semibold",
+                                  player.isReady
+                                    ? "bg-green-500 hover:bg-green-600 text-white border-green-600"
+                                    : "border-primary text-primary hover:bg-primary/10"
+                                  )}
+                                disabled={isProcessingAction}
+                              >
+                                {isProcessingAction && player.id === thisPlayerIdRef.current ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (player.isReady ? <ThumbsUp className="mr-1 h-3 w-3"/> : null)}
+                                {player.isReady ? "Ready!" : "Tap when Ready"}
+                              </Button>
+                            ) : (
+                              player.isReady ? <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
+                )}
 
-              {renderableGame.gamePhase === 'lobby' &&
-                thisPlayerIdRef.current === hostPlayerId &&
-                enoughPlayers &&
-                allPlayersReady && (
-                  <Button
-                    onClick={handleStartGame}
-                    variant="default"
-                    size="lg"
-                    className="mt-6 w-full bg-accent text-accent-foreground hover:bg-accent/90 text-xl font-bold py-6 shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
-                    disabled={isProcessingAction}
-                  >
-                    {isProcessingAction ? (
-                      <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                    ) : (
-                      <Play className="mr-3 h-7 w-7" />
-                    )}
-                    🚀 Start Game Now!
-                  </Button>
-              )}
-              {renderableGame.gamePhase === 'lobby' && lobbyMessage && (
-                  <p className="text-sm text-center mt-4 text-yellow-600 dark:text-yellow-400 font-semibold">{lobbyMessage}</p>
-              )}
-            </CardContent>
-          </Card>
+                {renderableGame.gamePhase === 'lobby' &&
+                  thisPlayerIdRef.current === hostPlayerId &&
+                  enoughPlayers &&
+                  allPlayersReady && (
+                    <Button
+                      onClick={handleStartGame}
+                      variant="default"
+                      size="lg"
+                      className="mt-6 w-full bg-accent text-accent-foreground hover:bg-accent/90 text-xl font-bold py-6 shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
+                      disabled={isProcessingAction}
+                    >
+                      {isProcessingAction ? (
+                        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                      ) : (
+                        <Play className="mr-3 h-7 w-7" />
+                      )}
+                      🚀 Start Game Now!
+                    </Button>
+                )}
+                {renderableGame.gamePhase === 'lobby' && lobbyMessage && (
+                    <p className="text-sm text-center mt-4 text-yellow-600 dark:text-yellow-400 font-semibold">{lobbyMessage}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {showGameInProgressMessage && renderableGame.currentJudgeId && (
+             <Scoreboard players={renderableGame.players} currentJudgeId={renderableGame.currentJudgeId} />
+          )}
         </div>
 
         <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
