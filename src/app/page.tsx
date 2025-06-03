@@ -311,11 +311,20 @@ export default function WelcomePage() {
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id); 
           console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId to ${newPlayer.id} and localStorage. Explicitly fetching game data for game ${currentGameId} for this client.`);
+          // Instead of fetchGameData, use the returned newPlayer and update relevant parts of game state,
+          // or more simply, use the complete game state if addPlayerAction returns it (which it doesn't directly, but implies a re-fetch is good)
+          // For now, let's directly use the game state update that should have come from addPlayer via revalidate/realtime
+          // or fetch again if that proves insufficient.
+          // Best practice is to update state with the server's response immediately.
+          // Since addPlayerAction *itself* doesn't return the full game state,
+          // we'll rely on fetchGameData, but it's crucial it gets the *very latest*.
           await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); 
         } else if (isMountedRef.current) {
           console.error('Client: Failed to add player or component unmounted. New player:', newPlayer, 'Game ID:', currentGameId, 'Mounted:', isMountedRef.current);
-           if (newPlayer === null && gameRef.current?.gamePhase !== 'lobby') { // Check if addPlayerAction specifically returned null because game is not in lobby
+           if (newPlayer === null && gameRef.current?.gamePhase !== 'lobby') { 
             toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
+          } else if (newPlayer === null) {
+            toast({ title: "Join Error", description: "Could not add player to the game.", variant: "destructive"});
           }
         }
       } catch (error: any) {
@@ -378,9 +387,11 @@ export default function WelcomePage() {
         const updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
         if (isMountedRef.current) {
           if (updatedGameState) {
-            console.log(`Client (handleToggleReady): Game state received from action. Phase is now: ${updatedGameState?.gamePhase}. Current step: ${currentStep}`);
+            setGame(updatedGameState); // Use the direct return value to update state
+            console.log(`Client (handleToggleReady): Game state updated from action. Phase: ${updatedGameState.gamePhase}. Ready order: ${JSON.stringify(updatedGameState.readyPlayerOrder)}`);
           } else {
-            console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Real-time should update others.`);
+            console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Attempting fetchGameData as fallback.`);
+            await fetchGameData(`handleToggleReady_null_fallback_game_${currentGameId}`);
           }
         }
       } catch (error: any) {
@@ -404,6 +415,7 @@ export default function WelcomePage() {
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(currentGame.gameId);
+                // Navigation to /game should be handled by useEffect watching gamePhase change
             } catch (error: any) {
                 if (isMountedRef.current) {
                     if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -454,14 +466,16 @@ export default function WelcomePage() {
     
     const enoughPlayers = renderableGame.players.length >= MIN_PLAYERS_TO_START;
     const allPlayersReady = enoughPlayers && renderableGame.players.every(p => p.isReady);
-    const hostPlayerId = renderableGame.ready_player_order && renderableGame.ready_player_order.length > 0 ? renderableGame.ready_player_order[0] : null;
+    
+    // Ensure ready_player_order is an array before accessing its elements
+    const safeReadyPlayerOrder = Array.isArray(renderableGame.ready_player_order) ? renderableGame.ready_player_order : [];
+    const hostPlayerId = safeReadyPlayerOrder.length > 0 ? safeReadyPlayerOrder[0] : null;
     
     let hostPlayer = null;
     if (hostPlayerId) {
       hostPlayer = renderableGame.players.find(p => p.id === hostPlayerId);
       if (!hostPlayer) {
-        // This console.warn was added in the previous step
-        console.warn(`Lobby Message: Host player object NOT FOUND for hostPlayerId: ${hostPlayerId}. Players list:`, renderableGame.players.map(p => p.id));
+        console.warn(`Lobby Message: Host player object NOT FOUND for hostPlayerId: ${hostPlayerId}. Players list:`, renderableGame.players.map(p => ({id: p.id, name: p.name})));
       }
     }
 
@@ -472,27 +486,22 @@ export default function WelcomePage() {
       } else if (!allPlayersReady) {
         const unreadyCount = renderableGame.players.filter(p => !p.isReady).length;
         lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. The host (${hostPlayer?.name || 'first player to ready up'}) can then start the game.`;
-      } else if (hostPlayerId === thisPlayerIdRef.current) { // This player is the host
+      } else if (hostPlayerId === thisPlayerIdRef.current) { 
         lobbyMessage = "All players are ready! You can start the game now!";
-      } else { // This player is not the host
+      } else { 
          lobbyMessage = `All players ready! Waiting for the host (${hostPlayer?.name || 'first player to ready up'}) to start the game.`;
       }
     }
 
     const showPlayerSetupForm = !thisPlayerObject && renderableGame.gamePhase === 'lobby';
-    const showGameInProgressMessage = gameIsActuallyActive && !thisPlayerObject; // User is not in the game, and game is active
-    const showRejoinGameMessage = gameIsActuallyActive && thisPlayerObject; // User is in the game, and game is active
+    const showGameInProgressMessage = gameIsActuallyActive && !thisPlayerObject; 
+    const showRejoinGameMessage = gameIsActuallyActive && thisPlayerObject; 
 
     const showStartGameButton = renderableGame.gamePhase === 'lobby' &&
                                thisPlayerIdRef.current === hostPlayerId &&
                                enoughPlayers &&
                                allPlayersReady;
     
-    // DETAILED LOGGING FOR START BUTTON - Moved inside the render return for better context
-    if (renderableGame.gamePhase === 'lobby') {
-      // This block is now part of the UI debug section below
-    }
-
 
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
@@ -511,7 +520,7 @@ export default function WelcomePage() {
           </button>
           <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
            {showGameInProgressMessage && ( 
-            <Card className="my-6 text-center shadow-xl border-4 border-destructive rounded-xl bg-gradient-to-br from-destructive/70 via-destructive to-destructive/60 text-destructive-foreground">
+             <Card className="my-6 text-center shadow-xl border-4 border-destructive rounded-xl bg-gradient-to-br from-destructive/70 via-destructive to-destructive/60 text-destructive-foreground">
               <CardHeader className="p-6 sm:p-8">
                 <Lock className="h-16 w-16 sm:h-20 sm:w-20 mx-auto text-destructive-foreground/80 mb-3 sm:mb-4" />
                 <CardTitle className="text-3xl sm:text-4xl font-extrabold">Game in Progress!</CardTitle>
@@ -556,13 +565,13 @@ export default function WelcomePage() {
           )}
         </header>
         
-        {/* Temporary Debug UI Section */}
         {currentStep === 'setup' && renderableGame.gamePhase === 'lobby' && (
           <Card className="my-4 p-4 border-dashed border-blue-500 bg-blue-50 text-xs">
             <CardTitle className="text-sm text-blue-700 mb-2">Debug Info (Lobby)</CardTitle>
             <pre className="overflow-x-auto">
+              <p><strong>Current Game Phase:</strong> {renderableGame.gamePhase}</p>
               <p><strong>Current Player ID:</strong> {thisPlayerIdRef.current || "Not set"}</p>
-              <p><strong>Ready Player Order:</strong> {JSON.stringify(renderableGame.ready_player_order)}</p>
+              <p><strong>Ready Player Order:</strong> {JSON.stringify(safeReadyPlayerOrder)}</p>
               <p><strong>Host Player ID (ready_player_order[0]):</strong> {hostPlayerId || "N/A"}</p>
               <p><strong>Is Current Player Host?:</strong> {(thisPlayerIdRef.current === hostPlayerId).toString()}</p>
               <p><strong>Enough Players?:</strong> {enoughPlayers.toString()}</p>
@@ -593,7 +602,7 @@ export default function WelcomePage() {
             <Card className={cn(
                 "shadow-2xl border-2 border-secondary rounded-xl overflow-hidden",
                 (!showPlayerSetupForm && renderableGame.gamePhase === 'lobby') && "md:col-span-2",
-                (showGameInProgressMessage && !thisPlayerObject) && "md:col-span-2" // If showing game in progress and no setup form, make player list full width
+                (showGameInProgressMessage && !thisPlayerObject) && "md:col-span-2" 
             )}>
               <CardHeader className="bg-secondary text-secondary-foreground p-6">
                 <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({renderableGame.players.length})</CardTitle>
@@ -750,6 +759,8 @@ export default function WelcomePage() {
     </div>
   );
 }
+    
+
     
 
     
