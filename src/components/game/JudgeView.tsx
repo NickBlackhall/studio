@@ -105,21 +105,21 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                 Wield your power with terrible responsibility.
               </CardDescription>
             </div>
-            <div className="flex items-center space-x-3 text-right ml-4"> {/* Added ml-4 for spacing */}
+            <div className="flex items-center text-right ml-4"> {/* Removed space-x-3 */}
               {judge.avatar && judge.avatar.startsWith('/') ? (
                 <Image
                   src={judge.avatar}
                   alt={`${judge.name}'s avatar`}
-                  width={56} // Increased size
-                  height={56} // Increased size
-                  className="rounded-md object-cover"
+                  width={56}
+                  height={56}
+                  className="rounded-md object-cover mr-3" // Added mr-3
                 />
               ) : (
-                <span className="text-5xl">{judge.avatar}</span> // Increased size
+                <span className="text-5xl mr-3">{judge.avatar}</span> // Added mr-3
               )}
-              <div className="min-w-0"> {/* Added min-w-0 to help with truncation */}
-                <p className="text-xl font-semibold truncate max-w-[150px] sm:max-w-[200px]">{judge.name}</p> {/* Increased size and added truncate with max-width */}
-                <p className="text-md text-accent-foreground/90">{judge.score} pts</p> {/* Increased size slightly */}
+              <div className="min-w-0"> 
+                <p className="text-xl font-semibold truncate max-w-[150px] sm:max-w-[200px]">{judge.name}</p>
+                <p className="text-md text-accent-foreground/90">{judge.score} pts</p>
               </div>
             </div>
           </div>
@@ -279,3 +279,4 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     
 
     
+
