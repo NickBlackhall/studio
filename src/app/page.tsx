@@ -56,20 +56,16 @@ export default function WelcomePage() {
     }
   }, []);
 
-  console.log("Supabase client URL:", supabase.supabaseUrl);
-  console.log("Supabase client Key (first 10 chars):", supabase.supabaseKey.substring(0,10));
-
   const fetchGameData = useCallback(async (origin: string = "unknown") => {
     console.log(`Client: fetchGameData triggered from ${origin}. Current gameId from ref: ${gameRef.current?.gameId}`);
     const isInitialOrResetCall = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || !gameRef.current?.gameId;
     
     if (isInitialOrResetCall && isMountedRef.current) {
-        // setIsLoading(true); // Only set global loader for truly initial page loads.
     }
     
     try {
       const fetchedGameState = await getGame();
-      console.log(`Client: Game state fetched via getGame() (from ${origin}):`, fetchedGameState ? `ID: ${fetchedGameState.gameId}, Phase: ${fetchedGameState.gamePhase}, Players: ${fetchedGameState.players.length}` : "null");
+      console.log(`Client: Game state fetched via getGame() (from ${origin}):`, fetchedGameState ? `ID: ${fetchedGameState.gameId}, Phase: ${fetchedGameState.gamePhase}, Players: ${fetchedGameState.players.length}, RPO: ${JSON.stringify(fetchedGameState?.readyPlayerOrder)}` : "null");
       
       if (!isMountedRef.current) {
         console.log(`Client: fetchGameData from ${origin} - component unmounted after getGame() call.`);
@@ -123,11 +119,10 @@ export default function WelcomePage() {
       }
     } finally {
       if (isInitialOrResetCall && isMountedRef.current) {
-         setIsLoading(false); // This will turn off the initial page loading spinner.
-         hideGlobalLoader(); // Ensure global loader is also hidden if it was on.
+         setIsLoading(false); 
+         hideGlobalLoader(); 
          console.log(`Client: fetchGameData from ${origin} completed. isLoading is now false.`);
       } else if (isMountedRef.current) {
-         // For non-initial fetches (e.g., from real-time updates), we don't manage the main isLoading here.
          console.log(`Client: fetchGameData from ${origin} (non-initial) completed.`);
       } else {
          console.log(`Client: fetchGameData from ${origin} completed, but component unmounted. Loaders NOT set by this call.`);
@@ -150,25 +145,25 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
-    const currentRenderableGame = gameRef.current;
+    const gameForNavCheck = gameRef.current; 
     const localThisPlayerId = thisPlayerIdRef.current;
-    console.log(`Client (useEffect nav check): Running. internalGame phase: ${internalGame?.gamePhase}, Game from ref: ${currentRenderableGame ? currentRenderableGame.gameId : 'N/A'}, Phase from ref: ${currentRenderableGame?.gamePhase}, Step: ${currentStep}, Mounted: ${isMountedRef.current}, thisPlayerIdRef: ${localThisPlayerId}`);
+    console.log(`Client (useEffect nav check): Running. internalGame phase: ${internalGame?.gamePhase}, Game from ref: ${gameForNavCheck ? gameForNavCheck.gameId : 'N/A'}, Phase from ref: ${gameForNavCheck?.gamePhase}, Step: ${currentStep}, Mounted: ${isMountedRef.current}, thisPlayerIdRef: ${localThisPlayerId}`);
 
-    if (isMountedRef.current && currentRenderableGame && currentRenderableGame.gameId &&
-        currentRenderableGame.gamePhase !== 'lobby' && 
-        ACTIVE_PLAYING_PHASES.includes(currentRenderableGame.gamePhase as GamePhaseClientState) && 
+    if (isMountedRef.current && gameForNavCheck && gameForNavCheck.gameId &&
+        gameForNavCheck.gamePhase !== 'lobby' && 
+        ACTIVE_PLAYING_PHASES.includes(gameForNavCheck.gamePhase as GamePhaseClientState) && 
         currentStep === 'setup' &&
-        localThisPlayerId // Only navigate if this player is part of the game
+        localThisPlayerId 
       ) {
-      console.log(`Client (useEffect nav check): NAV CONDITION MET for existing player. Phase: ${currentRenderableGame.gamePhase}, Step: ${currentStep}, PlayerID: ${localThisPlayerId}. Showing loader and navigating to /game.`);
+      console.log(`Client (useEffect nav check): NAV CONDITION MET for existing player. Phase: ${gameForNavCheck.gamePhase}, Step: ${currentStep}, PlayerID: ${localThisPlayerId}. Showing loader and navigating to /game.`);
       showGlobalLoader();
       router.push('/game');
-    } else if (isMountedRef.current && currentRenderableGame && currentRenderableGame.gameId &&
-        currentRenderableGame.gamePhase !== 'lobby' &&
+    } else if (isMountedRef.current && gameForNavCheck && gameForNavCheck.gameId &&
+        gameForNavCheck.gamePhase !== 'lobby' &&
         currentStep === 'setup' &&
-        !localThisPlayerId // New player looking at an active game
+        !localThisPlayerId 
       ) {
-        console.log(`Client (useEffect nav check): Game is active (${currentRenderableGame.gamePhase}) but this user (PlayerID: ${localThisPlayerId}) is not part of it. Staying on setup page to show 'Game in Progress' message.`);
+        console.log(`Client (useEffect nav check): Game is active (${gameForNavCheck.gamePhase}) but this user (PlayerID: ${localThisPlayerId}) is not part of it. Staying on setup page to show 'Game in Progress' message.`);
     }
   }, [internalGame, currentStep, router, showGlobalLoader]);
 
@@ -198,13 +193,14 @@ export default function WelcomePage() {
 
     const handleGameTableUpdate = async (payload: any) => {
       const newPhaseFromPayload = payload.new?.game_phase;
-      console.log(`>>> Realtime: GAMES TABLE CHANGE DETECTED BY SUPABASE! Payload phase: ${newPhaseFromPayload}, Full payload:`, payload);
+      const newRPOFromPayload = payload.new?.ready_player_order;
+      console.log(`>>> Realtime: GAMES TABLE CHANGE DETECTED BY SUPABASE! Payload phase: ${newPhaseFromPayload}, Payload RPO: ${JSON.stringify(newRPOFromPayload)}, Full payload:`, payload);
       const latestGameId = gameRef.current?.gameId;
       if (isMountedRef.current && latestGameId) { 
         console.log(`Realtime (games sub for game ${latestGameId}): Fetching updated game state due to games change (payload phase: ${newPhaseFromPayload})...`);
         const updatedFullGame = await getGame(latestGameId); 
         if (updatedFullGame && isMountedRef.current) {
-           console.log(`Realtime (games sub for game ${latestGameId}): Fetched game state via getGame(), new phase: ${updatedFullGame.gamePhase}. Setting local game state.`);
+           console.log(`Realtime (games sub for game ${latestGameId}): Fetched game state via getGame(), new phase: ${updatedFullGame.gamePhase}, new RPO: ${JSON.stringify(updatedFullGame.readyPlayerOrder)}. Setting local game state.`);
            setGame(updatedFullGame);
         } else if (isMountedRef.current) {
             console.warn(`Realtime (games sub for game ${latestGameId}): updatedFullGame was null or component unmounted after fetch.`);
@@ -310,14 +306,7 @@ export default function WelcomePage() {
           const localStorageKey = `thisPlayerId_game_${currentGameId}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id); 
-          console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId to ${newPlayer.id} and localStorage. Explicitly fetching game data for game ${currentGameId} for this client.`);
-          // Instead of fetchGameData, use the returned newPlayer and update relevant parts of game state,
-          // or more simply, use the complete game state if addPlayerAction returns it (which it doesn't directly, but implies a re-fetch is good)
-          // For now, let's directly use the game state update that should have come from addPlayer via revalidate/realtime
-          // or fetch again if that proves insufficient.
-          // Best practice is to update state with the server's response immediately.
-          // Since addPlayerAction *itself* doesn't return the full game state,
-          // we'll rely on fetchGameData, but it's crucial it gets the *very latest*.
+          console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId to ${newPlayer.id} and localStorage. Fetching game data for game ${currentGameId}.`);
           await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); 
         } else if (isMountedRef.current) {
           console.error('Client: Failed to add player or component unmounted. New player:', newPlayer, 'Game ID:', currentGameId, 'Mounted:', isMountedRef.current);
@@ -387,8 +376,8 @@ export default function WelcomePage() {
         const updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
         if (isMountedRef.current) {
           if (updatedGameState) {
-            setGame(updatedGameState); // Use the direct return value to update state
-            console.log(`Client (handleToggleReady): Game state updated from action. Phase: ${updatedGameState.gamePhase}. Ready order: ${JSON.stringify(updatedGameState.readyPlayerOrder)}`);
+            console.log(`Client (handleToggleReady): Game state received from action. Phase: ${updatedGameState.gamePhase}, RPO: ${JSON.stringify(updatedGameState.readyPlayerOrder)}. Current step: ${currentStep}`);
+            setGame(updatedGameState); 
           } else {
             console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Attempting fetchGameData as fallback.`);
             await fetchGameData(`handleToggleReady_null_fallback_game_${currentGameId}`);
@@ -409,13 +398,12 @@ export default function WelcomePage() {
   };
 
   const handleStartGame = async () => {
-    const currentGame = gameRef.current;
-    if (currentGame?.gameId && currentGame.gamePhase === 'lobby') {
+    const gameToStart = gameRef.current;
+    if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
         showGlobalLoader();
         startPlayerActionTransition(async () => {
             try {
-                await startGameAction(currentGame.gameId);
-                // Navigation to /game should be handled by useEffect watching gamePhase change
+                await startGameAction(gameToStart.gameId);
             } catch (error: any) {
                 if (isMountedRef.current) {
                     if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -430,16 +418,16 @@ export default function WelcomePage() {
     }
   };
   
-  const renderableGame = gameRef.current; 
+  const gameForSetupRender = internalGame;
 
-  if (isLoading && !renderableGame ) { 
+  if (isLoading && !gameForSetupRender ) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
       </div>
     );
   }
   
-  if (!renderableGame || !renderableGame.gameId) {
+  if (!gameForSetupRender || !gameForSetupRender.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
         <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
@@ -451,11 +439,11 @@ export default function WelcomePage() {
     );
   }
 
-  const thisPlayerObject = renderableGame.players && renderableGame.players.find(p => p.id === thisPlayerIdRef.current);
-  const gameIsActuallyActive = ACTIVE_PLAYING_PHASES.includes(renderableGame.gamePhase as GamePhaseClientState);
+  const thisPlayerObject = gameForSetupRender.players && gameForSetupRender.players.find(p => p.id === thisPlayerIdRef.current);
+  const gameIsActuallyActive = ACTIVE_PLAYING_PHASES.includes(gameForSetupRender.gamePhase as GamePhaseClientState);
 
   if (currentStep === 'setup') {
-    if (!renderableGame.players) { 
+    if (!gameForSetupRender.players) { 
       return (
         <div className="text-center py-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
@@ -464,27 +452,26 @@ export default function WelcomePage() {
       );
     }
     
-    const enoughPlayers = renderableGame.players.length >= MIN_PLAYERS_TO_START;
-    const allPlayersReady = enoughPlayers && renderableGame.players.every(p => p.isReady);
+    const enoughPlayers = gameForSetupRender.players.length >= MIN_PLAYERS_TO_START;
+    const allPlayersReady = enoughPlayers && gameForSetupRender.players.every(p => p.isReady);
     
-    // Ensure ready_player_order is an array before accessing its elements
-    const safeReadyPlayerOrder = Array.isArray(renderableGame.ready_player_order) ? renderableGame.ready_player_order : [];
+    const safeReadyPlayerOrder = Array.isArray(gameForSetupRender.readyPlayerOrder) ? gameForSetupRender.readyPlayerOrder : [];
     const hostPlayerId = safeReadyPlayerOrder.length > 0 ? safeReadyPlayerOrder[0] : null;
     
     let hostPlayer = null;
     if (hostPlayerId) {
-      hostPlayer = renderableGame.players.find(p => p.id === hostPlayerId);
+      hostPlayer = gameForSetupRender.players.find(p => p.id === hostPlayerId);
       if (!hostPlayer) {
-        console.warn(`Lobby Message: Host player object NOT FOUND for hostPlayerId: ${hostPlayerId}. Players list:`, renderableGame.players.map(p => ({id: p.id, name: p.name})));
+        console.warn(`Lobby Message: Host player object NOT FOUND for hostPlayerId: ${hostPlayerId}. Players list:`, gameForSetupRender.players.map(p => ({id: p.id, name: p.name})));
       }
     }
 
     let lobbyMessage = "";
-    if (renderableGame.gamePhase === 'lobby') {
+    if (gameForSetupRender.gamePhase === 'lobby') {
       if (!enoughPlayers) {
-        lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - renderableGame.players.length} more...`;
+        lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - gameForSetupRender.players.length} more...`;
       } else if (!allPlayersReady) {
-        const unreadyCount = renderableGame.players.filter(p => !p.isReady).length;
+        const unreadyCount = gameForSetupRender.players.filter(p => !p.isReady).length;
         lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. The host (${hostPlayer?.name || 'first player to ready up'}) can then start the game.`;
       } else if (hostPlayerId === thisPlayerIdRef.current) { 
         lobbyMessage = "All players are ready! You can start the game now!";
@@ -493,11 +480,11 @@ export default function WelcomePage() {
       }
     }
 
-    const showPlayerSetupForm = !thisPlayerObject && renderableGame.gamePhase === 'lobby';
+    const showPlayerSetupForm = !thisPlayerObject && gameForSetupRender.gamePhase === 'lobby';
     const showGameInProgressMessage = gameIsActuallyActive && !thisPlayerObject; 
     const showRejoinGameMessage = gameIsActuallyActive && thisPlayerObject; 
 
-    const showStartGameButton = renderableGame.gamePhase === 'lobby' &&
+    const showStartGameButton = gameForSetupRender.gamePhase === 'lobby' &&
                                thisPlayerIdRef.current === hostPlayerId &&
                                enoughPlayers &&
                                allPlayersReady;
@@ -543,7 +530,7 @@ export default function WelcomePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
-                 <p>The current game is in the &quot;{renderableGame.gamePhase}&quot; phase.</p>
+                 <p>The current game is in the &quot;{gameForSetupRender.gamePhase}&quot; phase.</p>
                   <Button
                       onClick={() => { showGlobalLoader(); router.push('/game'); }} 
                       variant="default"
@@ -555,21 +542,21 @@ export default function WelcomePage() {
               </CardContent>
             </Card>
           )}
-          {!showPlayerSetupForm && thisPlayerObject && renderableGame.gamePhase === 'lobby' && (
+          {!showPlayerSetupForm && thisPlayerObject && gameForSetupRender.gamePhase === 'lobby' && (
             <p className="text-xl text-muted-foreground mt-2">
               Welcome, {thisPlayerObject.name}! Tap your &apos;Ready&apos; button below.
             </p>
           )}
-          {showPlayerSetupForm && renderableGame.gamePhase === 'lobby' && (
+          {showPlayerSetupForm && gameForSetupRender.gamePhase === 'lobby' && (
              <p className="text-xl text-muted-foreground mt-2">Enter your details to join, then tap your ready button!</p>
           )}
         </header>
         
-        {currentStep === 'setup' && renderableGame.gamePhase === 'lobby' && (
-          <Card className="my-4 p-4 border-dashed border-blue-500 bg-blue-50 text-xs">
-            <CardTitle className="text-sm text-blue-700 mb-2">Debug Info (Lobby)</CardTitle>
-            <pre className="overflow-x-auto">
-              <p><strong>Current Game Phase:</strong> {renderableGame.gamePhase}</p>
+        {currentStep === 'setup' && gameForSetupRender.gamePhase === 'lobby' && (
+          <Card className="my-4 p-4 border-dashed border-blue-500 bg-blue-50 text-blue-700 text-xs w-full max-w-md">
+            <CardTitle className="text-sm mb-2">Debug Info (Lobby)</CardTitle>
+            <pre className="overflow-x-auto whitespace-pre-wrap break-all">
+              <p><strong>Current Game Phase:</strong> {gameForSetupRender.gamePhase}</p>
               <p><strong>Current Player ID:</strong> {thisPlayerIdRef.current || "Not set"}</p>
               <p><strong>Ready Player Order:</strong> {JSON.stringify(safeReadyPlayerOrder)}</p>
               <p><strong>Host Player ID (ready_player_order[0]):</strong> {hostPlayerId || "N/A"}</p>
@@ -578,6 +565,17 @@ export default function WelcomePage() {
               <p><strong>All Players Ready?:</strong> {allPlayersReady.toString()}</p>
               <p><strong>Show Start Button (Final Check)?:</strong> {showStartGameButton.toString()}</p>
             </pre>
+            <hr className="my-2 border-blue-300"/>
+            <details>
+              <summary className="cursor-pointer text-blue-600">Full Game State (internalGame)</summary>
+              <pre className="mt-1 text-xxs overflow-x-auto whitespace-pre-wrap break-all">{JSON.stringify(gameForSetupRender, null, 2)}</pre>
+            </details>
+             <button 
+                onClick={() => fetchGameData("DebugManualFetch")}
+                className="mt-2 p-1 text-xs bg-blue-200 hover:bg-blue-300 rounded"
+              >
+                Force Client Fetch
+              </button>
           </Card>
         )}
 
@@ -598,22 +596,22 @@ export default function WelcomePage() {
             </Card>
           )}
           
-          { (renderableGame.gamePhase === 'lobby' || (gameIsActuallyActive && thisPlayerObject)) && (
+          { (gameForSetupRender.gamePhase === 'lobby' || (gameIsActuallyActive && thisPlayerObject)) && (
             <Card className={cn(
                 "shadow-2xl border-2 border-secondary rounded-xl overflow-hidden",
-                (!showPlayerSetupForm && renderableGame.gamePhase === 'lobby') && "md:col-span-2",
+                (!showPlayerSetupForm && gameForSetupRender.gamePhase === 'lobby') && "md:col-span-2",
                 (showGameInProgressMessage && !thisPlayerObject) && "md:col-span-2" 
             )}>
               <CardHeader className="bg-secondary text-secondary-foreground p-6">
-                <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({renderableGame.players.length})</CardTitle>
+                <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({gameForSetupRender.players.length})</CardTitle>
                   <CardDescription className="text-secondary-foreground/80 text-base">
-                   {renderableGame.gamePhase === 'lobby' ? "Game starts when all players are ready and host initiates." : `Current game phase: ${renderableGame.gamePhase}`}
+                   {gameForSetupRender.gamePhase === 'lobby' ? "Game starts when all players are ready and host initiates." : `Current game phase: ${gameForSetupRender.gamePhase}`}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                {renderableGame.players.length > 0 ? (
+                {gameForSetupRender.players.length > 0 ? (
                   <ul className="space-y-3">
-                    {renderableGame.players.map((player: PlayerClientState) => (
+                    {gameForSetupRender.players.map((player: PlayerClientState) => (
                       <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
                         <div className="flex items-center">
                           {player.avatar.startsWith('/') ? (
@@ -630,7 +628,7 @@ export default function WelcomePage() {
                           )}
                           <span className="text-xl font-medium text-foreground">{player.name}</span>
                         </div>
-                        {renderableGame.gamePhase === 'lobby' && (
+                        {gameForSetupRender.gamePhase === 'lobby' && (
                           <div className="flex items-center space-x-2">
                             {player.id === thisPlayerIdRef.current ? (
                               <Button
@@ -676,14 +674,14 @@ export default function WelcomePage() {
                       🚀 Start Game Now!
                     </Button>
                 )}
-                {renderableGame.gamePhase === 'lobby' && lobbyMessage && (
+                {gameForSetupRender.gamePhase === 'lobby' && lobbyMessage && (
                     <p className="text-sm text-center mt-4 text-yellow-600 dark:text-yellow-400 font-semibold">{lobbyMessage}</p>
                 )}
               </CardContent>
             </Card>
           )}
-          {showGameInProgressMessage && renderableGame.currentJudgeId && !thisPlayerObject && (
-             <Scoreboard players={renderableGame.players} currentJudgeId={renderableGame.currentJudgeId} />
+          {showGameInProgressMessage && gameForSetupRender.currentJudgeId && !thisPlayerObject && (
+             <Scoreboard players={gameForSetupRender.players} currentJudgeId={gameForSetupRender.currentJudgeId} />
           )}
         </div>
 
@@ -759,8 +757,6 @@ export default function WelcomePage() {
     </div>
   );
 }
-    
-
     
 
     

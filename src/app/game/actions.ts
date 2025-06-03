@@ -1,3 +1,4 @@
+
 "use server";
 
 import { revalidatePath } from 'next/cache';
@@ -57,8 +58,6 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
     used_scenarios: [],
     used_responses: [],
     updated_at: new Date().toISOString(),
-    // pendingCustomCardAuthorId: null, // Initialize new fields if they were added to games table
-    // pendingCustomCardText: null,
   };
   const { data: newGame, error: createError } = await supabase
     .from('games')
@@ -103,6 +102,9 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   }
   const gameId = gameRow.id;
 
+  console.log(`🔴 GAME (Server) getGame - gameId: ${gameId}, typeof gameRow.ready_player_order: ${typeof gameRow.ready_player_order}, value before returning:`, JSON.stringify(gameRow.ready_player_order));
+
+
   let playersData: Tables<'players'>[] = [];
   const { data: fetchedPlayersData, error: playersError } = await supabase
     .from('players')
@@ -131,20 +133,17 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
       allHandsData = fetchedHandsData || [];
     }
   }
-  console.log(`🔴 GAME (Server) getGame - Raw hands data for game ${gameId} BEFORE player mapping:`, JSON.stringify(allHandsData.map(h => ({ pId: h.player_id, cId: h.response_cards?.id, is_new: h.is_new})), null, 2));
 
   const players: PlayerClientState[] = playersData.map(p => {
     const playerHandCards: PlayerHandCard[] = allHandsData
       .filter(h => h.player_id === p.id && h.response_cards?.text && h.response_cards?.id)
       .map(h => {
-        console.log(`🔴 GAME (Server) getGame - Mapping card for player ${p.id}: cardId ${h.response_cards?.id}, is_new from DB: ${h.is_new}`);
         return {
           id: h.response_cards!.id as string,
           text: h.response_cards!.text as string,
           isNew: h.is_new ?? false, 
         };
       });
-    console.log(`🔴 GAME (Server) getGame - Player ${p.id} constructed hand:`, JSON.stringify(playerHandCards.map(c => ({id: c.id, isNew: c.isNew, text: c.text.substring(0,10)+"..."})), null, 2));
     return {
       id: p.id,
       name: p.name,
@@ -240,8 +239,6 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     readyPlayerOrder: gameRow.ready_player_order || [],
     lastWinner: lastWinnerDetails,
     winningPlayerId: gameRow.overall_winner_player_id,
-    // pendingCustomCardAuthorId: gameRow.pendingCustomCardAuthorId, // Populate new fields
-    // pendingCustomCardText: gameRow.pendingCustomCardText,
   };
   return gameClientState;
 }
@@ -256,7 +253,6 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
   }
   const gameId = gameRow.id;
 
-  // Check if game is in lobby phase
   if (gameRow.game_phase !== 'lobby') {
     console.warn(`🔴 PLAYER (Server): Attempt to add player ${name} to game ${gameId} which is in phase '${gameRow.game_phase}'. Players can only join during 'lobby' phase.`);
     throw new Error(`Game is already in progress (phase: ${gameRow.game_phase}). Cannot join now.`);
@@ -269,7 +265,7 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
     .eq('name', name)
     .single();
 
-  if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
+  if (checkError && checkError.code !== 'PGRST116') { 
     console.error('🔴 PLAYER (Server): Error checking for existing player:', JSON.stringify(checkError, null, 2));
     throw new Error(`Error checking for existing player: ${checkError.message}`);
   }
@@ -355,8 +351,6 @@ export async function resetGameForTesting() {
         current_judge_id: null,
         last_round_winner_player_id: null,
         overall_winner_player_id: null,
-        // pendingCustomCardAuthorId: null, // Reset new fields
-        // pendingCustomCardText: null,
       })
       .eq('id', gameId);
 
@@ -416,8 +410,6 @@ export async function resetGameForTesting() {
       used_scenarios: [],
       used_responses: [],
       updated_at: new Date().toISOString(),
-      // pendingCustomCardAuthorId: null, 
-      // pendingCustomCardText: null,
     };
     console.log(`🔴 RESET (Server): Attempting to update game ${gameId} to lobby phase with data:`, JSON.stringify(updateData, null, 2));
 
@@ -548,13 +540,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
       console.warn(`🔴 START (Server): Attempted to start game ${gameId} but not all players are ready.`);
       throw new Error(`Not all players are ready. Cannot start the game yet.`);
     }
-
-    const firstJudgeId = players[0].id; // This assumes ready_player_order was used to sort players before this point, or join order is fine.
-                                        // For a more robust "first player who readied" host, we'd use game.ready_player_order[0] if available.
-                                        // Given current logic, joined_at order is used for player list, so this is first player who joined.
-                                        // If we want first player in ready_player_order, we need that array here.
-                                        // Let's refine judge selection based on ready_player_order.
-
+    
     const readyPlayerOrder = game.ready_player_order;
     if (!readyPlayerOrder || readyPlayerOrder.length === 0) {
         console.error(`🔴 START (Server): Cannot start game ${gameId}. ready_player_order is empty.`);
@@ -936,8 +922,8 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
     console.log(`🔴 WINNER (Server): Custom card won. Moving to 'judge_approval_pending' phase.`);
     const gameUpdates: TablesUpdate<'games'> = {
       game_phase: 'judge_approval_pending',
-      last_round_winner_player_id: winningPlayerId, // Store for approval phase
-      last_round_winning_card_text: winningCardText, // Store for approval phase
+      last_round_winner_player_id: winningPlayerId, 
+      last_round_winning_card_text: winningCardText, 
       updated_at: new Date().toISOString(),
     };
     const { error: gameUpdateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
@@ -1046,14 +1032,13 @@ export async function handleJudgeApprovalForCustomCard(gameId: string, addToDeck
       game_id: gameId,
       round_number: game.current_round,
       winner_player_id: winningPlayerId,
-      winning_response_card_id: newCard.id, // Use the new card's ID
+      winning_response_card_id: newCard.id, 
     });
     if (winnerInsertError) {
       console.error(`🔴 APPROVAL (Server): Error inserting round winner (for approved custom card) into 'winners'.`, JSON.stringify(winnerInsertError, null, 2));
     }
   } else {
     console.log(`🔴 APPROVAL (Server): Judge chose NOT to add custom card "${winningCardText}" to the deck.`);
-    // No entry in 'winners' table for custom cards not added to deck.
   }
 
   const { data: winnerPlayerData, error: winnerPlayerFetchError } = await supabase
@@ -1078,10 +1063,8 @@ export async function handleJudgeApprovalForCustomCard(gameId: string, addToDeck
 
   const gameUpdates: TablesUpdate<'games'> = {
     game_phase: newGamePhase,
-    overall_winner_player_id: overallWinnerPlayerId, // Already set last_round_winner... in selectWinner
+    overall_winner_player_id: overallWinnerPlayerId, 
     updated_at: new Date().toISOString(),
-    // pendingCustomCardAuthorId: null, // Clear pending fields if they were used
-    // pendingCustomCardText: null,
   };
   const { error: gameUpdateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
   if (gameUpdateError) {
@@ -1168,8 +1151,6 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     current_scenario_id: null, 
     last_round_winner_player_id: null, 
     last_round_winning_card_text: null,
-    // pendingCustomCardAuthorId: null, // Clear pending fields
-    // pendingCustomCardText: null,
     updated_at: new Date().toISOString(),
   };
 
@@ -1223,11 +1204,9 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
   if (handError) {
     console.error(`DEBUG: getCurrentPlayer - Error fetching hand for player ${playerId} game ${gameId}:`, JSON.stringify(handError, null, 2));
   } else if (handData) {
-    console.log(`🔴 GET_CUR_PLAYER (Server) CARDS: Raw hand for player ${playerId}:`, JSON.stringify(handData.map(h => ({cardId: h.response_cards?.id, is_new: h.is_new})), null, 2));
     handCards = handData
       .map((h: any) => { 
         if (h.response_cards && h.response_cards.id && h.response_cards.text) {
-          console.log(`🔴 GET_CUR_PLAYER (Server) CARDS: Card ${h.response_cards.id} for player ${playerId} has is_new: ${h.is_new}`);
           return {
             id: h.response_cards.id,
             text: h.response_cards.text,
@@ -1279,39 +1258,46 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   }
   console.log(`🔴 READY (Server): Player ${updatedPlayer.name} (ID: ${playerId}) readiness changed to ${newReadyStatus}`);
 
-  const { data: game, error: gameFetchError } = await supabase
+  const { data: gameForOrderUpdate, error: gameFetchError } = await supabase
     .from('games')
     .select('ready_player_order, game_phase') 
     .eq('id', gameId)
     .single();
 
-  if (gameFetchError || !game) {
-    console.error(`🔴 READY (Server): Error fetching game ${gameId} to update ready_player_order:`, JSON.stringify(gameFetchError, null, 2));
+  if (gameFetchError || !gameForOrderUpdate) {
+    console.error(`🔴 READY (Server): Error fetching game ${gameId} to get current ready_player_order:`, JSON.stringify(gameFetchError, null, 2));
+    return getGame(gameId); 
+  }
+  
+  let currentReadyOrder = gameForOrderUpdate.ready_player_order || [];
+  if (newReadyStatus) {
+    if (!currentReadyOrder.includes(playerId)) {
+      currentReadyOrder.push(playerId);
+    }
   } else {
-    let currentReadyOrder = game.ready_player_order || [];
-    if (newReadyStatus) {
-      if (!currentReadyOrder.includes(playerId)) {
-        currentReadyOrder.push(playerId);
-      }
-    } else {
-      currentReadyOrder = currentReadyOrder.filter(id => id !== playerId);
-    }
-    const { error: gameOrderUpdateError } = await supabase
-      .from('games')
-      .update({ ready_player_order: currentReadyOrder, updated_at: new Date().toISOString() })
-      .eq('id', gameId);
-
-    if (gameOrderUpdateError) {
-      console.error(`🔴 READY (Server): Error updating ready_player_order for game ${gameId}:`, JSON.stringify(gameOrderUpdateError, null, 2));
-    } else {
-      console.log(`🔴 READY (Server): Game ${gameId} ready_player_order updated: [${currentReadyOrder.join(', ')}]`);
-      // Removed auto-start logic from here
-    }
+    currentReadyOrder = currentReadyOrder.filter(id => id !== playerId);
   }
 
+  console.log(`🔴 READY (Server): Player ${playerId} toggled to ${newReadyStatus}. Calculated currentReadyOrder to be written:`, JSON.stringify(currentReadyOrder));
+  
+  const { data: updatedGameDataFromOrderUpdate, error: gameOrderUpdateError } = await supabase
+    .from('games')
+    .update({ ready_player_order: currentReadyOrder, updated_at: new Date().toISOString() })
+    .eq('id', gameId)
+    .select('id, ready_player_order') 
+    .single();
+
+  if (gameOrderUpdateError) {
+    console.error(`🔴 READY (Server): Error updating ready_player_order for game ${gameId}:`, JSON.stringify(gameOrderUpdateError, null, 2));
+  } else {
+    console.log(`🔴 READY (Server): Game ${gameId} ready_player_order update in DB successful. DB response for ready_player_order:`, JSON.stringify(updatedGameDataFromOrderUpdate?.ready_player_order));
+  }
+  
   revalidatePath('/'); 
   revalidatePath('/game'); 
   
   return getGame(gameId); 
 }
+    
+
     
