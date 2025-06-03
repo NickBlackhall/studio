@@ -1,4 +1,3 @@
-
 "use server";
 
 import { revalidatePath } from 'next/cache';
@@ -544,7 +543,30 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
       throw new Error(`Not enough players to start game (found ${players.length}, need at least ${MIN_PLAYERS_TO_START}).`);
     }
 
-    const firstJudgeId = players[0].id;
+    const allPlayersReady = players.every(p => p.is_ready);
+    if (!allPlayersReady) {
+      console.warn(`🔴 START (Server): Attempted to start game ${gameId} but not all players are ready.`);
+      throw new Error(`Not all players are ready. Cannot start the game yet.`);
+    }
+
+    const firstJudgeId = players[0].id; // This assumes ready_player_order was used to sort players before this point, or join order is fine.
+                                        // For a more robust "first player who readied" host, we'd use game.ready_player_order[0] if available.
+                                        // Given current logic, joined_at order is used for player list, so this is first player who joined.
+                                        // If we want first player in ready_player_order, we need that array here.
+                                        // Let's refine judge selection based on ready_player_order.
+
+    const readyPlayerOrder = game.ready_player_order;
+    if (!readyPlayerOrder || readyPlayerOrder.length === 0) {
+        console.error(`🔴 START (Server): Cannot start game ${gameId}. ready_player_order is empty.`);
+        throw new Error("Critical error: Player ready order not established for starting the game.");
+    }
+    const actualFirstJudgeId = readyPlayerOrder[0];
+    if (!players.find(p => p.id === actualFirstJudgeId)) {
+        console.error(`🔴 START (Server): First player in ready_player_order (${actualFirstJudgeId}) not found in players list for game ${gameId}.`);
+        throw new Error("Critical error: Host player in ready order not found in game players.");
+    }
+
+
     let accumulatedUsedResponsesForThisGameStart = game.used_responses || [];
     const playerHandInserts: TablesInsert<'player_hands'>[] = [];
 
@@ -578,7 +600,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
 
     const gameUpdates: TablesUpdate<'games'> = {
       game_phase: 'category_selection',
-      current_judge_id: firstJudgeId,
+      current_judge_id: actualFirstJudgeId,
       current_round: 1,
       updated_at: new Date().toISOString(),
       used_responses: accumulatedUsedResponsesForThisGameStart, 
@@ -1283,29 +1305,7 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
       console.error(`🔴 READY (Server): Error updating ready_player_order for game ${gameId}:`, JSON.stringify(gameOrderUpdateError, null, 2));
     } else {
       console.log(`🔴 READY (Server): Game ${gameId} ready_player_order updated: [${currentReadyOrder.join(', ')}]`);
-      if (game.game_phase === 'lobby' && newReadyStatus) {
-        const { data: allPlayers, error: allPlayersError } = await supabase
-          .from('players')
-          .select('id, is_ready')
-          .eq('game_id', gameId);
-
-        if (allPlayersError) {
-          console.error(`🔴 READY (Server): Error fetching all players for auto-start check:`, JSON.stringify(allPlayersError, null, 2));
-        } else if (allPlayers && allPlayers.length >= MIN_PLAYERS_TO_START) {
-          const allActuallyReady = allPlayers.every(p => p.is_ready);
-          if (allActuallyReady) {
-            console.log(`🔴 READY (Server): All ${allPlayers.length} players are ready. Attempting to auto-start game ${gameId}.`);
-            try {
-              await startGame(gameId); 
-            } catch (startError: any) {
-              console.error(`🔴 READY (Server): Error auto-starting game ${gameId}:`, startError.message, JSON.stringify(startError, null, 2));
-            }
-          } else {
-            const readyCount = allPlayers.filter(p => p.is_ready).length;
-            console.log(`🔴 READY (Server): Game ${gameId} not auto-starting. ${readyCount}/${allPlayers.length} players ready. Need ${MIN_PLAYERS_TO_START} and all to be ready.`);
-          }
-        }
-      }
+      // Removed auto-start logic from here
     }
   }
 
@@ -1314,6 +1314,4 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   
   return getGame(gameId); 
 }
-
-
     
