@@ -461,7 +461,7 @@ export default function WelcomePage() {
     let hostPlayer = null;
     if (hostPlayerId) {
       hostPlayer = gameForSetupRender.players.find(p => p.id === hostPlayerId);
-      if (!hostPlayer) {
+      if (!hostPlayer && hostPlayerId) { // Ensure hostPlayerId is not null before warning
         console.warn(`Lobby Message: Host player object NOT FOUND for hostPlayerId: ${hostPlayerId}. Players list:`, gameForSetupRender.players.map(p => ({id: p.id, name: p.name})));
       }
     }
@@ -472,11 +472,13 @@ export default function WelcomePage() {
         lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - gameForSetupRender.players.length} more...`;
       } else if (!allPlayersReady) {
         const unreadyCount = gameForSetupRender.players.filter(p => !p.isReady).length;
-        lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. The host (${hostPlayer?.name || 'first player to ready up'}) can then start the game.`;
+        const hostNameForMessage = hostPlayer?.name || (safeReadyPlayerOrder.length > 0 ? 'first player to ready up' : 'the host');
+        lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. ${hostNameForMessage} can then start the game.`;
       } else if (hostPlayerId === thisPlayerIdRef.current) { 
         lobbyMessage = "All players are ready! You can start the game now!";
       } else { 
-         lobbyMessage = `All players ready! Waiting for the host (${hostPlayer?.name || 'first player to ready up'}) to start the game.`;
+         const hostNameForMessage = hostPlayer?.name || (safeReadyPlayerOrder.length > 0 ? 'first player to ready up' : 'the host');
+         lobbyMessage = `All players ready! Waiting for ${hostNameForMessage} to start the game.`;
       }
     }
 
@@ -552,33 +554,6 @@ export default function WelcomePage() {
           )}
         </header>
         
-        {currentStep === 'setup' && gameForSetupRender.gamePhase === 'lobby' && (
-          <Card className="my-4 p-4 border-dashed border-blue-500 bg-blue-50 text-blue-700 text-xs w-full max-w-md">
-            <CardTitle className="text-sm mb-2">Debug Info (Lobby)</CardTitle>
-            <pre className="overflow-x-auto whitespace-pre-wrap break-all">
-              <p><strong>Current Game Phase:</strong> {gameForSetupRender.gamePhase}</p>
-              <p><strong>Current Player ID:</strong> {thisPlayerIdRef.current || "Not set"}</p>
-              <p><strong>Ready Player Order:</strong> {JSON.stringify(safeReadyPlayerOrder)}</p>
-              <p><strong>Host Player ID (ready_player_order[0]):</strong> {hostPlayerId || "N/A"}</p>
-              <p><strong>Is Current Player Host?:</strong> {(thisPlayerIdRef.current === hostPlayerId).toString()}</p>
-              <p><strong>Enough Players?:</strong> {enoughPlayers.toString()}</p>
-              <p><strong>All Players Ready?:</strong> {allPlayersReady.toString()}</p>
-              <p><strong>Show Start Button (Final Check)?:</strong> {showStartGameButton.toString()}</p>
-            </pre>
-            <hr className="my-2 border-blue-300"/>
-            <details>
-              <summary className="cursor-pointer text-blue-600">Full Game State (internalGame)</summary>
-              <pre className="mt-1 text-xxs overflow-x-auto whitespace-pre-wrap break-all">{JSON.stringify(gameForSetupRender, null, 2)}</pre>
-            </details>
-             <button 
-                onClick={() => fetchGameData("DebugManualFetch")}
-                className="mt-2 p-1 text-xs bg-blue-200 hover:bg-blue-300 rounded"
-              >
-                Force Client Fetch
-              </button>
-          </Card>
-        )}
-
         <div className={cn(
             "grid gap-8 w-full max-w-4xl",
              showPlayerSetupForm ? "md:grid-cols-2" : "md:grid-cols-1",
