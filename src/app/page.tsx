@@ -314,6 +314,9 @@ export default function WelcomePage() {
           await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); 
         } else if (isMountedRef.current) {
           console.error('Client: Failed to add player or component unmounted. New player:', newPlayer, 'Game ID:', currentGameId, 'Mounted:', isMountedRef.current);
+           if (newPlayer === null && gameRef.current?.gamePhase !== 'lobby') { // Check if addPlayerAction specifically returned null because game is not in lobby
+            toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
+          }
         }
       } catch (error: any) {
         console.error("Client: Error calling addPlayerAction:", error);
@@ -457,10 +460,10 @@ export default function WelcomePage() {
     if (hostPlayerId) {
       hostPlayer = renderableGame.players.find(p => p.id === hostPlayerId);
       if (!hostPlayer) {
+        // This console.warn was added in the previous step
         console.warn(`Lobby Message: Host player object NOT FOUND for hostPlayerId: ${hostPlayerId}. Players list:`, renderableGame.players.map(p => p.id));
       }
     }
-
 
     let lobbyMessage = "";
     if (renderableGame.gamePhase === 'lobby') {
@@ -485,18 +488,9 @@ export default function WelcomePage() {
                                enoughPlayers &&
                                allPlayersReady;
     
-    // DETAILED LOGGING FOR START BUTTON
+    // DETAILED LOGGING FOR START BUTTON - Moved inside the render return for better context
     if (renderableGame.gamePhase === 'lobby') {
-      console.log("===== START GAME BUTTON DEBUG (WelcomePage) =====");
-      console.log("Current Game Phase:", renderableGame.gamePhase);
-      console.log("thisPlayerIdRef.current:", thisPlayerIdRef.current);
-      console.log("hostPlayerId (from ready_player_order[0]):", hostPlayerId);
-      console.log("renderableGame.ready_player_order:", JSON.stringify(renderableGame.ready_player_order));
-      console.log("Is thisPlayer host? (thisPlayerIdRef.current === hostPlayerId):", thisPlayerIdRef.current === hostPlayerId);
-      console.log("Enough Players? (>= MIN_PLAYERS_TO_START):", enoughPlayers, `(Found: ${renderableGame.players.length}, Need: ${MIN_PLAYERS_TO_START})`);
-      console.log("All Players Ready?:", allPlayersReady);
-      console.log("Overall: Should showStartGameButton be true?:", showStartGameButton);
-      console.log("===============================================");
+      // This block is now part of the UI debug section below
     }
 
 
@@ -562,6 +556,22 @@ export default function WelcomePage() {
           )}
         </header>
         
+        {/* Temporary Debug UI Section */}
+        {currentStep === 'setup' && renderableGame.gamePhase === 'lobby' && (
+          <Card className="my-4 p-4 border-dashed border-blue-500 bg-blue-50 text-xs">
+            <CardTitle className="text-sm text-blue-700 mb-2">Debug Info (Lobby)</CardTitle>
+            <pre className="overflow-x-auto">
+              <p><strong>Current Player ID:</strong> {thisPlayerIdRef.current || "Not set"}</p>
+              <p><strong>Ready Player Order:</strong> {JSON.stringify(renderableGame.ready_player_order)}</p>
+              <p><strong>Host Player ID (ready_player_order[0]):</strong> {hostPlayerId || "N/A"}</p>
+              <p><strong>Is Current Player Host?:</strong> {(thisPlayerIdRef.current === hostPlayerId).toString()}</p>
+              <p><strong>Enough Players?:</strong> {enoughPlayers.toString()}</p>
+              <p><strong>All Players Ready?:</strong> {allPlayersReady.toString()}</p>
+              <p><strong>Show Start Button (Final Check)?:</strong> {showStartGameButton.toString()}</p>
+            </pre>
+          </Card>
+        )}
+
         <div className={cn(
             "grid gap-8 w-full max-w-4xl",
              showPlayerSetupForm ? "md:grid-cols-2" : "md:grid-cols-1",
@@ -740,4 +750,6 @@ export default function WelcomePage() {
     </div>
   );
 }
+    
+
     
