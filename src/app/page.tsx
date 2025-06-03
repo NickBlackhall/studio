@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare, HelpCircle, AlertTriangle } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare, HelpCircle, Info } from 'lucide-react'; // Changed AlertTriangle to Info
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
@@ -167,8 +167,6 @@ export default function WelcomePage() {
         !localThisPlayerId
       ) {
         console.log(`Client (useEffect nav check): Game is active (${currentRenderableGame.gamePhase}) but this user (PlayerID: ${localThisPlayerId}) is not part of it. Staying on setup page to show 'Game in Progress' message.`);
-        // User should see the message that game is in progress instead of being navigated.
-        // The PlayerSetupForm will be hidden if game is not in lobby.
     }
   }, [internalGame, currentStep, router, showGlobalLoader]);
 
@@ -314,8 +312,6 @@ export default function WelcomePage() {
           await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); 
         } else if (isMountedRef.current) {
           console.error('Client: Failed to add player or component unmounted. New player:', newPlayer, 'Game ID:', currentGameId, 'Mounted:', isMountedRef.current);
-          // This branch might be hit if addPlayerAction itself throws an error caught by the outer catch.
-          // The specific error from addPlayerAction will be caught by the catch block below.
         }
       } catch (error: any) {
         console.error("Client: Error calling addPlayerAction:", error);
@@ -333,7 +329,6 @@ export default function WelcomePage() {
 
   const handleResetGame = async () => {
     console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
-    // showGlobalLoader(); // Removed to prevent stuck overlay if redirect fails
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
@@ -344,7 +339,6 @@ export default function WelcomePage() {
         }
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          // Global loader will be handled by new page if it was shown; if not, nothing to do here.
           return; 
         }
         console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
@@ -354,7 +348,7 @@ export default function WelcomePage() {
           variant: "destructive",
         });
         if (isMountedRef.current) {
-           hideGlobalLoader(); // Ensure loader is hidden if it somehow got activated and action failed before redirect
+           hideGlobalLoader(); 
         }
       }
     });
@@ -380,7 +374,6 @@ export default function WelcomePage() {
         if (isMountedRef.current) {
           if (updatedGameState) {
             console.log(`Client (handleToggleReady): Game state received from action. Phase is now: ${updatedGameState?.gamePhase}. Current step: ${currentStep}`);
-            // setGame(updatedGameState); // Rely on real-time for this update for other clients. The acting client gets immediate feedback from the returned state of toggle.
           } else {
             console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Real-time should update others.`);
           }
@@ -401,10 +394,9 @@ export default function WelcomePage() {
   
   const renderableGame = gameRef.current; 
 
-  if (isLoading && !renderableGame ) { // Only show initial full page spinner
+  if (isLoading && !renderableGame ) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        {/* GlobalLoadingOverlay should cover this if active, but this is a fallback */}
       </div>
     );
   }
@@ -468,22 +460,28 @@ export default function WelcomePage() {
           </button>
           <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
            {gameIsActuallyActive && renderableGame.gamePhase !== 'lobby' && ( 
-            <div className="my-4 p-4 bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 rounded-md shadow-lg">
-                <p className="font-bold text-lg flex items-center"><AlertTriangle className="mr-2 h-5 w-5" /> Game in Progress!</p>
-                <p className="text-md">The current game is in the "{renderableGame.gamePhase}" phase.</p>
+            <Card className="my-4 border-primary/50 bg-muted/30 shadow-md">
+              <CardHeader className="p-4">
+                <CardTitle className="text-lg flex items-center font-semibold text-foreground">
+                  <Info className="mr-2 h-5 w-5 text-primary" /> Game in Progress!
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
+                <p>The current game is in the "{renderableGame.gamePhase}" phase.</p>
                 {thisPlayerObject ? (
                   <Button
                       onClick={() => { showGlobalLoader(); router.push('/game'); }} 
                       variant="default"
-                      size="lg"
+                      size="sm" // smaller button
                       className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
                   >
-                      Rejoin Current Game <ArrowRight className="ml-2 h-5 w-5" />
+                      Rejoin Current Game <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <p className="mt-2 text-sm">New players cannot join mid-game. Please wait for the next round or reset.</p>
+                  <p className="mt-2">New players cannot join an active game. Please wait until this game concludes or is reset.</p>
                 )}
-            </div>
+              </CardContent>
+            </Card>
           )}
           {!showPlayerSetupForm && thisPlayerObject && renderableGame.gamePhase === 'lobby' && (
             <p className="text-xl text-muted-foreground mt-2">
@@ -513,7 +511,7 @@ export default function WelcomePage() {
           
           <Card className={cn(
               "shadow-2xl border-2 border-secondary rounded-xl overflow-hidden",
-              showPlayerSetupForm || (gameIsActuallyActive && !thisPlayerObject) ? "" : "md:col-span-2" 
+              showPlayerSetupForm || (gameIsActuallyActive && !thisPlayerObject && renderableGame.gamePhase !== 'lobby') ? "" : "md:col-span-2" 
           )}>
             <CardHeader className="bg-secondary text-secondary-foreground p-6">
               <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({renderableGame.players.length})</CardTitle>
