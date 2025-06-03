@@ -467,10 +467,10 @@ export default function WelcomePage() {
               </CardHeader>
               <CardContent className="p-6 sm:p-8 pt-0 sm:pt-0">
                 <p className="text-lg sm:text-xl">
-                  A game is currently underway (phase: {renderableGame.gamePhase}).
+                  Sorry, you'll have to wait until the next game to join.
                 </p>
                 <p className="text-md sm:text-lg mt-2">
-                  New players cannot join an active game. Please wait until this game concludes or is reset by the host.
+                  Don't like waiting? Thank the idiot who programmed this thing...
                 </p>
               </CardContent>
             </Card>
@@ -669,4 +669,5 @@ export default function WelcomePage() {
     
 
     
+
 
