@@ -62,7 +62,6 @@ export default function WelcomePage() {
     
     if (isInitialOrResetCall && isMountedRef.current) {
       // Intentionally not setting isLoading here if already false to avoid flicker on non-initial reset.
-      // showGlobalLoader might be better for full page transitions/resets.
     }
     
     try {
@@ -106,7 +105,7 @@ export default function WelcomePage() {
         setThisPlayerId(null);
         console.warn(`Client: Game state is null or no gameId from fetchGameData (origin: ${origin}). thisPlayerId set to null. Last good gameId from ref: ${gameRef.current?.gameId}`);
         if (isInitialOrResetCall && isMountedRef.current) {
-            setGame(null); // Ensure game state is also cleared if fetch fails critically on initial load
+            setGame(null); 
             toast({ title: "Game Session Error", description: "Could not initialize or find the game session. Please try refreshing or resetting.", variant: "destructive"});
         }
       }
@@ -125,7 +124,6 @@ export default function WelcomePage() {
          hideGlobalLoader(); 
          console.log(`Client: fetchGameData from ${origin} completed. isLoading is now false.`);
       } else if (isMountedRef.current) {
-         // Non-initial calls might not set isLoading, so don't hide global loader here unless specifically managed
          console.log(`Client: fetchGameData from ${origin} (non-initial) completed.`);
       } else {
          console.log(`Client: fetchGameData from ${origin} completed, but component unmounted. Loaders NOT set by this call.`);
@@ -158,7 +156,6 @@ export default function WelcomePage() {
         currentStep === 'setup' &&
         localThisPlayerId 
       ) {
-      // This player is part of an active game and is on the setup page. Redirect to /game.
       console.log(`Client (useEffect nav check): NAV CONDITION MET for existing player. Phase: ${gameForNavCheck.gamePhase}, Step: ${currentStep}, PlayerID: ${localThisPlayerId}. Showing loader and navigating to /game.`);
       showGlobalLoader();
       router.push('/game');
@@ -167,11 +164,8 @@ export default function WelcomePage() {
         currentStep === 'setup' &&
         !localThisPlayerId 
       ) {
-        // Game is active, but this user (no localThisPlayerId for this game) is not part of it.
-        // They should see the "spectator" view / game in progress message on the setup page.
         console.log(`Client (useEffect nav check): Game is active (${gameForNavCheck.gamePhase}) but this user (PlayerID: ${localThisPlayerId}) is not part of it. Staying on setup page to show 'Game in Progress' message / spectator info.`);
     }
-  // We need internalGame here because gameRef.current might not trigger re-render for this effect reliably alone
   // eslint-disable-next-line react-hooks/exhaustive-deps 
   }, [internalGame, currentStep, router, showGlobalLoader]);
 
@@ -299,7 +293,7 @@ export default function WelcomePage() {
         toast({ title: "Error!", description: "Game session not found. Please refresh.", variant: "destructive"});
         if (isMountedRef.current) {
             showGlobalLoader();
-            await fetchGameData("handleAddPlayer_no_gameId"); // fetchGameData will hide loader
+            await fetchGameData("handleAddPlayer_no_gameId"); 
         }
         return;
     }
@@ -313,14 +307,14 @@ export default function WelcomePage() {
         if (newPlayer && newPlayer.id && currentGameId && isMountedRef.current) {
           const localStorageKey = `thisPlayerId_game_${currentGameId}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
-          setThisPlayerId(newPlayer.id); // This is crucial for identifying the player on this client
+          setThisPlayerId(newPlayer.id); 
           console.log(`Client: Player ${newPlayer.id} added. Set thisPlayerId to ${newPlayer.id} and localStorage. Explicitly fetching game data for game ${currentGameId} for this client.`);
-          await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); // Fetch to get the player in the list
+          await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`); 
         } else if (isMountedRef.current) {
           console.error('Client: Failed to add player or component unmounted. New player:', newPlayer, 'Game ID:', currentGameId, 'Mounted:', isMountedRef.current);
            if (newPlayer === null && gameRef.current?.gamePhase !== 'lobby') { 
             toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
-          } else if (newPlayer === null) { // Generic failure if not related to game phase
+          } else if (newPlayer === null) { 
             toast({ title: "Join Error", description: "Could not add player to the game.", variant: "destructive"});
           }
         }
@@ -340,24 +334,19 @@ export default function WelcomePage() {
 
   const handleResetGame = async () => {
     console.log("🔴 RESET (Client): Button clicked - calling resetGameForTesting server action.");
-    // Show global loader immediately for reset as it involves redirect and significant state change
     showGlobalLoader(); 
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
-        // Redirect is handled by the server action, no need to hide loader here if redirect occurs
       } catch (error: any) {
         if (!isMountedRef.current) {
             console.warn("🔴 RESET (Client): Component unmounted during reset operation.");
-            return; // Don't try to update state if unmounted
+            return; 
         }
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          // This means a redirect is happening, which is expected.
           console.log("🔴 RESET (Client): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          // Loader will be hidden by target page or if navigation fails and this component re-renders.
           return; 
         }
-        // If it's a non-redirect error
         console.error("🔴 RESET (Client): Error calling resetGameForTesting server action:", error);
         toast({
           title: "Reset Failed",
@@ -365,12 +354,9 @@ export default function WelcomePage() {
           variant: "destructive",
         });
         if (isMountedRef.current) {
-           hideGlobalLoader(); // Hide loader only if reset failed and no redirect
+           hideGlobalLoader(); 
         }
       }
-      // If resetGameForTesting does NOT throw a redirect, and component is still mounted,
-      // the loader might need to be hidden here or by a subsequent fetchGameData.
-      // However, resetGameForTesting is designed to always redirect.
     });
   };
 
@@ -394,9 +380,8 @@ export default function WelcomePage() {
         if (isMountedRef.current) {
           if (updatedGameState) {
             console.log(`Client (handleToggleReady): Game state received from action. Phase: ${updatedGameState.gamePhase}, RPO: ${JSON.stringify(updatedGameState.readyPlayerOrder)}. Current step: ${currentStep}`);
-            setGame(updatedGameState); // Update local state with the direct result from the action
+            setGame(updatedGameState); 
           } else {
-            // This case should ideally not happen if the action always returns a game state or throws
             console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Attempting fetchGameData as fallback.`);
             await fetchGameData(`handleToggleReady_null_fallback_game_${currentGameId}`);
           }
@@ -405,8 +390,8 @@ export default function WelcomePage() {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
             console.log("Client (handleToggleReady): Caught NEXT_REDIRECT during toggle ready. Showing loader. Allowing Next.js to handle navigation.");
-            showGlobalLoader(); // Show loader as we expect navigation
-            return; // Let Next.js handle the redirect
+            showGlobalLoader(); 
+            return; 
           }
           console.error("Client: Error toggling ready status:", error);
           toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
@@ -422,38 +407,30 @@ export default function WelcomePage() {
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
-                // Server action should handle revalidation and client should update via subscription or direct return if needed
-                // Navigation to /game page for active player will happen via useEffect hook
             } catch (error: any) {
                 if (isMountedRef.current) {
                     if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-                        // This is expected if the action navigates or causes a redirect
                         console.log("Client (handleStartGame): Caught NEXT_REDIRECT. Loader will be handled by navigation target.");
-                        return; // Let Next.js handle it
+                        return; 
                     }
-                    // If not a redirect error, show toast and hide loader
                     toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
                     hideGlobalLoader();
                 }
             }
-            // If startGameAction itself doesn't throw a redirect but succeeds, 
-            // the useEffect hook should catch the phase change and navigate.
-            // The loader will be hidden by the target page or this page if it remains.
         });
     }
   };
   
-  const gameForSetupRender = internalGame;
+  const renderableGame = internalGame;
 
-  if (isLoading && !gameForSetupRender ) { 
+  if (isLoading && !renderableGame ) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        {/* Global loader is already active, so keep this minimal or match global loader style */}
       </div>
     );
   }
   
-  if (!gameForSetupRender || !gameForSetupRender.gameId) {
+  if (!renderableGame || !renderableGame.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
         <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
@@ -465,138 +442,138 @@ export default function WelcomePage() {
     );
   }
 
-  const thisPlayerObject = gameForSetupRender.players && gameForSetupRender.players.find(p => p.id === thisPlayerIdRef.current);
-  const gameIsActuallyActive = ACTIVE_PLAYING_PHASES.includes(gameForSetupRender.gamePhase as GamePhaseClientState);
-
-  // Define view states
-  const isLobbyPhaseActive = gameForSetupRender.gamePhase === 'lobby';
+  const thisPlayerObject = renderableGame.players && renderableGame.players.find(p => p.id === thisPlayerIdRef.current);
+  const gameIsActuallyActive = ACTIVE_PLAYING_PHASES.includes(renderableGame.gamePhase as GamePhaseClientState);
+  const isLobbyPhaseActive = renderableGame.gamePhase === 'lobby';
   const isSpectatorView = gameIsActuallyActive && !thisPlayerObject;
   const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject;
 
 
   if (currentStep === 'setup') {
-    // Determine lobby message and start button visibility (only if in lobby phase)
     let lobbyMessage = "";
     let showStartGameButton = false;
 
-    if (isLobbyPhaseActive) {
-      const enoughPlayers = gameForSetupRender.players.length >= MIN_PLAYERS_TO_START;
-      const allPlayersReady = enoughPlayers && gameForSetupRender.players.every(p => p.isReady);
-      const safeReadyPlayerOrder = Array.isArray(gameForSetupRender.ready_player_order) ? gameForSetupRender.ready_player_order : [];
+    // Logic for Spectator View or Active Player on Lobby Page
+    if (isSpectatorView) {
+      return (
+        <div className="w-full max-w-xl mx-auto space-y-6 text-center py-12">
+           <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8 block mx-auto">
+            <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+          </button>
+          <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
+            <CardHeader className="p-4">
+              <Lock className="h-8 w-8 mx-auto text-destructive mb-2" />
+              <CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 text-sm">
+              <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch you pervert.</p>
+              <p className="mt-1">Don&apos;t like waiting? Thank the idiot who programmed this thing...</p>
+            </CardContent>
+          </Card>
+          <div className="my-6">
+            <h2 className="text-2xl font-semibold text-center mb-3 text-primary">Current Game Standings</h2>
+            <Scoreboard players={renderableGame.players} currentJudgeId={renderableGame.currentJudgeId} />
+          </div>
+          <Card className="shadow-md border-muted rounded-lg">
+            <CardContent className="p-6">
+              <p className="text-muted-foreground">The lobby will re-open once the current game finishes. Hang tight!</p>
+            </CardContent>
+          </Card>
+           <Button onClick={handleResetGame} variant="destructive" className="mt-6" disabled={isProcessingAction || isLoading}>
+            { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
+          </Button>
+        </div>
+      );
+    } else if (isActivePlayerOnLobbyPage) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
+           <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8">
+            <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+          </button>
+          <Card className="my-4 border-primary/50 bg-muted/30 shadow-md w-full max-w-md text-center">
+            <CardHeader className="p-4">
+              <CardTitle className="text-lg flex items-center justify-center font-semibold text-foreground">
+                <Info className="mr-2 h-5 w-5 text-primary" /> Game in Progress!
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
+              <p>The current game is in the &quot;{renderableGame.gamePhase}&quot; phase.</p>
+              <Button
+                onClick={() => { showGlobalLoader(); router.push('/game'); }}
+                variant="default"
+                size="sm"
+                className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                Rejoin Current Game <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+           <Button onClick={handleResetGame} variant="destructive" className="mt-6" disabled={isProcessingAction || isLoading}>
+            { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
+          </Button>
+        </div>
+      );
+    } else if (isLobbyPhaseActive) {
+      // This is the main lobby view for players joining or waiting to start
+      const enoughPlayers = renderableGame.players.length >= MIN_PLAYERS_TO_START;
+      const allPlayersReady = enoughPlayers && renderableGame.players.every(p => p.isReady);
+      const safeReadyPlayerOrder = Array.isArray(renderableGame.ready_player_order) ? renderableGame.ready_player_order : [];
       const hostPlayerId = safeReadyPlayerOrder.length > 0 ? safeReadyPlayerOrder[0] : null;
       
       let hostPlayer: PlayerClientState | undefined | null = null;
       if (hostPlayerId) {
-        hostPlayer = gameForSetupRender.players.find(p => p.id === hostPlayerId);
-        if (!hostPlayer) {
-          console.warn(`Lobby Message: Host player object NOT FOUND for hostPlayerId: ${hostPlayerId}. Players list:`, gameForSetupRender.players.map(p => ({id: p.id, name: p.name})));
-        }
+        hostPlayer = renderableGame.players.find(p => p.id === hostPlayerId);
       }
+
+      // Debug logs specific to lobby view conditions
+      console.log("===== START GAME BUTTON DEBUG (WelcomePage - isLobbyPhaseActive) =====");
+      console.log("Renderable Game Phase:", renderableGame.gamePhase);
+      console.log("This Player ID (from ref):", thisPlayerIdRef.current);
+      console.log("Host Player ID (from RPO[0]):", hostPlayerId);
+      console.log("Full Ready Player Order (from renderableGame):", JSON.stringify(renderableGame.ready_player_order));
+      console.log("Is thisPlayer host? (thisPlayerIdRef.current === hostPlayerId):", thisPlayerIdRef.current === hostPlayerId);
+      console.log("Enough Players?:", enoughPlayers);
+      console.log("All Players Ready?:", allPlayersReady);
+      console.log("===================================================================");
+
 
       if (!enoughPlayers) {
-        lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - gameForSetupRender.players.length} more...`;
+        lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - renderableGame.players.length} more...`;
       } else if (!allPlayersReady) {
-        const unreadyCount = gameForSetupRender.players.filter(p => !p.isReady).length;
-        const hostNameForMessage = hostPlayer?.name || (safeReadyPlayerOrder.length > 0 ? 'first player to ready up' : 'the host');
-        lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. ${hostNameForMessage} can then start the game.`;
-      } else if (hostPlayerId === thisPlayerIdRef.current) {
+        const unreadyCount = renderableGame.players.filter(p => !p.isReady).length;
+        lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. Host can then start.`;
+      } else if (thisPlayerIdRef.current === hostPlayerId) {
         lobbyMessage = "All players are ready! You can start the game now!";
-      } else { 
-         const hostNameForMessage = hostPlayer?.name || (safeReadyPlayerOrder.length > 0 ? 'first player to ready up' : 'the host');
-         lobbyMessage = `All players ready! Waiting for ${hostNameForMessage} to start the game.`;
+      } else {
+        const hostNameForMessage = hostPlayer?.name || (safeReadyPlayerOrder.length > 0 ? 'first player to ready up' : 'the host');
+        lobbyMessage = `All players ready! Waiting for ${hostNameForMessage} to start the game.`;
       }
-
+      
       showStartGameButton = thisPlayerIdRef.current === hostPlayerId &&
                             enoughPlayers &&
                             allPlayersReady;
-    }
-    
-    const showPlayerSetupForm = !thisPlayerObject && isLobbyPhaseActive;
+      
+      console.log("Final 'showStartGameButton' decision:", showStartGameButton);
 
-    return (
-      <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
-        <header className="mb-12 text-center">
-          <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
-            <Image
-              src="/logo.png"
-              alt="Make It Terrible Logo"
-              width={200} 
-              height={59}  
-              className="mx-auto mb-4"
-              data-ai-hint="game logo"
-              priority
-              style={{ height: 'auto' }}
-            />
-          </button>
-          <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
+
+      const showPlayerSetupForm = !thisPlayerObject && isLobbyPhaseActive;
+
+      return (
+        <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
+          <header className="mb-12 text-center">
+            <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
+              <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+            </button>
+            <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
+            {isLobbyPhaseActive && (
+              <>
+                {thisPlayerObject && <p className="text-xl text-muted-foreground mt-2">Welcome, {thisPlayerObject.name}! Tap your &apos;Ready&apos; button below.</p>}
+                {showPlayerSetupForm && <p className="text-xl text-muted-foreground mt-2">Enter your details to join, then tap your ready button!</p>}
+              </>
+            )}
+          </header>
           
-          {/* Specific welcome messages for lobby phase */}
-          {isLobbyPhaseActive && (
-            <>
-              {!thisPlayerObject && !showPlayerSetupForm && ( /* Player joined, show welcome */
-                 <p className="text-xl text-muted-foreground mt-2">
-                  Welcome, {thisPlayerObject?.name || 'Player'}! Tap your &apos;Ready&apos; button below.
-                </p>
-              )}
-              {showPlayerSetupForm && ( /* New player needs to setup */
-                 <p className="text-xl text-muted-foreground mt-2">Enter your details to join, then tap your ready button!</p>
-              )}
-            </>
-          )}
-        </header>
-        
-        {/* Main Content Area based on view state */}
-        {isSpectatorView ? (
-          <div className="w-full max-w-xl mx-auto space-y-6 text-center">
-            <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
-              <CardHeader className="p-4">
-                <Lock className="h-8 w-8 mx-auto text-destructive mb-2" />
-                <CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0 text-sm">
-                <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch you pervert.</p>
-                <p className="mt-1">Don&apos;t like waiting? Thank the idiot who programmed this thing...</p>
-              </CardContent>
-            </Card>
-            
-            <div className="my-6">
-              <h2 className="text-2xl font-semibold text-center mb-3 text-primary">Current Game Standings</h2>
-              <Scoreboard players={gameForSetupRender.players} currentJudgeId={gameForSetupRender.currentJudgeId} />
-            </div>
-
-            <Card className="shadow-md border-muted rounded-lg">
-              <CardContent className="p-6">
-                <p className="text-muted-foreground">The lobby will re-open once the current game finishes. Hang tight or enjoy the show!</p>
-              </CardContent>
-            </Card>
-          </div>
-        ) : isActivePlayerOnLobbyPage ? (
-          <div className="w-full max-w-xl mx-auto">
-             <Card className="my-4 border-primary/50 bg-muted/30 shadow-md">
-              <CardHeader className="p-4">
-                <CardTitle className="text-lg flex items-center font-semibold text-foreground">
-                  <Info className="mr-2 h-5 w-5 text-primary" /> Game in Progress!
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
-                 <p>The current game is in the &quot;{gameForSetupRender.gamePhase}&quot; phase.</p>
-                  <Button
-                      onClick={() => { showGlobalLoader(); router.push('/game'); }} 
-                      variant="default"
-                      size="sm" 
-                      className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
-                  >
-                      Rejoin Current Game <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-              </CardContent>
-            </Card>
-          </div>
-        ) : isLobbyPhaseActive ? (
-          // Lobby View: Player Setup Form and/or Player List
-          <div className={cn(
-            "grid gap-8 w-full max-w-4xl",
-            showPlayerSetupForm ? "md:grid-cols-2" : "md:grid-cols-1" 
-          )}>
+          <div className={cn("grid gap-8 w-full max-w-4xl", showPlayerSetupForm ? "md:grid-cols-2" : "md:grid-cols-1")}>
             {showPlayerSetupForm && (
               <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
                 <CardHeader className="bg-primary text-primary-foreground p-6">
@@ -609,31 +586,21 @@ export default function WelcomePage() {
               </Card>
             )}
             
-            <Card className={cn(
-                "shadow-2xl border-2 border-secondary rounded-xl overflow-hidden",
-                !showPlayerSetupForm && "md:col-span-1" // If no setup form, this card takes the full width of the single column grid
-            )}>
+            <Card className={cn("shadow-2xl border-2 border-secondary rounded-xl overflow-hidden", !showPlayerSetupForm && "md:col-span-1")}>
               <CardHeader className="bg-secondary text-secondary-foreground p-6">
-                <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({gameForSetupRender.players.length})</CardTitle>
-                  <CardDescription className="text-secondary-foreground/80 text-base">
-                   Game starts when host initiates after all players are ready.
+                <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({renderableGame.players.length})</CardTitle>
+                <CardDescription className="text-secondary-foreground/80 text-base">
+                  Game starts when host initiates after all players are ready.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                {gameForSetupRender.players.length > 0 ? (
+                {renderableGame.players.length > 0 ? (
                   <ul className="space-y-3">
-                    {gameForSetupRender.players.map((player: PlayerClientState) => (
+                    {renderableGame.players.map((player: PlayerClientState) => (
                       <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
                         <div className="flex items-center">
                           {player.avatar.startsWith('/') ? (
-                            <Image
-                              src={player.avatar}
-                              alt={`${player.name}'s avatar`}
-                              width={40}
-                              height={40}
-                              className="mr-3 rounded-sm object-contain"
-                              style={{ width: '40px', height: '40px' }}
-                            />
+                            <Image src={player.avatar} alt={`${player.name}'s avatar`} width={40} height={40} className="mr-3 rounded-sm object-contain" style={{ width: '40px', height: '40px' }} />
                           ) : (
                             <span className="text-3xl mr-3">{player.avatar}</span>
                           )}
@@ -645,12 +612,7 @@ export default function WelcomePage() {
                               onClick={() => handleToggleReady(player)}
                               variant={player.isReady ? "default" : "outline"}
                               size="sm"
-                              className={cn(
-                                "px-3 py-1 text-xs font-semibold",
-                                player.isReady
-                                  ? "bg-green-500 hover:bg-green-600 text-white border-green-600"
-                                  : "border-primary text-primary hover:bg-primary/10"
-                                )}
+                              className={cn("px-3 py-1 text-xs font-semibold", player.isReady ? "bg-green-500 hover:bg-green-600 text-white border-green-600" : "border-primary text-primary hover:bg-primary/10")}
                               disabled={isProcessingAction}
                             >
                               {isProcessingAction && player.id === thisPlayerIdRef.current ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (player.isReady ? <ThumbsUp className="mr-1 h-3 w-3"/> : null)}
@@ -675,11 +637,7 @@ export default function WelcomePage() {
                       className="mt-6 w-full bg-accent text-accent-foreground hover:bg-accent/90 text-xl font-bold py-6 shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
                       disabled={isProcessingAction || isLoading}
                     >
-                      { (isProcessingAction || isLoading) ? (
-                        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                      ) : (
-                        <Play className="mr-3 h-7 w-7" />
-                      )}
+                      { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-3 h-7 w-7" /> }
                       🚀 Start Game Now!
                     </Button>
                 )}
@@ -689,78 +647,38 @@ export default function WelcomePage() {
               </CardContent>
             </Card>
           </div>
-        ) : null}
 
-        <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80">
-                <HelpCircle className="mr-2 h-5 w-5" /> How to Play
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <HowToPlayModalContent />
-            </DialogContent>
-          </Dialog>
-          <Button
-            onClick={handleResetGame}
-            variant="destructive"
-            className="hover:bg-destructive/80"
-            disabled={isProcessingAction || isLoading }
-          >
-            { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
-          </Button>
+          <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Dialog>
+              <DialogTrigger asChild><Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80"><HelpCircle className="mr-2 h-5 w-5" /> How to Play</Button></DialogTrigger>
+              <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
+            </Dialog>
+            <Button onClick={handleResetGame} variant="destructive" className="hover:bg-destructive/80" disabled={isProcessingAction || isLoading }>
+              { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
+            </Button>
+          </div>
+          <footer className="mt-12 text-center text-sm text-muted-foreground"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
         </div>
-
-          <footer className="mt-12 text-center text-sm text-muted-foreground">
-          <p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p>
-        </footer>
-      </div>
-    );
+      );
+    }
   }
 
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
-      <Image
-        src="/logo.png"
-        alt="Make It Terrible Logo"
-        width={365}
-        height={109}
-        className="mx-auto mb-8"
-        data-ai-hint="game logo"
-        priority
-        style={{ height: 'auto' }}
-      />
-      <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">
-        Make It Terrible
-      </h1>
-      <p className="text-2xl text-muted-foreground mb-10">
-        The game of awful choices and hilarious outcomes!
-      </p>
+      <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto mb-8" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+      <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
+      <p className="text-2xl text-muted-foreground mb-10">The game of awful choices and hilarious outcomes!</p>
       <div className="flex flex-col sm:flex-row items-center gap-4">
-        <Button
-          onClick={() => { showGlobalLoader(); router.push('/?step=setup');}}
-          variant="default"
-          size="lg"
-          className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
-        >
+        <Button onClick={() => { showGlobalLoader(); router.push('/?step=setup');}} variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out">
           Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
         </Button>
         <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-7">
-              <HelpCircle className="mr-2 h-6 w-6" /> How to Play
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <HowToPlayModalContent />
-          </DialogContent>
+          <DialogTrigger asChild><Button variant="outline" size="lg" className="text-lg px-8 py-7"><HelpCircle className="mr-2 h-6 w-6" /> How to Play</Button></DialogTrigger>
+          <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
         </Dialog>
       </div>
-      <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full">
-        <p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p>
-      </footer>
+      <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
     </div>
   );
 }
