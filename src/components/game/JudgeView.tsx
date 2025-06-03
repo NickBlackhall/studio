@@ -97,30 +97,32 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       <Card className="shadow-lg border-2 border-accent rounded-xl">
         <CardHeader className="bg-accent text-accent-foreground p-6">
           <div className="flex items-center justify-between mb-1">
-            <CardTitle className="text-3xl font-bold flex items-center">
-              <Gavel className="mr-3 h-8 w-8" /> You are the Judge!
-            </CardTitle>
-            <div className="flex items-center space-x-2 text-right">
+            <div className="flex-1"> {/* Allow title to take up space */}
+              <CardTitle className="text-3xl font-bold flex items-center">
+                <Gavel className="mr-3 h-8 w-8" /> You are the Judge!
+              </CardTitle>
+              <CardDescription className="text-accent-foreground/80 text-base mt-1">
+                Wield your power with terrible responsibility.
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-3 text-right ml-4"> {/* Added ml-4 for spacing */}
               {judge.avatar && judge.avatar.startsWith('/') ? (
                 <Image
                   src={judge.avatar}
                   alt={`${judge.name}'s avatar`}
-                  width={40}
-                  height={40}
+                  width={56} // Increased size
+                  height={56} // Increased size
                   className="rounded-md object-cover"
                 />
               ) : (
-                <span className="text-4xl">{judge.avatar}</span>
+                <span className="text-5xl">{judge.avatar}</span> // Increased size
               )}
-              <div>
-                <p className="text-lg font-semibold">{judge.name}</p>
-                <p className="text-sm text-accent-foreground/90">{judge.score} pts</p>
+              <div className="min-w-0"> {/* Added min-w-0 to help with truncation */}
+                <p className="text-xl font-semibold truncate max-w-[150px] sm:max-w-[200px]">{judge.name}</p> {/* Increased size and added truncate with max-width */}
+                <p className="text-md text-accent-foreground/90">{judge.score} pts</p> {/* Increased size slightly */}
               </div>
             </div>
           </div>
-          <CardDescription className="text-accent-foreground/80 text-base">
-            Wield your power with terrible responsibility.
-          </CardDescription>
         </CardHeader>
       </Card>
 
