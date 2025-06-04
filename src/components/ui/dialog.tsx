@@ -14,7 +14,7 @@ const DialogTrigger = DialogPrimitive.Trigger
 
 const DialogPortal = ({ className, children, ...props }: DialogPrimitive.DialogPortalProps) => (
   <DialogPrimitive.Portal className={cn(className)} {...props} forceMount>
-    {/* Removed flex items-center justify-center. This div is now just a fixed layer. */}
+    {/* This inner div is for z-index context for overlay and content, not for centering them via flex */}
     <div className="fixed inset-0 z-50">
       {children}
     </div>
@@ -24,7 +24,6 @@ DialogPortal.displayName = DialogPrimitive.Portal.displayName
 
 const DialogClose = DialogPrimitive.Close
 
-// Custom overlayAnimation prop type
 interface DialogOverlayProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> {
   animationProps?: { initial?: AnimationProps['initial']; animate?: AnimationProps['animate']; exit?: AnimationProps['exit']; transition?: AnimationProps['transition'] };
 }
@@ -36,7 +35,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay ref={ref} asChild>
     <motion.div
       className={cn(
-        "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm", // Ensures overlay is also fixed and covers screen
+        "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm", 
         className
       )}
       initial={animationProps?.initial ?? { opacity: 0 }}
@@ -49,7 +48,6 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-// Custom contentAnimation and contentStyle props
 interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   contentAnimation?: { initial?: MotionProps['initial']; animate?: MotionProps['animate']; exit?: MotionProps['exit']; transition?: MotionProps['transition'] };
   contentStyle?: MotionStyle;
@@ -59,11 +57,11 @@ interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof Dialo
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, contentAnimation, contentStyle, overlayAnimation, ...props }, ref) => (
+>(({ className, children, contentAnimation, contentStyle, ...props }, ref) => ( // overlayAnimation prop removed as it's not directly used by DialogContent
   <DialogPrimitive.Content ref={ref} asChild>
     <motion.div
       className={cn(
-        // Restored explicit fixed positioning and transform-based centering
+        // Explicit fixed positioning and transform-based centering
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
         className 
       )}
