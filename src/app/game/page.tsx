@@ -31,7 +31,7 @@ import {
   Dialog, 
   DialogContent, 
   DialogTrigger,
-  DialogPortal, // Keep portal if dialog.tsx exports it for structure
+  DialogPortal,
   DialogOverlay
 } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
@@ -602,7 +602,7 @@ export default function GamePage() {
               {isHowToPlayModalOpen && (
                 <DialogPortal>
                   <DialogOverlay />
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent>
                     <HowToPlayModalContent />
                   </DialogContent>
                 </DialogPortal>

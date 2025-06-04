@@ -16,11 +16,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
-import { 
-  Dialog, 
-  DialogContent, 
+import {
+  Dialog,
+  DialogContent,
   DialogTrigger,
-  DialogPortal, // Keep portal if dialog.tsx exports it for structure
+  DialogPortal,
   DialogOverlay
 } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
@@ -623,7 +623,7 @@ export default function WelcomePage() {
               {isHowToPlayModalOpen && (
                 <DialogPortal>
                   <DialogOverlay />
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent>
                     <HowToPlayModalContent />
                   </DialogContent>
                 </DialogPortal>
@@ -658,7 +658,7 @@ export default function WelcomePage() {
           {isHowToPlayModalOpen && (
             <DialogPortal>
               <DialogOverlay />
-              <DialogContent className="max-w-2xl">
+              <DialogContent>
                 <HowToPlayModalContent />
               </DialogContent>
             </DialogPortal>
