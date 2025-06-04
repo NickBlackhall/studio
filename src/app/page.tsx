@@ -16,12 +16,43 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, AnimatePresence } from '@/components/ui/dialog'; // Ensure AnimatePresence is imported
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 
 
 export const dynamic = 'force-dynamic';
+
+// Animation definitions for the "How to Play" modal
+const howToPlayOverlayAnimation = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
+  exit: { opacity: 0, transition: { duration: 0.3, ease: "easeIn" } },
+};
+
+const howToPlayContentAnimation = {
+  initial: { opacity: 0, filter: 'blur(8px)', y: 30, scale: 0.95, rotateY: 15, rotateX: 5 },
+  animate: { 
+    opacity: 1, 
+    filter: 'blur(0px)', 
+    y: 0, 
+    scale: 1, 
+    rotateY: 0, 
+    rotateX: 0,
+    transition: { duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] } // Slower entry
+  },
+  exit: { 
+    opacity: 0, 
+    filter: 'blur(8px)', 
+    y: 20, 
+    scale: 0.95, 
+    rotateY: -5, 
+    rotateX: -5,
+    transition: { duration: 0.4, ease: [0.55, 0.085, 0.68, 0.53] } // Slower exit
+  },
+};
+const howToPlayContentStyle = { transformPerspective: 800 };
+
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -39,6 +70,8 @@ export default function WelcomePage() {
   const isMountedRef = useRef(true);
   const { showGlobalLoader, hideGlobalLoader } = useLoading();
   
+  const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
+
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
 
@@ -609,9 +642,25 @@ export default function WelcomePage() {
           </div>
 
           <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Dialog>
-              <DialogTrigger asChild><Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80"><HelpCircle className="mr-2 h-5 w-5" /> How to Play</Button></DialogTrigger>
-              <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
+             <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80">
+                  <HelpCircle className="mr-2 h-5 w-5" /> How to Play
+                </Button>
+              </DialogTrigger>
+              <AnimatePresence>
+                {isHowToPlayModalOpen && (
+                  <DialogContent 
+                    className="max-w-2xl"
+                    overlayAnimation={howToPlayOverlayAnimation}
+                    contentAnimation={howToPlayContentAnimation}
+                    contentStyle={howToPlayContentStyle}
+                    onInteractOutside={(e) => e.preventDefault()} // Optional: prevent closing on outside click during animation
+                  >
+                    <HowToPlayModalContent />
+                  </DialogContent>
+                )}
+              </AnimatePresence>
             </Dialog>
             <Button onClick={handleResetGame} variant="destructive" className="hover:bg-destructive/80" disabled={isProcessingAction || isLoading }>
               { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
@@ -633,9 +682,25 @@ export default function WelcomePage() {
         <Button onClick={() => { showGlobalLoader(); router.push('/?step=setup');}} variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out">
           Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
         </Button>
-        <Dialog>
-          <DialogTrigger asChild><Button variant="outline" size="lg" className="text-lg px-8 py-7"><HelpCircle className="mr-2 h-6 w-6" /> How to Play</Button></DialogTrigger>
-          <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
+        <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="lg" className="text-lg px-8 py-7">
+              <HelpCircle className="mr-2 h-6 w-6" /> How to Play
+            </Button>
+          </DialogTrigger>
+          <AnimatePresence>
+            {isHowToPlayModalOpen && (
+              <DialogContent 
+                className="max-w-2xl"
+                overlayAnimation={howToPlayOverlayAnimation}
+                contentAnimation={howToPlayContentAnimation}
+                contentStyle={howToPlayContentStyle}
+                onInteractOutside={(e) => e.preventDefault()}
+              >
+                <HowToPlayModalContent />
+              </DialogContent>
+            )}
+          </AnimatePresence>
         </Dialog>
       </div>
       <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
@@ -645,3 +710,4 @@ export default function WelcomePage() {
     
 
     
+

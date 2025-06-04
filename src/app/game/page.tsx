@@ -27,8 +27,38 @@ import { Home, Play, Loader2, RefreshCw, HelpCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, AnimatePresence } from '@/components/ui/dialog'; // Ensure AnimatePresence is imported
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
+
+// Animation definitions for the "How to Play" modal
+const howToPlayOverlayAnimation = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
+  exit: { opacity: 0, transition: { duration: 0.3, ease: "easeIn" } },
+};
+
+const howToPlayContentAnimation = {
+  initial: { opacity: 0, filter: 'blur(8px)', y: 30, scale: 0.95, rotateY: 15, rotateX: 5 },
+  animate: { 
+    opacity: 1, 
+    filter: 'blur(0px)', 
+    y: 0, 
+    scale: 1, 
+    rotateY: 0, 
+    rotateX: 0,
+    transition: { duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] } // Slower entry
+  },
+  exit: { 
+    opacity: 0, 
+    filter: 'blur(8px)', 
+    y: 20, 
+    scale: 0.95, 
+    rotateY: -5, 
+    rotateX: -5,
+    transition: { duration: 0.4, ease: [0.55, 0.085, 0.68, 0.53] } // Slower exit
+  },
+};
+const howToPlayContentStyle = { transformPerspective: 800 };
 
 
 export default function GamePage() {
@@ -45,6 +75,7 @@ export default function GamePage() {
   const nextRoundTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { showGlobalLoader, hideGlobalLoader } = useLoading();
   const isMountedRef = useRef(true); 
+  const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
 
 
   const setGameState = useCallback((newState: GameClientState | null) => {
@@ -586,15 +617,25 @@ export default function GamePage() {
                 <Home className="mr-1 h-4 w-4" /> Exit to Lobby
               </Button>
             </Link>
-            <Dialog>
+            <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="border-accent text-accent-foreground hover:bg-accent/80 w-full sm:w-auto">
                   <HelpCircle className="mr-2 h-4 w-4" /> How to Play
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <HowToPlayModalContent />
-              </DialogContent>
+              <AnimatePresence>
+                {isHowToPlayModalOpen && (
+                  <DialogContent 
+                    className="max-w-2xl"
+                    overlayAnimation={howToPlayOverlayAnimation}
+                    contentAnimation={howToPlayContentAnimation}
+                    contentStyle={howToPlayContentStyle}
+                    onInteractOutside={(e) => e.preventDefault()} 
+                  >
+                    <HowToPlayModalContent />
+                  </DialogContent>
+                )}
+              </AnimatePresence>
             </Dialog>
           </div>
           <Button 
@@ -618,6 +659,7 @@ export const dynamic = 'force-dynamic';
 
 
     
+
 
 
 
