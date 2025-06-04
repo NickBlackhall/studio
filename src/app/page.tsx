@@ -450,10 +450,6 @@ export default function WelcomePage() {
 
 
   if (currentStep === 'setup') {
-    let lobbyMessage = "";
-    let showStartGameButton = false;
-
-    // Logic for Spectator View or Active Player on Lobby Page
     if (isSpectatorView) {
       return (
         <div className="w-full max-w-xl mx-auto space-y-6 text-center py-12">
@@ -466,8 +462,8 @@ export default function WelcomePage() {
               <CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 text-sm">
-              <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch you pervert.</p>
-              <p className="mt-1">Don&apos;t like waiting? Thank the idiot who programmed this thing...</p>
+                <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch you pervert.</p>
+                <p className="mt-1">Don&apos;t like waiting? Thank the idiot who programmed this thing...</p>
             </CardContent>
           </Card>
           <div className="my-6">
@@ -523,38 +519,41 @@ export default function WelcomePage() {
       let hostPlayer: PlayerClientState | undefined | null = null;
       if (hostPlayerId) {
         hostPlayer = renderableGame.players.find(p => p.id === hostPlayerId);
+        if (!hostPlayer) {
+            console.warn(`Client (WelcomePage Lobby): Host player with ID ${hostPlayerId} not found in players list:`, JSON.stringify(renderableGame.players.map(p=>p.id)));
+        }
       }
 
-      // Debug logs specific to lobby view conditions
-      console.log("===== START GAME BUTTON DEBUG (WelcomePage - isLobbyPhaseActive) =====");
-      console.log("Renderable Game Phase:", renderableGame.gamePhase);
-      console.log("This Player ID (from ref):", thisPlayerIdRef.current);
-      console.log("Host Player ID (from RPO[0]):", hostPlayerId);
-      console.log("Full Ready Player Order (from renderableGame):", JSON.stringify(renderableGame.ready_player_order));
-      console.log("Is thisPlayer host? (thisPlayerIdRef.current === hostPlayerId):", thisPlayerIdRef.current === hostPlayerId);
-      console.log("Enough Players?:", enoughPlayers);
-      console.log("All Players Ready?:", allPlayersReady);
-      console.log("===================================================================");
+      const showStartGameButton = thisPlayerIdRef.current !== null && // Player must exist
+                                  thisPlayerIdRef.current === hostPlayerId && // Player must be the host
+                                  enoughPlayers &&
+                                  allPlayersReady;
 
-
+      let lobbyMessage = "";
       if (!enoughPlayers) {
         lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - renderableGame.players.length} more...`;
       } else if (!allPlayersReady) {
         const unreadyCount = renderableGame.players.filter(p => !p.isReady).length;
         lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. Host can then start.`;
-      } else if (thisPlayerIdRef.current === hostPlayerId) {
+      } else if (thisPlayerIdRef.current !== null && thisPlayerIdRef.current === hostPlayerId) {
         lobbyMessage = "All players are ready! You can start the game now!";
       } else {
         const hostNameForMessage = hostPlayer?.name || (safeReadyPlayerOrder.length > 0 ? 'first player to ready up' : 'the host');
         lobbyMessage = `All players ready! Waiting for ${hostNameForMessage} to start the game.`;
       }
       
-      showStartGameButton = thisPlayerIdRef.current === hostPlayerId &&
-                            enoughPlayers &&
-                            allPlayersReady;
-      
-      console.log("Final 'showStartGameButton' decision:", showStartGameButton);
-
+      console.log("===== START GAME BUTTON DEBUG (WelcomePage - isLobbyPhaseActive) =====");
+      console.log("Current Game Phase:", renderableGame.gamePhase);
+      console.log("thisPlayerIdRef.current (Current User's ID):", thisPlayerIdRef.current);
+      console.log("thisPlayerObject (Current User's Player Data):", thisPlayerObject ? {id: thisPlayerObject.id, name: thisPlayerObject.name, isReady: thisPlayerObject.isReady} : null);
+      console.log("hostPlayerId (from ready_player_order[0]):", hostPlayerId);
+      console.log("Full ready_player_order array:", JSON.stringify(safeReadyPlayerOrder));
+      console.log("Is thisPlayerIdRef.current NOT null?:", thisPlayerIdRef.current !== null);
+      console.log("Is thisPlayer host? (thisPlayerIdRef.current === hostPlayerId):", thisPlayerIdRef.current === hostPlayerId);
+      console.log("Enough Players?:", enoughPlayers);
+      console.log("All Players Ready?:", allPlayersReady);
+      console.log("Overall: Should showStartGameButton be true?:", showStartGameButton);
+      console.log("===================================================================");
 
       const showPlayerSetupForm = !thisPlayerObject && isLobbyPhaseActive;
 
@@ -685,3 +684,4 @@ export default function WelcomePage() {
     
 
     
+
