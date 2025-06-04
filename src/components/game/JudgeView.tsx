@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useState, useTransition, useMemo, useEffect } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Gavel, Send, CheckCircle, Loader2, ListChecks, Crown, PlusCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
@@ -30,21 +30,39 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [isPendingApproval, startTransitionApproval] = useTransition();
   const { toast } = useToast();
 
+  const [shuffledSubmissions, setShuffledSubmissions] = useState<GameClientState['submissions']>([]);
+  const [judgingRound, setJudgingRound] = useState<number | null>(null);
+
   // Manage modal visibility based on game phase
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
 
   useEffect(() => {
-    if (gameState.categories.length > 0 && !selectedCategory) {
-      // setSelectedCategory(gameState.categories[0]); 
-    }
-     // Reset selections if phase changes away from judging or category selection
+    // Reset selections if phase changes away from judging or category selection
     if (gameState.gamePhase !== 'judging') {
         setSelectedWinningCard('');
     }
     if (gameState.gamePhase !== 'category_selection') {
-        setSelectedCategory('');
+        setSelectedCategory(''); // Keep selectedCategory if categories haven't changed and user hasn't submitted
     }
-  }, [gameState.categories, selectedCategory, gameState.gamePhase]);
+  }, [gameState.gamePhase]);
+
+
+  useEffect(() => {
+    if (gameState.gamePhase === 'judging') {
+      // If it's a new round for judging or the submissions array reference has changed for the current judging round
+      if (judgingRound !== gameState.currentRound || (gameState.submissions !== shuffledSubmissions && shuffledSubmissions.length !== gameState.submissions.length)) {
+        const newShuffled = [...gameState.submissions].sort(() => Math.random() - 0.5);
+        setShuffledSubmissions(newShuffled);
+        setJudgingRound(gameState.currentRound);
+      }
+    } else {
+      // If not in judging phase, clear the shuffled submissions and round.
+      // This ensures a fresh shuffle if we re-enter judging.
+      if (shuffledSubmissions.length > 0) setShuffledSubmissions([]);
+      if (judgingRound !== null) setJudgingRound(null);
+    }
+  }, [gameState.gamePhase, gameState.currentRound, gameState.submissions, judgingRound, shuffledSubmissions]);
+
 
   const handleCategorySubmit = () => {
     if (!selectedCategory) {
@@ -79,11 +97,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       }
     });
   };
-
-  const shuffledSubmissions = useMemo(() => {
-    if (!gameState.submissions) return [];
-    return gameState.submissions.slice().sort(() => Math.random() - 0.5);
-  }, [gameState.submissions]);
 
   const isUnleashScenarioButtonActive = !isPendingCategory && !!selectedCategory && gameState.categories.length > 0;
   const isCrownWinnerButtonActive = !isPendingWinner && !!selectedWinningCard && shuffledSubmissions.length > 0;
@@ -195,7 +208,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   </Button>
                 ))
               ) : (
-                <p className="text-muted-foreground text-center">No submissions yet, or waiting for submissions to load!</p>
+                 gameState.submissions.length > 0 ?
+                    <p className="text-muted-foreground text-center">Shuffling submissions...</p> :
+                    <p className="text-muted-foreground text-center">No submissions yet, or waiting for submissions to load!</p>
               )}
               <Button 
                 onClick={handleWinnerSubmit} 
