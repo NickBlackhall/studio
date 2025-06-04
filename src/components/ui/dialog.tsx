@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -17,16 +18,35 @@ const DialogClose = DialogPrimitive.Close
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80", // Temporarily removed animation classes: data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  const localRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const currentRef = ref && typeof ref !== 'function' ? ref.current : localRef.current;
+    if (currentRef) {
+      const element = currentRef;
+      const computedStyle = window.getComputedStyle(element);
+      console.log("--- DialogOverlay Debug Info ---");
+      console.log("Overlay Element HTML:", element.outerHTML.split('>')[0] + '>'); // Log just the opening tag
+      console.log("Overlay className:", element.className);
+      console.log("Computed backgroundColor:", computedStyle.backgroundColor);
+      console.log("Computed opacity:", computedStyle.opacity);
+      console.log("-------------------------------");
+    }
+  }, [ref]); // Rerun if ref changes, or on mount
+
+  return (
+    <DialogPrimitive.Overlay
+      ref={ref || localRef}
+      className={cn(
+        "fixed inset-0 z-50 bg-black/80", // Reverted to bg-black/80, removed animation classes for testing
+        // "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        className
+      )}
+      {...props}
+    />
+  );
+});
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const DialogContent = React.forwardRef<
