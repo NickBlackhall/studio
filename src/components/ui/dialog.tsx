@@ -14,8 +14,6 @@ const DialogTrigger = DialogPrimitive.Trigger
 
 const DialogPortal = ({ className, children, ...props }: DialogPrimitive.DialogPortalProps) => (
   <DialogPrimitive.Portal className={cn(className)} {...props} forceMount>
-    {/* This div mainly helps ensure children (overlay, content) are rendered in a high z-index stack.
-        For fixed-position children that self-center, its flex properties are less critical. */}
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {children}
     </div>
@@ -27,23 +25,23 @@ const DialogClose = DialogPrimitive.Close
 
 // Custom overlayAnimation prop type
 interface DialogOverlayProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> {
-  overlayAnimation?: { initial?: AnimationProps['initial']; animate?: AnimationProps['animate']; exit?: AnimationProps['exit']; transition?: AnimationProps['transition'] };
+  animationProps?: { initial?: AnimationProps['initial']; animate?: AnimationProps['animate']; exit?: AnimationProps['exit']; transition?: AnimationProps['transition'] };
 }
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   DialogOverlayProps
->(({ className, overlayAnimation, ...props }, ref) => (
+>(({ className, animationProps, ...props }, ref) => (
   <DialogPrimitive.Overlay ref={ref} asChild>
     <motion.div
       className={cn(
         "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm",
         className
       )}
-      initial={overlayAnimation?.initial ?? { opacity: 0 }}
-      animate={overlayAnimation?.animate ?? { opacity: 1 }}
-      exit={overlayAnimation?.exit ?? { opacity: 0 }}
-      transition={overlayAnimation?.transition ?? { duration: 0.3, ease: "easeOut" }}
+      initial={animationProps?.initial ?? { opacity: 0 }}
+      animate={animationProps?.animate ?? { opacity: 1 }}
+      exit={animationProps?.exit ?? { opacity: 0 }}
+      transition={animationProps?.transition ?? { duration: 0.3, ease: "easeOut" }}
       {...props}
     />
   </DialogPrimitive.Overlay>
@@ -54,17 +52,25 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   contentAnimation?: { initial?: MotionProps['initial']; animate?: MotionProps['animate']; exit?: MotionProps['exit']; transition?: MotionProps['transition'] };
   contentStyle?: MotionStyle;
+  overlayAnimation?: DialogOverlayProps['animationProps']; // Add this to accept overlay animations
 }
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, contentAnimation, contentStyle, ...props }, ref) => (
+>(({ className, children, contentAnimation, contentStyle, overlayAnimation, ...props }, ref) => (
+  // DialogPortal handles the fixed positioning and flex centering
+  // DialogOverlay is a sibling, also within DialogPortal
+  // DialogPrimitive.Content should be the direct child here for Radix UI a11y
   <DialogPrimitive.Content ref={ref} asChild>
     <motion.div
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
-        className
+        // Centered by DialogPortal's flex container.
+        // Removed: "fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]"
+        "z-50 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+        // If a specific class for max-width override is needed, like for how-to-play:
+        // e.g., props['data-size'] === 'how-to-play' ? 'max-w-2xl' : 'max-w-lg',
+        className // Allow overriding max-width via className prop
       )}
       initial={contentAnimation?.initial ?? { opacity: 0, scale: 0.95, y: 20 }}
       animate={contentAnimation?.animate ?? { opacity: 1, scale: 1, y: 0 }}
@@ -138,6 +144,7 @@ const DialogDescription = React.forwardRef<
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
+// Re-export AnimatePresence from framer-motion
 const AnimatePresence = FramerAnimatePresence;
 
 export {
