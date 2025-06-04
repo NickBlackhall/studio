@@ -4,6 +4,7 @@
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
+import { motion, AnimatePresence as FramerAnimatePresence, type AnimationProps, type MotionStyle, type Variants } from "framer-motion"
 
 import { cn } from "@/lib/utils"
 
@@ -11,35 +12,81 @@ const Dialog = DialogPrimitive.Root
 
 const DialogTrigger = DialogPrimitive.Trigger
 
-const DialogPortal = DialogPrimitive.Portal
+const DialogPortal = ({ children, ...props }: DialogPrimitive.DialogPortalProps) => (
+  <DialogPrimitive.Portal {...props}>
+    {/* This div is necessary for AnimatePresence to work correctly with portalled content */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {children}
+    </div>
+  </DialogPrimitive.Portal>
+)
+DialogPortal.displayName = DialogPrimitive.Portal.displayName
+
 
 const DialogClose = DialogPrimitive.Close
 
+// Default animation for the overlay
+const defaultOverlayAnimation: Variants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.3, ease: "easeOut" } },
+  exit: { opacity: 0, transition: { duration: 0.2, ease: "easeIn" } },
+}
+
+interface MotionDialogOverlayProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> {
+  animationProps?: Variants;
+}
+
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0", // Removed backdrop-blur-sm for now to revert to base
-      className
-    )}
-    {...props}
-  />
+  MotionDialogOverlayProps
+>(({ className, animationProps = defaultOverlayAnimation, ...props }, ref) => (
+  <DialogPrimitive.Overlay forceMount asChild>
+    <motion.div
+      ref={ref}
+      variants={animationProps}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className={cn(
+        "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm",
+        className
+      )}
+      {...props}
+    />
+  </DialogPrimitive.Overlay>
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+// Default animation for the content (simple fade and scale)
+const defaultContentAnimation: Variants = {
+  initial: { opacity: 0, scale: 0.95, y: 10 },
+  animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
+  exit: { opacity: 0, scale: 0.95, y: 10, transition: { duration: 0.2, ease: "easeIn" } },
+}
+
+interface MotionDialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  animationProps?: Variants;
+  motionStyle?: MotionStyle;
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
+  MotionDialogContentProps
+>(({ className, children, animationProps = defaultContentAnimation, motionStyle, ...props }, ref) => (
+  // DialogPortal is handled by Radix, we just need to ensure AnimatePresence wraps this
+  // when used if exit animations are desired.
+  // The centering is applied here directly as it's a fixed element.
+  <DialogPrimitive.Content forceMount asChild>
+    <motion.div
       ref={ref}
+      variants={animationProps}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      style={motionStyle} // For transformPerspective etc.
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+        "data-[state=open]:animate-none data-[state=closed]:animate-none", // Disable default shadcn animations
         className
       )}
       {...props}
@@ -49,8 +96,8 @@ const DialogContent = React.forwardRef<
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
+    </motion.div>
+  </DialogPrimitive.Content>
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
@@ -109,7 +156,9 @@ const DialogDescription = React.forwardRef<
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
-// Note: AnimatePresence is NOT exported here in the reverted version.
+// Export AnimatePresence from framer-motion for convenience
+const AnimatePresence = FramerAnimatePresence;
+
 export {
   Dialog,
   DialogPortal,
@@ -121,4 +170,5 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  AnimatePresence, // Re-exporting AnimatePresence
 }
