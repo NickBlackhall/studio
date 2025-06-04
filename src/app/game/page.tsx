@@ -27,27 +27,14 @@ import { Home, Play, Loader2, RefreshCw, HelpCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
-import { Dialog, DialogContent, DialogTrigger, DialogOverlay, AnimatePresence } from '@/components/ui/dialog';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogTrigger,
+  DialogPortal, // Keep portal if dialog.tsx exports it for structure
+  DialogOverlay
+} from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
-import type { Variants, MotionStyle } from 'framer-motion';
-
-
-// Animation properties for the "How to Play" modal
-const howToPlayOverlayAnimation: Variants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
-  exit: { opacity: 0, transition: { duration: 0.3, ease: "easeIn" } },
-};
-
-const howToPlayContentAnimation: Variants = {
-  initial: { opacity: 0, filter: 'blur(8px)', scale: 0.9, y: 20, rotateX: 5, rotateY: 15, z: -50 },
-  animate: { opacity: 1, filter: 'blur(0px)', scale: 1, y: 0, rotateX: 0, rotateY: 0, z: 0, transition: { duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] } },
-  exit: { opacity: 0, filter: 'blur(8px)', scale: 0.9, y: 20, rotateX: 5, rotateY: 15, z: -50, transition: { duration: 0.4, ease: [0.55, 0.085, 0.68, 0.53] } },
-};
-
-const howToPlayContentStyle: MotionStyle = {
-  transformPerspective: '800px'
-};
 
 
 export default function GamePage() {
@@ -612,20 +599,14 @@ export default function GamePage() {
                   <HelpCircle className="mr-2 h-4 w-4" /> How to Play
                 </Button>
               </DialogTrigger>
-              <AnimatePresence>
-                {isHowToPlayModalOpen && (
-                   <DialogPortal>
-                    <DialogOverlay animationProps={howToPlayOverlayAnimation} />
-                    <DialogContent 
-                      animationProps={howToPlayContentAnimation} 
-                      motionStyle={howToPlayContentStyle}
-                      className="max-w-2xl" // Specific class for this modal
-                    >
-                      <HowToPlayModalContent />
-                    </DialogContent>
-                  </DialogPortal>
-                )}
-              </AnimatePresence>
+              {isHowToPlayModalOpen && (
+                <DialogPortal>
+                  <DialogOverlay />
+                  <DialogContent className="max-w-2xl">
+                    <HowToPlayModalContent />
+                  </DialogContent>
+                </DialogPortal>
+              )}
             </Dialog>
           </div>
           <Button 
