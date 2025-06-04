@@ -31,7 +31,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const { toast } = useToast();
 
   const [shuffledSubmissions, setShuffledSubmissions] = useState<GameClientState['submissions']>([]);
-  const [judgingRound, setJudgingRound] = useState<number | null>(null);
+  const [judgingRound, setJudgingRound] = useState<number | null>(null); // Keep track of the round for which submissions were shuffled
 
   // Manage modal visibility based on game phase
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
@@ -42,22 +42,23 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
         setSelectedWinningCard('');
     }
     if (gameState.gamePhase !== 'category_selection') {
-        setSelectedCategory(''); // Keep selectedCategory if categories haven't changed and user hasn't submitted
+        setSelectedCategory(''); 
     }
   }, [gameState.gamePhase]);
 
 
   useEffect(() => {
     if (gameState.gamePhase === 'judging') {
-      // If it's a new round for judging or the submissions array reference has changed for the current judging round
-      if (judgingRound !== gameState.currentRound || (gameState.submissions !== shuffledSubmissions && shuffledSubmissions.length !== gameState.submissions.length)) {
+      // Shuffle submissions only if it's a new round for judging or if the submissions content has changed for the current judging round.
+      // This prevents re-shuffling on every minor re-render within the 'judging' phase.
+      if (judgingRound !== gameState.currentRound || gameState.submissions.length !== shuffledSubmissions.length || 
+          !gameState.submissions.every(s => shuffledSubmissions.find(ss => ss.cardText === s.cardText && ss.playerId === s.playerId))) {
         const newShuffled = [...gameState.submissions].sort(() => Math.random() - 0.5);
         setShuffledSubmissions(newShuffled);
         setJudgingRound(gameState.currentRound);
       }
     } else {
-      // If not in judging phase, clear the shuffled submissions and round.
-      // This ensures a fresh shuffle if we re-enter judging.
+      // If not in judging phase, clear the shuffled submissions and round tracker.
       if (shuffledSubmissions.length > 0) setShuffledSubmissions([]);
       if (judgingRound !== null) setJudgingRound(null);
     }
@@ -82,7 +83,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     }
     startTransitionWinner(async () => {
       await onSelectWinner(selectedWinningCard);
-      // Toast for selection will be handled by the outcome (approval modal or direct announcement)
     });
   };
 
@@ -110,7 +110,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       <Card className="shadow-lg border-2 border-accent rounded-xl">
         <CardHeader className="bg-accent text-accent-foreground p-6">
           <div className="flex items-center justify-between mb-1">
-            <div className="flex-1"> {/* Allow title to take up space */}
+            <div className="flex-1"> 
               <CardTitle className="text-3xl font-bold flex items-center">
                 <Gavel className="mr-3 h-8 w-8" /> You are the Judge!
               </CardTitle>
@@ -118,17 +118,17 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                 Wield your power with terrible responsibility.
               </CardDescription>
             </div>
-            <div className="flex items-center text-right ml-4"> {/* Removed space-x-3 */}
+            <div className="flex items-center text-right ml-4"> 
               {judge.avatar && judge.avatar.startsWith('/') ? (
                 <Image
                   src={judge.avatar}
                   alt={`${judge.name}'s avatar`}
                   width={56}
                   height={56}
-                  className="rounded-md object-cover mr-3" // Added mr-3
+                  className="rounded-md object-cover mr-3" 
                 />
               ) : (
-                <span className="text-5xl mr-3">{judge.avatar}</span> // Added mr-3
+                <span className="text-5xl mr-3">{judge.avatar}</span> 
               )}
               <div className="min-w-0"> 
                 <p className="text-xl font-semibold truncate max-w-[150px] sm:max-w-[200px]">{judge.name}</p>
@@ -209,7 +209,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                 ))
               ) : (
                  gameState.submissions.length > 0 ?
-                    <p className="text-muted-foreground text-center">Shuffling submissions...</p> :
+                    <p className="text-muted-foreground text-center">Shuffling submissions...</p> : // Should be brief
                     <p className="text-muted-foreground text-center">No submissions yet, or waiting for submissions to load!</p>
               )}
               <Button 
@@ -294,4 +294,3 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     
 
     
-
