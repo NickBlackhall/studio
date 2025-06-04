@@ -14,7 +14,8 @@ const DialogTrigger = DialogPrimitive.Trigger
 
 const DialogPortal = ({ className, children, ...props }: DialogPrimitive.DialogPortalProps) => (
   <DialogPrimitive.Portal className={cn(className)} {...props} forceMount>
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    {/* Removed flex items-center justify-center. This div is now just a fixed layer. */}
+    <div className="fixed inset-0 z-50">
       {children}
     </div>
   </DialogPrimitive.Portal>
@@ -35,7 +36,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay ref={ref} asChild>
     <motion.div
       className={cn(
-        "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm",
+        "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm", // Ensures overlay is also fixed and covers screen
         className
       )}
       initial={animationProps?.initial ?? { opacity: 0 }}
@@ -52,25 +53,19 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   contentAnimation?: { initial?: MotionProps['initial']; animate?: MotionProps['animate']; exit?: MotionProps['exit']; transition?: MotionProps['transition'] };
   contentStyle?: MotionStyle;
-  overlayAnimation?: DialogOverlayProps['animationProps']; // Add this to accept overlay animations
+  overlayAnimation?: DialogOverlayProps['animationProps']; 
 }
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
 >(({ className, children, contentAnimation, contentStyle, overlayAnimation, ...props }, ref) => (
-  // DialogPortal handles the fixed positioning and flex centering
-  // DialogOverlay is a sibling, also within DialogPortal
-  // DialogPrimitive.Content should be the direct child here for Radix UI a11y
   <DialogPrimitive.Content ref={ref} asChild>
     <motion.div
       className={cn(
-        // Centered by DialogPortal's flex container.
-        // Removed: "fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]"
-        "z-50 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
-        // If a specific class for max-width override is needed, like for how-to-play:
-        // e.g., props['data-size'] === 'how-to-play' ? 'max-w-2xl' : 'max-w-lg',
-        className // Allow overriding max-width via className prop
+        // Restored explicit fixed positioning and transform-based centering
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+        className 
       )}
       initial={contentAnimation?.initial ?? { opacity: 0, scale: 0.95, y: 20 }}
       animate={contentAnimation?.animate ?? { opacity: 1, scale: 1, y: 0 }}
@@ -144,7 +139,6 @@ const DialogDescription = React.forwardRef<
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
-// Re-export AnimatePresence from framer-motion
 const AnimatePresence = FramerAnimatePresence;
 
 export {
