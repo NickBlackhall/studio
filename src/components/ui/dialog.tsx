@@ -14,7 +14,9 @@ const DialogTrigger = DialogPrimitive.Trigger
 
 const DialogPortal = ({ className, children, ...props }: DialogPrimitive.DialogPortalProps) => (
   <DialogPrimitive.Portal className={cn(className)} {...props} forceMount>
-    <div className="fixed inset-0 z-50 flex items-start justify-center sm:items-center">
+    {/* This div mainly helps ensure children (overlay, content) are rendered in a high z-index stack.
+        For fixed-position children that self-center, its flex properties are less critical. */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       {children}
     </div>
   </DialogPrimitive.Portal>
@@ -35,8 +37,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay ref={ref} asChild>
     <motion.div
       className={cn(
-        "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm", // Added backdrop-blur-sm
-        // Removed Tailwind animation: data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
+        "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm",
         className
       )}
       initial={overlayAnimation?.initial ?? { opacity: 0 }}
@@ -59,13 +60,10 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
 >(({ className, children, contentAnimation, contentStyle, ...props }, ref) => (
-  // DialogPortal is now used outside, so AnimatePresence should wrap DialogContent and DialogOverlay there.
-  // forceMount on DialogPortal helps AnimatePresence
   <DialogPrimitive.Content ref={ref} asChild>
     <motion.div
       className={cn(
-        "fixed z-50 grid w-full gap-4 rounded-b-lg border bg-background p-6 shadow-lg sm:max-w-lg sm:rounded-lg",
-        // Removed Tailwind animation classes: data-[state=open]:animate-in data-[state=closed]:animate-out ...
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
         className
       )}
       initial={contentAnimation?.initial ?? { opacity: 0, scale: 0.95, y: 20 }}
@@ -140,7 +138,7 @@ const DialogDescription = React.forwardRef<
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
-const AnimatePresence = FramerAnimatePresence; // Re-export for convenience
+const AnimatePresence = FramerAnimatePresence;
 
 export {
   Dialog,
@@ -153,5 +151,5 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
-  AnimatePresence, // Exporting AnimatePresence
+  AnimatePresence,
 }
