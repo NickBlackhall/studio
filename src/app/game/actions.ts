@@ -102,7 +102,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   }
   const gameId = gameRow.id;
 
-  console.log(`🔴 GAME (Server) getGame - gameId: ${gameId}, typeof gameRow.ready_player_order: ${typeof gameRow.ready_player_order}, value before returning:`, JSON.stringify(gameRow.ready_player_order));
+  console.log(`🔴 GAME (Server) getGame - gameId: ${gameId}, typeof gameRow.ready_player_order: ${typeof gameRow.ready_player_order}, value of gameRow.ready_player_order:`, JSON.stringify(gameRow.ready_player_order));
 
 
   let playersData: Tables<'players'>[] = [];
@@ -240,6 +240,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     lastWinner: lastWinnerDetails,
     winningPlayerId: gameRow.overall_winner_player_id,
   };
+  console.log(`🔴 GAME (Server) getGame - gameId: ${gameId} - Constructed gameClientState.readyPlayerOrder:`, JSON.stringify(gameClientState.readyPlayerOrder));
   return gameClientState;
 }
 
