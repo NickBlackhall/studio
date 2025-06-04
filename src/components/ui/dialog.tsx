@@ -5,19 +5,21 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 import { motion, AnimatePresence as FramerAnimatePresence, type Variants, type MotionStyle } from "framer-motion"
-
 import { cn } from "@/lib/utils"
 
-const Dialog = DialogPrimitive.Root
-const DialogTrigger = DialogPrimitive.Trigger
-const DialogPortal = DialogPrimitive.Portal // Direct alias for Radix Portal
-const DialogClose = DialogPrimitive.Close
+// Store Radix primitives in local consts
+const RadixDialogRoot = DialogPrimitive.Root;
+const RadixDialogTrigger = DialogPrimitive.Trigger;
+const RadixDialogPortal = DialogPrimitive.Portal; // Crucial
+const RadixDialogClose = DialogPrimitive.Close;
+const RadixDialogTitle = DialogPrimitive.Title;
+const RadixDialogDescription = DialogPrimitive.Description;
 
-// Default animation for the overlay
+// --- Custom Animated Overlay ---
 const defaultOverlayAnimation: Variants = {
   initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.3, ease: "easeOut" } },
-  exit: { opacity: 0, transition: { duration: 0.2, ease: "easeIn" } },
+  animate: { opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
+  exit: { opacity: 0, transition: { duration: 0.3, ease: "easeIn" } },
 };
 
 interface MotionDialogOverlayProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> {
@@ -45,11 +47,11 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = "DialogOverlay";
 
-// Default animation for the content
+// --- Custom Animated Content ---
 const defaultContentAnimation: Variants = {
-  initial: { opacity: 0, scale: 0.95, y: 10 },
-  animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } },
-  exit: { opacity: 0, scale: 0.95, y: 10, transition: { duration: 0.2, ease: "easeIn" } },
+  initial: { opacity: 0, scale: 0.9, y: 20, rotateX: 5, rotateY: 15, z: -50, filter: 'blur(8px)' },
+  animate: { opacity: 1, scale: 1, y: 0, rotateX: 0, rotateY: 0, z: 0, filter: 'blur(0px)', transition: { duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] } },
+  exit: { opacity: 0, scale: 0.9, y: 20, rotateX: 5, rotateY: 15, z: -50, filter: 'blur(8px)', transition: { duration: 0.4, ease: [0.55, 0.085, 0.68, 0.53] } },
 };
 
 interface MotionDialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
@@ -61,8 +63,6 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   MotionDialogContentProps
 >(({ className, children, animationProps = defaultContentAnimation, motionStyle, ...props }, ref) => (
-  // No DialogPrimitive.Portal here; it should wrap this in the consuming component.
-  // The positioning logic (fixed, translate) should be on this motion.div
   <DialogPrimitive.Content forceMount asChild>
     <motion.div
       ref={ref}
@@ -70,25 +70,24 @@ const DialogContent = React.forwardRef<
       initial="initial"
       animate="animate"
       exit="exit"
-      style={motionStyle} // For transformPerspective
+      style={motionStyle}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
-        // Removed default shadcn animations to prevent conflict with framer-motion
-        // "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+      <RadixDialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
+      </RadixDialogClose>
     </motion.div>
   </DialogPrimitive.Content>
 ))
 DialogContent.displayName = "DialogContent";
 
+// --- Standard Wrapper Components (Header, Footer) ---
 const DialogHeader = ({
   className,
   ...props
@@ -117,11 +116,12 @@ const DialogFooter = ({
 )
 DialogFooter.displayName = "DialogFooter"
 
+// --- Standard Wrapper Components for Title and Description using Radix Primitives ---
 const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+  React.ElementRef<typeof RadixDialogTitle>,
+  React.ComponentPropsWithoutRef<typeof RadixDialogTitle>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
+  <RadixDialogTitle
     ref={ref}
     className={cn(
       "text-lg font-semibold leading-none tracking-tight",
@@ -130,32 +130,34 @@ const DialogTitle = React.forwardRef<
     {...props}
   />
 ))
-DialogTitle.displayName = DialogPrimitive.Title.displayName
+DialogTitle.displayName = RadixDialogTitle.displayName
 
 const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+  React.ElementRef<typeof RadixDialogDescription>,
+  React.ComponentPropsWithoutRef<typeof RadixDialogDescription>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description
+  <RadixDialogDescription
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
 ))
-DialogDescription.displayName = DialogPrimitive.Description.displayName
+DialogDescription.displayName = RadixDialogDescription.displayName
 
+// --- Re-export AnimatePresence ---
 const AnimatePresence = FramerAnimatePresence;
 
+// --- Export all components with explicit aliasing for Radix parts ---
 export {
-  Dialog,
-  DialogTrigger,
-  DialogPortal, // Explicitly exporting the direct alias
-  DialogOverlay,
-  DialogContent,
+  RadixDialogRoot as Dialog,
+  RadixDialogTrigger as DialogTrigger,
+  RadixDialogPortal as DialogPortal, // Exporting the Radix Portal aliased
+  DialogOverlay, // Custom animated
+  DialogContent, // Custom animated
   DialogHeader,
   DialogFooter,
   DialogTitle,
   DialogDescription,
-  DialogClose,
+  RadixDialogClose as DialogClose,
   AnimatePresence,
-}
+};
