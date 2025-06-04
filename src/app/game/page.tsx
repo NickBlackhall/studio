@@ -27,39 +27,10 @@ import { Home, Play, Loader2, RefreshCw, HelpCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
-import { Dialog, DialogContent, DialogTrigger, AnimatePresence } from '@/components/ui/dialog'; // Ensure AnimatePresence is imported
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'; // AnimatePresence removed
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 
-// Animation definitions for the "How to Play" modal
-const howToPlayOverlayAnimation = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
-  exit: { opacity: 0, transition: { duration: 0.3, ease: "easeIn" } },
-};
-
-const howToPlayContentAnimation = {
-  initial: { opacity: 0, filter: 'blur(8px)', y: 30, scale: 0.95, rotateY: 15, rotateX: 5 },
-  animate: { 
-    opacity: 1, 
-    filter: 'blur(0px)', 
-    y: 0, 
-    scale: 1, 
-    rotateY: 0, 
-    rotateX: 0,
-    transition: { duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] } // Slower entry
-  },
-  exit: { 
-    opacity: 0, 
-    filter: 'blur(8px)', 
-    y: 20, 
-    scale: 0.95, 
-    rotateY: -5, 
-    rotateX: -5,
-    transition: { duration: 0.4, ease: [0.55, 0.085, 0.68, 0.53] } // Slower exit
-  },
-};
-const howToPlayContentStyle = { transformPerspective: 800 };
-
+// Removed animation constant definitions
 
 export default function GamePage() {
   const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
@@ -94,7 +65,7 @@ export default function GamePage() {
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     console.log(`GamePage: fetchGameAndPlayer called from ${origin}.`);
     if (!isLoading && isMountedRef.current) { 
-        // setIsLoading(true); // Avoid flickering if already loaded
+        // setIsLoading(true); 
     }
     let localGameId: string | null = null;
     try {
@@ -402,7 +373,7 @@ export default function GamePage() {
             console.error("GamePage: Error on 'Play Again Yes':", error);
             if (isMountedRef.current) {
               toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
-              // setIsLoading(false); // Only set isLoading false if not redirecting
+              // setIsLoading(false); 
             }
           }
         } finally {
@@ -412,7 +383,7 @@ export default function GamePage() {
             }
             if (!wasRedirect && isMountedRef.current) {
               setIsLoading(false);
-              // hideGlobalLoader(); // Global loader might not have been shown
+              // hideGlobalLoader(); 
             }
         }
       });
@@ -445,7 +416,7 @@ export default function GamePage() {
               description: `Could not reset the game. ${error.message || String(error)}`,
               variant: "destructive",
             });
-            // setIsLoading(false); // Only set if not redirecting
+            // setIsLoading(false); 
           }
         }
       } finally {
@@ -455,7 +426,7 @@ export default function GamePage() {
         }
         if (!wasRedirect && isMountedRef.current) {
            setIsLoading(false);
-           // hideGlobalLoader(); // Might not have been shown
+           // hideGlobalLoader(); 
         }
       }
     });
@@ -623,19 +594,11 @@ export default function GamePage() {
                   <HelpCircle className="mr-2 h-4 w-4" /> How to Play
                 </Button>
               </DialogTrigger>
-              <AnimatePresence>
-                {isHowToPlayModalOpen && (
-                  <DialogContent 
-                    className="max-w-2xl"
-                    overlayAnimation={howToPlayOverlayAnimation}
-                    contentAnimation={howToPlayContentAnimation}
-                    contentStyle={howToPlayContentStyle}
-                    onInteractOutside={(e) => e.preventDefault()} 
-                  >
-                    <HowToPlayModalContent />
-                  </DialogContent>
-                )}
-              </AnimatePresence>
+              {isHowToPlayModalOpen && (
+                <DialogContent className="max-w-2xl">
+                  <HowToPlayModalContent />
+                </DialogContent>
+              )}
             </Dialog>
           </div>
           <Button 
@@ -654,13 +617,4 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
-
-
-
-
     
-
-
-
-
-

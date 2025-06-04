@@ -16,43 +16,14 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
-import { Dialog, DialogContent, DialogTrigger, AnimatePresence } from '@/components/ui/dialog'; // Ensure AnimatePresence is imported
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'; // AnimatePresence removed
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 
 
 export const dynamic = 'force-dynamic';
 
-// Animation definitions for the "How to Play" modal
-const howToPlayOverlayAnimation = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
-  exit: { opacity: 0, transition: { duration: 0.3, ease: "easeIn" } },
-};
-
-const howToPlayContentAnimation = {
-  initial: { opacity: 0, filter: 'blur(8px)', y: 30, scale: 0.95, rotateY: 15, rotateX: 5 },
-  animate: { 
-    opacity: 1, 
-    filter: 'blur(0px)', 
-    y: 0, 
-    scale: 1, 
-    rotateY: 0, 
-    rotateX: 0,
-    transition: { duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] } // Slower entry
-  },
-  exit: { 
-    opacity: 0, 
-    filter: 'blur(8px)', 
-    y: 20, 
-    scale: 0.95, 
-    rotateY: -5, 
-    rotateX: -5,
-    transition: { duration: 0.4, ease: [0.55, 0.085, 0.68, 0.53] } // Slower exit
-  },
-};
-const howToPlayContentStyle = { transformPerspective: 800 };
-
+// Removed animation constant definitions
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -91,12 +62,10 @@ export default function WelcomePage() {
   const setGame = useCallback((newGameState: GameClientState | null) => {
     gameRef.current = newGameState; 
     if (isMountedRef.current) {
-      // If newGameState has ready_player_order_str, parse it here before setting
       if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
         const rpoArray = parseReadyPlayerOrderStr(newGameState);
         setInternalGame({ ...newGameState, ready_player_order: rpoArray });
       } else if (newGameState) {
-        // If no ready_player_order_str, ensure ready_player_order is at least an empty array
         setInternalGame({ ...newGameState, ready_player_order: newGameState.ready_player_order || [] });
       } else {
         setInternalGame(null);
@@ -115,14 +84,13 @@ export default function WelcomePage() {
     const isInitialOrResetCall = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || (!gameRef.current?.gameId && !gameIdToFetch);
     
     if (isInitialOrResetCall && isMountedRef.current) {
-      // setIsLoading(true); // Managed by global loader
+      // setIsLoading(true); 
     }
     
     try {
       let fetchedGameState = await getGame(gameIdToFetch); 
       
       if (fetchedGameState) {
-        // Client-side workaround for RPO being undefined or ensuring it's parsed
         if (typeof fetchedGameState.ready_player_order_str === 'string') {
             fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
         } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
@@ -379,7 +347,6 @@ export default function WelcomePage() {
         let updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
         if (isMountedRef.current) {
           if (updatedGameState) {
-             // Parse ready_player_order_str from the action's response
             if (typeof updatedGameState.ready_player_order_str === 'string') {
               updatedGameState.ready_player_order = parseReadyPlayerOrderStr(updatedGameState);
             } else if (typeof updatedGameState.ready_player_order === 'undefined' || !Array.isArray(updatedGameState.ready_player_order)) {
@@ -648,19 +615,11 @@ export default function WelcomePage() {
                   <HelpCircle className="mr-2 h-5 w-5" /> How to Play
                 </Button>
               </DialogTrigger>
-              <AnimatePresence>
-                {isHowToPlayModalOpen && (
-                  <DialogContent 
-                    className="max-w-2xl"
-                    overlayAnimation={howToPlayOverlayAnimation}
-                    contentAnimation={howToPlayContentAnimation}
-                    contentStyle={howToPlayContentStyle}
-                    onInteractOutside={(e) => e.preventDefault()} // Optional: prevent closing on outside click during animation
-                  >
-                    <HowToPlayModalContent />
-                  </DialogContent>
-                )}
-              </AnimatePresence>
+              {isHowToPlayModalOpen && (
+                <DialogContent className="max-w-2xl">
+                  <HowToPlayModalContent />
+                </DialogContent>
+              )}
             </Dialog>
             <Button onClick={handleResetGame} variant="destructive" className="hover:bg-destructive/80" disabled={isProcessingAction || isLoading }>
               { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
@@ -688,19 +647,11 @@ export default function WelcomePage() {
               <HelpCircle className="mr-2 h-6 w-6" /> How to Play
             </Button>
           </DialogTrigger>
-          <AnimatePresence>
-            {isHowToPlayModalOpen && (
-              <DialogContent 
-                className="max-w-2xl"
-                overlayAnimation={howToPlayOverlayAnimation}
-                contentAnimation={howToPlayContentAnimation}
-                contentStyle={howToPlayContentStyle}
-                onInteractOutside={(e) => e.preventDefault()}
-              >
-                <HowToPlayModalContent />
-              </DialogContent>
-            )}
-          </AnimatePresence>
+          {isHowToPlayModalOpen && (
+            <DialogContent className="max-w-2xl">
+              <HowToPlayModalContent />
+            </DialogContent>
+          )}
         </Dialog>
       </div>
       <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
@@ -708,6 +659,3 @@ export default function WelcomePage() {
   );
 }
     
-
-    
-
