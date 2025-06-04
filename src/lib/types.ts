@@ -58,7 +58,8 @@ export interface GameClientState {
 
   categories: string[]; 
   
-  readyPlayerOrder: string[]; // Changed from optional to required
+  ready_player_order: string[]; // Populated on client by parsing ready_player_order_str
+  ready_player_order_str?: string; // Sent by server
 
   // Fields to temporarily hold custom card info for judge approval
   pendingCustomCardAuthorId?: string | null;

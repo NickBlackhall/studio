@@ -57,6 +57,19 @@ export default function WelcomePage() {
     }
   }, []);
 
+  const parseReadyPlayerOrderStr = (gameState: GameClientState | null): string[] => {
+    if (!gameState || typeof gameState.ready_player_order_str !== 'string') {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(gameState.ready_player_order_str);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("Client: Failed to parse ready_player_order_str", e, gameState.ready_player_order_str);
+      return [];
+    }
+  };
+
   const fetchGameData = useCallback(async (origin: string = "unknown", gameIdToFetch?: string) => {
     console.log(`Client (fetchGameData): Triggered from ${origin}. Game ID to fetch: ${gameIdToFetch || 'N/A'}. Current gameId from ref: ${gameRef.current?.gameId}`);
     const isInitialOrResetCall = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || (!gameRef.current?.gameId && !gameIdToFetch);
@@ -66,18 +79,23 @@ export default function WelcomePage() {
     }
     
     try {
-      const fetchedGameState = await getGame(gameIdToFetch); 
+      let fetchedGameState = await getGame(gameIdToFetch); 
+      
+      console.log(`Client (fetchGameData): Game state received from getGame(${gameIdToFetch || ''}). RPO_str: ${fetchedGameState?.ready_player_order_str}, Phase: ${fetchedGameState?.gamePhase}, Players: ${fetchedGameState?.players?.length} (Origin: ${origin})`);
       
       if (fetchedGameState) {
-        // Explicitly handle potentially undefined readyPlayerOrder immediately after fetch
-        if (typeof fetchedGameState.ready_player_order === 'undefined') {
-            console.warn(`Client (fetchGameData): RPO was undefined from getGame(), defaulting to []. Game ID: ${fetchedGameState.gameId}, Origin: ${origin}`);
-            fetchedGameState.ready_player_order = [];
-        }
+        // Parse ready_player_order_str into ready_player_order
+        const rpoArray = parseReadyPlayerOrderStr(fetchedGameState);
+        // Create a new object for setGame to ensure React sees a change, and to include the parsed array
+        const gameForClient: GameClientState = {
+            ...fetchedGameState,
+            ready_player_order: rpoArray,
+        };
+        console.log(`Client (fetchGameData): Parsed RPO: ${JSON.stringify(rpoArray)}. About to call setGame. (Origin: ${origin})`);
+        fetchedGameState = gameForClient; // Use the processed game state
+      } else {
+        console.warn(`Client (fetchGameData): fetchedGameState was null. (Origin: ${origin})`);
       }
-
-      console.log(`Client (fetchGameData): Game state fetched via getGame(${gameIdToFetch || ''}) (from ${origin}):`, 
-                  fetchedGameState ? `ID: ${fetchedGameState.gameId}, Phase: ${fetchedGameState.gamePhase}, Players: ${fetchedGameState.players.length}, RPO from fetched: ${JSON.stringify(fetchedGameState?.ready_player_order)}` : "null");
       
       if (!isMountedRef.current) {
         console.log(`Client (fetchGameData): Component unmounted after getGame() call (from ${origin}).`);
@@ -142,7 +160,7 @@ export default function WelcomePage() {
          console.log(`Client (fetchGameData): Operation from ${origin} completed, but component unmounted. Loaders NOT set by this call.`);
       }
     }
-  }, [toast, setGame, setThisPlayerId, hideGlobalLoader]);
+  }, [toast, setGame, setThisPlayerId, hideGlobalLoader]); // Removed parseReadyPlayerOrderStr from deps, it's stable
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -208,12 +226,11 @@ export default function WelcomePage() {
 
     const handleGameTableUpdate = async (payload: any) => {
       const newPhaseFromPayload = payload.new?.game_phase;
-      const newRPOFromPayload = payload.new?.ready_player_order;
-      console.log(`>>> Client (Realtime): GAMES TABLE CHANGE DETECTED! Payload phase: ${newPhaseFromPayload}, Payload RPO: ${JSON.stringify(newRPOFromPayload)}, Full payload:`, payload);
+      const newRPOStrFromPayload = payload.new?.ready_player_order; // In DB this is string[], server action sends ready_player_order_str
+      console.log(`>>> Client (Realtime): GAMES TABLE CHANGE DETECTED! Payload phase: ${newPhaseFromPayload}, DB Payload RPO: ${JSON.stringify(newRPOStrFromPayload)}, Full payload:`, payload);
       const latestGameId = gameRef.current?.gameId; 
       if (isMountedRef.current && latestGameId) { 
         console.log(`Client (Realtime - games sub for game ${latestGameId}): Fetching updated game state due to games change (payload phase: ${newPhaseFromPayload})...`);
-        // Direct fetch with ID from real-time update handler
         await fetchGameData(`games-lobby-${latestGameId}-${uniqueChannelSuffix} game change`, latestGameId);
       } else {
          console.log(`Client (Realtime - games sub): Skipping fetch, component unmounted or gameId missing. Current gameId from ref: ${latestGameId}`);
@@ -370,16 +387,17 @@ export default function WelcomePage() {
     console.log(`Client (handleToggleReady): Toggling ready status for player ${player.name} (ID: ${player.id}) from ${player.isReady} for game ${currentGameId}`);
     startPlayerActionTransition(async () => {
       try {
-        const updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
+        let updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
         if (isMountedRef.current) {
           if (updatedGameState) {
-            // Explicitly handle potentially undefined readyPlayerOrder from the action's returned state
-            if (typeof updatedGameState.ready_player_order === 'undefined') {
-                console.warn(`Client (handleToggleReady): RPO undefined from togglePlayerReadyStatus, defaulting to []. Game ID: ${updatedGameState.gameId}`);
-                updatedGameState.ready_player_order = [];
-            }
-            console.log(`Client (handleToggleReady): Game state received from action. Phase: ${updatedGameState.gamePhase}, RPO: ${JSON.stringify(updatedGameState.ready_player_order)}. Current step: ${currentStep}`);
-            setGame(updatedGameState); 
+            // Parse ready_player_order_str from the action's response
+            const rpoArray = parseReadyPlayerOrderStr(updatedGameState);
+            const gameForClient: GameClientState = {
+                ...updatedGameState,
+                ready_player_order: rpoArray,
+            };
+            console.log(`Client (handleToggleReady): Game state received from action and parsed. Phase: ${gameForClient.gamePhase}, Parsed RPO: ${JSON.stringify(rpoArray)}. Current step: ${currentStep}`);
+            setGame(gameForClient); 
           } else {
             console.warn(`Client (handleToggleReady): togglePlayerReadyStatus returned null for game ${currentGameId}. Attempting fetchGameData as fallback.`);
             await fetchGameData(`handleToggleReady_null_fallback_game_${currentGameId}`, currentGameId);
@@ -422,22 +440,22 @@ export default function WelcomePage() {
   
   const hostPlayerId = useMemo(() => {
     if (!internalGame || !Array.isArray(internalGame.ready_player_order)) {
-      console.log(`Client (useMemo for hostPlayerId): internalGame or RPO is invalid. RPO: ${JSON.stringify(internalGame?.ready_player_order)}`);
+      console.log(`Client (useMemo for hostPlayerId): internalGame or RPO is invalid/not an array. RPO: ${JSON.stringify(internalGame?.ready_player_order)}`);
       return null;
     }
     console.log(`Client (useMemo for hostPlayerId): internalGame.RPO is: ${JSON.stringify(internalGame.ready_player_order)}`);
     return internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
-  }, [internalGame]); // Dependency on the whole internalGame object
+  }, [internalGame]); 
 
   const enoughPlayers = useMemo(() => {
     if (!internalGame || !internalGame.players) return false;
     return internalGame.players.length >= MIN_PLAYERS_TO_START;
-  }, [internalGame]); // Dependency on the whole internalGame object
+  }, [internalGame]);
 
   const allPlayersReady = useMemo(() => {
     if (!internalGame || !internalGame.players || !enoughPlayers) return false;
     return internalGame.players.every(p => p.isReady);
-  }, [internalGame, enoughPlayers]); // Dependency on internalGame and derived enoughPlayers
+  }, [internalGame, enoughPlayers]); 
 
 
   if (isLoading && !internalGame ) { 
@@ -530,7 +548,6 @@ export default function WelcomePage() {
     } else if (isLobbyPhaseActive) {
       const showPlayerSetupForm = !thisPlayerObject && isLobbyPhaseActive;
       
-      // Debug logs right before showStartGameButton is calculated
       console.log("===== START GAME BUTTON DEBUG (WelcomePage - isLobbyPhaseActive) =====");
       console.log("Current Game Phase:", internalGame.gamePhase);
       console.log("thisPlayerIdRef.current (Current User's ID):", thisPlayerIdRef.current);
