@@ -101,9 +101,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const lastRoundCardTextForModal = gameState.lastWinner?.cardText;
 
   const scenarioAnimationProps = {
-    initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1, transition: { duration: 0.7, ease: [0.04, 0.62, 0.23, 0.98] } }, // Increased duration
-    exit: { opacity: 0, scale: 0.95, transition: { duration: 0.5, ease: [0.04, 0.62, 0.23, 0.98] } } // Increased duration
+    initial: { opacity: 0, scale: 0.90 },
+    animate: { opacity: 1, scale: 1, transition: { duration: 1.0, ease: [0.04, 0.62, 0.23, 0.98] } }, // Slower
+    exit: { opacity: 0, scale: 0.90, transition: { duration: 0.8, ease: [0.04, 0.62, 0.23, 0.98] } } // Slower
   };
 
 
@@ -216,7 +216,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               {shuffledSubmissions.length > 0 ? (
                 shuffledSubmissions.map((submission) => (
                   <Button
-                    key={submission.playerId + submission.cardText} // Consider a more stable key if cardText can be identical for different submissions in a rare case
+                    key={submission.playerId + submission.cardText} 
                     variant={selectedWinningCard === submission.cardText ? "default" : "outline"}
                     onClick={() => setSelectedWinningCard(submission.cardText)}
                     className={`w-full h-auto p-4 text-left text-lg whitespace-normal justify-start
@@ -317,4 +317,4 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
-
+    

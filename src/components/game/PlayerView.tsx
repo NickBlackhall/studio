@@ -113,22 +113,22 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
   const isSubmitButtonActive = !isPending && !!selectedCardText.trim() && !hasSubmittedThisRound;
 
-  const cardAnimation = {
-    initial: { opacity: 0, y: 20, scale: 0.95 },
-    animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.6, ease: "easeOut" } }, // Increased duration
-    exit: { opacity: 0, x: -50, scale: 0.9, transition: { duration: 0.5, ease: "easeIn" } } // Increased duration
+  const cardHandAnimation = {
+    initial: { opacity: 0, y: 100 }, // Start further down
+    animate: { opacity: 1, y: 0, transition: { duration: 1, ease: "easeOut" } }, // Slower duration
+    exit: { opacity: 0, x: -250, rotate: -25, scale: 0.7, transition: { duration: 0.8, ease: "easeIn" } } // More dramatic and slower
   };
 
   const scenarioAnimationProps = {
-    initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1, transition: { duration: 0.7, ease: [0.04, 0.62, 0.23, 0.98] } }, // Increased duration
-    exit: { opacity: 0, scale: 0.95, transition: { duration: 0.5, ease: [0.04, 0.62, 0.23, 0.98] } } // Increased duration
+    initial: { opacity: 0, scale: 0.90 },
+    animate: { opacity: 1, scale: 1, transition: { duration: 1.0, ease: [0.04, 0.62, 0.23, 0.98] } }, // Slower
+    exit: { opacity: 0, scale: 0.90, transition: { duration: 0.8, ease: [0.04, 0.62, 0.23, 0.98] } } // Slower
   };
 
   const customCardSlotAnimation = {
     initial:{ opacity: 0, height: 0, y: -10 },
-    animate:{ opacity: 1, height: 'auto', y: 0, transition: { duration: 0.5, ease: "easeOut" } }, // Increased duration
-    exit:{ opacity: 0, height: 0, y: -10, transition: { duration: 0.4, ease: "easeIn" } } // Increased duration
+    animate:{ opacity: 1, height: 'auto', y: 0, transition: { duration: 0.8, ease: "easeOut" } }, // Slower
+    exit:{ opacity: 0, height: 0, y: -10, transition: { duration: 0.6, ease: "easeIn" } } // Slower
   };
 
 
@@ -275,11 +275,13 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 {...customCardSlotAnimation}
                 onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
                 className={cn(
-                  `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group`,
-                  isCustomCardSelectedAsSubmissionTarget
+                  `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group`, // Base styles
+                  isCustomCardSelectedAsSubmissionTarget // If selected
                     ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
-                    : 'border-dashed border-accent hover:border-accent-foreground hover:bg-accent/10',
-                  finalizedCustomCardText ? 'border-solid border-accent' : 'border-dashed border-accent'
+                    : [ // Not selected state
+                        (finalizedCustomCardText ? 'border-solid border-accent' : 'border-dashed border-accent'), // Correct border based on finalized text
+                        'hover:border-accent-foreground hover:bg-accent/10'
+                      ]
                 )}
               >
                 <span>{finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER}</span>
@@ -299,8 +301,10 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               return (
                 <motion.button
                   key={card.id}
-                  layout
-                  {...cardAnimation}
+                  layout // Keep layout for potential reordering, though main purpose here is enabling AnimatePresence for enter/exit
+                  initial={cardHandAnimation.initial}
+                  animate={cardHandAnimation.animate}
+                  exit={cardHandAnimation.exit}
                   onClick={() => handleSelectCard(card.text, false)}
                   className={cn(
                     `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md`,
@@ -317,7 +321,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   {isNewCardVisual && (
                     <motion.span
                       initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1, transition: { delay: 0.5, duration: 0.4 } }} // Increased delay and duration
+                      animate={{ opacity: 1, scale: 1, transition: { delay: 0.8, duration: 0.6 } }} // Slower
                       className="absolute bottom-1 right-2 text-xs font-semibold text-red-500 bg-white/80 px-1.5 py-0.5 rounded"
                     >
                       New!
@@ -348,4 +352,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 }
-
+    
