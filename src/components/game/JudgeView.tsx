@@ -102,8 +102,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
 
   const scenarioAnimationProps = {
     initial: { opacity: 0, scale: 0.90 },
-    animate: { opacity: 1, scale: 1, transition: { duration: 1.0, ease: [0.04, 0.62, 0.23, 0.98] } }, // Slower
-    exit: { opacity: 0, scale: 0.90, transition: { duration: 0.8, ease: [0.04, 0.62, 0.23, 0.98] } } // Slower
+    animate: { opacity: 1, scale: 1, transition: { duration: 1.0, ease: [0.04, 0.62, 0.23, 0.98] } }, 
+    exit: { opacity: 0, scale: 0.90, transition: { duration: 0.8, ease: [0.04, 0.62, 0.23, 0.98] } } 
   };
 
 
@@ -317,4 +317,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
+    
+
     
