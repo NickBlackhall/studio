@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import * as DialogPrimitive from "@radix-ui/react-dialog"
+import * as DialogPrimitive from "@radix-ui/react-dialog" // Corrected from react-alert-dialog if that was a prior typo
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -19,34 +19,61 @@ const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => {
-  const localRef = React.useRef<HTMLDivElement>(null);
+  // AGGRESSIVE LOGGING AT THE VERY START OF THE COMPONENT FUNCTION
+  console.log("--- DialogOverlay component function CALLED ---");
 
+  // AGGRESSIVE VISUAL DEBUG - useEffect for computed styles after mount
   React.useEffect(() => {
-    const currentRef = ref && typeof ref !== 'function' ? ref.current : localRef.current;
+    const currentRef = ref && typeof ref !== 'function' ? ref.current : null; // Basic ref handling
     if (currentRef) {
       const element = currentRef;
       const computedStyle = window.getComputedStyle(element);
-      console.log("--- DialogOverlay Debug Info ---");
-      console.log("Overlay Element HTML:", element.outerHTML.split('>')[0] + '>'); // Log just the opening tag
-      console.log("Overlay className:", element.className);
-      console.log("Computed backgroundColor:", computedStyle.backgroundColor);
-      console.log("Computed opacity:", computedStyle.opacity);
-      console.log("-------------------------------");
+      console.log("--- DialogOverlay Debug Info (useEffect) ---");
+      console.log("Overlay Element HTML (mount):", element.outerHTML.split('>')[0] + '>');
+      console.log("Overlay className (mount):", element.className);
+      console.log("Computed backgroundColor (mount):", computedStyle.backgroundColor);
+      console.log("Computed opacity (mount):", computedStyle.opacity);
+      console.log("---------------------------------------");
+    } else {
+      // Fallback if ref is not immediately available or complex
+      const overlayElements = document.querySelectorAll('[data-radix-dialog-overlay]'); // More generic selector
+      if (overlayElements.length > 0) {
+        const element = overlayElements[overlayElements.length -1] as HTMLElement; // Assume last one if multiple
+         const computedStyle = window.getComputedStyle(element);
+         console.log("--- DialogOverlay Debug Info (useEffect fallback querySelector) ---");
+         console.log("Overlay Element HTML (mount fallback):", element.outerHTML.split('>')[0] + '>');
+         console.log("Overlay className (mount fallback):", element.className);
+         console.log("Computed backgroundColor (mount fallback):", computedStyle.backgroundColor);
+         console.log("Computed opacity (mount fallback):", computedStyle.opacity);
+         console.log("-----------------------------------------------------------------");
+      } else {
+        console.log("--- DialogOverlay Debug Info (useEffect): Overlay element not found via ref or querySelector ---");
+      }
     }
-  }, [ref]); // Rerun if ref changes, or on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array, runs on mount
 
   return (
     <DialogPrimitive.Overlay
-      ref={ref || localRef}
+      ref={ref}
+      data-radix-dialog-overlay // Add a data attribute for easier selection if needed
+      // AGGRESSIVE VISUAL DEBUG STYLES
+      style={{
+        border: "10px solid red",
+        backgroundColor: "rgba(0, 255, 0, 0.3)", // Semi-transparent green
+        zIndex: 10000 // Ensure it's on top
+      }}
       className={cn(
-        "fixed inset-0 z-50 bg-black/80", // Reverted to bg-black/80, removed animation classes for testing
-        // "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "fixed inset-0", // Removed z-50 as it's in style, removed bg-black/80 to see green
+        // "fixed inset-0 z-50 bg-black/80", // Original attempt
+        // Animation classes are still commented out:
+        // "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className
       )}
       {...props}
     />
-  );
-});
+  )
+})
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const DialogContent = React.forwardRef<
@@ -54,7 +81,7 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay /> {/* This will use our debugged DialogOverlay */}
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
