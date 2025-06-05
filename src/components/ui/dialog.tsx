@@ -19,6 +19,33 @@ const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => {
+  // console.log("--- DialogOverlay component function CALLED (v3 log active) ---");
+  // React.useEffect(() => {
+  //   if (ref && 'current' in ref && ref.current) {
+  //     const element = ref.current;
+  //     console.log("--- DialogOverlay Debug Info (useEffect v3 log active) ---");
+  //     console.log("Overlay Element HTML (mount v3):", element.outerHTML);
+  //     console.log("Overlay className (mount v3):", element.className);
+  //     const styles = window.getComputedStyle(element);
+  //     console.log("Computed backgroundColor (mount v3):", styles.backgroundColor);
+  //     console.log("Computed opacity (mount v3):", styles.opacity);
+  //     console.log("---------------------------------------");
+  //   } else {
+      // Fallback if ref is not directly available or component unmounts quickly
+      // This is less reliable for computed styles right at mount
+  //     const fallbackElement = document.querySelector('[data-radix-dialog-overlay="true"][data-state="open"]');
+  //     if (fallbackElement) {
+  //       console.log("--- DialogOverlay Debug Info (useEffect v3 log active fallback) ---");
+  //       console.log("Overlay Element HTML (mount v3 fallback):", fallbackElement.outerHTML);
+  //       console.log("Overlay className (mount v3 fallback):", fallbackElement.className);
+  //       const styles = window.getComputedStyle(fallbackElement);
+  //       console.log("Computed backgroundColor (mount v3 fallback):", styles.backgroundColor);
+  //       console.log("Computed opacity (mount v3 fallback):", styles.opacity);
+  //       console.log("---------------------------------------");
+  //     }
+  //   }
+  // }, [ref]); // Add ref to dependency array if using it directly
+
   return (
     <DialogPrimitive.Overlay
       ref={ref}
