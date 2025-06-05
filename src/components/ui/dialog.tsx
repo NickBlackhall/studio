@@ -4,72 +4,68 @@
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
-import { motion, AnimatePresence as FramerAnimatePresence } from "framer-motion" // Keep for later
+
 import { cn } from "@/lib/utils"
 
-// Helper to merge refs if necessary
-function mergeRefs<T = any>(
-  refs: Array<React.MutableRefObject<T> | React.LegacyRef<T>>
-): React.RefCallback<T> {
-  return (value) => {
-    refs.forEach((ref) => {
-      if (typeof ref === "function") {
-        ref(value)
-      } else if (ref != null) {
-        (ref as React.MutableRefObject<T | null>).current = value
-      }
-    })
-  }
-}
-
 const Dialog = DialogPrimitive.Root
+
 const DialogTrigger = DialogPrimitive.Trigger
-const RadixDialogPortal = DialogPrimitive.Portal 
+
+const DialogPortal = DialogPrimitive.Portal
+
 const DialogClose = DialogPrimitive.Close
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => {
-  console.log("--- DialogOverlay component function CALLED (v3 log active) ---");
-  const localRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const element = localRef.current;
-    if (element) {
-      const computedStyle = window.getComputedStyle(element);
-      console.log("--- DialogOverlay Debug Info (useEffect v3 log active) ---");
-      console.log("Overlay Element HTML (mount v3):", element.outerHTML.substring(0, Math.min(element.outerHTML.indexOf('>') + 1, 200)) ); // Increased length
-      console.log("Overlay className (mount v3):", element.className);
-      console.log("Computed backgroundColor (mount v3):", computedStyle.backgroundColor);
-      console.log("Computed opacity (mount v3):", computedStyle.opacity);
-      console.log("---------------------------------------");
-    } else {
-      console.log("--- DialogOverlay Debug Info (useEffect v3 log active): localRef.current is null ---");
-    }
-  }, []);
+  // console.log("--- DialogOverlay component function CALLED (v3 log active) ---");
+  // React.useEffect(() => {
+  //   if (ref && 'current' in ref && ref.current) {
+  //     const element = ref.current;
+  //     console.log("--- DialogOverlay Debug Info (useEffect v3 log active) ---");
+  //     console.log("Overlay Element HTML (mount v3):", element.outerHTML);
+  //     console.log("Overlay className (mount v3):", element.className);
+  //     const styles = window.getComputedStyle(element);
+  //     console.log("Computed backgroundColor (mount v3):", styles.backgroundColor);
+  //     console.log("Computed opacity (mount v3):", styles.opacity);
+  //     console.log("---------------------------------------");
+  //   } else {
+      // Fallback if ref is not directly available or component unmounts quickly
+      // This is less reliable for computed styles right at mount
+  //     const fallbackElement = document.querySelector('[data-radix-dialog-overlay="true"][data-state="open"]');
+  //     if (fallbackElement) {
+  //       console.log("--- DialogOverlay Debug Info (useEffect v3 log active fallback) ---");
+  //       console.log("Overlay Element HTML (mount v3 fallback):", fallbackElement.outerHTML);
+  //       console.log("Overlay className (mount v3 fallback):", fallbackElement.className);
+  //       const styles = window.getComputedStyle(fallbackElement);
+  //       console.log("Computed backgroundColor (mount v3 fallback):", styles.backgroundColor);
+  //       console.log("Computed opacity (mount v3 fallback):", styles.opacity);
+  //       console.log("---------------------------------------");
+  //     }
+  //   }
+  // }, [ref]); // Add ref to dependency array if using it directly
 
   return (
     <DialogPrimitive.Overlay
-      ref={mergeRefs([ref, localRef])}
+      ref={ref}
       className={cn(
-        "fixed inset-0 z-50 bg-black/80", // Restored bg-black/80, this is the key class
-        // Animation classes remain commented out:
+        "fixed inset-0 z-50 bg-black/80",
         // "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className
       )}
       {...props}
     />
-  )
-})
+  );
+});
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
-  <RadixDialogPortal> 
-    <DialogOverlay /> {/* This will use our debugged DialogOverlay */}
+  <DialogPortal>
+    <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
@@ -84,7 +80,7 @@ const DialogContent = React.forwardRef<
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
-  </RadixDialogPortal>
+  </DialogPortal>
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
@@ -146,7 +142,7 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName
 export {
   Dialog,
   DialogTrigger,
-  RadixDialogPortal as DialogPortal,
+  DialogPortal,
   DialogClose,
   DialogOverlay,
   DialogContent,
@@ -154,5 +150,4 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
-  FramerAnimatePresence as AnimatePresence, 
 }
