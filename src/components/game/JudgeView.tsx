@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { GameClientState, PlayerClientState } from '@/lib/types'; 
+import type { GameClientState, PlayerClientState } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,12 +13,13 @@ import ScenarioDisplay from './ScenarioDisplay';
 import { cn } from '@/lib/utils';
 import { handleJudgeApprovalForCustomCard } from '@/app/game/actions';
 import Image from 'next/image';
+import { AnimatePresence, motion } from 'framer-motion';
 
 
 interface JudgeViewProps {
-  gameState: GameClientState; 
-  judge: PlayerClientState;    
-  onSelectCategory: (category: string) => Promise<void>; 
+  gameState: GameClientState;
+  judge: PlayerClientState;
+  onSelectCategory: (category: string) => Promise<void>;
   onSelectWinner: (cardText: string) => Promise<void>;
 }
 
@@ -31,34 +32,29 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const { toast } = useToast();
 
   const [shuffledSubmissions, setShuffledSubmissions] = useState<GameClientState['submissions']>([]);
-  const [judgingRound, setJudgingRound] = useState<number | null>(null); // Keep track of the round for which submissions were shuffled
+  const [judgingRound, setJudgingRound] = useState<number | null>(null);
 
-  // Manage modal visibility based on game phase
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
 
   useEffect(() => {
-    // Reset selections if phase changes away from judging or category selection
     if (gameState.gamePhase !== 'judging') {
         setSelectedWinningCard('');
     }
     if (gameState.gamePhase !== 'category_selection') {
-        setSelectedCategory(''); 
+        setSelectedCategory('');
     }
   }, [gameState.gamePhase]);
 
 
   useEffect(() => {
     if (gameState.gamePhase === 'judging') {
-      // Shuffle submissions only if it's a new round for judging or if the submissions content has changed for the current judging round.
-      // This prevents re-shuffling on every minor re-render within the 'judging' phase.
-      if (judgingRound !== gameState.currentRound || gameState.submissions.length !== shuffledSubmissions.length || 
+      if (judgingRound !== gameState.currentRound || gameState.submissions.length !== shuffledSubmissions.length ||
           !gameState.submissions.every(s => shuffledSubmissions.find(ss => ss.cardText === s.cardText && ss.playerId === s.playerId))) {
         const newShuffled = [...gameState.submissions].sort(() => Math.random() - 0.5);
         setShuffledSubmissions(newShuffled);
         setJudgingRound(gameState.currentRound);
       }
     } else {
-      // If not in judging phase, clear the shuffled submissions and round tracker.
       if (shuffledSubmissions.length > 0) setShuffledSubmissions([]);
       if (judgingRound !== null) setJudgingRound(null);
     }
@@ -71,7 +67,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       return;
     }
     startTransitionCategory(async () => {
-      await onSelectCategory(selectedCategory); 
+      await onSelectCategory(selectedCategory);
       toast({ title: "Category Selected!", description: `Scenario from "${selectedCategory}" is up!` });
     });
   };
@@ -104,13 +100,19 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const lastRoundWinnerForModal = gameState.lastWinner?.player;
   const lastRoundCardTextForModal = gameState.lastWinner?.cardText;
 
+  const scenarioAnimationProps = {
+    initial: { opacity: 0, scale: 0.95 },
+    animate: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] } },
+    exit: { opacity: 0, scale: 0.95, transition: { duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] } }
+  };
+
 
   return (
     <div className="space-y-8">
       <Card className="shadow-lg border-2 border-accent rounded-xl">
         <CardHeader className="bg-accent text-accent-foreground p-6">
           <div className="flex items-center justify-between mb-1">
-            <div className="flex-1"> 
+            <div className="flex-1">
               <CardTitle className="text-3xl font-bold flex items-center">
                 <Gavel className="mr-3 h-8 w-8" /> You are the Judge!
               </CardTitle>
@@ -118,19 +120,19 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                 Wield your power with terrible responsibility.
               </CardDescription>
             </div>
-            <div className="flex items-center text-right ml-4"> 
+            <div className="flex items-center text-right ml-4">
               {judge.avatar && judge.avatar.startsWith('/') ? (
                 <Image
                   src={judge.avatar}
                   alt={`${judge.name}'s avatar`}
                   width={56}
                   height={56}
-                  className="rounded-md object-cover mr-3" 
+                  className="rounded-md object-cover mr-3"
                 />
               ) : (
-                <span className="text-5xl mr-3">{judge.avatar}</span> 
+                <span className="text-5xl mr-3">{judge.avatar}</span>
               )}
-              <div className="min-w-0"> 
+              <div className="min-w-0">
                 <p className="text-xl font-semibold truncate max-w-[150px] sm:max-w-[200px]">{judge.name}</p>
                 <p className="text-md text-accent-foreground/90">{judge.score} pts</p>
               </div>
@@ -158,9 +160,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                 ))}
               </SelectContent>
             </Select>
-            <Button 
-              onClick={handleCategorySubmit} 
-              disabled={!isUnleashScenarioButtonActive} 
+            <Button
+              onClick={handleCategorySubmit}
+              disabled={!isUnleashScenarioButtonActive}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold py-3"
             >
               {isPendingCategory ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
@@ -170,9 +172,17 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
         </Card>
       )}
 
-      {gameState.gamePhase === 'player_submission' && gameState.currentScenario && (
+      {gameState.gamePhase === 'player_submission' && (
         <>
-          <ScenarioDisplay scenario={gameState.currentScenario} />
+          <AnimatePresence mode="wait">
+            {gameState.currentScenario && (
+              <ScenarioDisplay
+                key={gameState.currentScenario.id || 'scenario-player-submission'}
+                scenario={gameState.currentScenario}
+                {...scenarioAnimationProps}
+              />
+            )}
+          </AnimatePresence>
           <Card className="text-center shadow-lg border-2 border-muted rounded-xl">
             <CardHeader>
               <CardTitle className="text-2xl font-semibold text-foreground">Players are Submitting...</CardTitle>
@@ -186,9 +196,17 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
         </>
       )}
 
-      {gameState.gamePhase === 'judging' && gameState.currentScenario && (
+      {gameState.gamePhase === 'judging' && (
         <>
-          <ScenarioDisplay scenario={gameState.currentScenario} />
+          <AnimatePresence mode="wait">
+           {gameState.currentScenario && (
+              <ScenarioDisplay
+                key={gameState.currentScenario.id || 'scenario-judging'}
+                scenario={gameState.currentScenario}
+                {...scenarioAnimationProps}
+              />
+            )}
+          </AnimatePresence>
           <Card className="shadow-lg border-2 border-secondary rounded-xl">
             <CardHeader className="bg-secondary text-secondary-foreground p-6">
               <CardTitle className="text-2xl font-semibold flex items-center"><Crown className="mr-2 h-6 w-6" /> Judge the Submissions</CardTitle>
@@ -198,7 +216,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               {shuffledSubmissions.length > 0 ? (
                 shuffledSubmissions.map((submission) => (
                   <Button
-                    key={submission.playerId + submission.cardText} 
+                    key={submission.playerId + submission.cardText}
                     variant={selectedWinningCard === submission.cardText ? "default" : "outline"}
                     onClick={() => setSelectedWinningCard(submission.cardText)}
                     className={`w-full h-auto p-4 text-left text-lg whitespace-normal justify-start
@@ -209,12 +227,12 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                 ))
               ) : (
                  gameState.submissions.length > 0 ?
-                    <p className="text-muted-foreground text-center">Shuffling submissions...</p> : // Should be brief
+                    <p className="text-muted-foreground text-center">Shuffling submissions...</p> :
                     <p className="text-muted-foreground text-center">No submissions yet, or waiting for submissions to load!</p>
               )}
-              <Button 
-                onClick={handleWinnerSubmit} 
-                disabled={!isCrownWinnerButtonActive} 
+              <Button
+                onClick={handleWinnerSubmit}
+                disabled={!isCrownWinnerButtonActive}
                 className={cn(
                   "w-full bg-gradient-to-br from-accent/80 via-accent to-accent/70 text-accent-foreground text-lg font-semibold py-3 mt-4 border-2 border-primary",
                   isCrownWinnerButtonActive && 'animate-border-pulse'
@@ -228,9 +246,17 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
         </>
       )}
 
-      {gameState.gamePhase === 'judge_approval_pending' && gameState.currentScenario && (
+      {gameState.gamePhase === 'judge_approval_pending' && (
          <>
-          <ScenarioDisplay scenario={gameState.currentScenario} />
+          <AnimatePresence mode="wait">
+            {gameState.currentScenario && (
+              <ScenarioDisplay
+                key={gameState.currentScenario.id || 'scenario-approval'}
+                scenario={gameState.currentScenario}
+                {...scenarioAnimationProps}
+              />
+            )}
+          </AnimatePresence>
            <Card className="text-center shadow-lg border-2 border-yellow-400 rounded-xl">
              <CardHeader className="bg-yellow-100 dark:bg-yellow-900">
                <CardTitle className="text-2xl font-semibold text-yellow-700 dark:text-yellow-300">Custom Card Won!</CardTitle>
@@ -267,17 +293,17 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             </p>
           </div>
           <AlertDialogFooter className="p-6 bg-muted/50 rounded-b-lg">
-            <Button 
-                variant="outline" 
-                onClick={() => handleApprovalDecision(false)} 
+            <Button
+                variant="outline"
+                onClick={() => handleApprovalDecision(false)}
                 disabled={isPendingApproval}
                 className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
             >
-                {isPendingApproval ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4"/>} 
+                {isPendingApproval ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4"/>}
                 No, Just This Round
             </Button>
-            <Button 
-                onClick={() => handleApprovalDecision(true)} 
+            <Button
+                onClick={() => handleApprovalDecision(true)}
                 disabled={isPendingApproval}
                 className="bg-green-500 hover:bg-green-600 text-white"
             >
@@ -291,6 +317,3 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
-    
-
-    
