@@ -102,8 +102,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
 
   const scenarioAnimationProps = {
     initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] } },
-    exit: { opacity: 0, scale: 0.95, transition: { duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] } }
+    animate: { opacity: 1, scale: 1, transition: { duration: 0.7, ease: [0.04, 0.62, 0.23, 0.98] } }, // Increased duration
+    exit: { opacity: 0, scale: 0.95, transition: { duration: 0.5, ease: [0.04, 0.62, 0.23, 0.98] } } // Increased duration
   };
 
 
@@ -177,7 +177,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
           <AnimatePresence mode="wait">
             {gameState.currentScenario && (
               <ScenarioDisplay
-                key={gameState.currentScenario.id || 'scenario-player-submission'}
+                key={gameState.currentScenario.id || 'scenario-player-submission-judge'}
                 scenario={gameState.currentScenario}
                 {...scenarioAnimationProps}
               />
@@ -201,7 +201,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
           <AnimatePresence mode="wait">
            {gameState.currentScenario && (
               <ScenarioDisplay
-                key={gameState.currentScenario.id || 'scenario-judging'}
+                key={gameState.currentScenario.id || 'scenario-judging-active'}
                 scenario={gameState.currentScenario}
                 {...scenarioAnimationProps}
               />
@@ -216,7 +216,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               {shuffledSubmissions.length > 0 ? (
                 shuffledSubmissions.map((submission) => (
                   <Button
-                    key={submission.playerId + submission.cardText}
+                    key={submission.playerId + submission.cardText} // Consider a more stable key if cardText can be identical for different submissions in a rare case
                     variant={selectedWinningCard === submission.cardText ? "default" : "outline"}
                     onClick={() => setSelectedWinningCard(submission.cardText)}
                     className={`w-full h-auto p-4 text-left text-lg whitespace-normal justify-start
@@ -251,7 +251,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
           <AnimatePresence mode="wait">
             {gameState.currentScenario && (
               <ScenarioDisplay
-                key={gameState.currentScenario.id || 'scenario-approval'}
+                key={gameState.currentScenario.id || 'scenario-approval-judge'}
                 scenario={gameState.currentScenario}
                 {...scenarioAnimationProps}
               />
@@ -317,3 +317,4 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
+

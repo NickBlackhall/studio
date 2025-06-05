@@ -115,14 +115,20 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
   const cardAnimation = {
     initial: { opacity: 0, y: 20, scale: 0.95 },
-    animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: "easeOut" } },
-    exit: { opacity: 0, x: -50, scale: 0.9, transition: { duration: 0.2, ease: "easeIn" } }
+    animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.6, ease: "easeOut" } }, // Increased duration
+    exit: { opacity: 0, x: -50, scale: 0.9, transition: { duration: 0.5, ease: "easeIn" } } // Increased duration
   };
 
   const scenarioAnimationProps = {
     initial: { opacity: 0, scale: 0.95 },
-    animate: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] } },
-    exit: { opacity: 0, scale: 0.95, transition: { duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] } }
+    animate: { opacity: 1, scale: 1, transition: { duration: 0.7, ease: [0.04, 0.62, 0.23, 0.98] } }, // Increased duration
+    exit: { opacity: 0, scale: 0.95, transition: { duration: 0.5, ease: [0.04, 0.62, 0.23, 0.98] } } // Increased duration
+  };
+
+  const customCardSlotAnimation = {
+    initial:{ opacity: 0, height: 0, y: -10 },
+    animate:{ opacity: 1, height: 'auto', y: 0, transition: { duration: 0.5, ease: "easeOut" } }, // Increased duration
+    exit:{ opacity: 0, height: 0, y: -10, transition: { duration: 0.4, ease: "easeIn" } } // Increased duration
   };
 
 
@@ -161,7 +167,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         <AnimatePresence mode="wait">
             {gameState.currentScenario && (
                  <ScenarioDisplay
-                    key={gameState.currentScenario.id || 'scenario'}
+                    key={gameState.currentScenario.id || 'scenario-submitted'}
                     scenario={gameState.currentScenario}
                     {...scenarioAnimationProps}
                   />
@@ -186,7 +192,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         <AnimatePresence mode="wait">
             {gameState.currentScenario && (
                  <ScenarioDisplay
-                    key={gameState.currentScenario.id || 'scenario'}
+                    key={gameState.currentScenario.id || 'scenario-judging'}
                     scenario={gameState.currentScenario}
                     {...scenarioAnimationProps}
                   />
@@ -226,7 +232,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       <AnimatePresence mode="wait">
         {gameState.currentScenario && (
              <ScenarioDisplay
-                key={gameState.currentScenario.id || 'scenario'}
+                key={gameState.currentScenario.id || 'scenario-submission-active'}
                 scenario={gameState.currentScenario}
                 {...scenarioAnimationProps}
               />
@@ -243,9 +249,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             {isEditingCustomCard ? (
               <motion.div
                 key={CUSTOM_CARD_ID_EDIT}
-                initial={{ opacity: 0, height: 0, y: -10 }}
-                animate={{ opacity: 1, height: 'auto', y: 0, transition: { duration: 0.3, ease: "easeOut" } }}
-                exit={{ opacity: 0, height: 0, y: -10, transition: { duration: 0.2, ease: "easeIn" } }}
+                layout
+                {...customCardSlotAnimation}
                 className="space-y-2 p-3 border-2 border-accent rounded-md shadow-md bg-background"
               >
                 <Textarea
@@ -267,9 +272,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               <motion.button
                 key={CUSTOM_CARD_ID_DISPLAY}
                 layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
+                {...customCardSlotAnimation}
                 onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
                 className={cn(
                   `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group`,
@@ -304,7 +307,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                     selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
                       ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
                       : (isNewCardVisual
-                          ? 'border-2 border-red-400 hover:border-red-500' // More prominent "new" indication
+                          ? 'border-2 border-red-400 hover:border-red-500' 
                           : 'border border-gray-400 hover:border-foreground'
                         ),
                     selectedCardText !== card.text && 'hover:bg-muted/50'
@@ -314,7 +317,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   {isNewCardVisual && (
                     <motion.span
                       initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1, transition: { delay: 0.3 } }}
+                      animate={{ opacity: 1, scale: 1, transition: { delay: 0.5, duration: 0.4 } }} // Increased delay and duration
                       className="absolute bottom-1 right-2 text-xs font-semibold text-red-500 bg-white/80 px-1.5 py-0.5 rounded"
                     >
                       New!
@@ -345,3 +348,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 }
+
