@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from 'next/image';
@@ -16,19 +15,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-  DialogPortal,
-  DialogOverlay
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 
 
 export const dynamic = 'force-dynamic';
-
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -46,8 +38,6 @@ export default function WelcomePage() {
   const isMountedRef = useRef(true);
   const { showGlobalLoader, hideGlobalLoader } = useLoading();
   
-  const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
-
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
 
@@ -67,10 +57,12 @@ export default function WelcomePage() {
   const setGame = useCallback((newGameState: GameClientState | null) => {
     gameRef.current = newGameState; 
     if (isMountedRef.current) {
+      // If newGameState has ready_player_order_str, parse it here before setting
       if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
         const rpoArray = parseReadyPlayerOrderStr(newGameState);
         setInternalGame({ ...newGameState, ready_player_order: rpoArray });
       } else if (newGameState) {
+        // If no ready_player_order_str, ensure ready_player_order is at least an empty array
         setInternalGame({ ...newGameState, ready_player_order: newGameState.ready_player_order || [] });
       } else {
         setInternalGame(null);
@@ -89,13 +81,14 @@ export default function WelcomePage() {
     const isInitialOrResetCall = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || (!gameRef.current?.gameId && !gameIdToFetch);
     
     if (isInitialOrResetCall && isMountedRef.current) {
-      // setIsLoading(true); 
+      // setIsLoading(true); // Managed by global loader
     }
     
     try {
       let fetchedGameState = await getGame(gameIdToFetch); 
       
       if (fetchedGameState) {
+        // Client-side workaround for RPO being undefined or ensuring it's parsed
         if (typeof fetchedGameState.ready_player_order_str === 'string') {
             fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
         } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
@@ -352,6 +345,7 @@ export default function WelcomePage() {
         let updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
         if (isMountedRef.current) {
           if (updatedGameState) {
+             // Parse ready_player_order_str from the action's response
             if (typeof updatedGameState.ready_player_order_str === 'string') {
               updatedGameState.ready_player_order = parseReadyPlayerOrderStr(updatedGameState);
             } else if (typeof updatedGameState.ready_player_order === 'undefined' || !Array.isArray(updatedGameState.ready_player_order)) {
@@ -614,20 +608,9 @@ export default function WelcomePage() {
           </div>
 
           <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
-             <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80">
-                  <HelpCircle className="mr-2 h-5 w-5" /> How to Play
-                </Button>
-              </DialogTrigger>
-              {isHowToPlayModalOpen && (
-                <DialogPortal>
-                  <DialogOverlay />
-                  <DialogContent>
-                    <HowToPlayModalContent />
-                  </DialogContent>
-                </DialogPortal>
-              )}
+            <Dialog>
+              <DialogTrigger asChild><Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80"><HelpCircle className="mr-2 h-5 w-5" /> How to Play</Button></DialogTrigger>
+              <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
             </Dialog>
             <Button onClick={handleResetGame} variant="destructive" className="hover:bg-destructive/80" disabled={isProcessingAction || isLoading }>
               { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
@@ -649,20 +632,9 @@ export default function WelcomePage() {
         <Button onClick={() => { showGlobalLoader(); router.push('/?step=setup');}} variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out">
           Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
         </Button>
-        <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-7">
-              <HelpCircle className="mr-2 h-6 w-6" /> How to Play
-            </Button>
-          </DialogTrigger>
-          {isHowToPlayModalOpen && (
-            <DialogPortal>
-              <DialogOverlay />
-              <DialogContent>
-                <HowToPlayModalContent />
-              </DialogContent>
-            </DialogPortal>
-          )}
+        <Dialog>
+          <DialogTrigger asChild><Button variant="outline" size="lg" className="text-lg px-8 py-7"><HelpCircle className="mr-2 h-6 w-6" /> How to Play</Button></DialogTrigger>
+          <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
         </Dialog>
       </div>
       <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
