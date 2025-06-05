@@ -2,71 +2,59 @@
 "use client"
 
 import * as React from "react"
-import * as DialogPrimitive from "@radix-ui/react-dialog" // Corrected from react-alert-dialog if that was a prior typo
+import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
-
+import { motion, AnimatePresence as FramerAnimatePresence } from "framer-motion" // Keep for later
 import { cn } from "@/lib/utils"
 
+// Helper to merge refs if necessary
+function mergeRefs<T = any>(
+  refs: Array<React.MutableRefObject<T> | React.LegacyRef<T>>
+): React.RefCallback<T> {
+  return (value) => {
+    refs.forEach((ref) => {
+      if (typeof ref === "function") {
+        ref(value)
+      } else if (ref != null) {
+        (ref as React.MutableRefObject<T | null>).current = value
+      }
+    })
+  }
+}
+
 const Dialog = DialogPrimitive.Root
-
 const DialogTrigger = DialogPrimitive.Trigger
-
-const DialogPortal = DialogPrimitive.Portal
-
+const RadixDialogPortal = DialogPrimitive.Portal 
 const DialogClose = DialogPrimitive.Close
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => {
-  // AGGRESSIVE LOGGING AT THE VERY START OF THE COMPONENT FUNCTION
-  console.log("--- DialogOverlay component function CALLED ---");
+  console.log("--- DialogOverlay component function CALLED (v3 log active) ---");
+  const localRef = React.useRef<HTMLDivElement>(null);
 
-  // AGGRESSIVE VISUAL DEBUG - useEffect for computed styles after mount
   React.useEffect(() => {
-    const currentRef = ref && typeof ref !== 'function' ? ref.current : null; // Basic ref handling
-    if (currentRef) {
-      const element = currentRef;
+    const element = localRef.current;
+    if (element) {
       const computedStyle = window.getComputedStyle(element);
-      console.log("--- DialogOverlay Debug Info (useEffect) ---");
-      console.log("Overlay Element HTML (mount):", element.outerHTML.split('>')[0] + '>');
-      console.log("Overlay className (mount):", element.className);
-      console.log("Computed backgroundColor (mount):", computedStyle.backgroundColor);
-      console.log("Computed opacity (mount):", computedStyle.opacity);
+      console.log("--- DialogOverlay Debug Info (useEffect v3 log active) ---");
+      console.log("Overlay Element HTML (mount v3):", element.outerHTML.substring(0, Math.min(element.outerHTML.indexOf('>') + 1, 200)) ); // Increased length
+      console.log("Overlay className (mount v3):", element.className);
+      console.log("Computed backgroundColor (mount v3):", computedStyle.backgroundColor);
+      console.log("Computed opacity (mount v3):", computedStyle.opacity);
       console.log("---------------------------------------");
     } else {
-      // Fallback if ref is not immediately available or complex
-      const overlayElements = document.querySelectorAll('[data-radix-dialog-overlay]'); // More generic selector
-      if (overlayElements.length > 0) {
-        const element = overlayElements[overlayElements.length -1] as HTMLElement; // Assume last one if multiple
-         const computedStyle = window.getComputedStyle(element);
-         console.log("--- DialogOverlay Debug Info (useEffect fallback querySelector) ---");
-         console.log("Overlay Element HTML (mount fallback):", element.outerHTML.split('>')[0] + '>');
-         console.log("Overlay className (mount fallback):", element.className);
-         console.log("Computed backgroundColor (mount fallback):", computedStyle.backgroundColor);
-         console.log("Computed opacity (mount fallback):", computedStyle.opacity);
-         console.log("-----------------------------------------------------------------");
-      } else {
-        console.log("--- DialogOverlay Debug Info (useEffect): Overlay element not found via ref or querySelector ---");
-      }
+      console.log("--- DialogOverlay Debug Info (useEffect v3 log active): localRef.current is null ---");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array, runs on mount
+  }, []);
 
   return (
     <DialogPrimitive.Overlay
-      ref={ref}
-      data-radix-dialog-overlay // Add a data attribute for easier selection if needed
-      // AGGRESSIVE VISUAL DEBUG STYLES
-      style={{
-        border: "10px solid red",
-        backgroundColor: "rgba(0, 255, 0, 0.3)", // Semi-transparent green
-        zIndex: 10000 // Ensure it's on top
-      }}
+      ref={mergeRefs([ref, localRef])}
       className={cn(
-        "fixed inset-0", // Removed z-50 as it's in style, removed bg-black/80 to see green
-        // "fixed inset-0 z-50 bg-black/80", // Original attempt
-        // Animation classes are still commented out:
+        "fixed inset-0 z-50 bg-black/80", // Restored bg-black/80, this is the key class
+        // Animation classes remain commented out:
         // "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className
       )}
@@ -80,7 +68,7 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
-  <DialogPortal>
+  <RadixDialogPortal> 
     <DialogOverlay /> {/* This will use our debugged DialogOverlay */}
     <DialogPrimitive.Content
       ref={ref}
@@ -96,7 +84,7 @@ const DialogContent = React.forwardRef<
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
-  </DialogPortal>
+  </RadixDialogPortal>
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
@@ -158,7 +146,7 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName
 export {
   Dialog,
   DialogTrigger,
-  DialogPortal,
+  RadixDialogPortal as DialogPortal,
   DialogClose,
   DialogOverlay,
   DialogContent,
@@ -166,4 +154,5 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  FramerAnimatePresence as AnimatePresence, 
 }
