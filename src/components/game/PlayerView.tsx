@@ -28,7 +28,7 @@ const handContainerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.07, // Time between each card animating in
+      staggerChildren: 0.091, // Increased from 0.07
       delayChildren: 0.2,    // Delay after custom card slot, before first pre-dealt card
     },
   },
@@ -47,7 +47,7 @@ const cardCascadeVariants = {
 
 // Variants for the custom card slot (simplified)
 const customCardSlotInitial = { opacity: 0, y: -10 };
-const customCardSlotAnimate = { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } };
+const customCardSlotAnimate = { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut", delay: 0.1 } };
 const customCardSlotExit = { opacity: 0, transition: { duration: 0.2 }};
 
 
@@ -79,6 +79,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const hasSubmittedThisRound = gameState.submissions.some(sub => sub.playerId === player.id);
 
   useEffect(() => {
+    // This effect resets editing/selection states if the round changes, player becomes judge,
+    // phase changes away from submission, or if they've already submitted this round.
     if (player && (gameState.currentRound > 0 && (player.isJudge || gameState.gamePhase !== 'player_submission' || hasSubmittedThisRound))) {
         setIsEditingCustomCard(false);
         setCustomCardInputText('');
@@ -90,6 +92,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
 
   useEffect(() => {
+    // This effect manages the 1-second delay before switching UI after submission
     if (hasSubmittedThisRound && !allowUiSwitchAfterSubmit) {
       if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
       submissionTimeoutRef.current = setTimeout(() => {
@@ -101,6 +104,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       setAllowUiSwitchAfterSubmit(false);
       if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
     }
+    // Cleanup timeout on unmount or if dependencies change before timeout fires
     return () => {
       if (submissionTimeoutRef.current) {
         clearTimeout(submissionTimeoutRef.current);
@@ -112,18 +116,19 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const handleCustomCardEdit = () => {
     setCustomCardInputText(finalizedCustomCardText);
     setIsEditingCustomCard(true);
-    setSelectedCardText('');
-    setIsCustomCardSelectedAsSubmissionTarget(false);
+    setSelectedCardText(''); // Deselect any pre-dealt card
+    setIsCustomCardSelectedAsSubmissionTarget(false); // Ensure custom isn't marked as submission target yet
   };
 
   const handleCustomCardDone = () => {
     if (customCardInputText.trim() === '') {
         toast({ title: "Empty?", description: "Your custom card needs some text!", variant: "destructive"});
-        setFinalizedCustomCardText('');
+        setFinalizedCustomCardText(''); // Ensure empty if input was empty/whitespace
     } else {
         setFinalizedCustomCardText(customCardInputText.trim());
     }
     setIsEditingCustomCard(false);
+    // Automatically select the custom card if it has content
     if (customCardInputText.trim()) {
         setSelectedCardText(customCardInputText.trim());
         setIsCustomCardSelectedAsSubmissionTarget(true);
@@ -133,6 +138,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const handleSelectCard = (cardText: string, isCustom: boolean) => {
     setSelectedCardText(cardText);
     setIsCustomCardSelectedAsSubmissionTarget(isCustom);
+    // If custom card slot is clicked and it's not already finalized/being edited, enter edit mode.
      if (isCustom && !finalizedCustomCardText && !isEditingCustomCard) {
       handleCustomCardEdit();
     }
@@ -148,7 +154,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       return;
     }
 
+    // Determine the actual text to submit
     const textToSubmit = isCustomCardSelectedAsSubmissionTarget ? finalizedCustomCardText : selectedCardText;
+
     if (!textToSubmit.trim()) {
         toast({ title: "Empty Submission", description: "Your selected card is empty.", variant: "destructive"});
         return;
@@ -158,6 +166,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       try {
         await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
         toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
+        // UI switch will be handled by useEffect watching hasSubmittedThisRound & allowUiSwitchAfterSubmit
       } catch (error: any) {
         toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
       }
@@ -302,7 +311,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
                 {/* Container for Pre-dealt Cards with Staggering */}
                 <motion.div
-                  className="space-y-3" // Keeps cards vertically stacked
+                  className="space-y-3" 
                   variants={handContainerVariants}
                   initial="hidden"
                   animate="visible" 
@@ -316,8 +325,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                           <motion.button
                             key={card.id} 
                             variants={cardCascadeVariants}
-                            // initial, animate, exit for cascade are implicitly handled by parent's stagger
-                            // and AnimatePresence handles individual item exit/re-entry
                             layout 
                             onClick={() => handleSelectCard(card.text, false)}
                             className={cn(
@@ -325,7 +332,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                               selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
                                 ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
                                 : isNewCardVisual 
-                                  ? 'border-red-500 animate-pulse' // Keep pulse for visibility
+                                  ? 'border-red-500 animate-pulse' 
                                   : 'border-gray-400 hover:border-foreground bg-card',
                               selectedCardText !== card.text && !isNewCardVisual && 'hover:bg-muted/50'
                             )}
