@@ -2,7 +2,7 @@
 "use client";
 
 import Image from 'next/image';
-import { Dialog, DialogContent, DialogOverlay, DialogPortal } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import type { PlayerClientState } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -48,13 +48,14 @@ export default function RoundWinnerModal({
         <DialogContent
           className={cn(
             "p-0 sm:max-w-md md:max-w-lg border-none rounded-xl shadow-2xl",
-            "bg-transparent overflow-visible" 
+            "bg-transparent overflow-visible"
           )}
           onInteractOutside={(e) => e.preventDefault()}
         >
+          <DialogTitle className="sr-only">Round Winner</DialogTitle>
           {/* This div provides the yellow background and rounded corners */}
           <div className={cn(
-            "bg-yellow-400 text-black rounded-xl overflow-hidden p-6 md:p-8 relative" 
+            "bg-yellow-400 text-black rounded-xl overflow-hidden p-6 md:p-8 relative flex flex-col items-center justify-center"
           )}>
             {/* This inner div now just handles content layout */}
             <div className="relative flex flex-col items-center justify-center text-center space-y-4 md:space-y-6 w-full">
