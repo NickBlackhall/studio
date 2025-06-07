@@ -46,8 +46,8 @@ export default function RoundWinnerModal({
         <DialogOverlay className="bg-black/70" />
         <DialogContent 
           className={cn(
-            "p-0 sm:max-w-md md:max-w-lg border-none rounded-xl shadow-2xl overflow-visible", // Removed overflow-hidden, bg-yellow-400, shimmer-bg
-            "bg-transparent" // Ensure DialogContent itself has no interfering background
+            "p-0 sm:max-w-md md:max-w-lg border-none rounded-xl shadow-2xl", 
+            "bg-transparent overflow-visible" // Ensure DialogContent itself has no interfering background and allows overflow
           )}
           onInteractOutside={(e) => e.preventDefault()}
           hideCloseButton 
