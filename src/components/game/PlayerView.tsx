@@ -33,8 +33,16 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
+  // --- START ADDED CONSOLE LOGS ---
   useEffect(() => {
-    if (gameState.currentRound > 0) {
+    console.log("[PlayerView] useEffect: player.hand changed:", player.hand);
+  }, [player.hand]);
+  // --- END ADDED CONSOLE LOGS ---
+
+  useEffect(() => {
+    // Reset selections and custom card when round changes or player becomes judge
+    // This ensures a clean state for the new round or if the player's role changes.
+    if (gameState.currentRound > 0 ) { //Simplified condition: reset if round changed
         setIsEditingCustomCard(false);
         setCustomCardInputText('');
         setFinalizedCustomCardText('');
@@ -52,19 +60,18 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const handleCustomCardEdit = () => {
     setCustomCardInputText(finalizedCustomCardText);
     setIsEditingCustomCard(true);
-    setSelectedCardText(''); // Deselect any card if editing custom
+    setSelectedCardText(''); 
     setIsCustomCardSelectedAsSubmissionTarget(false);
   };
 
   const handleCustomCardDone = () => {
     if (customCardInputText.trim() === '') {
         toast({ title: "Empty?", description: "Your custom card needs some text!", variant: "destructive"});
-        setFinalizedCustomCardText(''); // Clear if submitted empty
+        setFinalizedCustomCardText(''); 
     } else {
         setFinalizedCustomCardText(customCardInputText.trim());
     }
     setIsEditingCustomCard(false);
-    // Automatically select the custom card for submission if it has content
     if (customCardInputText.trim()) {
         setSelectedCardText(customCardInputText.trim());
         setIsCustomCardSelectedAsSubmissionTarget(true);
@@ -75,7 +82,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     setSelectedCardText(cardText);
     setIsCustomCardSelectedAsSubmissionTarget(isCustom);
      if (isCustom && !finalizedCustomCardText && !isEditingCustomCard) {
-      handleCustomCardEdit(); // Trigger edit if empty custom card display is clicked
+      handleCustomCardEdit(); 
     }
   };
 
@@ -99,8 +106,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       try {
         await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
         toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
-
-        // Reset selection and custom card states after submission
         setSelectedCardText('');
         setIsCustomCardSelectedAsSubmissionTarget(false);
         setFinalizedCustomCardText('');
@@ -114,12 +119,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   };
 
   const isSubmitButtonActive = !isPending && !!selectedCardText.trim() && !hasSubmittedThisRound;
-
-  const cardHandAnimation = {
-    initial: { opacity: 0, y: 50 },
-    animate: { opacity: 1, y: 0, transition: { duration: 0.7, ease: "easeOut" } },
-    exit: { opacity: 0, y: -50, transition: { duration: 0.7, ease: "easeIn" } }
-  };
 
   const scenarioAnimationProps = {
     initial: { opacity: 0, scale: 0.90 },
@@ -229,6 +228,10 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     );
   }
 
+  // --- START ADDED CONSOLE LOG ---
+  console.log("[PlayerView] Rendering hand:", player.hand);
+  // --- END ADDED CONSOLE LOG ---
+
   return (
     <div className="space-y-6">
       <AnimatePresence mode="wait">
@@ -252,7 +255,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               <motion.div
                 key={CUSTOM_CARD_ID_EDIT}
                 layout
-                {...customCardSlotAnimation}
+                initial={{ opacity: 0, height: 0, y: -20 }}
+                animate={{ opacity: 1, height: 'auto', y: 0, transition: { duration: 0.5, ease: "easeOut" } }}
+                exit={{ opacity: 0, height: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } }}
                 className="space-y-2 p-3 border-2 border-accent rounded-md shadow-md bg-background"
               >
                 <Textarea
@@ -274,15 +279,17 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               <motion.button
                 key={CUSTOM_CARD_ID_DISPLAY}
                 layout
-                {...customCardSlotAnimation}
+                initial={{ opacity: 0, height: 0, y: -20 }}
+                animate={{ opacity: 1, height: 'auto', y: 0, transition: { duration: 0.5, ease: "easeOut" } }}
+                exit={{ opacity: 0, height: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } }}
                 onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
                 className={cn(
-                  `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group border-2`, 
-                  isCustomCardSelectedAsSubmissionTarget 
+                  `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group border-2`,
+                  isCustomCardSelectedAsSubmissionTarget
                     ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
-                    : finalizedCustomCardText 
-                      ? 'border-accent hover:border-accent-foreground hover:bg-accent/10' // Solid yellow if has text
-                      : 'border-dashed border-accent hover:border-accent-foreground hover:bg-accent/10' // Dashed yellow if placeholder
+                    : finalizedCustomCardText
+                      ? 'border-accent hover:border-accent-foreground hover:bg-accent/10' // Solid accent if has text
+                      : 'border-dashed border-accent hover:border-accent-foreground hover:bg-accent/10' // Dashed accent if placeholder
                 )}
               >
                 <span>{finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER}</span>
@@ -302,8 +309,10 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               return (
                 <motion.button
                   key={card.id}
-                  layout 
-                  {...cardHandAnimation}
+                  layout
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0, transition: { duration: 0.7, ease: "easeOut" } }}
+                  exit={{ opacity: 0, y: -50, transition: { duration: 0.7, ease: "easeIn" } }}
                   onClick={() => handleSelectCard(card.text, false)}
                   className={cn(
                     `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md border`,
@@ -320,7 +329,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   {isNewCardVisual && (
                     <motion.span
                       initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1, transition: { delay: 1, duration: 0.8 } }}
+                      animate={{ opacity: 1, scale: 1, transition: { delay: 1.2, duration: 0.8 } }} // Increased delay for badge
                       className="absolute bottom-1 right-2 text-xs font-semibold text-red-500 bg-white/80 px-1.5 py-0.5 rounded"
                     >
                       New!
@@ -351,6 +360,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 }
+    
+
     
 
     
