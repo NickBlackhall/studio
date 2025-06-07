@@ -47,23 +47,17 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     };
   }, []);
 
-  const simplifiedHandForLogging = (hand: PlayerHandCard[] | undefined) => {
-    if (!hand || !Array.isArray(hand)) return [];
-    return hand.map(c => ({ id: c.id, text: c.text.substring(0,15)+'...', isNew: c.isNew }));
-  }
-
   useEffect(() => {
-    console.log("[PlayerView] useEffect (player.hand dep): player.hand changed or player prop changed. Current hand:", player ? JSON.stringify(simplifiedHandForLogging(player.hand)) : "player prop is null/undefined");
+    // console.log("[PlayerView] useEffect (player.hand dep): player.hand changed or player prop changed. Current hand:", player ? JSON.stringify(player.hand?.map(c => ({id: c.id, text: c.text.substring(0,15)+'...', isNew: c.isNew}))) : "player prop is null/undefined");
   }, [player]);
 
 
-  // Corrected and simplified hasSubmittedThisRound logic
   const hasSubmittedThisRound = gameState.submissions.some(sub => sub.playerId === player.id);
 
   useEffect(() => {
-    console.log(`[PlayerView] useEffect (gameState deps): Round: ${gameState.currentRound}, Judge: ${player?.isJudge}, Phase: ${gameState.gamePhase}, hasSubmitted: ${hasSubmittedThisRound}`);
+    // console.log(`[PlayerView] useEffect (gameState deps): Round: ${gameState.currentRound}, Judge: ${player?.isJudge}, Phase: ${gameState.gamePhase}, hasSubmitted: ${hasSubmittedThisRound}`);
     if (player && (gameState.currentRound > 0 && (player.isJudge || gameState.gamePhase !== 'player_submission'))) {
-        console.log("[PlayerView] Clearing edit/selection states due to round/judge/phase change.");
+        // console.log("[PlayerView] Clearing edit/selection states due to round/judge/phase change.");
         setIsEditingCustomCard(false);
         setCustomCardInputText('');
         setFinalizedCustomCardText('');
@@ -76,26 +70,26 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
 
   useEffect(() => {
-    console.log(`[PlayerView] useEffect (allowUiSwitch logic): hasSubmittedThisRound: ${hasSubmittedThisRound}, allowUiSwitchAfterSubmit: ${allowUiSwitchAfterSubmit}`);
+    // console.log(`[PlayerView] useEffect (allowUiSwitch logic): hasSubmittedThisRound: ${hasSubmittedThisRound}, allowUiSwitchAfterSubmit: ${allowUiSwitchAfterSubmit}`);
     if (hasSubmittedThisRound && !allowUiSwitchAfterSubmit) {
-      console.log("[PlayerView] Setting timeout to allow UI switch.");
+      // console.log("[PlayerView] Setting timeout to allow UI switch.");
       if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
       submissionTimeoutRef.current = setTimeout(() => {
+        // console.log("[PlayerView] Timeout FIRED. Calling setAllowUiSwitchAfterSubmit(true)");
         if (isMountedRef.current) {
-          console.log("[PlayerView] Timeout FIRED. Calling setAllowUiSwitchAfterSubmit(true)");
           setAllowUiSwitchAfterSubmit(true);
         } else {
-          console.log("[PlayerView] Timeout FIRED, but component unmounted.");
+          // console.log("[PlayerView] Timeout FIRED, but component unmounted.");
         }
       }, 1000);
     } else if (!hasSubmittedThisRound) {
-      console.log("[PlayerView] Resetting allowUiSwitchAfterSubmit to false.");
+      // console.log("[PlayerView] Resetting allowUiSwitchAfterSubmit to false.");
       setAllowUiSwitchAfterSubmit(false);
       if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
     }
     return () => {
       if (submissionTimeoutRef.current) {
-        console.log("[PlayerView] Clearing submissionTimeoutRef in cleanup of allowUiSwitch logic useEffect.");
+        // console.log("[PlayerView] Clearing submissionTimeoutRef in cleanup of allowUiSwitch logic useEffect.");
         clearTimeout(submissionTimeoutRef.current);
       }
     };
@@ -146,7 +140,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         toast({ title: "Empty Submission", description: "Your selected card is empty.", variant: "destructive"});
         return;
     }
-    console.log(`[PlayerView] handleSubmit: Submitting card for player ${player.id}. Text: "${textToSubmit.substring(0,30)}...", isCustom: ${isCustomCardSelectedAsSubmissionTarget}. Current hand before submit call:`, player ? JSON.stringify(simplifiedHandForLogging(player.hand)) : "player prop is null/undefined");
+    // console.log(`[PlayerView] handleSubmit: Submitting card for player ${player.id}. Text: "${textToSubmit.substring(0,30)}...", isCustom: ${isCustomCardSelectedAsSubmissionTarget}. Current hand before submit call:`, player ? JSON.stringify(player.hand?.map(c=>({id:c.id, text: c.text.substring(0,15)+'...', isNew: c.isNew}))) : "player prop is null/undefined");
 
     startTransition(async () => {
       try {
@@ -159,7 +153,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     });
   };
 
-  console.log(`[PlayerView] Render. hasSubmittedThisRound: ${hasSubmittedThisRound}, allowUiSwitchAfterSubmit: ${allowUiSwitchAfterSubmit}, Phase: ${gameState.gamePhase}`);
+  // console.log(`[PlayerView] Render. hasSubmittedThisRound: ${hasSubmittedThisRound}, allowUiSwitchAfterSubmit: ${allowUiSwitchAfterSubmit}, Phase: ${gameState.gamePhase}`);
 
   if (!player) {
     return (
@@ -209,7 +203,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   if (gameState.gamePhase === 'player_submission' && gameState.currentScenario) {
     const showHandUi = !(hasSubmittedThisRound && allowUiSwitchAfterSubmit);
     const showSubmissionSentUi = hasSubmittedThisRound && allowUiSwitchAfterSubmit;
-    console.log(`[PlayerView] Conditions for UI display: showHandUi: ${showHandUi}, showSubmissionSentUi: ${showSubmissionSentUi}`);
+    // console.log(`[PlayerView] Conditions for UI display: showHandUi: ${showHandUi}, showSubmissionSentUi: ${showSubmissionSentUi}`);
 
     return (
       <div className="space-y-6">
@@ -270,6 +264,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 ) : (
                   <motion.button
                     key={CUSTOM_CARD_ID_DISPLAY}
+                    layout // Added layout for custom card slot transitions
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0, transition: { duration: 0.3, delay: 0.1 } }}
                     exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
@@ -300,7 +295,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                       return (
                         <motion.button
                           key={card.id}
-                          layout // Added layout back for the slide-up effect
+                          layout 
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }}
                           exit={{ opacity: 0, y: -20, transition: { duration: 0.3, ease: "easeIn" } }}
@@ -310,7 +305,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                             selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
                               ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
                               : isNewCardVisual 
-                                ? 'border-red-500 animate-pulse' // Restored new card styling
+                                ? 'border-red-500 animate-pulse' 
                                 : 'border-gray-400 hover:border-foreground',
                             selectedCardText !== card.text && !isNewCardVisual && 'hover:bg-muted/50'
                           )}
@@ -319,7 +314,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                           {isNewCardVisual && (
                             <motion.span 
                               initial={{ opacity: 0, scale: 0.5 }}
-                              animate={{ opacity: 1, scale: 1, transition: { delay: 0.6, duration: 0.3 } }} // Delay slightly after card animates in
+                              animate={{ opacity: 1, scale: 1, transition: { delay: 0.6, duration: 0.3 } }}
                               className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow-md"
                             >
                               NEW! <Sparkles className="inline-block h-3 w-3" />
@@ -395,6 +390,3 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
-    
-
-    
