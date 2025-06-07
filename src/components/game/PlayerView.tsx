@@ -48,12 +48,12 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   }, []);
 
   const simplifiedHandForLogging = (hand: PlayerHandCard[] | undefined) => {
-    if (!hand || !Array.isArray(hand)) return [];
+    if (!hand || !Array.isArray(hand)) return []; // Keep this small utility safe
     return hand.map(c => ({ id: c.id, text: c.text.substring(0,15)+'...', isNew: c.isNew }));
   }
 
   useEffect(() => {
-    console.log("[PlayerView] useEffect: player.hand changed. Current hand:", JSON.stringify(simplifiedHandForLogging(player?.hand)));
+    console.log("[PlayerView] useEffect: player.hand changed. Current hand:", JSON.stringify(simplifiedHandForLogging(player?.hand))); // player?.hand is fine for logging
   }, [player?.hand]);
   
   const hasSubmittedThisRound = gameState.submissions.some(
@@ -64,10 +64,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   );
 
   useEffect(() => {
-    // Reset local UI state if the round changes, player becomes judge, or game phase is no longer player_submission
-    // This prevents stale UI elements from persisting across different game states.
+    // Revert to direct player.isJudge assuming player is always defined when this runs
     if (player && (gameState.currentRound > 0 && (player.isJudge || gameState.gamePhase !== 'player_submission'))) {
-        // console.log(`[PlayerView] Round/Judge/Phase change detected. Game Phase: ${gameState.gamePhase}, Player is Judge: ${player.isJudge}, Round: ${gameState.currentRound}. Resetting local UI state.`);
         setIsEditingCustomCard(false);
         setCustomCardInputText('');
         setFinalizedCustomCardText('');
@@ -76,7 +74,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         setAllowUiSwitchAfterSubmit(false); 
         if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
     }
-  }, [gameState.currentRound, player?.isJudge, gameState.gamePhase, player]);
+  }, [gameState.currentRound, player, player.isJudge, gameState.gamePhase]);
 
 
   useEffect(() => {
@@ -141,7 +139,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         toast({ title: "Empty Submission", description: "Your selected card is empty.", variant: "destructive"});
         return;
     }
-    console.log(`[PlayerView] Submitting card for player ${player.id}. Text: "${textToSubmit.substring(0,30)}...", isCustom: ${isCustomCardSelectedAsSubmissionTarget}. Current hand before submit call:`, JSON.stringify(simplifiedHandForLogging(player?.hand)));
+    console.log(`[PlayerView] Submitting card for player ${player.id}. Text: "${textToSubmit.substring(0,30)}...", isCustom: ${isCustomCardSelectedAsSubmissionTarget}. Current hand before submit call:`, JSON.stringify(simplifiedHandForLogging(player?.hand))); // player?.hand for logging
     
     startTransition(async () => {
       try {
@@ -161,15 +159,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     animate: { opacity: 1, scale: 1, transition: { duration: 1.0, ease: [0.04, 0.62, 0.23, 0.98] } },
     exit: { opacity: 0, scale: 0.90, transition: { duration: 0.8, ease: [0.04, 0.62, 0.23, 0.98] } }
   };
-
-  if (!player) { // Gracefully handle if player prop is somehow null/undefined
-    return (
-      <Card className="text-center shadow-lg border-2 border-dashed border-destructive rounded-xl">
-        <CardHeader><CardTitle className="text-destructive">Player Data Error</CardTitle></CardHeader>
-        <CardContent><p>Player information is not available. Cannot render player view.</p></CardContent>
-      </Card>
-    );
-  }
 
   if (gameState.gamePhase === 'category_selection') {
     return (
@@ -202,7 +191,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   if (gameState.gamePhase === 'player_submission' && gameState.currentScenario) {
     return (
       <div className="space-y-6">
-        {/* Scenario Display - always attempt to show if a scenario exists */}
         <AnimatePresence mode="wait">
           {gameState.currentScenario && (
                <ScenarioDisplay
@@ -213,7 +201,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           )}
         </AnimatePresence>
 
-        {/* Main Card for Hand and Submission Status - Stays Mounted */}
+        {/* Main Card for Hand - Stays Mounted to keep AnimatePresence for cards alive */}
         <Card className="shadow-lg border-2 border-muted rounded-xl">
           <CardHeader className="p-6">
             <CardTitle className="text-2xl font-semibold flex items-center"><ListCollapse className="mr-2 h-6 w-6 text-primary" /> Your Hand of Horrors</CardTitle>
@@ -223,7 +211,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             
             {hasSubmittedThisRound && allowUiSwitchAfterSubmit ? (
               <motion.div 
-                key="submission-sent-view"
+                key="submission-sent-view-main" // Unique key
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1, transition: { duration: 0.5} }}
                 className="text-center py-8"
@@ -234,8 +222,11 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto mt-3" />
               </motion.div>
             ) : (
-              <motion.div key="hand-submission-view"> {/* Key for AnimatePresence to switch between this and "sent" view if desired later */}
+              // This motion.div wraps custom card UI and hand card AnimatePresence
+              // It's part of the conditional rendering.
+              <motion.div key="hand-and-custom-card-view"> 
                 {isEditingCustomCard ? (
+                  // Custom card editing UI (simplified, no AnimatePresence here for now)
                   <motion.div 
                     key={CUSTOM_CARD_ID_EDIT}
                     initial={{ opacity: 0, height: 0 }}
@@ -259,6 +250,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                     </div>
                   </motion.div>
                 ) : (
+                  // Custom card display/placeholder UI (simplified)
                   <motion.button
                     key={CUSTOM_CARD_ID_DISPLAY}
                     initial={{ opacity: 0 }}
@@ -266,12 +258,12 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                     exit={{ opacity: 0, transition: { duration: 0.2 } }}
                     onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
                     className={cn(
-                      `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group border-2`,
+                      `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group border-2`, // Base styling
                       isCustomCardSelectedAsSubmissionTarget
-                        ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
+                        ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' // Selected custom card
                         : finalizedCustomCardText
-                          ? 'border-solid border-accent hover:border-accent-foreground hover:bg-accent/10'
-                          : 'border-dashed border-accent hover:border-accent-foreground hover:bg-accent/10'
+                          ? 'border-solid border-accent hover:border-accent-foreground hover:bg-accent/10' // Finalized custom card
+                          : 'border-dashed border-accent hover:border-accent-foreground hover:bg-accent/10' // Placeholder custom card
                     )}
                   >
                     <span>{finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER}</span>
@@ -284,9 +276,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   </motion.button>
                 )}
 
+                {/* AnimatePresence for the actual hand cards */}
                 <AnimatePresence mode="wait">
-                  {/* Defensive check for player.hand */}
-                  {player.hand && Array.isArray(player.hand) && player.hand.map((card: PlayerHandCard) => (
+                  {player.hand.map((card: PlayerHandCard) => ( // Revert to direct mapping
                     <motion.button
                       key={card.id} 
                       initial={{ opacity: 0, y: 50 }}
@@ -294,10 +286,10 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                       exit={{ opacity: 0, y: -50, transition: { duration: 0.7, ease: "easeIn" } }}
                       onClick={() => handleSelectCard(card.text, false)}
                       className={cn(
-                        `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md border`,
+                        `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md border`, // Simplified base
                          selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
-                          ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
-                          : 'border-gray-400 hover:border-foreground',
+                          ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent' // Selected pre-dealt card
+                          : 'border-gray-400 hover:border-foreground', // Default pre-dealt card
                         selectedCardText !== card.text && 'hover:bg-muted/50'
                       )}
                     >
@@ -306,8 +298,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   ))}
                 </AnimatePresence>
                 
-                {/* Defensive check for player.hand.length */}
-                {(!player.hand || (Array.isArray(player.hand) && player.hand.length === 0)) && !isEditingCustomCard && !finalizedCustomCardText && (
+                {/* Revert to direct .length access */}
+                {player.hand.length === 0 && !isEditingCustomCard && !finalizedCustomCardText && (
                    <p className="text-muted-foreground text-center py-4">You're out of pre-dealt cards! Write one above.</p>
                 )}
               </motion.div>
