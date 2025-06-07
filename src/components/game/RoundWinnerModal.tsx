@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 interface RoundWinnerModalProps {
   isOpen: boolean;
-  onClose: () => void; // Or onOpenChange: (open: boolean) => void;
+  onClose: () => void;
   lastWinnerPlayer?: PlayerClientState;
   lastWinnerCardText?: string;
 }
@@ -37,7 +37,7 @@ export default function RoundWinnerModal({
   };
 
   if (!lastWinnerPlayer || !lastWinnerCardText) {
-    return null; // Don't render if essential data is missing
+    return null; 
   }
 
   return (
@@ -46,44 +46,48 @@ export default function RoundWinnerModal({
         <DialogOverlay className="bg-black/70" />
         <DialogContent 
           className={cn(
-            "shimmer-bg p-0 sm:max-w-md md:max-w-lg border-none rounded-xl overflow-hidden shadow-2xl",
-            "bg-yellow-400 text-black" // Bright yellow background
+            "p-0 sm:max-w-md md:max-w-lg border-none rounded-xl shadow-2xl overflow-visible", // Removed overflow-hidden, bg-yellow-400, shimmer-bg
+            "bg-transparent" // Ensure DialogContent itself has no interfering background
           )}
-          onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click
-          hideCloseButton // Hide the default X button
+          onInteractOutside={(e) => e.preventDefault()}
+          hideCloseButton 
         >
-          <div className="relative flex flex-col items-center justify-center text-center p-6 md:p-8 space-y-4 md:space-y-6">
-            <div className="w-full max-w-xs md:max-w-sm">
-              <Image 
-                src="/round-winner-banner.png" // User needs to add this to /public
-                alt="Round Winner!" 
-                width={400} 
-                height={150} // Adjust based on actual image aspect ratio
-                className="object-contain"
-                data-ai-hint="winner banner"
-                priority
-              />
-            </div>
+          {/* Inner div now handles background, shimmer, and rounded corners */}
+          <div className="shimmer-bg bg-yellow-400 text-black rounded-xl overflow-hidden">
+            <div className="relative flex flex-col items-center justify-center text-center p-6 md:p-8 space-y-4 md:space-y-6">
+              <div className="w-full max-w-xs md:max-w-sm">
+                <Image 
+                  src="/round-winner-banner.png" 
+                  alt="Round Winner!" 
+                  width={400} 
+                  height={150} 
+                  className="object-contain"
+                  data-ai-hint="winner banner"
+                  priority
+                />
+              </div>
 
-            <div className="flex items-center space-x-3 md:space-x-4">
-              {renderAvatar(lastWinnerPlayer.avatar, lastWinnerPlayer.name)}
-              <p className="text-2xl md:text-3xl font-bold truncate">
-                {lastWinnerPlayer.name}
+              <div className="flex items-center space-x-3 md:space-x-4">
+                {renderAvatar(lastWinnerPlayer.avatar, lastWinnerPlayer.name)}
+                <p className="text-2xl md:text-3xl font-bold truncate">
+                  {lastWinnerPlayer.name}
+                </p>
+              </div>
+              
+              <div className="w-full max-w-sm md:max-w-md p-4 bg-black rounded-lg border-2 border-red-500 shadow-md">
+                <p className="text-white text-lg md:text-xl font-medium leading-tight">
+                  {lastWinnerCardText}
+                </p>
+              </div>
+
+              <p className="text-sm text-black/70 animate-pulse pt-2">
+                Next round starting soon...
               </p>
             </div>
-            
-            <div className="w-full max-w-sm md:max-w-md p-4 bg-black rounded-lg border-2 border-red-500 shadow-md">
-              <p className="text-white text-lg md:text-xl font-medium leading-tight">
-                {lastWinnerCardText}
-              </p>
-            </div>
-
-            <p className="text-sm text-black/70 animate-pulse pt-2">
-              Next round starting soon...
-            </p>
           </div>
         </DialogContent>
       </DialogPortal>
     </Dialog>
   );
 }
+
