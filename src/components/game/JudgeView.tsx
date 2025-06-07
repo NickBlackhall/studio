@@ -68,7 +68,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     }
     startTransitionCategory(async () => {
       await onSelectCategory(selectedCategory);
-      toast({ title: "Category Selected!", description: `Scenario from "${selectedCategory}" is up!` });
+      // toast({ title: "Category Selected!", description: `Scenario from "${selectedCategory}" is up!` });
     });
   };
 
