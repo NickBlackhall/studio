@@ -46,16 +46,17 @@ export default function RoundWinnerModal({
         <DialogOverlay /> {/* Uses default styling from ui/dialog.tsx which includes bg-black/80 */}
         <DialogContent
           className={cn(
-            "p-6 md:p-8 sm:max-w-md md:max-w-lg border-none shadow-2xl", // Standard padding applied here
-            "bg-yellow-400 text-black rounded-xl overflow-hidden", // DialogContent itself is yellow
-            "flex flex-col items-center justify-center" // For centering content
+            "sm:max-w-md md:max-w-lg", // Sizing classes
+            "bg-yellow-400 text-black rounded-xl", // Core appearance: yellow background, black text, rounded
+            "border-none shadow-2xl" // Remove default border, add custom shadow
+            // Padding and internal layout will be handled by the div below
           )}
-          onInteractOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click
         >
           <DialogTitle className="sr-only">Round Winner</DialogTitle>
           
-          {/* Content directly inside the yellow DialogContent */}
-          <div className="relative flex flex-col items-center justify-center text-center space-y-4 md:space-y-6 w-full">
+          {/* Inner div for padding and content layout */}
+          <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center space-y-4 md:space-y-6 w-full">
             <div className="w-full max-w-xs md:max-w-sm">
               <Image
                 src="/round-winner-banner.png"
