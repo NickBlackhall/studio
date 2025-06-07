@@ -47,13 +47,13 @@ export default function RoundWinnerModal({
         <DialogContent 
           className={cn(
             "p-0 sm:max-w-md md:max-w-lg border-none rounded-xl shadow-2xl", 
-            "bg-transparent overflow-visible" // Ensure DialogContent itself has no interfering background and allows overflow
+            "bg-transparent overflow-visible" 
           )}
           onInteractOutside={(e) => e.preventDefault()}
           hideCloseButton 
         >
-          {/* Inner div now handles background, shimmer, and rounded corners */}
-          <div className="shimmer-bg bg-yellow-400 text-black rounded-xl overflow-hidden">
+          {/* Inner div now handles background, and rounded corners */}
+          <div className="bg-yellow-400 text-black rounded-xl overflow-hidden">
             <div className="relative flex flex-col items-center justify-center text-center p-6 md:p-8 space-y-4 md:space-y-6">
               <div className="w-full max-w-xs md:max-w-sm">
                 <Image 
@@ -90,4 +90,3 @@ export default function RoundWinnerModal({
     </Dialog>
   );
 }
-
