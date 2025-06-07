@@ -20,7 +20,7 @@ import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
 import PlayerView from '@/components/game/PlayerView';
 import WinnerDisplay from '@/components/game/WinnerDisplay';
-import RoundWinnerModal from '@/components/game/RoundWinnerModal'; // Import the new modal
+import RecapSequenceDisplay from '@/components/game/RecapSequenceDisplay';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -49,11 +49,12 @@ export default function GamePage() {
   const [isActionPending, startActionTransition] = useTransition(); 
   const router = useRouter();
   const { toast } = useToast();
-  const nextRoundTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { showGlobalLoader, hideGlobalLoader } = useLoading();
   const isMountedRef = useRef(true); 
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
-  const [isRoundWinnerModalOpen, setIsRoundWinnerModalOpen] = useState(false);
+
+  const [recapStep, setRecapStep] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
+  const recapStepTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 
   const setGameState = useCallback((newState: GameClientState | null) => {
@@ -140,8 +141,8 @@ export default function GamePage() {
     
     return () => {
         isMountedRef.current = false;
-        if (nextRoundTimeoutRef.current) {
-            clearTimeout(nextRoundTimeoutRef.current);
+        if (recapStepTimerRef.current) {
+            clearTimeout(recapStepTimerRef.current);
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -263,36 +264,56 @@ export default function GamePage() {
     };
   }, [gameState?.gameId, setGameState, setThisPlayer, router, toast]); 
 
+  // Effect to manage the recap sequence
   useEffect(() => {
-    const currentJudge = thisPlayerRef.current?.isJudge;
-    const currentPhase = gameStateRef.current?.gamePhase;
-    const currentGameId = gameStateRef.current?.gameId;
+    if (recapStepTimerRef.current) {
+      clearTimeout(recapStepTimerRef.current);
+    }
 
-    if (currentPhase === 'winner_announcement') {
-      setIsRoundWinnerModalOpen(true); // Open the modal
-      if (currentJudge) { // Only judge starts timer
-        console.log(`GamePage: Player ${thisPlayerRef.current?.name} is judge. Setting 5s timer for next round (modal open).`);
-        if (nextRoundTimeoutRef.current) {
-          clearTimeout(nextRoundTimeoutRef.current);
-        }
-        nextRoundTimeoutRef.current = setTimeout(() => {
-          if (isMountedRef.current && currentGameId && thisPlayerRef.current?.isJudge && gameStateRef.current?.gamePhase === 'winner_announcement') {
-            console.log(`GamePage: Timer expired for judge ${thisPlayerRef.current?.name}. Calling handleNextRound.`);
-            handleNextRound(); // This will change phase and modal will close
-          }
-        }, 5000);
+    if (gameState?.gamePhase === 'winner_announcement') {
+      if (recapStep === null) { // Start sequence if not already started
+        setRecapStep('winner');
       }
-    } else {
-      setIsRoundWinnerModalOpen(false); // Ensure modal is closed if not in winner_announcement
+    } else { // Game phase is not winner_announcement, clear sequence
+      setRecapStep(null);
+      return; // Exit early if not in winner_announcement phase
+    }
+    
+    // Handle step transitions
+    if (recapStep === 'winner') {
+      recapStepTimerRef.current = setTimeout(() => {
+        if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+          setRecapStep('scoreboard');
+        }
+      }, 5000);
+    } else if (recapStep === 'scoreboard') {
+      recapStepTimerRef.current = setTimeout(() => {
+        if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+          setRecapStep('getReady');
+        }
+      }, 5000);
+    } else if (recapStep === 'getReady') {
+      recapStepTimerRef.current = setTimeout(() => {
+        if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+          if (thisPlayerRef.current?.isJudge && gameStateRef.current?.gameId) {
+            console.log(`GamePage: Recap sequence finished for judge ${thisPlayerRef.current?.name}. Calling handleNextRound.`);
+            handleNextRound(); // This will change phase and recapStep will be set to null by the outer condition
+          } else {
+            // For non-judges, or if judge is slow, the sequence will just end.
+            // The server will eventually push the game to the next phase.
+            setRecapStep(null); 
+          }
+        }
+      }, 5000);
     }
 
     return () => {
-      if (nextRoundTimeoutRef.current) {
-        clearTimeout(nextRoundTimeoutRef.current);
+      if (recapStepTimerRef.current) {
+        clearTimeout(recapStepTimerRef.current);
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState?.gamePhase, thisPlayer?.isJudge]); 
+  }, [gameState?.gamePhase, recapStep, thisPlayer?.isJudge]);
 
 
   const handleStartGame = async () => {
@@ -345,7 +366,6 @@ export default function GamePage() {
       try {
         console.log(`GamePage: Calling nextRound server action for game ${gameState.gameId}`);
         await nextRound(gameState.gameId);
-        if (isMountedRef.current) setIsRoundWinnerModalOpen(false); // Close modal on successful next round
       } catch (error: any) {
         currentActionError = error; 
         console.error("GamePage: Error starting next round:", error);
@@ -515,11 +535,6 @@ export default function GamePage() {
             );
         }
     }
-
-    if (gameState.gamePhase === 'winner_announcement') {
-      // Modal is handled via state, this area can render base UI or nothing if modal covers all
-      return null; 
-    }
     
     if (gameState.gamePhase === 'game_over') {
       return <WinnerDisplay 
@@ -529,7 +544,7 @@ export default function GamePage() {
               />;
     }
 
-    if (gameState.gamePhase === 'lobby') {
+    if (gameState.gamePhase === 'lobby') { // Will only show if game became lobby while recap might have been considered
         return (
             <div className="text-center py-10">
                 <h2 className="text-2xl font-semibold mb-4">Game is in Lobby</h2>
@@ -541,6 +556,11 @@ export default function GamePage() {
         );
     }
     
+    // If in recap sequence, main game content is usually obscured by RecapSequenceDisplay
+    if (recapStep) {
+      return null; // Or a minimal background if RecapSequenceDisplay isn't full-screen
+    }
+
     if (thisPlayer?.isJudge) { 
       return <JudgeView gameState={gameState} judge={thisPlayer} onSelectCategory={handleSelectCategory} onSelectWinner={handleSelectWinner} />;
     }
@@ -559,84 +579,91 @@ export default function GamePage() {
   const shouldShowPlayerInfoBar = thisPlayer && 
                                   !thisPlayer.isJudge && 
                                   gameState.gamePhase !== 'winner_announcement' && 
-                                  gameState.gamePhase !== 'game_over';
+                                  gameState.gamePhase !== 'game_over' &&
+                                  !recapStep; // Also hide if recap is active
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 max-w-7xl mx-auto px-2">
-      <RoundWinnerModal 
-        isOpen={isRoundWinnerModalOpen}
-        onClose={() => setIsRoundWinnerModalOpen(false)} // Or handleNextRound can also close it by changing phase
-        lastWinnerPlayer={gameState.lastWinner?.player}
-        lastWinnerCardText={gameState.lastWinner?.cardText}
-      />
-      <main className="flex-grow w-full md:w-2/3 lg:w-3/4 relative order-1 md:order-2">
-        {showPendingOverlay && (
-            <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        )}
-        {shouldShowPlayerInfoBar && (
-          <Card className="mb-4 bg-accent text-accent-foreground shadow-lg">
-            <CardContent className="p-2 flex items-center justify-start text-left">
-              {thisPlayer.avatar && thisPlayer.avatar.startsWith('/') ? (
-                <Image 
-                  src={thisPlayer.avatar} 
-                  alt={`${thisPlayer.name}'s avatar`} 
-                  width={36} 
-                  height={36}
-                  className="mr-3 rounded-md object-cover"
-                  data-ai-hint="player avatar"
-                />
-              ) : (
-                <span className="text-3xl mr-3">{thisPlayer.avatar}</span>
-              )}
-              <p className="text-lg text-accent-foreground font-semibold">
-                <strong>{thisPlayer.name}</strong> - {thisPlayer.score} pts
-              </p>
-            </CardContent>
-          </Card>
-        )}
-        {renderGameContent()}
-      </main>
-      <aside className="w-full md:w-1/3 lg:w-1/4 order-2 md:order-1">
-        <Scoreboard players={gameState.players} currentJudgeId={gameState.currentJudgeId} />
-        <div className="mt-6 text-center space-y-2">
-          <p className="text-sm text-muted-foreground">Round {gameState.currentRound}</p>
-          <div className="flex flex-col sm:flex-row gap-2 justify-center">
-            <Link href="/?step=setup" className="inline-block" onClick={() => {  }}>
-              <Button variant="outline" size="sm" className="border-primary/50 text-primary/80 hover:bg-primary/10 hover:text-primary w-full sm:w-auto">
-                <Home className="mr-1 h-4 w-4" /> Exit to Lobby
-              </Button>
-            </Link>
-            <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="border-accent text-accent-foreground hover:bg-accent/80 w-full sm:w-auto">
-                  <HelpCircle className="mr-2 h-4 w-4" /> How to Play
+    <>
+      {recapStep && gameState && gameState.lastWinner && (
+        <RecapSequenceDisplay
+          recapStep={recapStep}
+          lastWinnerPlayer={gameState.lastWinner.player}
+          lastWinnerCardText={gameState.lastWinner.cardText}
+          players={gameState.players}
+          currentJudgeId={gameState.currentJudgeId}
+          // nextJudgeName - can be implemented later
+        />
+      )}
+      <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 max-w-7xl mx-auto px-2 ${recapStep ? 'opacity-20 pointer-events-none' : ''}`}>
+        <main className="flex-grow w-full md:w-2/3 lg:w-3/4 relative order-1 md:order-2">
+          {showPendingOverlay && (
+              <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
+                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              </div>
+          )}
+          {shouldShowPlayerInfoBar && (
+            <Card className="mb-4 bg-accent text-accent-foreground shadow-lg">
+              <CardContent className="p-2 flex items-center justify-start text-left">
+                {thisPlayer.avatar && thisPlayer.avatar.startsWith('/') ? (
+                  <Image 
+                    src={thisPlayer.avatar} 
+                    alt={`${thisPlayer.name}'s avatar`} 
+                    width={36} 
+                    height={36}
+                    className="mr-3 rounded-md object-cover"
+                    data-ai-hint="player avatar"
+                  />
+                ) : (
+                  <span className="text-3xl mr-3">{thisPlayer.avatar}</span>
+                )}
+                <p className="text-lg text-accent-foreground font-semibold">
+                  <strong>{thisPlayer.name}</strong> - {thisPlayer.score} pts
+                </p>
+              </CardContent>
+            </Card>
+          )}
+          {renderGameContent()}
+        </main>
+        <aside className="w-full md:w-1/3 lg:w-1/4 order-2 md:order-1">
+          <Scoreboard players={gameState.players} currentJudgeId={gameState.currentJudgeId} />
+          <div className="mt-6 text-center space-y-2">
+            <p className="text-sm text-muted-foreground">Round {gameState.currentRound}</p>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <Link href="/?step=setup" className="inline-block" onClick={() => {  }}>
+                <Button variant="outline" size="sm" className="border-primary/50 text-primary/80 hover:bg-primary/10 hover:text-primary w-full sm:w-auto">
+                  <Home className="mr-1 h-4 w-4" /> Exit to Lobby
                 </Button>
-              </DialogTrigger>
-              {isHowToPlayModalOpen && (
-                <DialogPortal>
-                  <DialogOverlay />
-                  <DialogContent>
-                    <HowToPlayModalContent />
-                  </DialogContent>
-                </DialogPortal>
-              )}
-            </Dialog>
+              </Link>
+              <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-accent text-accent-foreground hover:bg-accent/80 w-full sm:w-auto">
+                    <HelpCircle className="mr-2 h-4 w-4" /> How to Play
+                  </Button>
+                </DialogTrigger>
+                {isHowToPlayModalOpen && (
+                  <DialogPortal>
+                    <DialogOverlay />
+                    <DialogContent>
+                      <HowToPlayModalContent />
+                    </DialogContent>
+                  </DialogPortal>
+                )}
+              </Dialog>
+            </div>
+            <Button 
+              onClick={handleResetGameFromGamePage} 
+              variant="destructive" 
+              size="sm" 
+              className="w-full mt-2" 
+              disabled={isActionPending || isLoading}
+            >
+              { (isActionPending || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> } 
+              Reset Game (Testing)
+            </Button>
           </div>
-          <Button 
-            onClick={handleResetGameFromGamePage} 
-            variant="destructive" 
-            size="sm" 
-            className="w-full mt-2" 
-            disabled={isActionPending || isLoading}
-          >
-            { (isActionPending || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> } 
-            Reset Game (Testing)
-          </Button>
-        </div>
-      </aside>
-    </div>
+        </aside>
+      </div>
+    </>
   );
 }
 export const dynamic = 'force-dynamic';

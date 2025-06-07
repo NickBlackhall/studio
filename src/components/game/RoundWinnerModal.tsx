@@ -40,6 +40,8 @@ export default function RoundWinnerModal({
     return null;
   }
 
+  // Note: This component might be deprecated or heavily modified if the new RecapSequenceDisplay fully replaces it.
+  // The animation classes here might conflict or become irrelevant.
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogPortal>
@@ -50,9 +52,9 @@ export default function RoundWinnerModal({
             "bg-transparent p-0 border-none shadow-none", 
             "overflow-visible", 
             "z-[60]", 
-            "duration-1000", // This duration applies to the custom animation we are defining here
-            "data-[state=open]:fade-in data-[state=open]:zoom-in-100 data-[state=open]:slide-in-from-bottom-0 data-[state=open]:slide-in-from-left-0",
-            "data-[state=closed]:fade-out data-[state=closed]:zoom-out-100 data-[state=closed]:slide-out-to-bottom-0 data-[state=closed]:slide-out-to-left-0"
+            "data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:zoom-in-100 data-[state=open]:slide-in-from-bottom-0 data-[state=open]:slide-in-from-left-0",
+            "data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-100 data-[state=closed]:slide-out-to-bottom-0 data-[state=closed]:slide-out-to-left-0",
+            "duration-1000" // Explicitly kept from previous, might need adjustment
           )}
           onInteractOutside={(e) => e.preventDefault()} 
         >
