@@ -47,18 +47,22 @@ export default function RoundWinnerModal({
         <DialogContent
           className={cn(
             "sm:max-w-md md:max-w-lg", // Sizing classes
-            "bg-yellow-400 text-black rounded-xl", // Core appearance
-            "border-none shadow-2xl", // Remove default border, add custom shadow
-            "overflow-hidden", // To contain potential children effects like shimmer if re-added
-            "p-0", // Remove default padding, handle with inner div
+            // Make DialogContent itself a transparent, unpadded, unbordered, unshadowed container
+            "bg-transparent p-0 border-none shadow-none", 
+            "overflow-visible", // Allow inner shadow/content to not be clipped by this shell
             "z-[60]" // Ensure content is above overlay
           )}
           onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click
         >
           <DialogTitle className="sr-only">Round Winner</DialogTitle>
           
-          {/* Inner div for padding and content layout */}
-          <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center space-y-4 md:space-y-6 w-full">
+          {/* This inner div IS the yellow modal box with all styling */}
+          <div
+            className={cn(
+              "bg-yellow-400 text-black rounded-xl shadow-2xl overflow-hidden",
+              "p-6 md:p-8 flex flex-col items-center justify-center space-y-4 md:space-y-6 w-full"
+            )}
+          >
             <div className="w-full max-w-xs md:max-w-sm">
               <Image
                 src="/round-winner-banner.png"
