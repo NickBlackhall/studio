@@ -1,18 +1,18 @@
 
-"use client"; 
+"use client";
 
 import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation'; 
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { 
-  getGame, 
-  startGame, 
-  selectCategory, 
-  submitResponse, 
-  selectWinner, 
-  nextRound, 
+import {
+  getGame,
+  startGame,
+  selectCategory,
+  submitResponse,
+  selectWinner,
+  nextRound,
   getCurrentPlayer,
-  resetGameForTesting 
+  resetGameForTesting
 } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
@@ -28,9 +28,9 @@ import { Home, Play, Loader2, RefreshCw, HelpCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
-import { 
-  Dialog, 
-  DialogContent, 
+import {
+  Dialog,
+  DialogContent,
   DialogTrigger,
   DialogPortal,
   DialogOverlay
@@ -40,20 +40,21 @@ import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 
 export default function GamePage() {
   const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
-  const gameStateRef = useRef<GameClientState | null>(null); 
+  const gameStateRef = useRef<GameClientState | null>(null);
 
   const [thisPlayer, setThisPlayerInternal] = useState<PlayerClientState | null>(null);
-  const thisPlayerRef = useRef<PlayerClientState | null>(null); 
+  const thisPlayerRef = useRef<PlayerClientState | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true); 
-  const [isActionPending, startActionTransition] = useTransition(); 
+  const [isLoading, setIsLoading] = useState(true);
+  const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
   const { showGlobalLoader, hideGlobalLoader } = useLoading();
-  const isMountedRef = useRef(true); 
+  const isMountedRef = useRef(true);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
 
-  const [recapStep, setRecapStep] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
+  const [recapStep, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
+  const recapStepRef = useRef<'winner' | 'scoreboard' | 'getReady' | null>(null);
   const recapStepTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 
@@ -67,17 +68,23 @@ export default function GamePage() {
     if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
   }, []);
 
+  const setRecapStep = useCallback((newRecapState: 'winner' | 'scoreboard' | 'getReady' | null) => {
+    recapStepRef.current = newRecapState;
+    if (isMountedRef.current) setRecapStepInternal(newRecapState);
+  }, []);
+
+
   const gameState = internalGameState;
 
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     console.log(`GamePage: fetchGameAndPlayer called from ${origin}.`);
-    if (!isLoading && isMountedRef.current) { 
-        // setIsLoading(true); 
+    if (!isLoading && isMountedRef.current) {
+        // setIsLoading(true);
     }
     let localGameId: string | null = null;
     try {
-      const initialGameState = await getGame(); 
+      const initialGameState = await getGame();
       if (!isMountedRef.current) return;
 
       setGameState(initialGameState);
@@ -101,8 +108,8 @@ export default function GamePage() {
             if (!playerDetail) {
                 console.warn(`GamePage: Player ${playerIdFromStorage} could not be fetched for game ${localGameId}. Clearing localStorage.`);
                 localStorage.removeItem(`thisPlayerId_game_${localGameId}`);
-                 router.push('/?step=setup'); 
-                 return; 
+                 router.push('/?step=setup');
+                 return;
             }
             console.log(`GamePage: Fetched thisPlayer details directly (from ${origin}):`, playerDetail ? playerDetail.id : "null", `Hand: ${playerDetail?.hand?.length}`);
           }
@@ -114,7 +121,7 @@ export default function GamePage() {
         }
       } else if (initialGameState && initialGameState.gamePhase === 'lobby' && initialGameState.players.length === 0) {
         console.log("GamePage: Lobby is empty or no gameId after fetch, redirecting to setup.");
-        router.push('/?step=setup'); 
+        router.push('/?step=setup');
         return;
       } else if (!initialGameState || !initialGameState.gameId) {
         console.error("GamePage: Critical error - no gameId found after fetch. Redirecting to setup.");
@@ -128,17 +135,17 @@ export default function GamePage() {
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
-        hideGlobalLoader(); 
+        hideGlobalLoader();
       }
       console.log(`GamePage: fetchGameAndPlayer (from ${origin}) sequence ended. isLoading: ${false}`);
     }
-  }, [router, toast, isLoading, setGameState, setThisPlayer, hideGlobalLoader]); 
+  }, [router, toast, isLoading, setGameState, setThisPlayer, hideGlobalLoader]);
 
   useEffect(() => {
     isMountedRef.current = true;
     console.log("GamePage: Mounting. Starting initial data fetch.");
     fetchGameAndPlayer("initial mount");
-    
+
     return () => {
         isMountedRef.current = false;
         if (recapStepTimerRef.current) {
@@ -146,28 +153,28 @@ export default function GamePage() {
         }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, []);
 
   useEffect(() => {
-    if (!gameState || !gameState.gameId ) { 
+    if (!gameState || !gameState.gameId ) {
       console.log(`GamePage Realtime: Skipping subscription setup (no game/gameId). Current gameState ID: ${gameState?.gameId}`);
       return;
     }
     const gameId = gameState.gameId;
-    const currentPlayerId = thisPlayerRef.current?.id; 
+    const currentPlayerId = thisPlayerRef.current?.id;
 
     console.log(`GamePage Realtime: Setting up subscriptions for gameId: ${gameId}, thisPlayerId: ${currentPlayerId || 'N/A'}`);
 
     const commonPayloadHandler = async (originTable: string, payload: any) => {
       console.log(`>>> GamePage Realtime (${originTable} sub for game ${gameId}): CHANGE DETECTED!`, payload);
       if (!isMountedRef.current) return;
-      
-      const updatedFullGame = await getGame(gameId); 
+
+      const updatedFullGame = await getGame(gameId);
       if (!isMountedRef.current) return;
 
       if (updatedFullGame) {
-        const currentLocalPlayerId = thisPlayerRef.current?.id; 
-        
+        const currentLocalPlayerId = thisPlayerRef.current?.id;
+
         if (gameStateRef.current?.gamePhase === 'game_over' && updatedFullGame.gamePhase === 'lobby') {
           console.log(`GamePage Realtime: Currently on game_over screen (ref gameId: ${gameStateRef.current?.gameId}). Received update that game ${updatedFullGame.gameId} is now 'lobby'. Suppressing full gameState update to allow user interaction with WinnerDisplay.`);
           if (currentLocalPlayerId) {
@@ -175,12 +182,12 @@ export default function GamePage() {
             if (isMountedRef.current) setThisPlayer(latestPlayerDetails ? { ...latestPlayerDetails, hand: latestPlayerDetails.hand || [] } : null);
             console.log(`GamePage Realtime (game_over stickiness): Refreshed thisPlayer details. ID: ${latestPlayerDetails?.id}, Hand: ${latestPlayerDetails?.hand?.length}`);
           }
-          return; 
+          return;
         }
-        
+
         setGameState(updatedFullGame);
         console.log(`GamePage Realtime: Game state updated from ${originTable} event. GameID: ${updatedFullGame.gameId}, Phase: ${updatedFullGame.gamePhase}, Players: ${updatedFullGame.players.length}`);
-        
+
         if (currentLocalPlayerId) {
           const latestPlayerDetails = updatedFullGame.players.find(p => p.id === currentLocalPlayerId) || await getCurrentPlayer(currentLocalPlayerId, updatedFullGame.gameId);
            if (isMountedRef.current) setThisPlayer(latestPlayerDetails ? { ...latestPlayerDetails, hand: latestPlayerDetails.hand || [] } : null);
@@ -196,7 +203,7 @@ export default function GamePage() {
       } else {
         console.error(`GamePage Realtime: Failed to fetch updated game state after ${originTable} event for game ${gameId}.`);
         const currentPhase = gameStateRef.current?.gamePhase;
-        if (currentPhase !== 'game_over') { 
+        if (currentPhase !== 'game_over') {
             if (isMountedRef.current) toast({ title: "Game Update Error", description: "Lost connection to game, redirecting to lobby.", variant: "destructive" });
             router.push('/?step=setup');
         }
@@ -209,18 +216,18 @@ export default function GamePage() {
       { name: 'player-hands-updates', table: 'player_hands', filter: `game_id=eq.${gameId}`, event: '*' },
       { name: 'submissions-updates', table: 'responses', filter: `game_id=eq.${gameId}`, event: '*' }
     ];
-    
+
     const uniqueChannelSuffix = currentPlayerId || Date.now();
 
     const activeSubscriptions = channelsConfig.map(channelConfig => {
       const channelName = `${channelConfig.name}-${gameId}-${uniqueChannelSuffix}`;
       const channel = supabase
-        .channel(channelName) 
-        .on('postgres_changes', { 
-            event: channelConfig.event as any, 
-            schema: 'public', 
-            table: channelConfig.table, 
-            filter: channelConfig.filter 
+        .channel(channelName)
+        .on('postgres_changes', {
+            event: channelConfig.event as any,
+            schema: 'public',
+            table: channelConfig.table,
+            filter: channelConfig.filter
           },
           (payload) => commonPayloadHandler(channelConfig.table, payload)
         )
@@ -229,11 +236,11 @@ export default function GamePage() {
             console.log(`GamePage Realtime: Subscribed to ${channelName}`);
           } else if (status === 'CLOSED') {
             console.info(`GamePage Realtime: Channel ${channelName} is now ${status}. This is often due to explicit unsubscription or component unmount.`);
-            if (err) { 
+            if (err) {
               console.error(`GamePage Realtime: Error details for ${channelName} (status: ${status}):`, {
                 message: err.message,
                 name: err.name,
-                errorObject: { ...err } 
+                errorObject: { ...err }
               });
             }
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
@@ -242,12 +249,12 @@ export default function GamePage() {
               console.error(`GamePage Realtime: Error details for ${channelName} (status: ${status}):`, {
                 message: err.message,
                 name: err.name,
-                errorObject: { ...err } 
+                errorObject: { ...err }
               });
             } else {
               console.warn(`GamePage Realtime: ${status} for ${channelName} with no additional error object.`);
             }
-          } else if (err) { 
+          } else if (err) {
             console.error(`GamePage Realtime: Unexpected error on ${channelName} subscription (status: ${status}):`, {
                 message: err.message,
                 name: err.name,
@@ -262,7 +269,7 @@ export default function GamePage() {
       console.log(`GamePage Realtime: Cleaning up subscriptions for gameId: ${gameId}, suffix: ${uniqueChannelSuffix}`);
       activeSubscriptions.forEach(sub => supabase.removeChannel(sub).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
     };
-  }, [gameState?.gameId, setGameState, setThisPlayer, router, toast]); 
+  }, [gameState?.gameId, setGameState, setThisPlayer, router, toast]);
 
   // Effect to manage the recap sequence
   useEffect(() => {
@@ -270,38 +277,51 @@ export default function GamePage() {
       clearTimeout(recapStepTimerRef.current);
     }
 
-    if (gameState?.gamePhase === 'winner_announcement') {
-      if (recapStep === null) { // Start sequence if not already started
+    const currentRecapStep = recapStepRef.current;
+    const currentGamePhase = gameStateRef.current?.gamePhase;
+
+    if (currentGamePhase === 'winner_announcement') {
+      if (currentRecapStep === null) {
+        console.log("GamePage: recapEffect - Starting sequence, setting to 'winner'");
         setRecapStep('winner');
+        return; // Let the next effect run trigger the timer
       }
-    } else { // Game phase is not winner_announcement, clear sequence
-      setRecapStep(null);
+    } else {
+      if (currentRecapStep !== null) {
+        console.log("GamePage: recapEffect - Game phase NOT winner_announcement. Clearing recapStep.");
+        setRecapStep(null);
+      }
       return; // Exit early if not in winner_announcement phase
     }
-    
-    // Handle step transitions
-    if (recapStep === 'winner') {
+
+    // Handle step transitions based on the current recapStep state
+    if (currentRecapStep === 'winner') {
+      console.log("GamePage: recapEffect - Current step 'winner'. Setting timer for 'scoreboard'.");
       recapStepTimerRef.current = setTimeout(() => {
         if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+          console.log("GamePage: recapEffect - Timer expired for 'winner'. Transitioning to 'scoreboard'.");
           setRecapStep('scoreboard');
         }
       }, 5000);
-    } else if (recapStep === 'scoreboard') {
+    } else if (currentRecapStep === 'scoreboard') {
+      console.log("GamePage: recapEffect - Current step 'scoreboard'. Setting timer for 'getReady'.");
       recapStepTimerRef.current = setTimeout(() => {
         if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+          console.log("GamePage: recapEffect - Timer expired for 'scoreboard'. Transitioning to 'getReady'.");
           setRecapStep('getReady');
         }
       }, 5000);
-    } else if (recapStep === 'getReady') {
+    } else if (currentRecapStep === 'getReady') {
+      console.log("GamePage: recapEffect - Current step 'getReady'. Setting timer for next round action / clear.");
       recapStepTimerRef.current = setTimeout(() => {
         if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
           if (thisPlayerRef.current?.isJudge && gameStateRef.current?.gameId) {
-            console.log(`GamePage: Recap sequence finished for judge ${thisPlayerRef.current?.name}. Calling handleNextRound.`);
-            handleNextRound(); // This will change phase and recapStep will be set to null by the outer condition
+            console.log(`GamePage: recapEffect - Timer expired for 'getReady'. Judge ${thisPlayerRef.current?.name} calling handleNextRound.`);
+            handleNextRound();
+            setRecapStep(null); // Immediately clear recap for judge
           } else {
-            // For non-judges, or if judge is slow, the sequence will just end.
-            // The server will eventually push the game to the next phase.
-            setRecapStep(null); 
+            console.log("GamePage: recapEffect - Timer expired for 'getReady'. Non-judge or no gameId. Clearing recapStep.");
+            setRecapStep(null);
           }
         }
       }, 5000);
@@ -312,16 +332,15 @@ export default function GamePage() {
         clearTimeout(recapStepTimerRef.current);
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState?.gamePhase, recapStep, thisPlayer?.isJudge]);
+  }, [internalGameState?.gamePhase, recapStepInternal, setRecapStep, thisPlayer?.isJudge]);
 
 
   const handleStartGame = async () => {
-    if (gameState?.gameId && gameState.gamePhase === 'lobby' && gameState.players.length >= MIN_PLAYERS_TO_START ) { 
+    if (gameState?.gameId && gameState.gamePhase === 'lobby' && gameState.players.length >= MIN_PLAYERS_TO_START ) {
       startActionTransition(async () => {
         console.log("GamePage: Client calling startGame server action.");
         try {
-          await startGame(gameState.gameId); 
+          await startGame(gameState.gameId);
           if (isMountedRef.current) toast({ title: "Game Starting!", description: "The judge is being assigned and cards dealt." });
         } catch (error: any) {
           console.error("GamePage: Error starting game:", error);
@@ -332,7 +351,7 @@ export default function GamePage() {
       if (isMountedRef.current) toast({title: "Cannot Start", description: `Not enough players or game not in lobby (current: ${gameState?.gamePhase}). Found ${gameState?.players?.length} players, need ${MIN_PLAYERS_TO_START}.`, variant: "destructive"})
     }
   };
-  
+
   const handleSelectCategory = async (category: string) => {
     if (gameState?.gameId) {
       startActionTransition(async () => {
@@ -345,7 +364,7 @@ export default function GamePage() {
       });
     }
   };
-  
+
   const handleSelectWinner = async (winningCardText: string) => {
     if (gameState?.gameId) {
       startActionTransition(async () => {
@@ -360,24 +379,24 @@ export default function GamePage() {
   };
 
   const handleNextRound = async () => {
-    let currentActionError: any = null; 
+    let currentActionError: any = null;
     if (gameState?.gameId) {
-      if (isMountedRef.current) setIsLoading(true); 
+      if (isMountedRef.current) setIsLoading(true);
       try {
         console.log(`GamePage: Calling nextRound server action for game ${gameState.gameId}`);
         await nextRound(gameState.gameId);
       } catch (error: any) {
-        currentActionError = error; 
+        currentActionError = error;
         console.error("GamePage: Error starting next round:", error);
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          return; 
+          return;
         } else {
           if (isMountedRef.current) toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
         }
       } finally {
         let wasRedirect = false;
-        if (currentActionError && typeof currentActionError.digest === 'string' && currentActionError.digest.startsWith('NEXT_REDIRECT')) { 
+        if (currentActionError && typeof currentActionError.digest === 'string' && currentActionError.digest.startsWith('NEXT_REDIRECT')) {
             wasRedirect = true;
         }
         if (!wasRedirect && isMountedRef.current) {
@@ -396,12 +415,12 @@ export default function GamePage() {
       }
       startActionTransition(async () => {
         try {
-          await resetGameForTesting(); 
+          await resetGameForTesting();
         } catch (error: any) {
           currentActionError = error;
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
             console.log("GamePage (handlePlayAgainYes): Caught NEXT_REDIRECT during reset. Allowing Next.js to handle navigation.");
-            return; 
+            return;
           } else {
             console.error("GamePage: Error on 'Play Again Yes':", error);
             if (isMountedRef.current) {
@@ -410,7 +429,7 @@ export default function GamePage() {
           }
         } finally {
            let wasRedirect = false;
-            if (currentActionError && typeof currentActionError.digest === 'string' && currentActionError.digest.startsWith('NEXT_REDIRECT')) { 
+            if (currentActionError && typeof currentActionError.digest === 'string' && currentActionError.digest.startsWith('NEXT_REDIRECT')) {
                 wasRedirect = true;
             }
             if (!wasRedirect && isMountedRef.current) {
@@ -420,7 +439,7 @@ export default function GamePage() {
       });
     }
   };
-  
+
   const handlePlayAgainNo = () => {
     console.log("GamePage: Player clicked 'No, I'm Done'. Navigating to home.");
     router.push('/');
@@ -451,7 +470,7 @@ export default function GamePage() {
         }
       } finally {
         let wasRedirect = false;
-        if (currentActionError && typeof currentActionError.digest === 'string' && currentActionError.digest.startsWith('NEXT_REDIRECT')) { 
+        if (currentActionError && typeof currentActionError.digest === 'string' && currentActionError.digest.startsWith('NEXT_REDIRECT')) {
             wasRedirect = true;
         }
         if (!wasRedirect && isMountedRef.current) {
@@ -487,7 +506,7 @@ export default function GamePage() {
       </div>
     );
   }
-  
+
   if (gameState.gamePhase === 'lobby') {
      const currentPhaseFromRef = gameStateRef.current?.gamePhase;
      if (currentPhaseFromRef && currentPhaseFromRef !== 'game_over' && currentPhaseFromRef !== 'winner_announcement') {
@@ -535,12 +554,12 @@ export default function GamePage() {
             );
         }
     }
-    
+
     if (gameState.gamePhase === 'game_over') {
-      return <WinnerDisplay 
-                gameState={gameState} 
-                onPlayAgainYes={handlePlayAgainYes} 
-                onPlayAgainNo={handlePlayAgainNo}   
+      return <WinnerDisplay
+                gameState={gameState}
+                onPlayAgainYes={handlePlayAgainYes}
+                onPlayAgainNo={handlePlayAgainNo}
               />;
     }
 
@@ -555,16 +574,16 @@ export default function GamePage() {
             </div>
         );
     }
-    
+
     // If in recap sequence, main game content is usually obscured by RecapSequenceDisplay
-    if (recapStep) {
+    if (recapStepInternal) {
       return null; // Or a minimal background if RecapSequenceDisplay isn't full-screen
     }
 
-    if (thisPlayer?.isJudge) { 
+    if (thisPlayer?.isJudge) {
       return <JudgeView gameState={gameState} judge={thisPlayer} onSelectCategory={handleSelectCategory} onSelectWinner={handleSelectWinner} />;
     }
-    if (thisPlayer && !thisPlayer.isJudge) { 
+    if (thisPlayer && !thisPlayer.isJudge) {
       return <PlayerView gameState={gameState} player={thisPlayer} />;
     }
     return (
@@ -575,18 +594,18 @@ export default function GamePage() {
     );
   };
 
-  const showPendingOverlay = isActionPending && !isLoading; 
-  const shouldShowPlayerInfoBar = thisPlayer && 
-                                  !thisPlayer.isJudge && 
-                                  gameState.gamePhase !== 'winner_announcement' && 
+  const showPendingOverlay = isActionPending && !isLoading;
+  const shouldShowPlayerInfoBar = thisPlayer &&
+                                  !thisPlayer.isJudge &&
+                                  gameState.gamePhase !== 'winner_announcement' &&
                                   gameState.gamePhase !== 'game_over' &&
-                                  !recapStep; // Also hide if recap is active
+                                  !recapStepInternal; // Also hide if recap is active
 
   return (
     <>
-      {recapStep && gameState && gameState.lastWinner && (
+      {recapStepInternal && gameState && gameState.lastWinner && (
         <RecapSequenceDisplay
-          recapStep={recapStep}
+          recapStep={recapStepInternal}
           lastWinnerPlayer={gameState.lastWinner.player}
           lastWinnerCardText={gameState.lastWinner.cardText}
           players={gameState.players}
@@ -594,7 +613,7 @@ export default function GamePage() {
           // nextJudgeName - can be implemented later
         />
       )}
-      <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 max-w-7xl mx-auto px-2 ${recapStep ? 'opacity-20 pointer-events-none' : ''}`}>
+      <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 max-w-7xl mx-auto px-2 ${recapStepInternal ? 'opacity-20 pointer-events-none' : ''}`}>
         <main className="flex-grow w-full md:w-2/3 lg:w-3/4 relative order-1 md:order-2">
           {showPendingOverlay && (
               <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
@@ -605,10 +624,10 @@ export default function GamePage() {
             <Card className="mb-4 bg-accent text-accent-foreground shadow-lg">
               <CardContent className="p-2 flex items-center justify-start text-left">
                 {thisPlayer.avatar && thisPlayer.avatar.startsWith('/') ? (
-                  <Image 
-                    src={thisPlayer.avatar} 
-                    alt={`${thisPlayer.name}'s avatar`} 
-                    width={36} 
+                  <Image
+                    src={thisPlayer.avatar}
+                    alt={`${thisPlayer.name}'s avatar`}
+                    width={36}
                     height={36}
                     className="mr-3 rounded-md object-cover"
                     data-ai-hint="player avatar"
@@ -650,14 +669,14 @@ export default function GamePage() {
                 )}
               </Dialog>
             </div>
-            <Button 
-              onClick={handleResetGameFromGamePage} 
-              variant="destructive" 
-              size="sm" 
-              className="w-full mt-2" 
+            <Button
+              onClick={handleResetGameFromGamePage}
+              variant="destructive"
+              size="sm"
+              className="w-full mt-2"
               disabled={isActionPending || isLoading}
             >
-              { (isActionPending || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> } 
+              { (isActionPending || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> }
               Reset Game (Testing)
             </Button>
           </div>
@@ -667,4 +686,3 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
-    

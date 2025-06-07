@@ -4,8 +4,8 @@
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { PlayerClientState } from '@/lib/types';
-import Scoreboard from './Scoreboard'; // Assuming Scoreboard can be used here
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // For styling consistency
+import Scoreboard from './Scoreboard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface RecapSequenceDisplayProps {
   recapStep: 'winner' | 'scoreboard' | 'getReady' | null;
@@ -65,7 +65,7 @@ export default function RecapSequenceDisplay({
                 src="/round-winner-banner.png"
                 alt="Round Winner!"
                 width={500}
-                height={188} 
+                height={188}
                 className="object-contain"
                 data-ai-hint="winner banner"
                 priority // Prioritize banner loading
@@ -99,9 +99,9 @@ export default function RecapSequenceDisplay({
             exit="exit"
             className="flex flex-col items-center justify-center text-center w-full max-w-md"
           >
-            <h2 className="text-4xl font-bold text-primary mb-6 drop-shadow-sm">Scores Updated!</h2>
+            {/* Title removed to use Scoreboard's own title */}
             <div className="w-full">
-              <Scoreboard players={players} currentJudgeId={currentJudgeId} />
+              <Scoreboard players={players} currentJudgeId={currentJudgeId} defaultOpen={true} />
             </div>
           </motion.div>
         )}
