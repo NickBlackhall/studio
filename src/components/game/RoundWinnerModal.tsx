@@ -43,14 +43,15 @@ export default function RoundWinnerModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogPortal>
-        <DialogOverlay /> {/* Uses default styling from ui/dialog.tsx which includes bg-black/80 */}
+        <DialogOverlay /> 
         <DialogContent
           className={cn(
-            "sm:max-w-md md:max-w-lg", // Sizing classes
+            "sm:max-w-md md:max-w-lg",
             // Make DialogContent itself a transparent, unpadded, unbordered, unshadowed container
             "bg-transparent p-0 border-none shadow-none", 
             "overflow-visible", // Allow inner shadow/content to not be clipped by this shell
-            "z-[60]" // Ensure content is above overlay
+            "z-[60]", // Ensure content is above overlay
+            "duration-500" // Slower animation duration for entrance/exit
           )}
           onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click
         >
