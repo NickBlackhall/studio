@@ -111,3 +111,13 @@
     font-family: var(--font-geist-sans), sans-serif; /* Explicitly set to Geist Sans, or remove to inherit from body */
   }
 }
+
+@layer components {
+  .shimmer-bg {
+    @apply relative overflow-hidden;
+  }
+  .shimmer-bg::before {
+    content: "";
+    @apply absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer;
+  }
+}

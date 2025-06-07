@@ -20,6 +20,7 @@ import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
 import PlayerView from '@/components/game/PlayerView';
 import WinnerDisplay from '@/components/game/WinnerDisplay';
+import RoundWinnerModal from '@/components/game/RoundWinnerModal'; // Import the new modal
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -52,6 +53,7 @@ export default function GamePage() {
   const { showGlobalLoader, hideGlobalLoader } = useLoading();
   const isMountedRef = useRef(true); 
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
+  const [isRoundWinnerModalOpen, setIsRoundWinnerModalOpen] = useState(false);
 
 
   const setGameState = useCallback((newState: GameClientState | null) => {
@@ -266,17 +268,22 @@ export default function GamePage() {
     const currentPhase = gameStateRef.current?.gamePhase;
     const currentGameId = gameStateRef.current?.gameId;
 
-    if (currentPhase === 'winner_announcement' && currentJudge) { 
-      console.log(`GamePage: Player ${thisPlayerRef.current?.name} is judge. Setting 5s timer for next round.`);
-      if (nextRoundTimeoutRef.current) {
-        clearTimeout(nextRoundTimeoutRef.current);
-      }
-      nextRoundTimeoutRef.current = setTimeout(() => {
-        if (isMountedRef.current && currentGameId && thisPlayerRef.current?.isJudge && gameStateRef.current?.gamePhase === 'winner_announcement') { 
-             console.log(`GamePage: Timer expired for judge ${thisPlayerRef.current?.name}. Calling handleNextRound.`);
-             handleNextRound(); 
+    if (currentPhase === 'winner_announcement') {
+      setIsRoundWinnerModalOpen(true); // Open the modal
+      if (currentJudge) { // Only judge starts timer
+        console.log(`GamePage: Player ${thisPlayerRef.current?.name} is judge. Setting 5s timer for next round (modal open).`);
+        if (nextRoundTimeoutRef.current) {
+          clearTimeout(nextRoundTimeoutRef.current);
         }
-      }, 5000); 
+        nextRoundTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current && currentGameId && thisPlayerRef.current?.isJudge && gameStateRef.current?.gamePhase === 'winner_announcement') {
+            console.log(`GamePage: Timer expired for judge ${thisPlayerRef.current?.name}. Calling handleNextRound.`);
+            handleNextRound(); // This will change phase and modal will close
+          }
+        }, 5000);
+      }
+    } else {
+      setIsRoundWinnerModalOpen(false); // Ensure modal is closed if not in winner_announcement
     }
 
     return () => {
@@ -338,6 +345,7 @@ export default function GamePage() {
       try {
         console.log(`GamePage: Calling nextRound server action for game ${gameState.gameId}`);
         await nextRound(gameState.gameId);
+        if (isMountedRef.current) setIsRoundWinnerModalOpen(false); // Close modal on successful next round
       } catch (error: any) {
         currentActionError = error; 
         console.error("GamePage: Error starting next round:", error);
@@ -378,7 +386,6 @@ export default function GamePage() {
             console.error("GamePage: Error on 'Play Again Yes':", error);
             if (isMountedRef.current) {
               toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
-              // setIsLoading(false); 
             }
           }
         } finally {
@@ -388,7 +395,6 @@ export default function GamePage() {
             }
             if (!wasRedirect && isMountedRef.current) {
               setIsLoading(false);
-              // hideGlobalLoader(); 
             }
         }
       });
@@ -421,7 +427,6 @@ export default function GamePage() {
               description: `Could not reset the game. ${error.message || String(error)}`,
               variant: "destructive",
             });
-            // setIsLoading(false); 
           }
         }
       } finally {
@@ -431,7 +436,6 @@ export default function GamePage() {
         }
         if (!wasRedirect && isMountedRef.current) {
            setIsLoading(false);
-           // hideGlobalLoader(); 
         }
       }
     });
@@ -512,10 +516,14 @@ export default function GamePage() {
         }
     }
 
-    if (gameState.gamePhase === 'winner_announcement' || gameState.gamePhase === 'game_over') {
+    if (gameState.gamePhase === 'winner_announcement') {
+      // Modal is handled via state, this area can render base UI or nothing if modal covers all
+      return null; 
+    }
+    
+    if (gameState.gamePhase === 'game_over') {
       return <WinnerDisplay 
                 gameState={gameState} 
-                onNextRound={handleNextRound} 
                 onPlayAgainYes={handlePlayAgainYes} 
                 onPlayAgainNo={handlePlayAgainNo}   
               />;
@@ -555,6 +563,12 @@ export default function GamePage() {
 
   return (
     <div className="flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 max-w-7xl mx-auto px-2">
+      <RoundWinnerModal 
+        isOpen={isRoundWinnerModalOpen}
+        onClose={() => setIsRoundWinnerModalOpen(false)} // Or handleNextRound can also close it by changing phase
+        lastWinnerPlayer={gameState.lastWinner?.player}
+        lastWinnerCardText={gameState.lastWinner?.cardText}
+      />
       <main className="flex-grow w-full md:w-2/3 lg:w-3/4 relative order-1 md:order-2">
         {showPendingOverlay && (
             <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
@@ -571,6 +585,7 @@ export default function GamePage() {
                   width={36} 
                   height={36}
                   className="mr-3 rounded-md object-cover"
+                  data-ai-hint="player avatar"
                 />
               ) : (
                 <span className="text-3xl mr-3">{thisPlayer.avatar}</span>

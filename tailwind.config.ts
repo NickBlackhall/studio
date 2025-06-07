@@ -86,12 +86,17 @@ export default {
         'border-pulse': {
           '0%, 100%': { borderColor: 'hsl(var(--primary))' },
           '50%': { borderColor: 'hsl(var(--primary) / 0.1)' },
+        },
+        'shimmer': {
+          '0%': { transform: 'translateX(-100%) skewX(-15deg)' },
+          '100%': { transform: 'translateX(100%) skewX(-15deg)' },
         }
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
         'border-pulse': 'border-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'shimmer': 'shimmer 2.5s infinite linear',
   		}
   	}
   },
