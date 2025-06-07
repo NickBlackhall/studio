@@ -224,6 +224,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
      </Card>
     );
   }
+  
   console.log("[PlayerView] Rendering hand. Current hand:", JSON.stringify(player.hand.map(c => ({id: c.id, text: c.text.substring(0,15)+'...', isNew: c.isNew}))));
 
   return (
@@ -248,7 +249,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             {isEditingCustomCard ? (
               <motion.div
                 key={CUSTOM_CARD_ID_EDIT}
-                layout // Keep layout for custom card edit slot as its structure changes significantly
                 initial={{ opacity: 0, height: 0, y: -20 }}
                 animate={{ opacity: 1, height: 'auto', y: 0, transition: { duration: 0.5, ease: "easeOut" } }}
                 exit={{ opacity: 0, height: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } }}
@@ -272,7 +272,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             ) : (
               <motion.button
                 key={CUSTOM_CARD_ID_DISPLAY}
-                layout // Keep layout here too for consistency during edit toggle
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }}
                 exit={{ opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } }}
@@ -303,7 +302,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               return (
                 <motion.button
                   key={card.id}
-                  // Removed layout prop
                   initial={{ opacity: 0, y: 50 }}
                   animate={{ opacity: 1, y: 0, transition: { duration: 0.7, ease: "easeOut" } }}
                   exit={{ opacity: 0, y: -50, transition: { duration: 0.7, ease: "easeIn" } }}
@@ -313,7 +311,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                     selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
                       ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
                       : (isNewCardVisual
-                          ? 'border-2 border-red-400 hover:border-red-500 animate-pulse' // Added pulse for new card
+                          ? 'border-2 border-red-400 hover:border-red-500 animate-pulse' 
                           : 'border-gray-400 hover:border-foreground'
                         ),
                     selectedCardText !== card.text && 'hover:bg-muted/50'
@@ -323,7 +321,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   {isNewCardVisual && (
                     <motion.span
                       initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1, transition: { delay: 0.7, duration: 0.5 } }} // Delay matches card enter
+                      animate={{ opacity: 1, scale: 1, transition: { delay: 0.7, duration: 0.5 } }} 
                       className="absolute bottom-1 right-2 text-xs font-semibold text-red-500 bg-white/80 px-1.5 py-0.5 rounded"
                     >
                       New!
@@ -354,5 +352,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 }
-    
-
+ 
