@@ -53,8 +53,7 @@ export default function GamePage() {
   const isMountedRef = useRef(true);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
 
-  const [recapStep, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
-  const recapStepRef = useRef<'winner' | 'scoreboard' | 'getReady' | null>(null);
+  const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
   const recapStepTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 
@@ -67,12 +66,6 @@ export default function GamePage() {
     thisPlayerRef.current = newPlayerState;
     if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
   }, []);
-
-  const setRecapStep = useCallback((newRecapState: 'winner' | 'scoreboard' | 'getReady' | null) => {
-    recapStepRef.current = newRecapState;
-    if (isMountedRef.current) setRecapStepInternal(newRecapState);
-  }, []);
-
 
   const gameState = internalGameState;
 
@@ -271,57 +264,56 @@ export default function GamePage() {
     };
   }, [gameState?.gameId, setGameState, setThisPlayer, router, toast]);
 
-  // Effect to manage the recap sequence
+
   useEffect(() => {
     if (recapStepTimerRef.current) {
       clearTimeout(recapStepTimerRef.current);
     }
 
-    const currentRecapStep = recapStepRef.current;
     const currentGamePhase = gameStateRef.current?.gamePhase;
 
     if (currentGamePhase === 'winner_announcement') {
-      if (currentRecapStep === null) {
+      if (recapStepInternal === null) {
         console.log("GamePage: recapEffect - Starting sequence, setting to 'winner'");
-        setRecapStep('winner');
-        return; // Let the next effect run trigger the timer
+        if (isMountedRef.current) setRecapStepInternal('winner');
+        return; 
       }
     } else {
-      if (currentRecapStep !== null) {
+      if (recapStepInternal !== null) {
         console.log("GamePage: recapEffect - Game phase NOT winner_announcement. Clearing recapStep.");
-        setRecapStep(null);
+        if (isMountedRef.current) setRecapStepInternal(null);
       }
-      return; // Exit early if not in winner_announcement phase
+      return; 
     }
 
-    // Handle step transitions based on the current recapStep state
-    if (currentRecapStep === 'winner') {
+    if (recapStepInternal === 'winner') {
       console.log("GamePage: recapEffect - Current step 'winner'. Setting timer for 'scoreboard'.");
       recapStepTimerRef.current = setTimeout(() => {
         if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
           console.log("GamePage: recapEffect - Timer expired for 'winner'. Transitioning to 'scoreboard'.");
-          setRecapStep('scoreboard');
+          setRecapStepInternal('scoreboard');
         }
       }, 5000);
-    } else if (currentRecapStep === 'scoreboard') {
+    } else if (recapStepInternal === 'scoreboard') {
       console.log("GamePage: recapEffect - Current step 'scoreboard'. Setting timer for 'getReady'.");
       recapStepTimerRef.current = setTimeout(() => {
         if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
           console.log("GamePage: recapEffect - Timer expired for 'scoreboard'. Transitioning to 'getReady'.");
-          setRecapStep('getReady');
+          setRecapStepInternal('getReady');
         }
       }, 5000);
-    } else if (currentRecapStep === 'getReady') {
+    } else if (recapStepInternal === 'getReady') {
       console.log("GamePage: recapEffect - Current step 'getReady'. Setting timer for next round action / clear.");
       recapStepTimerRef.current = setTimeout(() => {
         if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
-          if (thisPlayerRef.current?.isJudge && gameStateRef.current?.gameId) {
-            console.log(`GamePage: recapEffect - Timer expired for 'getReady'. Judge ${thisPlayerRef.current?.name} calling handleNextRound.`);
-            handleNextRound();
-            setRecapStep(null); // Immediately clear recap for judge
+          const currentThisPlayer = thisPlayerRef.current;
+          if (currentThisPlayer?.isJudge && gameStateRef.current?.gameId) {
+            console.log(`GamePage: recapEffect - Timer expired for 'getReady'. Judge ${currentThisPlayer.name} calling handleNextRound.`);
+            handleNextRound(); // Call the action
+            setRecapStepInternal(null); // Immediately clear recap for judge
           } else {
             console.log("GamePage: recapEffect - Timer expired for 'getReady'. Non-judge or no gameId. Clearing recapStep.");
-            setRecapStep(null);
+            setRecapStepInternal(null);
           }
         }
       }, 5000);
@@ -332,7 +324,7 @@ export default function GamePage() {
         clearTimeout(recapStepTimerRef.current);
       }
     };
-  }, [internalGameState?.gamePhase, recapStepInternal, setRecapStep, thisPlayer?.isJudge]);
+  }, [internalGameState?.gamePhase, recapStepInternal, thisPlayer?.isJudge]);
 
 
   const handleStartGame = async () => {
@@ -380,17 +372,18 @@ export default function GamePage() {
 
   const handleNextRound = async () => {
     let currentActionError: any = null;
-    if (gameState?.gameId) {
-      if (isMountedRef.current) setIsLoading(true);
+    if (gameStateRef.current?.gameId) { // Use ref here for potentially immediate calls
+      if (isMountedRef.current) setIsLoading(true); // Still might be useful for immediate visual feedback
       try {
-        console.log(`GamePage: Calling nextRound server action for game ${gameState.gameId}`);
-        await nextRound(gameState.gameId);
+        console.log(`GamePage: Calling nextRound server action for game ${gameStateRef.current.gameId}`);
+        await nextRound(gameStateRef.current.gameId);
       } catch (error: any) {
         currentActionError = error;
         console.error("GamePage: Error starting next round:", error);
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          return;
+          // Don't setIsLoading(false) here as the page will navigate away
+          return; 
         } else {
           if (isMountedRef.current) toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
         }
@@ -686,3 +679,6 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
+
+
+    
