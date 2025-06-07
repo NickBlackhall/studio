@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useTransition, useEffect, useRef } from 'react';
-import { Send, Loader2, ListCollapse, VenetianMask, Gavel, Edit3, CheckSquare } from 'lucide-react';
+import { Send, Loader2, ListCollapse, VenetianMask, Gavel, Edit3, CheckSquare, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { submitResponse } from '@/app/game/actions';
@@ -57,12 +57,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   }, [player]);
 
 
-  const hasSubmittedThisRound = gameState.submissions.some(
-    sub => sub.playerId === player.id && gameState.currentRound > 0 && (
-      (sub.cardText && gameState.responses?.find((r: any) => r.player_id === player.id && r.round_number === gameState.currentRound && (r.submitted_text === sub.cardText || r.response_cards?.text === sub.cardText))) ||
-      (!sub.cardText && gameState.responses?.find((r: any) => r.player_id === player.id && r.round_number === gameState.currentRound && r.submitted_text))
-    )
-  );
+  // Corrected and simplified hasSubmittedThisRound logic
+  const hasSubmittedThisRound = gameState.submissions.some(sub => sub.playerId === player.id);
 
   useEffect(() => {
     console.log(`[PlayerView] useEffect (gameState deps): Round: ${gameState.currentRound}, Judge: ${player?.isJudge}, Phase: ${gameState.gamePhase}, hasSubmitted: ${hasSubmittedThisRound}`);
@@ -156,7 +152,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       try {
         await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
         toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
-        // setAllowUiSwitchAfterSubmit(false); // Re-evaluate if this is needed or handled by useEffect
       } catch (error: any) {
         console.error("PlayerView: Error submitting response:", error);
         toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
@@ -248,7 +243,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               </motion.div>
             )}
             {showHandUi && (
-              <motion.div key="hand-and-custom-card-view">
+              <>
                 {isEditingCustomCard ? (
                   <motion.div
                     key={CUSTOM_CARD_ID_EDIT}
@@ -275,9 +270,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 ) : (
                   <motion.button
                     key={CUSTOM_CARD_ID_DISPLAY}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1, transition: { duration: 0.3, delay: 0.1 } }}
-                    exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0, transition: { duration: 0.3, delay: 0.1 } }}
+                    exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
                     onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
                     className={cn(
                       `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group border-2`,
@@ -300,30 +295,45 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
                 <AnimatePresence mode="wait">
                   {player.hand && Array.isArray(player.hand) &&
-                    player.hand.map((card: PlayerHandCard) => (
-                      <motion.button
-                        key={card.id}
-                        initial={{ opacity: 0, y: 20 }} // Simplified initial
-                        animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }} // Simplified animate
-                        exit={{ opacity: 0, y: -20, transition: { duration: 0.3, ease: "easeIn" } }} // Simplified exit
-                        onClick={() => handleSelectCard(card.text, false)}
-                        className={cn(
-                          `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md border`,
-                           selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
-                            ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
-                            : 'border-gray-400 hover:border-foreground',
-                          selectedCardText !== card.text && 'hover:bg-muted/50'
-                        )}
-                      >
-                        <span>{card.text}</span>
-                      </motion.button>
-                  ))}
+                    player.hand.map((card: PlayerHandCard) => {
+                      const isNewCardVisual = card.isNew === true;
+                      return (
+                        <motion.button
+                          key={card.id}
+                          layout // Added layout back for the slide-up effect
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }}
+                          exit={{ opacity: 0, y: -20, transition: { duration: 0.3, ease: "easeIn" } }}
+                          onClick={() => handleSelectCard(card.text, false)}
+                          className={cn(
+                            `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md border`,
+                            selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
+                              ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
+                              : isNewCardVisual 
+                                ? 'border-red-500 animate-pulse' // Restored new card styling
+                                : 'border-gray-400 hover:border-foreground',
+                            selectedCardText !== card.text && !isNewCardVisual && 'hover:bg-muted/50'
+                          )}
+                        >
+                          <span>{card.text}</span>
+                          {isNewCardVisual && (
+                            <motion.span 
+                              initial={{ opacity: 0, scale: 0.5 }}
+                              animate={{ opacity: 1, scale: 1, transition: { delay: 0.6, duration: 0.3 } }} // Delay slightly after card animates in
+                              className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow-md"
+                            >
+                              NEW! <Sparkles className="inline-block h-3 w-3" />
+                            </motion.span>
+                          )}
+                        </motion.button>
+                      );
+                  })}
                 </AnimatePresence>
 
                 {(!player.hand || (Array.isArray(player.hand) && player.hand.length === 0)) && !isEditingCustomCard && !finalizedCustomCardText && (
                    <p className="text-muted-foreground text-center py-4">You're out of pre-dealt cards! Write one above.</p>
                 )}
-              </motion.div>
+              </>
             )}
           </CardContent>
           <CardFooter className="p-6">
