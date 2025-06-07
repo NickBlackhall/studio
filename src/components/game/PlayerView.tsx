@@ -98,10 +98,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         toast({ title: "Empty Submission", description: "Your selected card is empty.", variant: "destructive"});
         return;
     }
-
+    console.log(`[PlayerView] Submitting card for player ${player.id}. Text: "${textToSubmit.substring(0,30)}...", isCustom: ${isCustomCardSelectedAsSubmissionTarget}. Current hand before submit call:`, JSON.stringify(player.hand.map(c => ({id: c.id, text: c.text.substring(0,15)+'...', isNew: c.isNew}))));
     startTransition(async () => {
       try {
-        console.log(`[PlayerView] Submitting card for player ${player.id}. Text: "${textToSubmit.substring(0,30)}...", isCustom: ${isCustomCardSelectedAsSubmissionTarget}. Current hand before submit call:`, JSON.stringify(player.hand.map(c => ({id: c.id, text: c.text.substring(0,15)+'...', isNew: c.isNew}))));
         await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
         toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
         setSelectedCardText('');
@@ -225,7 +224,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
      </Card>
     );
   }
-
   console.log("[PlayerView] Rendering hand. Current hand:", JSON.stringify(player.hand.map(c => ({id: c.id, text: c.text.substring(0,15)+'...', isNew: c.isNew}))));
 
   return (
@@ -274,10 +272,10 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             ) : (
               <motion.button
                 key={CUSTOM_CARD_ID_DISPLAY}
-                layout // Keep layout here too
-                initial={{ opacity: 0, height: 0, y: -20 }}
-                animate={{ opacity: 1, height: 'auto', y: 0, transition: { duration: 0.5, ease: "easeOut" } }}
-                exit={{ opacity: 0, height: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } }}
+                layout // Keep layout here too for consistency during edit toggle
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }}
+                exit={{ opacity: 0, y: -20, transition: { duration: 0.4, ease: "easeIn" } }}
                 onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
                 className={cn(
                   `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group border-2`,
@@ -290,7 +288,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               >
                 <span>{finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER}</span>
                 {!finalizedCustomCardText && (
-                  <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-accent opacity-70" />
+                  <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-accent opacity-70 group-hover:opacity-100 transition-opacity" />
                 )}
                  {finalizedCustomCardText && !isCustomCardSelectedAsSubmissionTarget && (
                    <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-50 transition-opacity" onClick={(e) => {e.stopPropagation(); handleCustomCardEdit(); }}/>
@@ -299,13 +297,13 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {player.hand && player.hand.length > 0 && player.hand.map((card: PlayerHandCard) => {
               const isNewCardVisual = card.isNew && gameState.currentRound > 0;
               return (
                 <motion.button
                   key={card.id}
-                  // REMOVED layout prop from here for testing enter/exit
+                  // Removed layout prop
                   initial={{ opacity: 0, y: 50 }}
                   animate={{ opacity: 1, y: 0, transition: { duration: 0.7, ease: "easeOut" } }}
                   exit={{ opacity: 0, y: -50, transition: { duration: 0.7, ease: "easeIn" } }}
@@ -315,7 +313,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                     selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
                       ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
                       : (isNewCardVisual
-                          ? 'border-2 border-red-400 hover:border-red-500'
+                          ? 'border-2 border-red-400 hover:border-red-500 animate-pulse' // Added pulse for new card
                           : 'border-gray-400 hover:border-foreground'
                         ),
                     selectedCardText !== card.text && 'hover:bg-muted/50'
@@ -325,7 +323,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   {isNewCardVisual && (
                     <motion.span
                       initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1, transition: { delay: 1.2, duration: 0.8 } }}
+                      animate={{ opacity: 1, scale: 1, transition: { delay: 0.7, duration: 0.5 } }} // Delay matches card enter
                       className="absolute bottom-1 right-2 text-xs font-semibold text-red-500 bg-white/80 px-1.5 py-0.5 rounded"
                     >
                       New!
@@ -356,3 +354,5 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 }
+    
+
