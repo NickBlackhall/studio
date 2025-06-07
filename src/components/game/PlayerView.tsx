@@ -22,13 +22,6 @@ const CUSTOM_CARD_PLACEHOLDER = "Write your own card";
 const CUSTOM_CARD_ID_EDIT = "custom-card-edit-slot";
 const CUSTOM_CARD_ID_DISPLAY = "custom-card-display-slot";
 
-// Constants for fanning animation
-const HAND_CARD_WIDTH_PX = 170; // Width of each card
-const HAND_CARD_ANGLE_PER_CARD = 5; // Degrees of rotation between cards
-const HAND_CARD_Y_ARC_FACTOR = 4; // Pixels of vertical lift for cards further from center, creating an arc
-const HAND_CARD_BOTTOM_ANCHOR_OFFSET_PX = 5; // How far from the bottom of the container the cards are anchored
-const HAND_CARD_INITIAL_Y_OFFSET = 30; // Y offset for initial animation (cards come from slightly below)
-const HAND_CARD_EXIT_Y_OFFSET = 30; // Y offset for exit animation
 
 export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [selectedCardText, setSelectedCardText] = useState<string>('');
@@ -58,14 +51,12 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const hasSubmittedThisRound = gameState.submissions.some(sub => sub.playerId === player.id);
 
   useEffect(() => {
-    if (player && (gameState.currentRound > 0 && (player.isJudge || gameState.gamePhase !== 'player_submission'))) {
+    if (player && (gameState.currentRound > 0 && (player.isJudge || gameState.gamePhase !== 'player_submission' || hasSubmittedThisRound))) {
         setIsEditingCustomCard(false);
         setCustomCardInputText('');
         setFinalizedCustomCardText('');
         setSelectedCardText('');
         setIsCustomCardSelectedAsSubmissionTarget(false);
-        setAllowUiSwitchAfterSubmit(false);
-        if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
     }
   }, [gameState.currentRound, player?.isJudge, gameState.gamePhase, player, hasSubmittedThisRound]);
 
@@ -140,7 +131,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
         toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
       } catch (error: any) {
-        console.error("PlayerView: Error submitting response:", error);
         toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
       }
     });
@@ -213,13 +203,13 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             <CardTitle className="text-2xl font-semibold flex items-center"><ListCollapse className="mr-2 h-6 w-6 text-primary" /> Your Hand of Horrors</CardTitle>
             <CardDescription>Pick a card, or write your own masterpiece of terrible.</CardDescription>
           </CardHeader>
-          <CardContent className="p-6 pt-2"> {/* Removed space-y-3 for tighter control */}
+          <CardContent className="p-6 pt-2">
             {showSubmissionSentUi && (
               <motion.div
                 key="submission-sent-view-main"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1, transition: { duration: 0.5} }}
-                className="text-center py-8 min-h-[250px] flex flex-col items-center justify-center" // Ensure height for message
+                className="text-center py-8 min-h-[250px] flex flex-col items-center justify-center"
               >
                 <VenetianMask className="mr-2 h-12 w-12 text-accent mx-auto mb-3" />
                 <p className="text-accent-foreground/90 text-xl font-semibold">Submission Sent!</p>
@@ -228,131 +218,101 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               </motion.div>
             )}
             {showHandUi && (
-              <>
-                {isEditingCustomCard ? (
-                  <motion.div
-                    key={CUSTOM_CARD_ID_EDIT}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto', transition: { duration: 0.3 } }}
-                    exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
-                    className="space-y-2 p-3 border-2 border-accent rounded-md shadow-md bg-background mb-3"
-                  >
-                    <Textarea
-                      placeholder="Make it wonderfully terrible..."
-                      value={customCardInputText}
-                      onChange={(e) => setCustomCardInputText(e.target.value)}
-                      maxLength={100}
-                      rows={3}
-                      className="text-base border-muted focus:border-accent"
-                    />
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="ghost" size="sm" onClick={() => { setIsEditingCustomCard(false); setCustomCardInputText(finalizedCustomCardText); }}>Cancel</Button>
-                      <Button onClick={handleCustomCardDone} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                        <CheckSquare className="mr-2 h-4 w-4" /> Done
-                      </Button>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.button
-                    key={CUSTOM_CARD_ID_DISPLAY}
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0, transition: { duration: 0.3, delay: 0.1 } }}
-                    exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
-                    onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
-                    className={cn(
-                      `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group border-2 mb-3`,
-                      isCustomCardSelectedAsSubmissionTarget
-                        ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
-                        : finalizedCustomCardText
-                          ? 'border-solid border-accent hover:border-accent-foreground hover:bg-accent/10'
-                          : 'border-dashed border-accent hover:border-accent-foreground hover:bg-accent/10'
-                    )}
-                  >
-                    <span>{finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER}</span>
-                    {!finalizedCustomCardText && (
-                      <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-accent opacity-70 group-hover:opacity-100 transition-opacity" />
-                    )}
-                     {finalizedCustomCardText && !isCustomCardSelectedAsSubmissionTarget && (
-                       <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-50 transition-opacity" onClick={(e) => {e.stopPropagation(); handleCustomCardEdit(); }}/>
-                     )}
-                  </motion.button>
-                )}
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {isEditingCustomCard ? (
+                    <motion.div
+                      key={CUSTOM_CARD_ID_EDIT}
+                      layout
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto', transition: { duration: 0.3 } }}
+                      exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
+                      className="space-y-2 p-3 border-2 border-accent rounded-md shadow-md bg-background"
+                    >
+                      <Textarea
+                        placeholder="Make it wonderfully terrible..."
+                        value={customCardInputText}
+                        onChange={(e) => setCustomCardInputText(e.target.value)}
+                        maxLength={100}
+                        rows={3}
+                        className="text-base border-muted focus:border-accent"
+                      />
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="ghost" size="sm" onClick={() => { setIsEditingCustomCard(false); setCustomCardInputText(finalizedCustomCardText); }}>Cancel</Button>
+                        <Button onClick={handleCustomCardDone} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                          <CheckSquare className="mr-2 h-4 w-4" /> Done
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.button
+                      key={CUSTOM_CARD_ID_DISPLAY}
+                      layout
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0, transition: { duration: 0.3, delay: 0.1 } }}
+                      exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+                      onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
+                      className={cn(
+                        `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group border-2`,
+                        isCustomCardSelectedAsSubmissionTarget
+                          ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
+                          : finalizedCustomCardText
+                            ? 'border-solid border-accent hover:border-accent-foreground hover:bg-accent/10'
+                            : 'border-dashed border-accent hover:border-accent-foreground hover:bg-accent/10'
+                      )}
+                    >
+                      <span>{finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER}</span>
+                      {!finalizedCustomCardText && (
+                        <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-accent opacity-70 group-hover:opacity-100 transition-opacity" />
+                      )}
+                       {finalizedCustomCardText && !isCustomCardSelectedAsSubmissionTarget && (
+                         <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-50 transition-opacity" onClick={(e) => {e.stopPropagation(); handleCustomCardEdit(); }}/>
+                       )}
+                    </motion.button>
+                  )}
+                </AnimatePresence>
 
-                {/* Container for fanning cards */}
-                <div className="relative flex items-end justify-center min-h-[200px] sm:min-h-[220px] md:min-h-[240px] w-full">
-                  <AnimatePresence mode="wait">
-                    {player.hand && Array.isArray(player.hand) &&
-                      player.hand.map((card: PlayerHandCard, index: number) => {
-                        const isNewCardVisual = card.isNew === true;
-                        const numCardsInHand = player.hand.length;
-                        const middleCardIndex = (numCardsInHand - 1) / 2;
-                        const cardIndexOffset = index - middleCardIndex;
-
-                        const rotate = cardIndexOffset * HAND_CARD_ANGLE_PER_CARD;
-                        const translateYforArc = -Math.abs(cardIndexOffset) * HAND_CARD_Y_ARC_FACTOR;
-                        
-                        return (
-                          <motion.button
-                            key={card.id}
-                            layout 
-                            initial={{ opacity: 0, y: HAND_CARD_INITIAL_Y_OFFSET, rotate: 0, scale: 0.9 }}
-                            animate={{
-                                opacity: 1,
-                                y: translateYforArc, // This is a transform, applied from its absolute anchor
-                                rotate: rotate,
-                                scale: 1,
-                                transition: {
-                                    type: "spring",
-                                    stiffness: 280,
-                                    damping: 25,
-                                    delay: index * 0.08
-                                }
-                            }}
-                            exit={{
-                                opacity: 0,
-                                y: HAND_CARD_EXIT_Y_OFFSET,
-                                scale: 0.9,
-                                rotate: cardIndexOffset > 0 ? 20 : -20, // Fan out a bit on exit
-                                transition: { duration: 0.25, ease: "easeOut" }
-                            }}
-                            onClick={() => handleSelectCard(card.text, false)}
-                            className={cn(
-                              `h-auto p-3 text-left text-sm md:text-base whitespace-normal justify-start relative rounded-md border shadow-md`,
-                              `w-[${HAND_CARD_WIDTH_PX}px]`, // Fixed width
-                              selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
-                                ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
-                                : isNewCardVisual 
-                                  ? 'border-red-500 animate-pulse' // Pulse can be distracting with fan animation
-                                  : 'border-gray-400 hover:border-foreground bg-card',
-                              selectedCardText !== card.text && !isNewCardVisual && 'hover:bg-muted/50'
-                            )}
-                            style={{
-                                position: 'absolute',
-                                bottom: `${HAND_CARD_BOTTOM_ANCHOR_OFFSET_PX}px`,
-                                width: `${HAND_CARD_WIDTH_PX}px`,
-                                transformOrigin: 'bottom center',
-                                zIndex: index, // Card at index 0 is at the "back"
-                            }}
-                          >
-                            <span>{card.text}</span>
-                            {isNewCardVisual && (
-                              <div 
+                <AnimatePresence mode="wait">
+                  {player.hand && Array.isArray(player.hand) &&
+                    player.hand.map((card: PlayerHandCard) => {
+                      const isNewCardVisual = card.isNew === true;
+                      return (
+                        <motion.button
+                          key={card.id}
+                          layout
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0, transition: { duration: 0.3 } }}
+                          exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
+                          onClick={() => handleSelectCard(card.text, false)}
+                          className={cn(
+                            `w-full h-auto p-3 text-left text-sm md:text-base whitespace-normal justify-start relative rounded-md border shadow-md`,
+                            selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
+                              ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
+                              : isNewCardVisual 
+                                ? 'border-red-500 animate-pulse'
+                                : 'border-gray-400 hover:border-foreground bg-card',
+                            selectedCardText !== card.text && !isNewCardVisual && 'hover:bg-muted/50'
+                          )}
+                        >
+                          <span>{card.text}</span>
+                          {isNewCardVisual && (
+                             <motion.span 
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1, transition: { delay: 0.3, type: 'spring', stiffness: 200, damping: 10 } }}
                                 className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md flex items-center"
                               >
                                 NEW <Sparkles className="inline-block h-2.5 w-2.5 ml-0.5" />
-                              </div>
-                            )}
-                          </motion.button>
-                        );
-                    })}
-                  </AnimatePresence>
-                </div>
-              </>
+                              </motion.span>
+                          )}
+                        </motion.button>
+                      );
+                  })}
+                </AnimatePresence>
+              </div>
             )}
           </CardContent>
-          <CardFooter className="p-6 pt-3"> {/* Adjusted padding for footer */}
-            {showHandUi && (
+          {showHandUi && (
+            <CardFooter className="p-6 pt-3">
               <Button
                 onClick={handleSubmit}
                 disabled={!isSubmitButtonActive}
@@ -364,8 +324,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
                 Submit Your Terrible Choice
               </Button>
-            )}
-          </CardFooter>
+            </CardFooter>
+          )}
         </Card>
       </div>
     );
