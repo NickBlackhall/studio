@@ -59,17 +59,12 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const [allowUiSwitchAfterSubmit, setAllowUiSwitchAfterSubmit] = useState(false);
-  const submissionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      if (submissionTimeoutRef.current) {
-        clearTimeout(submissionTimeoutRef.current);
-      }
     };
   }, []);
 
@@ -84,26 +79,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         setIsCustomCardSelectedAsSubmissionTarget(false);
     }
   }, [gameState.currentRound, player?.isJudge, gameState.gamePhase, player, hasSubmittedThisRound]);
-
-
-  useEffect(() => {
-    if (hasSubmittedThisRound && !allowUiSwitchAfterSubmit) {
-      if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
-      submissionTimeoutRef.current = setTimeout(() => {
-        if (isMountedRef.current) {
-          setAllowUiSwitchAfterSubmit(true);
-        }
-      }, 1000);
-    } else if (!hasSubmittedThisRound) {
-      setAllowUiSwitchAfterSubmit(false);
-      if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
-    }
-    return () => {
-      if (submissionTimeoutRef.current) {
-        clearTimeout(submissionTimeoutRef.current);
-      }
-    };
-  }, [hasSubmittedThisRound, allowUiSwitchAfterSubmit]);
 
 
   const handleCustomCardEdit = () => {
@@ -156,7 +131,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       try {
         await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
       } catch (error: any) {
-        toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
+        if (isMountedRef.current) {
+            toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
+        }
       }
     });
   };
@@ -208,8 +185,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   }
 
   if (gameState.gamePhase === 'player_submission' && gameState.currentScenario) {
-    const showHandUi = !(hasSubmittedThisRound && allowUiSwitchAfterSubmit);
-    const showSubmissionSentUi = hasSubmittedThisRound && allowUiSwitchAfterSubmit;
+    const showHandUi = !hasSubmittedThisRound;
+    const showSubmissionSentUi = hasSubmittedThisRound;
 
     return (
       <div className="space-y-6">
