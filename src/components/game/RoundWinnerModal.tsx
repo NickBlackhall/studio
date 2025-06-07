@@ -50,7 +50,9 @@ export default function RoundWinnerModal({
             "bg-transparent p-0 border-none shadow-none", 
             "overflow-visible", 
             "z-[60]", 
-            "duration-1000" // Changed from duration-500
+            "duration-1000", // This duration applies to the custom animation we are defining here
+            "data-[state=open]:fade-in data-[state=open]:zoom-in-100 data-[state=open]:slide-in-from-bottom-0 data-[state=open]:slide-in-from-left-0",
+            "data-[state=closed]:fade-out data-[state=closed]:zoom-out-100 data-[state=closed]:slide-out-to-bottom-0 data-[state=closed]:slide-out-to-left-0"
           )}
           onInteractOutside={(e) => e.preventDefault()} 
         >
