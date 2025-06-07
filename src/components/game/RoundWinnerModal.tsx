@@ -52,8 +52,11 @@ export default function RoundWinnerModal({
           onInteractOutside={(e) => e.preventDefault()}
           hideCloseButton 
         >
-          {/* Inner div now handles background, and rounded corners */}
-          <div className="bg-yellow-400 text-black rounded-xl overflow-hidden">
+          {/* Inner div now handles background */}
+          <div className={cn(
+            "bg-yellow-400 text-black rounded-xl overflow-hidden",
+            "flex flex-col items-center justify-center w-full h-full" // Added flex, w-full, h-full
+            )}>
             <div className="relative flex flex-col items-center justify-center text-center p-6 md:p-8 space-y-4 md:space-y-6">
               <div className="w-full max-w-xs md:max-w-sm">
                 <Image 
