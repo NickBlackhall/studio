@@ -47,9 +47,11 @@ export default function RoundWinnerModal({
         <DialogContent
           className={cn(
             "sm:max-w-md md:max-w-lg", // Sizing classes
-            "bg-yellow-400 text-black rounded-xl", // Core appearance: yellow background, black text, rounded
-            "border-none shadow-2xl" // Remove default border, add custom shadow
-            // Padding and internal layout will be handled by the div below
+            "bg-yellow-400 text-black rounded-xl", // Core appearance
+            "border-none shadow-2xl", // Remove default border, add custom shadow
+            "overflow-hidden", // To contain potential children effects like shimmer if re-added
+            "p-0", // Remove default padding, handle with inner div
+            "z-[60]" // Ensure content is above overlay
           )}
           onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click
         >
