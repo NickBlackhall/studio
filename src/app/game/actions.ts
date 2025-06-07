@@ -696,7 +696,7 @@ export async function selectCategory(gameId: string, category: string): Promise<
 }
 
 
-export async function submitResponse(playerId: string, responseCardText: string, gameId: string, currentRound: number, isCustomSubmission: boolean): Promise<GameClientState | null> {
+export async function submitResponse(playerId: string, responseCardText: string, gameId: string, currentRound: number, isCustomSubmission: boolean): Promise<null> {
   // console.log(`🔴 SUBMIT (Server): Player ${playerId} submitting. Custom: ${isCustomSubmission}. Text: "${responseCardText}" for game ${gameId} round ${currentRound}`);
 
   const { data: gameData, error: gameFetchError } = await supabase
@@ -871,7 +871,7 @@ export async function submitResponse(playerId: string, responseCardText: string,
   }
 
   revalidatePath('/game');
-  return getGame(gameId);
+  return null; // Return null instead of full game state
 }
 
 
