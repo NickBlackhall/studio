@@ -47,17 +47,15 @@ export default function RoundWinnerModal({
         <DialogContent
           className={cn(
             "sm:max-w-md md:max-w-lg",
-            // Make DialogContent itself a transparent, unpadded, unbordered, unshadowed container
             "bg-transparent p-0 border-none shadow-none", 
-            "overflow-visible", // Allow inner shadow/content to not be clipped by this shell
-            "z-[60]", // Ensure content is above overlay
-            "duration-500" // Slower animation duration for entrance/exit
+            "overflow-visible", 
+            "z-[60]", 
+            "duration-1000" // Changed from duration-500
           )}
-          onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click
+          onInteractOutside={(e) => e.preventDefault()} 
         >
           <DialogTitle className="sr-only">Round Winner</DialogTitle>
           
-          {/* This inner div IS the yellow modal box with all styling */}
           <div
             className={cn(
               "bg-yellow-400 text-black rounded-xl shadow-2xl overflow-hidden",
