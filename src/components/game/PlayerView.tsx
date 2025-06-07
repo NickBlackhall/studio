@@ -22,30 +22,26 @@ const CUSTOM_CARD_PLACEHOLDER = "Write your own card";
 const CUSTOM_CARD_ID_EDIT = "custom-card-edit-slot";
 const CUSTOM_CARD_ID_DISPLAY = "custom-card-display-slot";
 
-// Variants for the container of pre-dealt cards to stagger their animation
 const handContainerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.091, // Increased from 0.07
-      delayChildren: 0.2,    // Delay after custom card slot, before first pre-dealt card
+      staggerChildren: 0.091, 
+      delayChildren: 0.2,    
     },
   },
 };
 
-// Variants for individual pre-dealt cards for the cascading/entry/exit effect
 const cardCascadeVariants = {
-  hidden: { y: -20, opacity: 0 },    // Start above and transparent
+  hidden: { opacity: 0 }, // Card itself just fades
   visible: { 
-    y: 0, 
     opacity: 1, 
-    transition: { type: 'spring', stiffness: 120, damping: 14, duration: 0.3 } 
+    transition: { duration: 0.2 } // Quick fade-in for the card
   },
-  exit: { opacity: 0, y: 20, transition: { duration: 0.25, ease: "easeIn" } }, // Exit downwards and fade
+  exit: { opacity: 0, y: 20, transition: { duration: 0.25, ease: "easeIn" } }, // Submitted card slides down and fades
 };
 
-// Variants for the custom card slot (simplified)
 const customCardSlotInitial = { opacity: 0, y: -10 };
 const customCardSlotAnimate = { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut", delay: 0.1 } };
 const customCardSlotExit = { opacity: 0, transition: { duration: 0.2 }};
@@ -79,8 +75,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const hasSubmittedThisRound = gameState.submissions.some(sub => sub.playerId === player.id);
 
   useEffect(() => {
-    // This effect resets editing/selection states if the round changes, player becomes judge,
-    // phase changes away from submission, or if they've already submitted this round.
     if (player && (gameState.currentRound > 0 && (player.isJudge || gameState.gamePhase !== 'player_submission' || hasSubmittedThisRound))) {
         setIsEditingCustomCard(false);
         setCustomCardInputText('');
@@ -92,7 +86,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
 
   useEffect(() => {
-    // This effect manages the 1-second delay before switching UI after submission
     if (hasSubmittedThisRound && !allowUiSwitchAfterSubmit) {
       if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
       submissionTimeoutRef.current = setTimeout(() => {
@@ -104,7 +97,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       setAllowUiSwitchAfterSubmit(false);
       if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
     }
-    // Cleanup timeout on unmount or if dependencies change before timeout fires
     return () => {
       if (submissionTimeoutRef.current) {
         clearTimeout(submissionTimeoutRef.current);
@@ -116,19 +108,18 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const handleCustomCardEdit = () => {
     setCustomCardInputText(finalizedCustomCardText);
     setIsEditingCustomCard(true);
-    setSelectedCardText(''); // Deselect any pre-dealt card
-    setIsCustomCardSelectedAsSubmissionTarget(false); // Ensure custom isn't marked as submission target yet
+    setSelectedCardText(''); 
+    setIsCustomCardSelectedAsSubmissionTarget(false); 
   };
 
   const handleCustomCardDone = () => {
     if (customCardInputText.trim() === '') {
         toast({ title: "Empty?", description: "Your custom card needs some text!", variant: "destructive"});
-        setFinalizedCustomCardText(''); // Ensure empty if input was empty/whitespace
+        setFinalizedCustomCardText(''); 
     } else {
         setFinalizedCustomCardText(customCardInputText.trim());
     }
     setIsEditingCustomCard(false);
-    // Automatically select the custom card if it has content
     if (customCardInputText.trim()) {
         setSelectedCardText(customCardInputText.trim());
         setIsCustomCardSelectedAsSubmissionTarget(true);
@@ -138,7 +129,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const handleSelectCard = (cardText: string, isCustom: boolean) => {
     setSelectedCardText(cardText);
     setIsCustomCardSelectedAsSubmissionTarget(isCustom);
-    // If custom card slot is clicked and it's not already finalized/being edited, enter edit mode.
      if (isCustom && !finalizedCustomCardText && !isEditingCustomCard) {
       handleCustomCardEdit();
     }
@@ -154,7 +144,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       return;
     }
 
-    // Determine the actual text to submit
     const textToSubmit = isCustomCardSelectedAsSubmissionTarget ? finalizedCustomCardText : selectedCardText;
 
     if (!textToSubmit.trim()) {
@@ -165,8 +154,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     startTransition(async () => {
       try {
         await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
-        toast({ title: "Response Sent!", description: "Your terrible choice is in. Good luck!" });
-        // UI switch will be handled by useEffect watching hasSubmittedThisRound & allowUiSwitchAfterSubmit
+        // "Response Sent!" toast removed as per user request.
       } catch (error: any) {
         toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
       }
@@ -256,7 +244,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             )}
             {showHandUi && (
               <div className="space-y-3">
-                <AnimatePresence mode="popLayout"> {/* Manages custom card edit/display switch */}
+                <AnimatePresence mode="popLayout"> 
                   {isEditingCustomCard ? (
                     <motion.div
                       key={CUSTOM_CARD_ID_EDIT}
@@ -309,21 +297,20 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   )}
                 </AnimatePresence>
 
-                {/* Container for Pre-dealt Cards with Staggering */}
                 <motion.div
                   className="space-y-3" 
                   variants={handContainerVariants}
                   initial="hidden"
                   animate="visible" 
                 >
-                  <AnimatePresence> {/* Manages individual card add/remove after initial cascade */}
+                  <AnimatePresence> 
                     {player.hand &&
                       Array.isArray(player.hand) &&
                       player.hand.map((card: PlayerHandCard) => {
                         const isNewCardVisual = card.isNew === true;
                         return (
                           <motion.button
-                            key={card.id} 
+                            key={'card-' + card.id} 
                             variants={cardCascadeVariants}
                             layout 
                             onClick={() => handleSelectCard(card.text, false)}
@@ -341,7 +328,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                             {isNewCardVisual && (
                                <motion.span 
                                   initial={{ scale: 0, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1, transition: { delay: 0.3, type: 'spring', stiffness: 200, damping: 10 } }}
+                                  animate={{ scale: 1, opacity: 1, transition: { delay: 0.1, type: 'spring', stiffness: 200, damping: 10 } }}
                                   className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md flex items-center"
                                 >
                                   NEW <Sparkles className="inline-block h-2.5 w-2.5 ml-0.5" />
@@ -414,4 +401,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
-    
+
