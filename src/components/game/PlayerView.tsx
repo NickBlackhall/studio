@@ -27,20 +27,21 @@ const handContainerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.091, 
-      delayChildren: 0.2,    
+      staggerChildren: 0.091,
+      delayChildren: 0.2,
     },
   },
 };
 
 const cardCascadeVariants = {
-  hidden: { opacity: 0 }, // Card itself just fades
-  visible: { 
-    opacity: 1, 
-    transition: { duration: 0.2 } // Quick fade-in for the card
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.05 } // Very quick fade-in for the card body
   },
   exit: { opacity: 0, y: 20, transition: { duration: 0.25, ease: "easeIn" } }, // Submitted card slides down and fades
 };
+
 
 const customCardSlotInitial = { opacity: 0, y: -10 };
 const customCardSlotAnimate = { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut", delay: 0.1 } };
@@ -92,7 +93,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         if (isMountedRef.current) {
           setAllowUiSwitchAfterSubmit(true);
         }
-      }, 1000); 
+      }, 1000);
     } else if (!hasSubmittedThisRound) {
       setAllowUiSwitchAfterSubmit(false);
       if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
@@ -108,14 +109,14 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const handleCustomCardEdit = () => {
     setCustomCardInputText(finalizedCustomCardText);
     setIsEditingCustomCard(true);
-    setSelectedCardText(''); 
-    setIsCustomCardSelectedAsSubmissionTarget(false); 
+    setSelectedCardText('');
+    setIsCustomCardSelectedAsSubmissionTarget(false);
   };
 
   const handleCustomCardDone = () => {
     if (customCardInputText.trim() === '') {
         toast({ title: "Empty?", description: "Your custom card needs some text!", variant: "destructive"});
-        setFinalizedCustomCardText(''); 
+        setFinalizedCustomCardText('');
     } else {
         setFinalizedCustomCardText(customCardInputText.trim());
     }
@@ -154,7 +155,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     startTransition(async () => {
       try {
         await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
-        // "Response Sent!" toast removed as per user request.
       } catch (error: any) {
         toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
       }
@@ -244,7 +244,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             )}
             {showHandUi && (
               <div className="space-y-3">
-                <AnimatePresence mode="popLayout"> 
+                <AnimatePresence mode="popLayout">
                   {isEditingCustomCard ? (
                     <motion.div
                       key={CUSTOM_CARD_ID_EDIT}
@@ -298,35 +298,35 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 </AnimatePresence>
 
                 <motion.div
-                  className="space-y-3" 
+                  className="space-y-3"
                   variants={handContainerVariants}
                   initial="hidden"
-                  animate="visible" 
+                  animate="visible"
                 >
-                  <AnimatePresence> 
+                  <AnimatePresence>
                     {player.hand &&
                       Array.isArray(player.hand) &&
                       player.hand.map((card: PlayerHandCard) => {
                         const isNewCardVisual = card.isNew === true;
                         return (
                           <motion.button
-                            key={'card-' + card.id} 
+                            key={'card-' + card.id}
                             variants={cardCascadeVariants}
-                            layout 
+                            layout
                             onClick={() => handleSelectCard(card.text, false)}
                             className={cn(
                               `w-full h-auto p-3 text-left text-sm md:text-base whitespace-normal justify-start relative rounded-md border shadow-md`,
                               selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
                                 ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
-                                : isNewCardVisual 
-                                  ? 'border-red-500 animate-pulse' 
+                                : isNewCardVisual
+                                  ? 'border-red-500 animate-pulse'
                                   : 'border-gray-400 hover:border-foreground bg-card',
                               selectedCardText !== card.text && !isNewCardVisual && 'hover:bg-muted/50'
                             )}
                           >
                             <span>{card.text}</span>
                             {isNewCardVisual && (
-                               <motion.span 
+                               <motion.span
                                   initial={{ scale: 0, opacity: 0 }}
                                   animate={{ scale: 1, opacity: 1, transition: { delay: 0.1, type: 'spring', stiffness: 200, damping: 10 } }}
                                   className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md flex items-center"
@@ -402,3 +402,5 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   );
 }
 
+
+    
