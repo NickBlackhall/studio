@@ -27,18 +27,19 @@ const handContainerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.091, // Delay between each card in the cascade
-      delayChildren: 0.2,   // Initial delay before the cascade starts
+      staggerChildren: 0.091, 
+      delayChildren: 0.2,   
     },
   },
 };
 
 const cardCascadeVariants = {
-  hidden: { opacity: 1 }, // Card body appears instantly
-  visible: {
-    opacity: 1, // Card body appears instantly
+  hidden: { opacity: 0 }, // Cards start transparent
+  visible: { // Cards fade in
+    opacity: 1,
+    transition: { duration: 0.2 } 
   },
-  exit: { opacity: 0, y: 20, transition: { duration: 0.25, ease: "easeIn" } }, // Submitted card slides down and fades
+  exit: { opacity: 0, y: 20, transition: { duration: 0.25, ease: "easeIn" } }, 
 };
 
 
@@ -154,7 +155,6 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     startTransition(async () => {
       try {
         await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
-        // Toast removed as per user request (redundant with UI change)
       } catch (error: any) {
         toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
       }
@@ -319,7 +319,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                               selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
                                 ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
                                 : isNewCardVisual
-                                  ? 'border-red-500' // Removed animate-pulse
+                                  ? 'border-red-500'
                                   : 'border-gray-400 hover:border-foreground bg-card',
                               selectedCardText !== card.text && !isNewCardVisual && 'hover:bg-muted/50'
                             )}
@@ -401,3 +401,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
+
