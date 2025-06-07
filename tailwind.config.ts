@@ -92,22 +92,12 @@ export default {
           '0%': { transform: 'translateX(-100%) skewX(-15deg)' },
           '100%': { transform: 'translateX(100%) skewX(-15deg)' },
         },
-        'modal-content-show': {
-          '0%': { opacity: '0', transform: 'scale(.95)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
-        },
-        'modal-content-hide': {
-          '0%': { opacity: '1', transform: 'scale(1)' },
-          '100%': { opacity: '0', transform: 'scale(.95)' },
-        },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
         'border-pulse': 'border-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'shimmer': 'shimmer 2.5s infinite linear',
-        'modal-content-show': 'modal-content-show ease-out',
-        'modal-content-hide': 'modal-content-hide ease-in',
   		}
   	}
   },
