@@ -22,6 +22,34 @@ const CUSTOM_CARD_PLACEHOLDER = "Write your own card";
 const CUSTOM_CARD_ID_EDIT = "custom-card-edit-slot";
 const CUSTOM_CARD_ID_DISPLAY = "custom-card-display-slot";
 
+// Variants for the container of pre-dealt cards to stagger their animation
+const handContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.07, // Time between each card animating in
+      delayChildren: 0.2,    // Delay after custom card slot, before first pre-dealt card
+    },
+  },
+};
+
+// Variants for individual pre-dealt cards for the cascading/entry/exit effect
+const cardCascadeVariants = {
+  hidden: { y: -20, opacity: 0 },    // Start above and transparent
+  visible: { 
+    y: 0, 
+    opacity: 1, 
+    transition: { type: 'spring', stiffness: 120, damping: 14, duration: 0.3 } 
+  },
+  exit: { opacity: 0, y: 20, transition: { duration: 0.25, ease: "easeIn" } }, // Exit downwards and fade
+};
+
+// Variants for the custom card slot (simplified)
+const customCardSlotInitial = { opacity: 0, y: -10 };
+const customCardSlotAnimate = { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } };
+const customCardSlotExit = { opacity: 0, transition: { duration: 0.2 }};
+
 
 export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [selectedCardText, setSelectedCardText] = useState<string>('');
@@ -68,7 +96,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         if (isMountedRef.current) {
           setAllowUiSwitchAfterSubmit(true);
         }
-      }, 1000);
+      }, 1000); 
     } else if (!hasSubmittedThisRound) {
       setAllowUiSwitchAfterSubmit(false);
       if (submissionTimeoutRef.current) clearTimeout(submissionTimeoutRef.current);
@@ -219,14 +247,14 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             )}
             {showHandUi && (
               <div className="space-y-3">
-                <AnimatePresence>
+                <AnimatePresence mode="popLayout"> {/* Manages custom card edit/display switch */}
                   {isEditingCustomCard ? (
                     <motion.div
                       key={CUSTOM_CARD_ID_EDIT}
-                      layout
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto', transition: { duration: 0.3 } }}
                       exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
+                      layout
                       className="space-y-2 p-3 border-2 border-accent rounded-md shadow-md bg-background"
                     >
                       <Textarea
@@ -247,10 +275,10 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   ) : (
                     <motion.button
                       key={CUSTOM_CARD_ID_DISPLAY}
+                      initial={customCardSlotInitial}
+                      animate={customCardSlotAnimate}
+                      exit={customCardSlotExit}
                       layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0, transition: { duration: 0.3, delay: 0.1 } }}
-                      exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
                       onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
                       className={cn(
                         `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group border-2`,
@@ -272,42 +300,51 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   )}
                 </AnimatePresence>
 
-                <AnimatePresence mode="wait">
-                  {player.hand && Array.isArray(player.hand) &&
-                    player.hand.map((card: PlayerHandCard) => {
-                      const isNewCardVisual = card.isNew === true;
-                      return (
-                        <motion.button
-                          key={card.id}
-                          layout
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0, transition: { duration: 0.3 } }}
-                          exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
-                          onClick={() => handleSelectCard(card.text, false)}
-                          className={cn(
-                            `w-full h-auto p-3 text-left text-sm md:text-base whitespace-normal justify-start relative rounded-md border shadow-md`,
-                            selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
-                              ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
-                              : isNewCardVisual 
-                                ? 'border-red-500 animate-pulse'
-                                : 'border-gray-400 hover:border-foreground bg-card',
-                            selectedCardText !== card.text && !isNewCardVisual && 'hover:bg-muted/50'
-                          )}
-                        >
-                          <span>{card.text}</span>
-                          {isNewCardVisual && (
-                             <motion.span 
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1, transition: { delay: 0.3, type: 'spring', stiffness: 200, damping: 10 } }}
-                                className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md flex items-center"
-                              >
-                                NEW <Sparkles className="inline-block h-2.5 w-2.5 ml-0.5" />
-                              </motion.span>
-                          )}
-                        </motion.button>
-                      );
-                  })}
-                </AnimatePresence>
+                {/* Container for Pre-dealt Cards with Staggering */}
+                <motion.div
+                  className="space-y-3" // Keeps cards vertically stacked
+                  variants={handContainerVariants}
+                  initial="hidden"
+                  animate="visible" 
+                >
+                  <AnimatePresence> {/* Manages individual card add/remove after initial cascade */}
+                    {player.hand &&
+                      Array.isArray(player.hand) &&
+                      player.hand.map((card: PlayerHandCard) => {
+                        const isNewCardVisual = card.isNew === true;
+                        return (
+                          <motion.button
+                            key={card.id} 
+                            variants={cardCascadeVariants}
+                            // initial, animate, exit for cascade are implicitly handled by parent's stagger
+                            // and AnimatePresence handles individual item exit/re-entry
+                            layout 
+                            onClick={() => handleSelectCard(card.text, false)}
+                            className={cn(
+                              `w-full h-auto p-3 text-left text-sm md:text-base whitespace-normal justify-start relative rounded-md border shadow-md`,
+                              selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
+                                ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
+                                : isNewCardVisual 
+                                  ? 'border-red-500 animate-pulse' // Keep pulse for visibility
+                                  : 'border-gray-400 hover:border-foreground bg-card',
+                              selectedCardText !== card.text && !isNewCardVisual && 'hover:bg-muted/50'
+                            )}
+                          >
+                            <span>{card.text}</span>
+                            {isNewCardVisual && (
+                               <motion.span 
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1, transition: { delay: 0.3, type: 'spring', stiffness: 200, damping: 10 } }}
+                                  className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md flex items-center"
+                                >
+                                  NEW <Sparkles className="inline-block h-2.5 w-2.5 ml-0.5" />
+                                </motion.span>
+                            )}
+                          </motion.button>
+                        );
+                    })}
+                  </AnimatePresence>
+                </motion.div>
               </div>
             )}
           </CardContent>
@@ -370,4 +407,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
-
+    
