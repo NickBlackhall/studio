@@ -30,7 +30,7 @@ export default function Scoreboard({ players, currentJudgeId }: ScoreboardProps)
   });
 
   return (
-    <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
+    <Accordion type="single" collapsible className="w-full">
       <AccordionItem value="item-1" className="border-2 border-muted rounded-xl overflow-hidden shadow-lg bg-card">
         <AccordionTrigger className="px-4 py-3 hover:no-underline bg-muted/50 data-[state=open]:border-b data-[state=open]:border-muted">
           <div className="flex items-center text-2xl font-bold text-foreground">
@@ -79,3 +79,4 @@ export default function Scoreboard({ players, currentJudgeId }: ScoreboardProps)
     </Accordion>
   );
 }
+
