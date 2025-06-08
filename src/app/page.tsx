@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -283,6 +284,7 @@ export default function WelcomePage() {
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id); 
           await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`, currentGameId); 
+          // Toast removed from here
         } else if (isMountedRef.current) {
            if (newPlayer === null && internalGame?.gamePhase !== 'lobby') { 
             toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
