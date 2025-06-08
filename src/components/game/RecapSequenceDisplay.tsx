@@ -13,7 +13,7 @@ interface RecapSequenceDisplayProps {
   lastWinnerCardText: string;
   players: PlayerClientState[];
   currentJudgeId: string | null;
-  // nextJudgeName?: string; // Optional: if we can pass this
+  defaultOpenScoreboard?: boolean; // Renamed from defaultOpen for clarity in this context
 }
 
 const stepVariants = {
@@ -28,6 +28,7 @@ export default function RecapSequenceDisplay({
   lastWinnerCardText,
   players,
   currentJudgeId,
+  defaultOpenScoreboard = false, // Default to false
 }: RecapSequenceDisplayProps) {
   if (!recapStep) return null;
 
@@ -41,7 +42,7 @@ export default function RecapSequenceDisplay({
           height={80}
           className="rounded-lg object-contain border-4 border-black shadow-lg"
           data-ai-hint="player avatar"
-          priority // Prioritize avatar loading
+          priority 
         />
       );
     }
@@ -68,7 +69,7 @@ export default function RecapSequenceDisplay({
                 height={188}
                 className="object-contain"
                 data-ai-hint="winner banner"
-                priority // Prioritize banner loading
+                priority 
               />
             </div>
             <div className="flex flex-col items-center space-y-3 mb-6">
@@ -99,9 +100,8 @@ export default function RecapSequenceDisplay({
             exit="exit"
             className="flex flex-col items-center justify-center text-center w-full max-w-md"
           >
-            {/* Title removed to use Scoreboard's own title */}
             <div className="w-full">
-              <Scoreboard players={players} currentJudgeId={currentJudgeId} defaultOpen={true} />
+              <Scoreboard players={players} currentJudgeId={currentJudgeId} defaultOpen={defaultOpenScoreboard} />
             </div>
           </motion.div>
         )}
@@ -121,12 +121,6 @@ export default function RecapSequenceDisplay({
             <p className="text-2xl text-muted-foreground">
               The next round is about to begin...
             </p>
-            {/* Optional: Next judge info
-            {nextJudgeName && (
-              <p className="text-lg text-muted-foreground mt-2">
-                Next Judge: {nextJudgeName}
-              </p>
-            )} */}
             <div className="mt-8 text-primary">
               <svg className="animate-spin h-12 w-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -139,3 +133,5 @@ export default function RecapSequenceDisplay({
     </div>
   );
 }
+
+    

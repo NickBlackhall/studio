@@ -55,6 +55,7 @@ export default function GamePage() {
 
   const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
   const recapStepTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [recapTriggeredForRound, setRecapTriggeredForRound] = useState<number | null>(null);
 
 
   const setGameState = useCallback((newState: GameClientState | null) => {
@@ -66,8 +67,6 @@ export default function GamePage() {
     thisPlayerRef.current = newPlayerState;
     if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
   }, []);
-
-  const gameState = internalGameState;
 
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
@@ -149,11 +148,11 @@ export default function GamePage() {
   }, []);
 
   useEffect(() => {
-    if (!gameState || !gameState.gameId ) {
-      console.log(`GamePage Realtime: Skipping subscription setup (no game/gameId). Current gameState ID: ${gameState?.gameId}`);
+    if (!internalGameState || !internalGameState.gameId ) {
+      console.log(`GamePage Realtime: Skipping subscription setup (no game/gameId). Current gameState ID: ${internalGameState?.gameId}`);
       return;
     }
-    const gameId = gameState.gameId;
+    const gameId = internalGameState.gameId;
     const currentPlayerId = thisPlayerRef.current?.id;
 
     console.log(`GamePage Realtime: Setting up subscriptions for gameId: ${gameId}, thisPlayerId: ${currentPlayerId || 'N/A'}`);
@@ -262,7 +261,7 @@ export default function GamePage() {
       console.log(`GamePage Realtime: Cleaning up subscriptions for gameId: ${gameId}, suffix: ${uniqueChannelSuffix}`);
       activeSubscriptions.forEach(sub => supabase.removeChannel(sub).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
     };
-  }, [gameState?.gameId, setGameState, setThisPlayer, router, toast]);
+  }, [internalGameState?.gameId, setGameState, setThisPlayer, router, toast]);
 
 
   useEffect(() => {
@@ -270,53 +269,73 @@ export default function GamePage() {
       clearTimeout(recapStepTimerRef.current);
     }
 
-    const currentGamePhase = gameStateRef.current?.gamePhase;
+    const currentGamePhase = internalGameState?.gamePhase;
+    const currentRound = internalGameState?.currentRound;
 
-    if (currentGamePhase === 'winner_announcement') {
-      if (recapStepInternal === null) {
-        console.log("GamePage: recapEffect - Starting sequence, setting to 'winner'");
-        if (isMountedRef.current) setRecapStepInternal('winner');
-        return; 
-      }
-    } else {
+    // If game phase is not winner_announcement, ensure recap is cleared and round tracking is reset
+    if (currentGamePhase !== 'winner_announcement') {
       if (recapStepInternal !== null) {
         console.log("GamePage: recapEffect - Game phase NOT winner_announcement. Clearing recapStep.");
-        if (isMountedRef.current) setRecapStepInternal(null);
+        setRecapStepInternal(null);
       }
-      return; 
+      if (recapTriggeredForRound !== null) {
+        // Reset for the next time winner_announcement occurs
+        setRecapTriggeredForRound(null);
+      }
+      return;
     }
 
-    if (recapStepInternal === 'winner') {
-      console.log("GamePage: recapEffect - Current step 'winner'. Setting timer for 'scoreboard'.");
-      recapStepTimerRef.current = setTimeout(() => {
-        if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
-          console.log("GamePage: recapEffect - Timer expired for 'winner'. Transitioning to 'scoreboard'.");
-          setRecapStepInternal('scoreboard');
-        }
-      }, 5000);
-    } else if (recapStepInternal === 'scoreboard') {
-      console.log("GamePage: recapEffect - Current step 'scoreboard'. Setting timer for 'getReady'.");
-      recapStepTimerRef.current = setTimeout(() => {
-        if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
-          console.log("GamePage: recapEffect - Timer expired for 'scoreboard'. Transitioning to 'getReady'.");
-          setRecapStepInternal('getReady');
-        }
-      }, 5000);
-    } else if (recapStepInternal === 'getReady') {
-      console.log("GamePage: recapEffect - Current step 'getReady'. Setting timer for next round action / clear.");
-      recapStepTimerRef.current = setTimeout(() => {
-        if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
-          const currentThisPlayer = thisPlayerRef.current;
-          if (currentThisPlayer?.isJudge && gameStateRef.current?.gameId) {
-            console.log(`GamePage: recapEffect - Timer expired for 'getReady'. Judge ${currentThisPlayer.name} calling handleNextRound.`);
-            handleNextRound(); // Call the action
-            setRecapStepInternal(null); // Immediately clear recap for judge
-          } else {
-            console.log("GamePage: recapEffect - Timer expired for 'getReady'. Non-judge or no gameId. Clearing recapStep.");
-            setRecapStepInternal(null);
+    // ----- Main logic for 'winner_announcement' phase -----
+    if (currentGamePhase === 'winner_announcement' && currentRound !== undefined) {
+      // Condition to START the sequence:
+      // 1. Game is in winner_announcement
+      // 2. Recap isn't already active (recapStepInternal is null)
+      // 3. Recap hasn't already been triggered for THIS specific round
+      if (recapStepInternal === null && recapTriggeredForRound !== currentRound) {
+        console.log(`GamePage: recapEffect - Starting sequence for round ${currentRound}, setting to 'winner'`);
+        setRecapStepInternal('winner');
+        setRecapTriggeredForRound(currentRound); // Mark this round as having its recap triggered
+        return; // Exit after starting the sequence
+      }
+
+      // Logic for progressing through the sequence if it's already started
+      if (recapStepInternal === 'winner') {
+        console.log("GamePage: recapEffect - Current step 'winner'. Setting timer for 'scoreboard'.");
+        recapStepTimerRef.current = setTimeout(() => {
+          if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+            console.log("GamePage: recapEffect - Timer expired for 'winner'. Transitioning to 'scoreboard'.");
+            setRecapStepInternal('scoreboard');
           }
-        }
-      }, 5000);
+        }, 5000);
+      } else if (recapStepInternal === 'scoreboard') {
+        console.log("GamePage: recapEffect - Current step 'scoreboard'. Setting timer for 'getReady'.");
+        recapStepTimerRef.current = setTimeout(() => {
+          if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+            console.log("GamePage: recapEffect - Timer expired for 'scoreboard'. Transitioning to 'getReady'.");
+            setRecapStepInternal('getReady');
+          }
+        }, 5000);
+      } else if (recapStepInternal === 'getReady') {
+        console.log("GamePage: recapEffect - Current step 'getReady'. Setting timer for next round action / clear.");
+        recapStepTimerRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            const currentThisPlayer = thisPlayerRef.current;
+            const currentGameState = gameStateRef.current; // Use ref for potentially fresher state in timeout
+            // Judge initiates next round
+            if (currentThisPlayer?.isJudge && currentGameState?.gameId && currentGameState?.gamePhase === 'winner_announcement') {
+              console.log(`GamePage: recapEffect - Timer expired for 'getReady'. Judge ${currentThisPlayer.name} calling handleNextRound.`);
+              handleNextRound(); 
+              // The judge does not set recapStepInternal to null here;
+              // The phase change from handleNextRound will cause the main condition (currentGamePhase !== 'winner_announcement')
+              // at the top of this useEffect to clear recapStepInternal and recapTriggeredForRound.
+            } else if (currentGameState?.gamePhase === 'winner_announcement') {
+              // Non-judges, or judge if something went wrong with phase change, clear their local view of "Get Ready".
+              console.log("GamePage: recapEffect - Timer expired for 'getReady'. Non-judge or game still in winner_announcement. Clearing recapStep locally.");
+              setRecapStepInternal(null);
+            }
+          }
+        }, 5000);
+      }
     }
 
     return () => {
@@ -324,15 +343,21 @@ export default function GamePage() {
         clearTimeout(recapStepTimerRef.current);
       }
     };
-  }, [internalGameState?.gamePhase, recapStepInternal, thisPlayer?.isJudge]);
+  }, [
+    internalGameState?.gamePhase,
+    internalGameState?.currentRound,
+    recapStepInternal,
+    thisPlayer?.isJudge,
+    recapTriggeredForRound
+  ]);
 
 
   const handleStartGame = async () => {
-    if (gameState?.gameId && gameState.gamePhase === 'lobby' && gameState.players.length >= MIN_PLAYERS_TO_START ) {
+    if (internalGameState?.gameId && internalGameState.gamePhase === 'lobby' && internalGameState.players.length >= MIN_PLAYERS_TO_START ) {
       startActionTransition(async () => {
         console.log("GamePage: Client calling startGame server action.");
         try {
-          await startGame(gameState.gameId);
+          await startGame(internalGameState.gameId);
           if (isMountedRef.current) toast({ title: "Game Starting!", description: "The judge is being assigned and cards dealt." });
         } catch (error: any) {
           console.error("GamePage: Error starting game:", error);
@@ -340,15 +365,15 @@ export default function GamePage() {
         }
       });
     } else {
-      if (isMountedRef.current) toast({title: "Cannot Start", description: `Not enough players or game not in lobby (current: ${gameState?.gamePhase}). Found ${gameState?.players?.length} players, need ${MIN_PLAYERS_TO_START}.`, variant: "destructive"})
+      if (isMountedRef.current) toast({title: "Cannot Start", description: `Not enough players or game not in lobby (current: ${internalGameState?.gamePhase}). Found ${internalGameState?.players?.length} players, need ${MIN_PLAYERS_TO_START}.`, variant: "destructive"})
     }
   };
 
   const handleSelectCategory = async (category: string) => {
-    if (gameState?.gameId) {
+    if (internalGameState?.gameId) {
       startActionTransition(async () => {
         try {
-          await selectCategory(gameState.gameId, category);
+          await selectCategory(internalGameState.gameId, category);
         } catch (error: any) {
           console.error("GamePage: Error selecting category:", error);
           if (isMountedRef.current) toast({title: "Category Error", description: error.message || "Failed to select category.", variant: "destructive"});
@@ -358,10 +383,10 @@ export default function GamePage() {
   };
 
   const handleSelectWinner = async (winningCardText: string) => {
-    if (gameState?.gameId) {
+    if (internalGameState?.gameId) {
       startActionTransition(async () => {
         try {
-          await selectWinner(winningCardText, gameState.gameId);
+          await selectWinner(winningCardText, internalGameState.gameId);
         } catch (error: any) {
           console.error("GamePage: Error selecting winner:", error);
           if (isMountedRef.current) toast({title: "Winner Selection Error", description: error.message || "Failed to select winner.", variant: "destructive"});
@@ -373,7 +398,7 @@ export default function GamePage() {
   const handleNextRound = async () => {
     let currentActionError: any = null;
     if (gameStateRef.current?.gameId) { // Use ref here for potentially immediate calls
-      if (isMountedRef.current) setIsLoading(true); // Still might be useful for immediate visual feedback
+      if (isMountedRef.current) setIsLoading(true); 
       try {
         console.log(`GamePage: Calling nextRound server action for game ${gameStateRef.current.gameId}`);
         await nextRound(gameStateRef.current.gameId);
@@ -382,7 +407,6 @@ export default function GamePage() {
         console.error("GamePage: Error starting next round:", error);
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          // Don't setIsLoading(false) here as the page will navigate away
           return; 
         } else {
           if (isMountedRef.current) toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
@@ -401,7 +425,7 @@ export default function GamePage() {
 
   const handlePlayAgainYes = async () => {
     let currentActionError: any = null;
-    if (gameState?.gameId) {
+    if (internalGameState?.gameId) {
       console.log("GamePage: Player clicked 'Yes, Play Again!'. Calling resetGameForTesting.");
       if (isMountedRef.current) {
         setIsLoading(true);
@@ -474,7 +498,7 @@ export default function GamePage() {
   };
 
 
-  if (isLoading && (!gameState || (!thisPlayer && gameState?.gamePhase !== 'winner_announcement' && gameState?.gamePhase !== 'game_over' && gameState?.gamePhase !== 'lobby'))) {
+  if (isLoading && (!internalGameState || (!thisPlayer && internalGameState?.gamePhase !== 'winner_announcement' && internalGameState?.gamePhase !== 'game_over' && internalGameState?.gamePhase !== 'lobby'))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
@@ -483,7 +507,7 @@ export default function GamePage() {
     );
   }
 
-  if (!gameState || !gameState.gameId) {
+  if (!internalGameState || !internalGameState.gameId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Image src="/logo.png" alt="Game Logo - Error" width={182} height={54} className="mb-6 opacity-70" data-ai-hint="game logo"/>
@@ -500,7 +524,7 @@ export default function GamePage() {
     );
   }
 
-  if (gameState.gamePhase === 'lobby') {
+  if (internalGameState.gamePhase === 'lobby') {
      const currentPhaseFromRef = gameStateRef.current?.gamePhase;
      if (currentPhaseFromRef && currentPhaseFromRef !== 'game_over' && currentPhaseFromRef !== 'winner_announcement') {
         console.log("GamePage: Game phase is 'lobby', current UI phase was not game_over/winner. Displaying lobby message.");
@@ -521,8 +545,8 @@ export default function GamePage() {
      }
   }
 
-  if (!thisPlayer && (gameState.gamePhase !== 'winner_announcement' && gameState.gamePhase !== 'game_over')) {
-     console.warn("GamePage: thisPlayer object is null, but game is active and not in winner/game_over phase. Game state:", JSON.stringify(gameState, null, 2));
+  if (!thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over')) {
+     console.warn("GamePage: thisPlayer object is null, but game is active and not in winner/game_over phase. Game state:", JSON.stringify(internalGameState, null, 2));
      return (
         <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
@@ -536,9 +560,9 @@ export default function GamePage() {
   }
 
   const renderGameContent = () => {
-    if (!thisPlayer && (gameState.gamePhase !== 'winner_announcement' && gameState.gamePhase !== 'game_over')) {
-        if (ACTIVE_PLAYING_PHASES.includes(gameState.gamePhase)) {
-             console.error("GamePage: renderGameContent - thisPlayer is null during active game phase:", gameState.gamePhase);
+    if (!thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over')) {
+        if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase)) {
+             console.error("GamePage: renderGameContent - thisPlayer is null during active game phase:", internalGameState.gamePhase);
             return (
                 <Card className="text-center">
                     <CardHeader><CardTitle className="text-destructive">Player Identification Error</CardTitle></CardHeader>
@@ -548,15 +572,15 @@ export default function GamePage() {
         }
     }
 
-    if (gameState.gamePhase === 'game_over') {
+    if (internalGameState.gamePhase === 'game_over') {
       return <WinnerDisplay
-                gameState={gameState}
+                gameState={internalGameState}
                 onPlayAgainYes={handlePlayAgainYes}
                 onPlayAgainNo={handlePlayAgainNo}
               />;
     }
 
-    if (gameState.gamePhase === 'lobby') { // Will only show if game became lobby while recap might have been considered
+    if (internalGameState.gamePhase === 'lobby') { 
         return (
             <div className="text-center py-10">
                 <h2 className="text-2xl font-semibold mb-4">Game is in Lobby</h2>
@@ -568,21 +592,20 @@ export default function GamePage() {
         );
     }
 
-    // If in recap sequence, main game content is usually obscured by RecapSequenceDisplay
     if (recapStepInternal) {
-      return null; // Or a minimal background if RecapSequenceDisplay isn't full-screen
+      return null; 
     }
 
     if (thisPlayer?.isJudge) {
-      return <JudgeView gameState={gameState} judge={thisPlayer} onSelectCategory={handleSelectCategory} onSelectWinner={handleSelectWinner} />;
+      return <JudgeView gameState={internalGameState} judge={thisPlayer} onSelectCategory={handleSelectCategory} onSelectWinner={handleSelectWinner} />;
     }
     if (thisPlayer && !thisPlayer.isJudge) {
-      return <PlayerView gameState={gameState} player={thisPlayer} />;
+      return <PlayerView gameState={internalGameState} player={thisPlayer} />;
     }
     return (
         <Card className="text-center">
             <CardHeader><CardTitle>Waiting for Game State</CardTitle></CardHeader>
-            <CardContent><p>The game is in phase: {gameState.gamePhase}. Your role is being determined or an issue occurred.</p></CardContent>
+            <CardContent><p>The game is in phase: {internalGameState.gamePhase}. Your role is being determined or an issue occurred.</p></CardContent>
         </Card>
     );
   };
@@ -590,20 +613,20 @@ export default function GamePage() {
   const showPendingOverlay = isActionPending && !isLoading;
   const shouldShowPlayerInfoBar = thisPlayer &&
                                   !thisPlayer.isJudge &&
-                                  gameState.gamePhase !== 'winner_announcement' &&
-                                  gameState.gamePhase !== 'game_over' &&
-                                  !recapStepInternal; // Also hide if recap is active
+                                  internalGameState.gamePhase !== 'winner_announcement' &&
+                                  internalGameState.gamePhase !== 'game_over' &&
+                                  !recapStepInternal; 
 
   return (
     <>
-      {recapStepInternal && gameState && gameState.lastWinner && (
+      {recapStepInternal && internalGameState && internalGameState.lastWinner && (
         <RecapSequenceDisplay
           recapStep={recapStepInternal}
-          lastWinnerPlayer={gameState.lastWinner.player}
-          lastWinnerCardText={gameState.lastWinner.cardText}
-          players={gameState.players}
-          currentJudgeId={gameState.currentJudgeId}
-          // nextJudgeName - can be implemented later
+          lastWinnerPlayer={internalGameState.lastWinner.player}
+          lastWinnerCardText={internalGameState.lastWinner.cardText}
+          players={internalGameState.players}
+          currentJudgeId={internalGameState.currentJudgeId}
+          defaultOpenScoreboard={recapStepInternal === 'scoreboard'}
         />
       )}
       <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 max-w-7xl mx-auto px-2 ${recapStepInternal ? 'opacity-20 pointer-events-none' : ''}`}>
@@ -637,9 +660,9 @@ export default function GamePage() {
           {renderGameContent()}
         </main>
         <aside className="w-full md:w-1/3 lg:w-1/4 order-2 md:order-1">
-          <Scoreboard players={gameState.players} currentJudgeId={gameState.currentJudgeId} />
+          <Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} />
           <div className="mt-6 text-center space-y-2">
-            <p className="text-sm text-muted-foreground">Round {gameState.currentRound}</p>
+            <p className="text-sm text-muted-foreground">Round {internalGameState.currentRound}</p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <Link href="/?step=setup" className="inline-block" onClick={() => {  }}>
                 <Button variant="outline" size="sm" className="border-primary/50 text-primary/80 hover:bg-primary/10 hover:text-primary w-full sm:w-auto">
@@ -679,6 +702,5 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
-
 
     
