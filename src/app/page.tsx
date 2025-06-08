@@ -571,7 +571,9 @@ export default function WelcomePage() {
                               disabled={isProcessingAction}
                             />
                           ) : (
-                            player.isReady ? <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
+                            player.isReady ? 
+                              <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : 
+                              <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
                           )}
                         </div>
                       </li>
@@ -634,5 +636,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
