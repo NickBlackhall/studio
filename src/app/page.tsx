@@ -43,7 +43,7 @@ export default function WelcomePage() {
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
 
-  const parseReadyPlayerOrderStr = (gameState: GameClientState | null): string[] => {
+  const parseReadyPlayerOrderStr = useCallback((gameState: GameClientState | null): string[] => {
     if (!gameState || typeof gameState.ready_player_order_str !== 'string') {
       return [];
     }
@@ -54,7 +54,7 @@ export default function WelcomePage() {
       console.error("Client (parseReadyPlayerOrderStr): Failed to parse ready_player_order_str", e, gameState.ready_player_order_str);
       return [];
     }
-  };
+  }, []);
 
   const setGame = useCallback((newGameState: GameClientState | null) => {
     gameRef.current = newGameState; 
@@ -68,7 +68,7 @@ export default function WelcomePage() {
         setInternalGame(null);
       }
     }
-  }, []);
+  }, [parseReadyPlayerOrderStr]);
 
   const setThisPlayerId = useCallback((newPlayerId: string | null) => {
     thisPlayerIdRef.current = newPlayerId;
@@ -387,6 +387,9 @@ export default function WelcomePage() {
     }
   };
   
+  // Moved thisPlayerObject calculation here, before dependent useMemo hooks
+  const thisPlayerObject = internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
+
   const hostPlayerId = useMemo(() => {
     if (!internalGame || !Array.isArray(internalGame.ready_player_order)) {
       return null;
@@ -403,6 +406,14 @@ export default function WelcomePage() {
     if (!internalGame || !internalGame.players || !enoughPlayers) return false;
     return internalGame.players.every(p => p.isReady);
   }, [internalGame, enoughPlayers]); 
+
+  const sortedPlayersForDisplay = useMemo(() => {
+    if (!internalGame || !internalGame.players) return [];
+    if (!thisPlayerObject) return internalGame.players; 
+    
+    const otherPlayers = internalGame.players.filter(p => p.id !== thisPlayerObject.id);
+    return [thisPlayerObject, ...otherPlayers];
+  }, [internalGame, thisPlayerObject]);
 
 
   if (isLoading && !internalGame ) { 
@@ -425,21 +436,11 @@ export default function WelcomePage() {
     );
   }
 
-  const thisPlayerObject = internalThisPlayerId && internalGame.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
+  // These derived consts can be defined after early returns if they use internalGame which is now guaranteed to be non-null
   const gameIsActuallyActive = ACTIVE_PLAYING_PHASES.includes(internalGame.gamePhase as GamePhaseClientState);
   const isLobbyPhaseActive = internalGame.gamePhase === 'lobby';
-  const isSpectatorView = gameIsActuallyActive && !thisPlayerObject;
-  const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject;
-
-  const sortedPlayersForDisplay = useMemo(() => {
-    if (!internalGame || !internalGame.players) return [];
-    if (!thisPlayerObject) return internalGame.players; // Or some other default sorting if player not identified
-
-    const otherPlayers = internalGame.players.filter(p => p.id !== thisPlayerObject.id);
-    // For now, other players maintain their original relative order (e.g., join order)
-    // We could sort `otherPlayers` further here if needed, e.g., by name or ready status.
-    return [thisPlayerObject, ...otherPlayers];
-  }, [internalGame, thisPlayerObject]);
+  const isSpectatorView = gameIsActuallyActive && !thisPlayerObject; // thisPlayerObject is defined above
+  const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject; // thisPlayerObject is defined above
 
 
   if (currentStep === 'setup') {
@@ -643,5 +644,6 @@ export default function WelcomePage() {
     </div>
   );
 }
+    
 
     
