@@ -18,7 +18,7 @@ interface PlayerSetupFormProps {
 export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
   const [name, setName] = useState('');
   // Initialize selectedAvatar with the first avatar, or ensure it's set by the carousel's initial onAvatarSelect call
-  const [selectedAvatar, setSelectedAvatar] = useState<string>(''); 
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -55,10 +55,6 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
 
     startTransition(async () => {
       await addPlayer(formData);
-      toast({
-        title: "Welcome!",
-        description: `${name} has joined the game!`,
-      });
       // setName(''); // Optionally reset name for next player
     });
   };
