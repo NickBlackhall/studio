@@ -431,6 +431,16 @@ export default function WelcomePage() {
   const isSpectatorView = gameIsActuallyActive && !thisPlayerObject;
   const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject;
 
+  const sortedPlayersForDisplay = useMemo(() => {
+    if (!internalGame || !internalGame.players) return [];
+    if (!thisPlayerObject) return internalGame.players; // Or some other default sorting if player not identified
+
+    const otherPlayers = internalGame.players.filter(p => p.id !== thisPlayerObject.id);
+    // For now, other players maintain their original relative order (e.g., join order)
+    // We could sort `otherPlayers` further here if needed, e.g., by name or ready status.
+    return [thisPlayerObject, ...otherPlayers];
+  }, [internalGame, thisPlayerObject]);
+
 
   if (currentStep === 'setup') {
     if (isSpectatorView) {
@@ -512,7 +522,7 @@ export default function WelcomePage() {
       } else { 
         const hostPlayerForMsg = hostPlayerId && internalGame.players ? internalGame.players.find(p => p.id === hostPlayerId) : null;
         const hostNameForMessage = hostPlayerForMsg?.name || ( (internalGame.ready_player_order?.length || 0) > 0 ? 'first player to ready up' : 'the host');
-        lobbyMessage = `All players ready! Waiting for ${hostNameForMessage} to start the game.`;
+        lobbyMessage = `Game starts once all you terrible people are ready. So hurry up!`;
       }
       
       return (
@@ -547,13 +557,13 @@ export default function WelcomePage() {
               <CardHeader className="bg-secondary text-secondary-foreground p-6">
                 <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({internalGame.players.length})</CardTitle>
                 <CardDescription className="text-secondary-foreground/80 text-base">
-                  Game starts once all you terrible people are ready. So hurry up!
+                  {lobbyMessage}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                {internalGame.players.length > 0 ? (
+                {sortedPlayersForDisplay.length > 0 ? (
                   <ul className="space-y-3">
-                    {internalGame.players.map((player: PlayerClientState) => (
+                    {sortedPlayersForDisplay.map((player: PlayerClientState) => (
                       <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
                         <div className="flex items-center">
                           {player.avatar.startsWith('/') ? (
@@ -595,9 +605,6 @@ export default function WelcomePage() {
                       🚀 Start Game Now!
                     </Button>
                 )}
-                {lobbyMessage && (
-                    <p className="text-sm text-center mt-4 text-yellow-600 dark:text-yellow-400 font-semibold">{lobbyMessage}</p>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -636,3 +643,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
