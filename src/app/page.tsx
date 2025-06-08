@@ -255,6 +255,35 @@ export default function WelcomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [internalGame?.gameId, internalThisPlayerId, currentStep, isLoading, fetchGameData]); 
 
+  const thisPlayerObject = useMemo(() => {
+    return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
+  }, [internalThisPlayerId, internalGame?.players]);
+
+  const sortedPlayersForDisplay = useMemo(() => {
+    if (!internalGame || !internalGame.players) return [];
+    if (!thisPlayerObject) return internalGame.players; 
+    
+    const otherPlayers = internalGame.players.filter(p => p.id !== thisPlayerObject.id);
+    return [thisPlayerObject, ...otherPlayers];
+  }, [internalGame, thisPlayerObject]);
+
+  const hostPlayerId = useMemo(() => {
+    if (!internalGame || !Array.isArray(internalGame.ready_player_order)) {
+      return null;
+    }
+    return internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
+  }, [internalGame]); 
+
+  const enoughPlayers = useMemo(() => {
+    if (!internalGame || !internalGame.players) return false;
+    return internalGame.players.length >= MIN_PLAYERS_TO_START;
+  }, [internalGame]);
+
+  const allPlayersReady = useMemo(() => {
+    if (!internalGame || !internalGame.players || !enoughPlayers) return false;
+    return internalGame.players.every(p => p.isReady);
+  }, [internalGame, enoughPlayers]); 
+
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
@@ -387,34 +416,6 @@ export default function WelcomePage() {
     }
   };
   
-  // Moved thisPlayerObject calculation here, before dependent useMemo hooks
-  const thisPlayerObject = internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
-
-  const hostPlayerId = useMemo(() => {
-    if (!internalGame || !Array.isArray(internalGame.ready_player_order)) {
-      return null;
-    }
-    return internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
-  }, [internalGame]); 
-
-  const enoughPlayers = useMemo(() => {
-    if (!internalGame || !internalGame.players) return false;
-    return internalGame.players.length >= MIN_PLAYERS_TO_START;
-  }, [internalGame]);
-
-  const allPlayersReady = useMemo(() => {
-    if (!internalGame || !internalGame.players || !enoughPlayers) return false;
-    return internalGame.players.every(p => p.isReady);
-  }, [internalGame, enoughPlayers]); 
-
-  const sortedPlayersForDisplay = useMemo(() => {
-    if (!internalGame || !internalGame.players) return [];
-    if (!thisPlayerObject) return internalGame.players; 
-    
-    const otherPlayers = internalGame.players.filter(p => p.id !== thisPlayerObject.id);
-    return [thisPlayerObject, ...otherPlayers];
-  }, [internalGame, thisPlayerObject]);
-
 
   if (isLoading && !internalGame ) { 
     return (
@@ -439,8 +440,8 @@ export default function WelcomePage() {
   // These derived consts can be defined after early returns if they use internalGame which is now guaranteed to be non-null
   const gameIsActuallyActive = ACTIVE_PLAYING_PHASES.includes(internalGame.gamePhase as GamePhaseClientState);
   const isLobbyPhaseActive = internalGame.gamePhase === 'lobby';
-  const isSpectatorView = gameIsActuallyActive && !thisPlayerObject; // thisPlayerObject is defined above
-  const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject; // thisPlayerObject is defined above
+  const isSpectatorView = gameIsActuallyActive && !thisPlayerObject; 
+  const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject; 
 
 
   if (currentStep === 'setup') {
@@ -603,7 +604,7 @@ export default function WelcomePage() {
                       disabled={isProcessingAction || isLoading}
                     >
                       { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-3 h-7 w-7" /> }
-                      🚀 Start Game Now!
+                      Start Game Now!
                     </Button>
                 )}
               </CardContent>
