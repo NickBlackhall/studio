@@ -54,7 +54,8 @@ export default function GamePage() {
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
 
   const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
-  const recapStepTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for visual step duration
+  const judgeEarlyActionTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for judge's early action
   const [recapTriggeredForRound, setRecapTriggeredForRound] = useState<number | null>(null);
 
 
@@ -140,9 +141,8 @@ export default function GamePage() {
 
     return () => {
         isMountedRef.current = false;
-        if (recapStepTimerRef.current) {
-            clearTimeout(recapStepTimerRef.current);
-        }
+        if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
+        if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -265,90 +265,87 @@ export default function GamePage() {
 
 
   useEffect(() => {
-    if (recapStepTimerRef.current) {
-      clearTimeout(recapStepTimerRef.current);
-    }
+    if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
+    if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
 
     const currentGamePhase = internalGameState?.gamePhase;
     const currentRound = internalGameState?.currentRound;
 
-    // If game phase is not winner_announcement, ensure recap is cleared and round tracking is reset
     if (currentGamePhase !== 'winner_announcement') {
       if (recapStepInternal !== null) {
-        console.log("GamePage: recapEffect - Game phase NOT winner_announcement. Clearing recapStep.");
+        console.log("GamePage: recapEffect - Game phase NOT winner_announcement. Clearing recapStep and triggeredRound.");
         setRecapStepInternal(null);
       }
       if (recapTriggeredForRound !== null) {
-        // Reset for the next time winner_announcement occurs
         setRecapTriggeredForRound(null);
       }
       return;
     }
 
-    // ----- Main logic for 'winner_announcement' phase -----
     if (currentGamePhase === 'winner_announcement' && currentRound !== undefined) {
-      // Condition to START the sequence:
-      // 1. Game is in winner_announcement
-      // 2. Recap isn't already active (recapStepInternal is null)
-      // 3. Recap hasn't already been triggered for THIS specific round
       if (recapStepInternal === null && recapTriggeredForRound !== currentRound) {
         console.log(`GamePage: recapEffect - Starting sequence for round ${currentRound}, setting to 'winner'`);
         setRecapStepInternal('winner');
         setRecapTriggeredForRound(currentRound); // Mark this round as having its recap triggered
-        return; // Exit after starting the sequence
+        return; 
       }
 
-      // Logic for progressing through the sequence if it's already started
       if (recapStepInternal === 'winner') {
-        console.log("GamePage: recapEffect - Current step 'winner'. Setting timer for 'scoreboard'.");
-        recapStepTimerRef.current = setTimeout(() => {
+        console.log("GamePage: recapEffect - Current step 'winner'. Setting 5s timer for 'scoreboard'.");
+        recapVisualStepTimerRef.current = setTimeout(() => {
           if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
             console.log("GamePage: recapEffect - Timer expired for 'winner'. Transitioning to 'scoreboard'.");
             setRecapStepInternal('scoreboard');
           }
         }, 5000);
       } else if (recapStepInternal === 'scoreboard') {
-        console.log("GamePage: recapEffect - Current step 'scoreboard'. Setting timer for 'getReady'.");
-        recapStepTimerRef.current = setTimeout(() => {
+        console.log("GamePage: recapEffect - Current step 'scoreboard'. Setting 5s timer for 'getReady'.");
+        recapVisualStepTimerRef.current = setTimeout(() => {
           if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
             console.log("GamePage: recapEffect - Timer expired for 'scoreboard'. Transitioning to 'getReady'.");
             setRecapStepInternal('getReady');
           }
         }, 5000);
       } else if (recapStepInternal === 'getReady') {
-        console.log("GamePage: recapEffect - Current step 'getReady'. Setting timer for next round action / clear.");
-        recapStepTimerRef.current = setTimeout(() => {
+        console.log("GamePage: recapEffect - Current step 'getReady'. Setting visual timer (5s).");
+        
+        // Visual timer for all players
+        recapVisualStepTimerRef.current = setTimeout(() => {
           if (isMountedRef.current) {
-            const currentThisPlayer = thisPlayerRef.current;
-            const currentGameState = gameStateRef.current; // Use ref for potentially fresher state in timeout
-            // Judge initiates next round
-            if (currentThisPlayer?.isJudge && currentGameState?.gameId && currentGameState?.gamePhase === 'winner_announcement') {
-              console.log(`GamePage: recapEffect - Timer expired for 'getReady'. Judge ${currentThisPlayer.name} calling handleNextRound.`);
-              handleNextRound(); 
-              // The judge does not set recapStepInternal to null here;
-              // The phase change from handleNextRound will cause the main condition (currentGamePhase !== 'winner_announcement')
-              // at the top of this useEffect to clear recapStepInternal and recapTriggeredForRound.
-            } else if (currentGameState?.gamePhase === 'winner_announcement') {
-              // Non-judges, or judge if something went wrong with phase change, clear their local view of "Get Ready".
-              console.log("GamePage: recapEffect - Timer expired for 'getReady'. Non-judge or game still in winner_announcement. Clearing recapStep locally.");
+            console.log("GamePage: recapEffect - 5s VISUAL 'getReady' timer expired.");
+            // If game hasn't moved on, non-judges (or judge if action failed) clear their local view.
+            if (gameStateRef.current?.gamePhase === 'winner_announcement') {
+              console.log("GamePage: recapEffect - Game still in winner_announcement after visual timer. Clearing recapStep locally for this client.");
               setRecapStepInternal(null);
             }
           }
         }, 5000);
+
+        // Judge's early action timer
+        const currentThisPlayer = thisPlayerRef.current;
+        if (currentThisPlayer?.isJudge) {
+          console.log("GamePage: recapEffect - Judge detected in 'getReady'. Setting 3s timer for early handleNextRound.");
+          judgeEarlyActionTimerRef.current = setTimeout(() => {
+            if (isMountedRef.current && gameStateRef.current?.gameId && gameStateRef.current?.gamePhase === 'winner_announcement') {
+              console.log(`GamePage: recapEffect - 3s JUDGE ACTION timer expired. Judge ${currentThisPlayer.name} calling handleNextRound.`);
+              handleNextRound(); 
+              // Judge does NOT set recapStepInternal to null here. Phase change will handle it.
+            }
+          }, 3000); // Judge acts at 3 seconds
+        }
       }
     }
 
     return () => {
-      if (recapStepTimerRef.current) {
-        clearTimeout(recapStepTimerRef.current);
-      }
+      if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
+      if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
     };
   }, [
     internalGameState?.gamePhase,
     internalGameState?.currentRound,
     recapStepInternal,
-    thisPlayer?.isJudge,
-    recapTriggeredForRound
+    recapTriggeredForRound,
+    // thisPlayer?.isJudge - This player is accessed via ref inside, not a direct dependency for the outer effect trigger.
   ]);
 
 
@@ -593,6 +590,8 @@ export default function GamePage() {
     }
 
     if (recapStepInternal) {
+      // Recap sequence is handled by the <RecapSequenceDisplay /> rendered below this main content div.
+      // We don't render main game content here when recap is active.
       return null; 
     }
 
