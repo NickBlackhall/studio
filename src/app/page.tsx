@@ -19,6 +19,7 @@ import { useLoading } from '@/contexts/LoadingContext';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
+import ReadyToggle from '@/components/game/ReadyToggle';
 
 
 export const dynamic = 'force-dynamic';
@@ -527,8 +528,8 @@ export default function WelcomePage() {
             <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
             {isLobbyPhaseActive && (
               <>
-                {thisPlayerObject && <p className="text-xl text-muted-foreground mt-2">Welcome, {thisPlayerObject.name}! Tap your &apos;Ready&apos; button below.</p>}
-                {showPlayerSetupForm && <p className="text-xl text-muted-foreground mt-2">Enter your details to join, then tap your ready button!</p>}
+                {thisPlayerObject && <p className="text-xl text-muted-foreground mt-2">Welcome, {thisPlayerObject.name}! Toggle your ready status below.</p>}
+                {showPlayerSetupForm && <p className="text-xl text-muted-foreground mt-2">Enter your details to join, then toggle your ready status!</p>}
               </>
             )}
           </header>
@@ -568,16 +569,11 @@ export default function WelcomePage() {
                         </div>
                         <div className="flex items-center space-x-2">
                           {player.id === internalThisPlayerId ? ( 
-                            <Button
-                              onClick={() => handleToggleReady(player)}
-                              variant={player.isReady ? "default" : "outline"}
-                              size="sm"
-                              className={cn("px-3 py-1 text-xs font-semibold", player.isReady ? "bg-green-500 hover:bg-green-600 text-white border-green-600" : "border-primary text-primary hover:bg-primary/10")}
+                            <ReadyToggle
+                              isReady={player.isReady}
+                              onToggle={() => handleToggleReady(player)}
                               disabled={isProcessingAction}
-                            >
-                              {isProcessingAction && player.id === internalThisPlayerId ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (player.isReady ? <ThumbsUp className="mr-1 h-3 w-3"/> : null)}
-                              {player.isReady ? "Ready!" : "Tap when Ready"}
-                            </Button>
+                            />
                           ) : (
                             player.isReady ? <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
                           )}
@@ -642,4 +638,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-    
