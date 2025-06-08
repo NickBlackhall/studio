@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, ThumbsUp, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import CurrentYear from '@/components/CurrentYear';
@@ -59,12 +59,10 @@ export default function WelcomePage() {
   const setGame = useCallback((newGameState: GameClientState | null) => {
     gameRef.current = newGameState; 
     if (isMountedRef.current) {
-      // If newGameState has ready_player_order_str, parse it here before setting
       if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
         const rpoArray = parseReadyPlayerOrderStr(newGameState);
         setInternalGame({ ...newGameState, ready_player_order: rpoArray });
       } else if (newGameState) {
-        // If no ready_player_order_str, ensure ready_player_order is at least an empty array
         setInternalGame({ ...newGameState, ready_player_order: newGameState.ready_player_order || [] });
       } else {
         setInternalGame(null);
@@ -83,14 +81,13 @@ export default function WelcomePage() {
     const isInitialOrResetCall = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || (!gameRef.current?.gameId && !gameIdToFetch);
     
     if (isInitialOrResetCall && isMountedRef.current) {
-      // setIsLoading(true); // Managed by global loader
+      // setIsLoading(true); 
     }
     
     try {
       let fetchedGameState = await getGame(gameIdToFetch); 
       
       if (fetchedGameState) {
-        // Client-side workaround for RPO being undefined or ensuring it's parsed
         if (typeof fetchedGameState.ready_player_order_str === 'string') {
             fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
         } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
@@ -347,7 +344,6 @@ export default function WelcomePage() {
         let updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
         if (isMountedRef.current) {
           if (updatedGameState) {
-             // Parse ready_player_order_str from the action's response
             if (typeof updatedGameState.ready_player_order_str === 'string') {
               updatedGameState.ready_player_order = parseReadyPlayerOrderStr(updatedGameState);
             } else if (typeof updatedGameState.ready_player_order === 'undefined' || !Array.isArray(updatedGameState.ready_player_order)) {
@@ -500,8 +496,8 @@ export default function WelcomePage() {
       const showPlayerSetupForm = !thisPlayerObject && isLobbyPhaseActive;
       
       const showStartGameButton = 
-        thisPlayerIdRef.current !== null &&
-        thisPlayerIdRef.current === hostPlayerId && 
+        internalThisPlayerId !== null &&
+        internalThisPlayerId === hostPlayerId && 
         enoughPlayers &&
         allPlayersReady;
       
@@ -638,3 +634,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
