@@ -284,7 +284,6 @@ export default function WelcomePage() {
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id); 
           await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`, currentGameId); 
-          // Toast removed from here
         } else if (isMountedRef.current) {
            if (newPlayer === null && internalGame?.gamePhase !== 'lobby') { 
             toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
@@ -551,7 +550,7 @@ export default function WelcomePage() {
               <CardHeader className="bg-secondary text-secondary-foreground p-6">
                 <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({internalGame.players.length})</CardTitle>
                 <CardDescription className="text-secondary-foreground/80 text-base">
-                  Game starts when host initiates after all players are ready.
+                  Game starts once all you terrible people are ready. So hurry up!
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
