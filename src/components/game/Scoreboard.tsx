@@ -71,6 +71,8 @@ export default function Scoreboard({ players, currentJudgeId, defaultOpen = fals
   });
 
   if (defaultOpen) {
+    // This renders the scoreboard content directly, without an accordion, when defaultOpen is true.
+    // Used in RecapSequenceDisplay.
     return (
       <div className="w-full border-2 border-muted rounded-xl overflow-hidden shadow-lg bg-card">
         <div className="px-4 py-3 bg-muted/50 flex items-center text-2xl font-bold text-foreground">
@@ -82,6 +84,8 @@ export default function Scoreboard({ players, currentJudgeId, defaultOpen = fals
     );
   }
 
+  // This renders the scoreboard within an accordion, with defaultValue={undefined} to start closed.
+  // Used on the main game page and welcome page.
   return (
     <Accordion type="single" collapsible className="w-full" defaultValue={undefined}>
       <AccordionItem value="item-1" className="border-2 border-muted rounded-xl overflow-hidden shadow-lg bg-card">
