@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 interface ScoreboardProps {
   players: Player[];
   currentJudgeId: string | null;
-  defaultOpen?: boolean; // New prop
+  defaultOpen?: boolean;
 }
 
 const ScoreboardContentDisplay = ({ players, currentJudgeId }: Omit<ScoreboardProps, 'defaultOpen'>) => (
@@ -33,6 +33,7 @@ const ScoreboardContentDisplay = ({ players, currentJudgeId }: Omit<ScoreboardPr
               width={36}
               height={36}
               className="mr-3 rounded-md object-cover"
+              data-ai-hint="player avatar"
             />
           ) : (
             <span className="text-3xl mr-3">{player.avatar}</span>
@@ -82,7 +83,7 @@ export default function Scoreboard({ players, currentJudgeId, defaultOpen = fals
   }
 
   return (
-    <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
+    <Accordion type="single" collapsible className="w-full" defaultValue={undefined}>
       <AccordionItem value="item-1" className="border-2 border-muted rounded-xl overflow-hidden shadow-lg bg-card">
         <AccordionTrigger className="px-4 py-3 hover:no-underline bg-muted/50 data-[state=open]:border-b data-[state=open]:border-muted">
           <div className="flex items-center text-2xl font-bold text-foreground">
