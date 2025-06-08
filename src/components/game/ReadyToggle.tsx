@@ -13,7 +13,7 @@ interface ReadyToggleProps {
 export default function ReadyToggle({ isReady, onToggle, disabled = false }: ReadyToggleProps) {
   const spring = {
     type: "spring",
-    stiffness: 700, // Increased stiffness
+    stiffness: 700,
     damping: 30,
   };
 
@@ -21,9 +21,9 @@ export default function ReadyToggle({ isReady, onToggle, disabled = false }: Rea
     <div
       onClick={!disabled ? onToggle : undefined}
       className={cn(
-        "flex items-center h-8 w-14 rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out", // Adjusted size and padding
+        "flex items-center h-8 w-14 rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        isReady ? "bg-green-500 justify-end" : "bg-muted justify-start border border-input", // Added border for off-state
+        isReady ? "bg-green-500 justify-end" : "bg-red-500 justify-start", // Changed here
         disabled && "opacity-60 cursor-not-allowed"
       )}
       role="switch"
@@ -39,7 +39,7 @@ export default function ReadyToggle({ isReady, onToggle, disabled = false }: Rea
     >
       <span className="sr-only">{isReady ? "Status: Ready" : "Status: Not Ready"}</span>
       <motion.div
-        className="h-6 w-6 bg-white rounded-full shadow-md" // Adjusted to fixed size
+        className="h-6 w-6 bg-white rounded-full shadow-md"
         layout
         transition={spring}
       />
