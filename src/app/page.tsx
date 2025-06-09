@@ -631,11 +631,11 @@ export default function WelcomePage() {
 
                 <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent pr-2 -mr-2">
                   {sortedPlayersForDisplay.length > 0 ? (
-                    <ul className="space-y-3">
+                    <ul className="space-y-3 px-2">
                       {sortedPlayersForDisplay.map((player: PlayerClientState) => (
                         <li
                           key={player.id}
-                          className="flex items-center justify-between p-3 mx-1 bg-[#e3bb71] border border-black"
+                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-[1.5px] border-black"
                         >
                           <div className="flex items-center">
                             {player.avatar.startsWith('/') ? (
