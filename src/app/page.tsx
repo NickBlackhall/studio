@@ -647,28 +647,13 @@ export default function WelcomePage() {
         <Image 
           src="/ui/enter-the-chaos-button.png" 
           alt="Enter the Chaos" 
-          width={280}  /* Scaled down from 400 by 30% */
-          height={105} /* Scaled down from 150 by 30% */
-          className="w-auto h-auto max-w-[50vw] sm:max-w-xs md:max-w-[280px]" /* Adjusted max-width constraints */
+          width={280}
+          height={105}
+          className="w-auto h-auto max-w-[50vw] sm:max-w-xs md:max-w-[280px]"
           priority
           data-ai-hint="chaos button"
         />
       </motion.a>
-      
-      {/* How to Play and Footer - these might need repositioning or restyling later */}
-      <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 px-4">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="bg-background/70 hover:bg-background/90 border-muted text-muted-foreground backdrop-blur-sm">
-              <HelpCircle className="mr-2 h-5 w-5" /> How to Play
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
-        </Dialog>
-        <footer className="text-center text-xs text-muted-foreground/80 bg-background/50 backdrop-blur-sm px-2 py-1 rounded">
-          <p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p>
-        </footer>
-      </div>
     </div>
   );
 }
