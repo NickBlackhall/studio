@@ -153,7 +153,7 @@ export default function WelcomePage() {
     } finally {
       if (isMountedRef.current) {
         if (isInitialPageLoad) setIsLoading(false); // Local loading for page content
-        if (isInitialPageLoad || isStepChange || origin.includes("reset") || origin.includes("step changed to")) {
+        if (isInitialPageLoad || isStepChange || origin.includes("reset") || origin.includes("handleResetGame") || origin.includes("step changed to")) {
           hideGlobalLoader(); // Ensure global loader is hidden after primary fetches
         }
       }
@@ -442,13 +442,13 @@ export default function WelcomePage() {
             try {
                 await startGameAction(gameToStart.gameId);
             } catch (error: any) {
-              if (isMountedRef.current) {
-                if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-                    return;
+                if (isMountedRef.current) {
+                    if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+                        return;
+                    }
+                    toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
+                    hideGlobalLoader();
                 }
-                toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
-                hideGlobalLoader();
-              }
             }
         });
     }
@@ -599,12 +599,12 @@ export default function WelcomePage() {
 
           <div className={cn("grid gap-8 w-full max-w-4xl", showPlayerSetupForm ? "md:grid-cols-2" : "md:grid-cols-1")}>
             {showPlayerSetupForm && (
-              <Card className="shadow-2xl border-2 border-muted rounded-xl overflow-hidden">
+              <Card className="shadow-2xl border-2 border-transparent rounded-xl overflow-hidden bg-primary text-primary-foreground">
                 <CardHeader className="bg-primary text-primary-foreground p-6">
                   <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
                   <CardDescription className="text-primary-foreground/80 text-base">Enter your name and pick your avatar.</CardDescription>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-6 bg-primary">
                   <PlayerSetupForm addPlayer={handleAddPlayer} />
                 </CardContent>
               </Card>

@@ -62,21 +62,21 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="name" className="text-lg font-medium text-foreground">Your Name</Label>
+        <Label htmlFor="name" className="text-lg font-medium text-primary-foreground">Your Name</Label>
         <Input
           id="name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g., Terrible Terry"
-          className="text-base border-2 focus:border-accent"
+          className="text-base border-2 border-input focus:border-accent bg-background text-foreground placeholder:text-muted-foreground"
           maxLength={20}
           required
         />
       </div>
 
       <div className="space-y-2">
-        <Label className="text-lg font-medium text-foreground">Choose Your Avatar</Label>
+        <Label className="text-lg font-medium text-primary-foreground">Choose Your Avatar</Label>
         <AvatarCarousel
           avatars={AVATARS}
           initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
@@ -85,7 +85,7 @@ export default function PlayerSetupForm({ addPlayer }: PlayerSetupFormProps) {
         />
       </div>
 
-      <Button type="submit" disabled={isPending || !name.trim() || !selectedAvatar} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold py-3">
+      <Button type="submit" variant="secondary" disabled={isPending || !name.trim() || !selectedAvatar} className="w-full text-lg font-semibold py-3">
         {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
         Join Game
       </Button>
