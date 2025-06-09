@@ -108,7 +108,7 @@
     position: relative;
   }
 
-  body::before {
+  body:not(.setup-view-active)::before {
     content: "";
     position: fixed; /* Use fixed to cover viewport regardless of scroll */
     top: 0;

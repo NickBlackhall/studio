@@ -161,6 +161,17 @@ export default function WelcomePage() {
       isMountedRef.current = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Removed currentStep from dependency array to avoid re-fetching on query param change if component logic handles it.
+
+  useEffect(() => {
+    if (currentStep === 'setup') {
+      document.body.classList.add('setup-view-active');
+    } else {
+      document.body.classList.remove('setup-view-active');
+    }
+    return () => { // Cleanup function
+      document.body.classList.remove('setup-view-active');
+    };
   }, [currentStep]);
 
 
@@ -620,7 +631,7 @@ export default function WelcomePage() {
               { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
             </Button>
           </div>
-          <footer className="mt-12 text-center text-sm text-muted-foreground"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
+          {/* Footer removed from here */}
         </div>
       );
     }
