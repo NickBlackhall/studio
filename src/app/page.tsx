@@ -462,7 +462,7 @@ export default function WelcomePage() {
   if (!internalGame || !internalGame.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <Image src="/logo.png" alt="Make It Terrible Logo" width={250} height={250} className="mx-auto" data-ai-hint="game logo" priority />
+        <Image src="/new-logo.png" alt="Make It Terrible Logo" width={250} height={250} className="mx-auto" data-ai-hint="game logo" priority />
         <p className="text-xl text-destructive mt-4">Could not initialize game session. Please try refreshing.</p>
          <Button onClick={() => { showGlobalLoader(); window.location.reload(); }} variant="outline" className="mt-4">
           Refresh Page
@@ -477,7 +477,7 @@ export default function WelcomePage() {
   const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject;
 
   const SetupLogo = () => (
-    <Image src="/logo.png" alt="Make It Terrible Logo" width={100} height={100} data-ai-hint="game logo" priority />
+    <Image src="/new-logo.png" alt="Make It Terrible Logo" width={100} height={100} data-ai-hint="game logo" priority />
   );
 
   const ClickableSetupLogo = () => (
@@ -577,11 +577,11 @@ export default function WelcomePage() {
           <header className="mb-12 text-center">
             {ENABLE_SETUP_LOGO_NAVIGATION ? (
               <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
-                <Image src="/logo.png" alt="Make It Terrible Logo" width={100} height={100} className="mx-auto mb-4" data-ai-hint="game logo" priority />
+                <Image src="/new-logo.png" alt="Make It Terrible Logo" width={100} height={100} className="mx-auto mb-4" data-ai-hint="game logo" priority />
               </button>
             ) : (
               <div className="mx-auto mb-4">
-                <Image src="/logo.png" alt="Make It Terrible Logo" width={100} height={100} data-ai-hint="game logo" priority />
+                <Image src="/new-logo.png" alt="Make It Terrible Logo" width={100} height={100} data-ai-hint="game logo" priority />
               </div>
             )}
             <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
@@ -609,14 +609,14 @@ export default function WelcomePage() {
             <div className={cn(
                 "relative shadow-2xl rounded-xl overflow-hidden flex flex-col",
                 !showPlayerSetupForm && "md:col-span-1",
-                "flex flex-col" // Ensures this div is a flex column
+                "flex flex-col" 
               )}>
               <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
                 className="absolute inset-0 w-full h-full"
               />
               <div className={cn(
-                  "z-10 flex flex-col flex-1 p-6 text-white", // flex-1 allows inner content to expand
+                  "z-10 flex flex-col flex-1 p-6 text-white", 
                   !showPlayerSetupForm && "h-full"
                 )}>
                 <div className="mb-4">
@@ -709,7 +709,7 @@ export default function WelcomePage() {
 
   return (
     <div className={cn(mainContainerClasses, currentStep !== 'setup' && "")}>
-      <Image src="/logo.png" alt="Make It Terrible Logo" width={250} height={250} className="mx-auto mb-8" data-ai-hint="game logo" priority />
+      <Image src="/new-logo.png" alt="Make It Terrible Logo" width={250} height={250} className="mx-auto mb-8" data-ai-hint="game logo" priority />
       <motion.a
         onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
         href="/?step=setup"
