@@ -22,7 +22,7 @@ import ReadyToggle from '@/components/game/ReadyToggle';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import CustomCardFrame from '@/components/ui/CustomCardFrame';
-// import CurrentYear from '@/components/CurrentYear'; // If needed for copyright
+import CurrentYear from '@/components/CurrentYear';
 
 
 export const dynamic = 'force-dynamic';
@@ -608,17 +608,17 @@ export default function WelcomePage() {
             )}
 
              <div className={cn(
-                "relative shadow-2xl rounded-xl overflow-hidden flex flex-col", 
+                "relative shadow-2xl rounded-xl overflow-hidden flex flex-col",
                 !showPlayerSetupForm && "md:col-span-1",
-                "bg-transparent" 
+                "bg-transparent"
               )}>
               <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
-                className="absolute inset-0 w-full h-full -z-10" 
+                className="absolute inset-0 w-full h-full -z-10"
               />
               <div className={cn(
-                  "flex flex-col flex-1 z-10 p-6 text-white", 
-                  !showPlayerSetupForm && "" 
+                  "flex flex-col flex-1 z-10 p-6 text-white",
+                  !showPlayerSetupForm && ""
                 )}>
                 <div className="mb-4">
                   <h3 className="text-3xl font-bold flex items-center text-shadow-sm">
@@ -707,32 +707,32 @@ export default function WelcomePage() {
   }
 
   // Welcome Screen: currentStep !== 'setup'
-  const welcomeScreenContainerClasses = "flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative p-4";
-  
   return (
-    <div className={cn(welcomeScreenContainerClasses)}>
-      <motion.a
-        onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
-        href="/?step=setup"
-        animate={{ scale: [1, 1.03, 1] }}
-        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        className="block mx-auto cursor-pointer"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <Image
-          src="/ui/enter-the-chaos-button.png"
-          alt="Enter the Chaos"
-          width={280}
-          height={105}
-          className="h-auto w-[75vw] max-w-[280px]"
-          priority
-          data-ai-hint="chaos button"
-        />
-      </motion.a>
-      {/* <p className="text-xs text-center text-muted-foreground/70 mt-4 absolute bottom-4 left-1/2 -translate-x-1/2">
+    <div className="flex flex-col min-h-screen w-full items-center text-foreground text-center relative">
+      <div className="flex-grow flex items-center justify-center w-full px-4">
+        <motion.a
+          onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
+          href="/?step=setup"
+          animate={{ scale: [1, 1.03, 1] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="block mx-auto cursor-pointer"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Image
+            src="/ui/enter-the-chaos-button.png"
+            alt="Enter the Chaos"
+            width={280}
+            height={105}
+            className=""
+            priority
+            data-ai-hint="chaos button"
+          />
+        </motion.a>
+      </div>
+      <p className="text-xs text-center text-muted-foreground/70 py-4">
         &copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really)
-      </p> */}
+      </p>
     </div>
   );
 }
