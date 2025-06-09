@@ -442,7 +442,7 @@ export default function WelcomePage() {
             try {
                 await startGameAction(gameToStart.gameId);
             } catch (error: any) {
-              if (isMountedRef.current) {
+                if (isMountedRef.current) {
                     if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
                         return;
                     }
@@ -635,7 +635,7 @@ export default function WelcomePage() {
                       {sortedPlayersForDisplay.map((player: PlayerClientState) => (
                         <li
                           key={player.id}
-                          className="flex items-center justify-between p-3 bg-[#f3c677] border border-black"
+                          className="flex items-center justify-between p-3 mx-1 bg-[#e3bb71] border border-black"
                         >
                           <div className="flex items-center">
                             {player.avatar.startsWith('/') ? (
