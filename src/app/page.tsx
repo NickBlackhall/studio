@@ -618,8 +618,8 @@ export default function WelcomePage() {
               />
               {/* Content div for player list, title, message, button */}
               <div className={cn(
-                  "flex flex-col flex-1 z-10 p-6 text-white", // Removed h-full
-                  !showPlayerSetupForm && "" // Removed h-full for this case too
+                  "flex flex-col flex-1 z-10 p-6 text-white", 
+                  !showPlayerSetupForm && "" 
                 )}>
                 <div className="mb-4">
                   <h3 className="text-3xl font-bold flex items-center text-shadow-sm">
@@ -710,16 +710,15 @@ export default function WelcomePage() {
 
   // Welcome Screen: currentStep !== 'setup'
   const mainContainerClasses = "flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative p-4";
-
+  
   return (
     <div className={cn(mainContainerClasses, "justify-end pb-20 md:pb-32")}>
-      {/* No separate logo image here for the welcome screen; it's part of the CSS background */}
       <motion.a
         onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
         href="/?step=setup"
         animate={{ scale: [1, 1.03, 1] }}
         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        className="cursor-pointer inline-block" // Rely on parent flex for positioning
+        className="cursor-pointer block mx-auto" 
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
