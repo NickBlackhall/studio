@@ -21,6 +21,7 @@ import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import CustomCardFrame from '@/components/ui/CustomCardFrame';
 
 
 export const dynamic = 'force-dynamic';
@@ -555,7 +556,7 @@ export default function WelcomePage() {
           
           <div className={cn("grid gap-8 w-full max-w-4xl", showPlayerSetupForm ? "md:grid-cols-2" : "md:grid-cols-1")}>
             {showPlayerSetupForm && (
-              <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
+              <Card className="shadow-2xl border-2 border-muted rounded-xl overflow-hidden">
                 <CardHeader className="bg-primary text-primary-foreground p-6">
                   <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
                   <CardDescription className="text-primary-foreground/80 text-base">Enter your name and pick your avatar.</CardDescription>
@@ -566,60 +567,80 @@ export default function WelcomePage() {
               </Card>
             )}
             
-            <Card className={cn("shadow-2xl border-2 border-secondary rounded-xl overflow-hidden", !showPlayerSetupForm && "md:col-span-1")}>
-              <CardHeader className="bg-secondary text-secondary-foreground p-6">
-                <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({internalGame.players.length})</CardTitle>
-                <CardDescription className="text-secondary-foreground/80 text-base">
-                  {lobbyMessage}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                {sortedPlayersForDisplay.length > 0 ? (
-                  <ul className="space-y-3">
-                    {sortedPlayersForDisplay.map((player: PlayerClientState) => (
-                      <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
-                        <div className="flex items-center">
-                          {player.avatar.startsWith('/') ? (
-                            <Image src={player.avatar} alt={`${player.name}'s avatar`} width={40} height={40} className="mr-3 rounded-sm object-contain" style={{ width: '40px', height: '40px' }} />
-                          ) : (
-                            <span className="text-3xl mr-3">{player.avatar}</span>
-                          )}
-                          <span className="text-xl font-medium text-foreground">{player.name}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {player.id === internalThisPlayerId ? ( 
-                            <ReadyToggle
-                              isReady={player.isReady}
-                              onToggle={() => handleToggleReady(player)}
-                              disabled={isProcessingAction}
-                            />
-                          ) : (
-                            player.isReady ? 
-                              <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : 
-                              <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
-                )}
+            <div className={cn(
+                "relative shadow-2xl rounded-xl overflow-hidden aspect-[4/3]", // Default aspect ratio, adjust as needed
+                !showPlayerSetupForm && "md:col-span-1" // Or handle spanning differently if needed
+              )}>
+              <CustomCardFrame 
+                texturePath="/textures/red-halftone-texture.png" 
+                className="absolute inset-0 w-full h-full" 
+              />
+              <div className="absolute inset-0 z-10 flex flex-col p-6 text-white"> {/* Assuming white text for now */}
+                {/* Header Content */}
+                <div className="mb-4">
+                  <h3 className="text-3xl font-bold flex items-center text-shadow-sm">
+                    <Users className="mr-3 h-8 w-8" /> 
+                    Players ({internalGame.players.length})
+                  </h3>
+                  <p className="text-white/90 text-base mt-1 text-shadow-xs">
+                    {lobbyMessage}
+                  </p>
+                </div>
 
+                {/* Content Area - Scrollable if needed */}
+                <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent pr-2 -mr-2">
+                  {sortedPlayersForDisplay.length > 0 ? (
+                    <ul className="space-y-3">
+                      {sortedPlayersForDisplay.map((player: PlayerClientState) => (
+                        <li 
+                          key={player.id} 
+                          className="flex items-center justify-between p-3 bg-black/30 rounded-lg shadow-md backdrop-blur-sm"
+                        >
+                          <div className="flex items-center">
+                            {player.avatar.startsWith('/') ? (
+                              <Image src={player.avatar} alt={`${player.name}'s avatar`} width={40} height={40} className="mr-3 rounded-sm object-contain" style={{ width: '40px', height: '40px' }} />
+                            ) : (
+                              <span className="text-3xl mr-3">{player.avatar}</span>
+                            )}
+                            <span className="text-xl font-medium">{player.name}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {player.id === internalThisPlayerId ? ( 
+                              <ReadyToggle
+                                isReady={player.isReady}
+                                onToggle={() => handleToggleReady(player)}
+                                disabled={isProcessingAction}
+                              />
+                            ) : (
+                              player.isReady ? 
+                                <CheckSquare className="h-6 w-6 text-green-300" title="Ready" /> : 
+                                <XSquare className="h-6 w-6 text-red-300" title="Not Ready" />
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-white/80 text-center py-4">No players yet. Be the first to cause some trouble!</p>
+                  )}
+                </div>
+
+                {/* Footer Content / Actions */}
                 {showStartGameButton && (
                     <Button
                       onClick={handleStartGame}
-                      variant="default"
+                      // Consider a custom variant or specific classes for themed buttons
+                      variant="default" 
                       size="lg"
-                      className="mt-6 w-full bg-accent text-accent-foreground hover:bg-accent/90 text-xl font-bold py-6 shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
+                      className="mt-6 w-full bg-yellow-500 text-black hover:bg-yellow-600 active:bg-yellow-700 text-xl font-bold py-4 shadow-lg border-2 border-black/50 transform hover:scale-105 transition-transform duration-150 ease-in-out"
                       disabled={isProcessingAction || isLoading}
                     >
                       { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-3 h-7 w-7" /> }
                       Start Game Now!
                     </Button>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -645,8 +666,11 @@ export default function WelcomePage() {
     }
   }
 
+  // Fallback for the main welcome screen if not 'setup' step
+  const mainContainerClasses = "flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative p-4";
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative p-4">
+    <div className={cn(mainContainerClasses, currentStep !== 'setup' && "")}>
       <motion.a
         onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
         href="/?step=setup" 
