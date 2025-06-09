@@ -607,16 +607,15 @@ export default function WelcomePage() {
             )}
 
             <div className={cn(
-                "relative shadow-2xl rounded-xl overflow-hidden flex flex-col",
-                !showPlayerSetupForm && "md:col-span-1",
-                "flex flex-col" 
+                "flex flex-col relative shadow-2xl rounded-xl overflow-hidden",
+                !showPlayerSetupForm && "md:col-span-1"
               )}>
               <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
                 className="absolute inset-0 w-full h-full"
               />
               <div className={cn(
-                  "flex flex-col flex-1 p-6 text-white",
+                  "flex flex-col flex-1 z-10 p-6 text-white",
                   !showPlayerSetupForm && "h-full"
                 )}>
                 <div className="mb-4">
