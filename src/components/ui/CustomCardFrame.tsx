@@ -15,20 +15,22 @@ const CustomCardFrame: React.FC<CustomCardFrameProps> = ({ texturePath, classNam
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
       xmlns="http://www.w3.org/2000/svg"
-      xmlnsXlink="http://www.w3.org/1999/xlink"
+      xmlnsXlink="http://www.w3.org/1999/xlink" // Added for wider compatibility
     >
       <defs>
         <filter id="roughenFilter">
+          {/* Adjusted filter for a more subtle hand-drawn feel */}
           <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="1" result="noise" />
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.6" />
         </filter>
         
+        {/* Define the texture as a pattern */}
         <pattern id="redTexturePattern" patternUnits="userSpaceOnUse" width="100" height="100">
           <image href={texturePath} xlinkHref={texturePath} x="0" y="0" width="100" height="100" preserveAspectRatio="none"/>
         </pattern>
 
+        {/* Clip path to contain the texture, now with square corners */}
         <clipPath id="cardClipPath">
-          {/* Square corners: removed rx and ry */}
           <rect x="3.05" y="3.05" width="93.9" height="93.9" />
         </clipPath>
       </defs>
@@ -43,27 +45,25 @@ const CustomCardFrame: React.FC<CustomCardFrameProps> = ({ texturePath, classNam
         clipPath="url(#cardClipPath)"
       />
 
-      {/* Outer border, drawn on top of the clipped background */}
-      {/* Square corners: removed rx and ry */}
+      {/* Outer border, drawn on top of the clipped background, now with square corners */}
       <rect
         x="2"
         y="2"
         width="96"
         height="96"
         stroke="#000000"
-        strokeWidth="2.1"
+        strokeWidth="2.1" // Reduced thickness
         fill="none"
         filter="url(#roughenFilter)"
       />
-      {/* Inner border, also on top */}
-      {/* Square corners: removed rx and ry */}
+      {/* Inner border, also on top, now with square corners */}
       <rect
         x="6"
         y="6"
         width="88"
         height="88"
         stroke="#000000"
-        strokeWidth="0.7"
+        strokeWidth="0.7" // Reduced thickness
         fill="none"
         filter="url(#roughenFilter)"
       />
