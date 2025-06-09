@@ -4,7 +4,7 @@
 import Image from 'next/image';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button'; // Added missing import
+import { Button } from '@/components/ui/button';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
@@ -449,7 +449,6 @@ export default function WelcomePage() {
     );
   }
 
-  // These derived consts can be defined after early returns if they use internalGame which is now guaranteed to be non-null
   const gameIsActuallyActive = ACTIVE_PLAYING_PHASES.includes(internalGame.gamePhase as GamePhaseClientState);
   const isLobbyPhaseActive = internalGame.gamePhase === 'lobby';
   const isSpectatorView = gameIsActuallyActive && !thisPlayerObject; 
@@ -625,7 +624,16 @@ export default function WelcomePage() {
 
           <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
             <Dialog>
-              <DialogTrigger asChild><Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80"><HelpCircle className="mr-2 h-5 w-5" /> How to Play</Button></DialogTrigger>
+              <DialogTrigger asChild>
+                <Image 
+                  src="/ui/how-to-play-button.png" 
+                  alt="How to Play" 
+                  width={180} 
+                  height={50} 
+                  className="cursor-pointer hover:opacity-90 transition-opacity"
+                  data-ai-hint="play instructions"
+                />
+              </DialogTrigger>
               <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
             </Dialog>
             <Button onClick={handleResetGame} variant="destructive" className="hover:bg-destructive/80" disabled={isProcessingAction || isLoading }>
