@@ -442,7 +442,7 @@ export default function WelcomePage() {
             try {
                 await startGameAction(gameToStart.gameId);
             } catch (error: any) {
-                if (isMountedRef.current) {
+              if (isMountedRef.current) {
                     if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
                         return;
                     }
@@ -635,7 +635,7 @@ export default function WelcomePage() {
                       {sortedPlayersForDisplay.map((player: PlayerClientState) => (
                         <li
                           key={player.id}
-                          className="flex items-center justify-between p-3 bg-black/30 rounded-lg shadow-md backdrop-blur-sm"
+                          className="flex items-center justify-between p-3 bg-[#f3c677] border border-black"
                         >
                           <div className="flex items-center">
                             {player.avatar.startsWith('/') ? (
@@ -643,7 +643,7 @@ export default function WelcomePage() {
                             ) : (
                               <span className="text-3xl mr-3">{player.avatar}</span>
                             )}
-                            <span className="text-xl font-medium">{player.name}</span>
+                            <span className="text-xl font-medium text-black">{player.name}</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             {player.id === internalThisPlayerId ? (
@@ -654,8 +654,8 @@ export default function WelcomePage() {
                               />
                             ) : (
                               player.isReady ?
-                                <CheckSquare className="h-6 w-6 text-green-300" title="Ready" /> :
-                                <XSquare className="h-6 w-6 text-red-300" title="Not Ready" />
+                                <CheckSquare className="h-6 w-6 text-green-700" title="Ready" /> :
+                                <XSquare className="h-6 w-6 text-red-700" title="Not Ready" />
                             )}
                           </div>
                         </li>
