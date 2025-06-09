@@ -148,7 +148,7 @@ export default function WelcomePage() {
     } finally {
       if (isMountedRef.current) {
         if (isInitialPageLoad) setIsLoading(false); // Local loading for page content
-        if (isInitialPageLoad || isStepChange || origin.includes("reset")) {
+        if (isInitialPageLoad || isStepChange || origin.includes("reset") || origin.includes("step changed to")) {
           hideGlobalLoader(); // Ensure global loader is hidden after primary fetches
         }
       }
@@ -181,13 +181,33 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
-    if (currentStep === 'setup') {
-      document.body.classList.add('setup-view-active');
-    } else {
-      document.body.classList.remove('setup-view-active');
+    let backgroundTimerId: NodeJS.Timeout | undefined;
+    if (typeof window !== 'undefined') {
+      if (currentStep === 'setup') {
+        document.body.classList.add('setup-view-active');
+        document.body.classList.remove('welcome-background-visible');
+      } else { // Welcome step
+        document.body.classList.remove('setup-view-active');
+        // Delay adding the visible class to allow CSS to pick up initial opacity 0
+        backgroundTimerId = setTimeout(() => {
+          if (isMountedRef.current) { // Check if component is still mounted
+            document.body.classList.add('welcome-background-visible');
+          }
+        }, 50); // A small delay is usually sufficient
+      }
     }
+
     return () => {
-      document.body.classList.remove('setup-view-active');
+      if (backgroundTimerId) {
+        clearTimeout(backgroundTimerId);
+      }
+      // More careful cleanup: only remove classes if this component instance was the one to add them,
+      // or if we're sure no other instance relies on them.
+      // For now, this simple cleanup is likely fine for this page structure.
+      if (typeof window !== 'undefined') {
+        document.body.classList.remove('setup-view-active');
+        document.body.classList.remove('welcome-background-visible');
+      }
     };
   }, [currentStep]);
 
@@ -202,7 +222,6 @@ export default function WelcomePage() {
         currentStep === 'setup' &&
         localThisPlayerId
       ) {
-      // No need to showGlobalLoader here, GamePage handles its own loading.
       router.push('/game');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -222,7 +241,6 @@ export default function WelcomePage() {
     const handlePlayersUpdate = async (payload: any) => {
       const latestGameId = gameRef.current?.gameId;
       if (isMountedRef.current && latestGameId) {
-        // Do not showGlobalLoader for these background updates.
         await fetchGameData(`players-lobby-${latestGameId}-${uniqueChannelSuffix} player change`, latestGameId);
       }
     };
@@ -230,7 +248,6 @@ export default function WelcomePage() {
     const handleGameTableUpdate = async (payload: any) => {
       const latestGameId = gameRef.current?.gameId;
       if (isMountedRef.current && latestGameId) {
-        // Do not showGlobalLoader for these background updates.
         await fetchGameData(`games-lobby-${latestGameId}-${uniqueChannelSuffix} game change`, latestGameId);
       }
     };
@@ -340,8 +357,6 @@ export default function WelcomePage() {
           const localStorageKey = `thisPlayerId_game_${currentGameId}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id);
-          // No need to call fetchGameData here, realtime updates should handle it
-          // await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`, currentGameId);
         } else if (isMountedRef.current) {
            if (newPlayer === null && internalGame?.gamePhase !== 'lobby') {
             toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
@@ -367,8 +382,6 @@ export default function WelcomePage() {
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
-        // Navigation to /?step=setup is handled by the server action's redirect
-        // fetchGameData will be called by useEffect listening to currentStepQueryParam
       } catch (error: any) {
         if (!isMountedRef.current) {
             return;
@@ -403,7 +416,6 @@ export default function WelcomePage() {
 
     startPlayerActionTransition(async () => {
       try {
-        // Realtime updates should refresh the game state, so direct setGame might not be needed
         await togglePlayerReadyStatus(player.id, currentGameId);
       } catch (error: any) {
         if (isMountedRef.current) {
@@ -424,15 +436,14 @@ export default function WelcomePage() {
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
-                // Navigation to /game should be handled by the game state change and useEffect
             } catch (error: any) {
-                if (isMountedRef.current) {
-                    if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-                        return;
-                    }
-                    toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
-                    hideGlobalLoader();
+              if (isMountedRef.current) {
+                if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+                    return;
                 }
+                toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
+                hideGlobalLoader();
+              }
             }
         });
     }

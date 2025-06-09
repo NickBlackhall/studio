@@ -121,6 +121,12 @@
     background-repeat: no-repeat;
     z-index: -1; /* Places it behind all other body content */
     pointer-events: none; /* Allows clicks to pass through */
+    opacity: 0; /* Initial state for transition */
+    transition: opacity 0.75s ease-in-out; /* Transition effect */
+  }
+
+  body.welcome-background-visible:not(.setup-view-active)::before {
+    opacity: 1; /* Visible state */
   }
 
   /* Ensure headings and card titles also use the body font by default, unless specifically overridden elsewhere */
