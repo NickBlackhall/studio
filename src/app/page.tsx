@@ -178,9 +178,10 @@ export default function WelcomePage() {
    useEffect(() => {
     if (isMountedRef.current) {
       const newStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
-      // Only fetch if the step *actually* changed to avoid redundant calls on initial load where currentStep might match
-      if (newStep !== (gameRef.current ? currentStep : 'initial')) { // A bit of a complex check to ensure it's a real change
-        console.log(`WelcomePage: currentStepQueryParam changed to '${newStep}'. Fetching data.`);
+      const previousStepRef = gameRef.current ? (currentStepQueryParam === 'setup' ? 'welcome' : 'setup') : 'initial';
+
+      if (newStep !== previousStepRef) { 
+        console.log(`WelcomePage: currentStepQueryParam changed from '${previousStepRef}' to '${newStep}'. Fetching data.`);
         showGlobalLoader();
         fetchGameData(`step changed to: ${newStep}`);
       }
@@ -197,12 +198,11 @@ export default function WelcomePage() {
         document.body.classList.remove('welcome-background-visible');
       } else { // Welcome step
         document.body.classList.remove('setup-view-active');
-        // Delay adding the class to allow CSS transition to catch the opacity change
         backgroundTimerId = setTimeout(() => {
-          if (isMountedRef.current) { // Check if component is still mounted
+          if (isMountedRef.current) { 
             document.body.classList.add('welcome-background-visible');
           }
-        }, 50); // Small delay (e.g., 50ms)
+        }, 50); 
       }
     }
 
@@ -210,7 +210,6 @@ export default function WelcomePage() {
       if (backgroundTimerId) {
         clearTimeout(backgroundTimerId);
       }
-      // Clean up body classes when component unmounts or step changes
       if (typeof window !== 'undefined') {
         document.body.classList.remove('setup-view-active');
         document.body.classList.remove('welcome-background-visible');
@@ -229,7 +228,6 @@ export default function WelcomePage() {
         currentStep === 'setup' &&
         localThisPlayerId
       ) {
-      // No need to show global loader here, GamePage will handle its own loading
       router.push('/game');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -609,14 +607,14 @@ export default function WelcomePage() {
             )}
 
             <div className={cn(
-                "relative shadow-2xl rounded-xl overflow-hidden min-h-[300px]", 
+                "relative shadow-2xl rounded-xl overflow-hidden flex flex-col", 
                 !showPlayerSetupForm && "md:col-span-1"
               )}>
               <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
                 className="absolute inset-0 w-full h-full"
               />
-              <div className="absolute inset-0 z-10 flex flex-col p-6 text-white">
+              <div className="z-10 flex flex-col flex-1 p-6 text-white"> {/* Changed: Removed absolute, added flex-1 */}
                 <div className="mb-4">
                   <h3 className="text-3xl font-bold flex items-center text-shadow-sm">
                     <Users className="mr-3 h-8 w-8" />
