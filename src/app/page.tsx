@@ -709,7 +709,7 @@ export default function WelcomePage() {
 
   return (
     <div className={cn(mainContainerClasses, currentStep !== 'setup' && "")}>
-      <Image src="/new-logo.png" alt="Make It Terrible Logo" width={450} height={450} className="mx-auto mb-8" data-ai-hint="game logo" priority />
+      <Image src="/new-logo.png" alt="Make It Terrible Logo" width={250} height={250} className="mx-auto mb-8" data-ai-hint="game logo" priority />
       <motion.a
         onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
         href="/?step=setup"
