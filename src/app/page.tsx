@@ -616,7 +616,7 @@ export default function WelcomePage() {
                 className="absolute inset-0 w-full h-full"
               />
               <div className={cn(
-                  "z-10 flex flex-col flex-1 p-6 text-white", 
+                  "z-10 flex flex-col flex-1 p-6 text-white",
                   !showPlayerSetupForm && "h-full"
                 )}>
                 <div className="mb-4">
@@ -709,7 +709,7 @@ export default function WelcomePage() {
 
   return (
     <div className={cn(mainContainerClasses, currentStep !== 'setup' && "")}>
-      <Image src="/new-logo.png" alt="Make It Terrible Logo" width={250} height={250} className="mx-auto mb-8" data-ai-hint="game logo" priority />
+      <Image src="/new-logo.png" alt="Make It Terrible Logo" width={350} height={350} className="mx-auto mb-8" data-ai-hint="game logo" priority />
       <motion.a
         onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
         href="/?step=setup"
