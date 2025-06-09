@@ -15,7 +15,7 @@ const CustomCardFrame: React.FC<CustomCardFrameProps> = ({ texturePath, classNam
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
       xmlns="http://www.w3.org/2000/svg"
-      xmlnsXlink="http://www.w3.org/1999/xlink" // Ensure xlink namespace for href in image
+      xmlnsXlink="http://www.w3.org/1999/xlink"
     >
       <defs>
         <filter id="roughenFilter">
@@ -24,13 +24,12 @@ const CustomCardFrame: React.FC<CustomCardFrameProps> = ({ texturePath, classNam
         </filter>
         
         <pattern id="redTexturePattern" patternUnits="userSpaceOnUse" width="100" height="100">
-          {/* The image inside the pattern will be stretched to fill the pattern's 100x100 area */}
           <image href={texturePath} xlinkHref={texturePath} x="0" y="0" width="100" height="100" preserveAspectRatio="none"/>
         </pattern>
 
         <clipPath id="cardClipPath">
-          {/* This clipPath is inset from the outer border's path */}
-          <rect x="3.05" y="3.05" width="93.9" height="93.9" rx="6.95" ry="6.95" />
+          {/* Square corners: removed rx and ry */}
+          <rect x="3.05" y="3.05" width="93.9" height="93.9" />
         </clipPath>
       </defs>
 
@@ -45,26 +44,24 @@ const CustomCardFrame: React.FC<CustomCardFrameProps> = ({ texturePath, classNam
       />
 
       {/* Outer border, drawn on top of the clipped background */}
+      {/* Square corners: removed rx and ry */}
       <rect
         x="2"
         y="2"
         width="96"
         height="96"
-        rx="8"
-        ry="8"
         stroke="#000000"
         strokeWidth="2.1"
         fill="none"
         filter="url(#roughenFilter)"
       />
       {/* Inner border, also on top */}
+      {/* Square corners: removed rx and ry */}
       <rect
         x="6"
         y="6"
         width="88"
         height="88"
-        rx="6"
-        ry="6"
         stroke="#000000"
         strokeWidth="0.7"
         fill="none"
