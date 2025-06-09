@@ -177,9 +177,13 @@ export default function WelcomePage() {
   // Effect for handling changes to currentStepQueryParam (e.g., after router.push)
    useEffect(() => {
     if (isMountedRef.current) {
-      console.log(`WelcomePage: currentStepQueryParam changed to '${currentStepQueryParam}'. Fetching data.`);
-      showGlobalLoader();
-      fetchGameData(`step changed to: ${currentStepQueryParam}`);
+      const newStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
+      // Only fetch if the step *actually* changed to avoid redundant calls on initial load where currentStep might match
+      if (newStep !== (gameRef.current ? currentStep : 'initial')) { // A bit of a complex check to ensure it's a real change
+        console.log(`WelcomePage: currentStepQueryParam changed to '${newStep}'. Fetching data.`);
+        showGlobalLoader();
+        fetchGameData(`step changed to: ${newStep}`);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStepQueryParam]);
@@ -193,11 +197,12 @@ export default function WelcomePage() {
         document.body.classList.remove('welcome-background-visible');
       } else { // Welcome step
         document.body.classList.remove('setup-view-active');
+        // Delay adding the class to allow CSS transition to catch the opacity change
         backgroundTimerId = setTimeout(() => {
-          if (isMountedRef.current) { 
+          if (isMountedRef.current) { // Check if component is still mounted
             document.body.classList.add('welcome-background-visible');
           }
-        }, 50); 
+        }, 50); // Small delay (e.g., 50ms)
       }
     }
 
@@ -205,6 +210,7 @@ export default function WelcomePage() {
       if (backgroundTimerId) {
         clearTimeout(backgroundTimerId);
       }
+      // Clean up body classes when component unmounts or step changes
       if (typeof window !== 'undefined') {
         document.body.classList.remove('setup-view-active');
         document.body.classList.remove('welcome-background-visible');
@@ -223,6 +229,7 @@ export default function WelcomePage() {
         currentStep === 'setup' &&
         localThisPlayerId
       ) {
+      // No need to show global loader here, GamePage will handle its own loading
       router.push('/game');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -602,14 +609,14 @@ export default function WelcomePage() {
             )}
 
             <div className={cn(
-                "relative shadow-2xl rounded-xl overflow-hidden", // Removed aspect-[4/3]
+                "relative shadow-2xl rounded-xl overflow-hidden aspect-[4/3]", // Restored aspect-[4/3]
                 !showPlayerSetupForm && "md:col-span-1"
               )}>
               <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
                 className="absolute inset-0 w-full h-full"
               />
-              <div className="absolute inset-0 z-10 flex flex-col p-8 text-white"> {/* Changed p-6 to p-8 */}
+              <div className="absolute inset-0 z-10 flex flex-col p-6 text-white">
                 <div className="mb-4">
                   <h3 className="text-3xl font-bold flex items-center text-shadow-sm">
                     <Users className="mr-3 h-8 w-8" />
@@ -626,7 +633,7 @@ export default function WelcomePage() {
                       sortedPlayersForDisplay.map((player: PlayerClientState) => (
                         <li
                           key={player.id}
-                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-2 border-black" // Changed border-[1.5px] to border-2
+                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-[1.5px] border-black"
                         >
                           <div className="flex items-center">
                             {player.avatar.startsWith('/') ? (
