@@ -103,6 +103,24 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    background-image: url('/textures/background-tile.png');
+    background-repeat: repeat;
+    position: relative;
+  }
+
+  body::before {
+    content: "";
+    position: fixed; /* Use fixed to cover viewport regardless of scroll */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('/backgrounds/mobile-background.jpg');
+    background-size: contain; /* Ensures entire image is visible, respects aspect ratio */
+    background-position: center top; /* Aligns to center horizontally and top vertically */
+    background-repeat: no-repeat;
+    z-index: -1; /* Places it behind all other body content */
+    pointer-events: none; /* Allows clicks to pass through */
   }
 
   /* Ensure headings and card titles also use the body font by default, unless specifically overridden elsewhere */

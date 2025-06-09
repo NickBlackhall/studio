@@ -20,6 +20,8 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 
 export const dynamic = 'force-dynamic';
@@ -627,21 +629,55 @@ export default function WelcomePage() {
   }
 
   // Fallback for initial "welcome" step (before ?step=setup)
+  // This is the section we are primarily modifying for the new visual style.
   return (
-    <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
-      <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto mb-8" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
-      <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-      <p className="text-2xl text-muted-foreground mb-10">The game of awful choices and hilarious outcomes!</p>
-      <div className="flex flex-col sm:flex-row items-center gap-4">
-        <Button onClick={() => { showGlobalLoader(); router.push('/?step=setup');}} variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out">
-          Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
-        </Button>
+    <div className="flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative">
+      {/* The h1, p, and Image for logo are removed as mobile-background.jpg is expected to contain them */}
+      {/* The main content will be the button, positioned appropriately */}
+      
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+        {/* This div is a placeholder for content that might go on top of mobile-background.jpg, like the button */}
+        {/* The mobile-background.jpg itself is applied via body::before */}
+        
+        {/* New "Enter the Chaos" button */}
+        <div className="mt-auto mb-[15vh] sm:mb-[10vh]"> {/* Adjust margin to position button appropriately on the background */}
+          <Link href="/?step=setup" passHref legacyBehavior>
+            <motion.a
+              onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
+              animate={{ scale: [1, 1.03, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="cursor-pointer inline-block"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Image 
+                src="/ui/enter-the-chaos-button.png" 
+                alt="Enter the Chaos" 
+                width={400}  /* Adjust placeholder width */
+                height={150} /* Adjust placeholder height */
+                className="w-auto h-auto max-w-[70vw] sm:max-w-xs md:max-w-sm lg:max-w-md" 
+                priority
+                data-ai-hint="chaos button"
+              />
+            </motion.a>
+          </Link>
+        </div>
+      </div>
+      
+      {/* How to Play and Footer - these might need repositioning or restyling later */}
+      <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 px-4">
         <Dialog>
-          <DialogTrigger asChild><Button variant="outline" size="lg" className="text-lg px-8 py-7"><HelpCircle className="mr-2 h-6 w-6" /> How to Play</Button></DialogTrigger>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="bg-background/70 hover:bg-background/90 border-muted text-muted-foreground backdrop-blur-sm">
+              <HelpCircle className="mr-2 h-5 w-5" /> How to Play
+            </Button>
+          </DialogTrigger>
           <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
         </Dialog>
+        <footer className="text-center text-xs text-muted-foreground/80 bg-background/50 backdrop-blur-sm px-2 py-1 rounded">
+          <p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p>
+        </footer>
       </div>
-      <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
     </div>
   );
 }
