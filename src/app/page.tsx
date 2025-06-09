@@ -22,6 +22,7 @@ import ReadyToggle from '@/components/game/ReadyToggle';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import CustomCardFrame from '@/components/ui/CustomCardFrame';
+// import CurrentYear from '@/components/CurrentYear'; // If needed for copyright
 
 
 export const dynamic = 'force-dynamic';
@@ -180,8 +181,8 @@ export default function WelcomePage() {
       const newStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
       const previousStepRef = gameRef.current ? (currentStepQueryParam === 'setup' ? 'welcome' : 'setup') : 'initial';
 
-      if (newStep !== previousStepRef) { 
-        console.log(`WelcomePage: currentStepQueryParam changed from '${previousStepRef}' to '${newStep}'. Fetching data.`);
+      if (newStep !== previousStepRef || !internalGame) {
+        console.log(`WelcomePage: currentStepQueryParam changed from '${previousStepRef}' to '${newStep}' or game data missing. Fetching data.`);
         showGlobalLoader();
         fetchGameData(`step changed to: ${newStep}`);
       }
@@ -199,10 +200,10 @@ export default function WelcomePage() {
       } else { // Welcome step
         document.body.classList.remove('setup-view-active');
         backgroundTimerId = setTimeout(() => {
-          if (isMountedRef.current) { 
+          if (isMountedRef.current) {
             document.body.classList.add('welcome-background-visible');
           }
-        }, 50); 
+        }, 50);
       }
     }
 
@@ -238,7 +239,7 @@ export default function WelcomePage() {
     const currentGameId = internalGame?.gameId;
     const currentThisPlayerId = internalThisPlayerId;
 
-    if (!currentGameId || isLoading) { 
+    if (!currentGameId || isLoading) {
       return () => {};
     }
 
@@ -455,6 +456,7 @@ export default function WelcomePage() {
   if (isLoading && !internalGame ) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
+        {/* Optional: A very minimal loader if desired before game state is known */}
       </div>
     );
   }
@@ -462,7 +464,7 @@ export default function WelcomePage() {
   if (!internalGame || !internalGame.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <Image src="/new-logo.png" alt="Make It Terrible Logo" width={250} height={250} className="mx-auto" data-ai-hint="game logo" priority />
+        {/* Fallback for critical error if game couldn't be fetched/initialized */}
         <p className="text-xl text-destructive mt-4">Could not initialize game session. Please try refreshing.</p>
          <Button onClick={() => { showGlobalLoader(); window.location.reload(); }} variant="outline" className="mt-4">
           Refresh Page
@@ -485,7 +487,7 @@ export default function WelcomePage() {
       <SetupLogo />
     </button>
   );
-  
+
   const StaticSetupLogo = () => (
     <div className="mb-8 block mx-auto">
       <SetupLogo />
@@ -504,8 +506,7 @@ export default function WelcomePage() {
               <CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 text-sm">
-                <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch you pervert.</p>
-                <p className="mt-1">Don&apos;t like waiting? Thank the idiot who programmed this thing...</p>
+                <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch.</p>
             </CardContent>
           </Card>
           <div className="my-6">
@@ -608,15 +609,17 @@ export default function WelcomePage() {
 
             <div className={cn(
                 "flex flex-col relative shadow-2xl rounded-xl overflow-hidden",
-                !showPlayerSetupForm && "md:col-span-1"
+                !showPlayerSetupForm && "md:col-span-1",
+                "bg-transparent" // Ensure this container itself doesn't have a conflicting background
               )}>
               <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
-                className="absolute inset-0 w-full h-full"
+                className="absolute inset-0 w-full h-full -z-10" // Ensure SVG is behind content
               />
+              {/* Content div for player list, title, message, button */}
               <div className={cn(
-                  "flex flex-col flex-1 z-10 p-6 text-white",
-                  !showPlayerSetupForm && "h-full"
+                  "flex flex-col flex-1 z-10 p-6 text-white", // Removed h-full
+                  !showPlayerSetupForm && "" // Removed h-full for this case too
                 )}>
                 <div className="mb-4">
                   <h3 className="text-3xl font-bold flex items-center text-shadow-sm">
@@ -628,13 +631,14 @@ export default function WelcomePage() {
                   </p>
                 </div>
 
+                {/* This div wraps the <ul> and handles scrolling */}
                 <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent pr-2 -mr-2 pb-3">
                   <ul className="space-y-3 px-3">
                     {sortedPlayersForDisplay.length > 0 ? (
                       sortedPlayersForDisplay.map((player: PlayerClientState) => (
                         <li
                           key={player.id}
-                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-2 border-black"
+                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-2 border-black text-black" // ensure text color for player name
                         >
                           <div className="flex items-center">
                             {player.avatar.startsWith('/') ? (
@@ -642,7 +646,7 @@ export default function WelcomePage() {
                             ) : (
                               <span className="text-3xl mr-3">{player.avatar}</span>
                             )}
-                            <span className="text-xl font-medium text-black">{player.name}</span>
+                            <span className="text-xl font-medium">{player.name}</span>
                           </div>
                           <div className="flex items-center space-x-2">
                             {player.id === internalThisPlayerId ? (
@@ -704,17 +708,18 @@ export default function WelcomePage() {
     }
   }
 
+  // Welcome Screen: currentStep !== 'setup'
   const mainContainerClasses = "flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative p-4";
 
   return (
-    <div className={cn(mainContainerClasses, currentStep !== 'setup' && "")}>
-      <Image src="/new-logo.png" alt="Make It Terrible Logo" width={250} height={250} className="mx-auto mb-8" data-ai-hint="game logo" priority />
+    <div className={cn(mainContainerClasses, "justify-end pb-20 md:pb-32")}>
+      {/* No separate logo image here for the welcome screen; it's part of the CSS background */}
       <motion.a
         onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
         href="/?step=setup"
         animate={{ scale: [1, 1.03, 1] }}
         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        className="cursor-pointer inline-block"
+        className="cursor-pointer inline-block" // Rely on parent flex for positioning
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -728,7 +733,10 @@ export default function WelcomePage() {
           data-ai-hint="chaos button"
         />
       </motion.a>
+      {/* Optional: Copyright text if not part of the background */}
+      {/* <p className="text-xs text-center text-muted-foreground/70 mt-4 absolute bottom-4 left-1/2 -translate-x-1/2">
+        &copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really)
+      </p> */}
     </div>
   );
 }
-
