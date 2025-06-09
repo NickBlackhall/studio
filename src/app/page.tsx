@@ -614,7 +614,7 @@ export default function WelcomePage() {
                 texturePath="/textures/red-halftone-texture.png"
                 className="absolute inset-0 w-full h-full"
               />
-              <div className="z-10 flex flex-col flex-1 p-6 text-white"> {/* Changed: Removed absolute, added flex-1 */}
+              <div className="z-10 flex flex-col flex-1 p-6 text-white">
                 <div className="mb-4">
                   <h3 className="text-3xl font-bold flex items-center text-shadow-sm">
                     <Users className="mr-3 h-8 w-8" />
@@ -625,7 +625,7 @@ export default function WelcomePage() {
                   </p>
                 </div>
 
-                <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent pr-2 -mr-2">
+                <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent pr-2 -mr-2 pb-3">
                   <ul className="space-y-3 px-3">
                     {sortedPlayersForDisplay.length > 0 ? (
                       sortedPlayersForDisplay.map((player: PlayerClientState) => (
