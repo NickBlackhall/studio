@@ -609,7 +609,7 @@ export default function WelcomePage() {
             )}
 
             <div className={cn(
-                "relative shadow-2xl rounded-xl overflow-hidden aspect-[4/3]", // Restored aspect-[4/3]
+                "relative shadow-2xl rounded-xl overflow-hidden min-h-[300px]", 
                 !showPlayerSetupForm && "md:col-span-1"
               )}>
               <CustomCardFrame
@@ -628,12 +628,12 @@ export default function WelcomePage() {
                 </div>
 
                 <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent pr-2 -mr-2">
-                  <ul className="space-y-3 px-2">
+                  <ul className="space-y-3 px-3">
                     {sortedPlayersForDisplay.length > 0 ? (
                       sortedPlayersForDisplay.map((player: PlayerClientState) => (
                         <li
                           key={player.id}
-                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-[1.5px] border-black"
+                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-2 border-black"
                         >
                           <div className="flex items-center">
                             {player.avatar.startsWith('/') ? (
