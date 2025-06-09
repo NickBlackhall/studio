@@ -539,7 +539,7 @@ export default function WelcomePage() {
       }
       
       return (
-        <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
+        <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
           <header className="mb-12 text-center">
             <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
               <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
