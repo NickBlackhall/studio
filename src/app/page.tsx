@@ -607,16 +607,15 @@ export default function WelcomePage() {
               </Card>
             )}
 
-            <div className={cn(
-                "flex flex-col relative shadow-2xl rounded-xl overflow-hidden",
+             <div className={cn(
+                "relative shadow-2xl rounded-xl overflow-hidden flex flex-col", 
                 !showPlayerSetupForm && "md:col-span-1",
-                "bg-transparent" // Ensure this container itself doesn't have a conflicting background
+                "bg-transparent" 
               )}>
               <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
-                className="absolute inset-0 w-full h-full -z-10" // Ensure SVG is behind content
+                className="absolute inset-0 w-full h-full -z-10" 
               />
-              {/* Content div for player list, title, message, button */}
               <div className={cn(
                   "flex flex-col flex-1 z-10 p-6 text-white", 
                   !showPlayerSetupForm && "" 
@@ -631,14 +630,13 @@ export default function WelcomePage() {
                   </p>
                 </div>
 
-                {/* This div wraps the <ul> and handles scrolling */}
                 <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent pr-2 -mr-2 pb-3">
                   <ul className="space-y-3 px-3">
                     {sortedPlayersForDisplay.length > 0 ? (
                       sortedPlayersForDisplay.map((player: PlayerClientState) => (
                         <li
                           key={player.id}
-                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-2 border-black text-black" // ensure text color for player name
+                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-2 border-black text-black"
                         >
                           <div className="flex items-center">
                             {player.avatar.startsWith('/') ? (
@@ -709,16 +707,16 @@ export default function WelcomePage() {
   }
 
   // Welcome Screen: currentStep !== 'setup'
-  const mainContainerClasses = "flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative p-4";
+  const welcomeScreenContainerClasses = "flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative p-4";
   
   return (
-    <div className={cn(mainContainerClasses, "justify-end pb-20 md:pb-32")}>
+    <div className={cn(welcomeScreenContainerClasses)}>
       <motion.a
         onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
         href="/?step=setup"
         animate={{ scale: [1, 1.03, 1] }}
         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        className="cursor-pointer block mx-auto" 
+        className="block mx-auto cursor-pointer"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -732,10 +730,10 @@ export default function WelcomePage() {
           data-ai-hint="chaos button"
         />
       </motion.a>
-      {/* Optional: Copyright text if not part of the background */}
       {/* <p className="text-xs text-center text-muted-foreground/70 mt-4 absolute bottom-4 left-1/2 -translate-x-1/2">
         &copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really)
       </p> */}
     </div>
   );
 }
+
