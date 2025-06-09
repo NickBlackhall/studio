@@ -15,23 +15,22 @@ const CustomCardFrame: React.FC<CustomCardFrameProps> = ({ texturePath, classNam
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
       xmlns="http://www.w3.org/2000/svg"
-      xmlnsXlink="http://www.w3.org/1999/xlink" // Kept for broader compatibility, though href is preferred
+      xmlnsXlink="http://www.w3.org/1999/xlink"
     >
       <defs>
         <filter id="roughenFilterUniqueCardFrame">
-          {/* Adjusted for finer, less pronounced effect */}
           <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="1" result="noise" />
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.6" />
         </filter>
         <clipPath id="cardClipPath">
-          {/* Defines the clipping area, matching the outer border's intended shape before filter */}
-          <rect x="2" y="2" width="96" height="96" rx="8" ry="8" />
+          {/* Adjusted dimensions to be inset from the outer border's path */}
+          <rect x="3.05" y="3.05" width="93.9" height="93.9" rx="6.95" ry="6.95" />
         </clipPath>
       </defs>
       {/* Background texture image, clipped */}
       <image
-        href={texturePath} // Standard attribute for SVG 2
-        xlinkHref={texturePath} // Fallback for older SVG 1.1 viewers/processors
+        href={texturePath}
+        xlinkHref={texturePath} // Fallback for older SVG viewers
         x="0"
         y="0"
         width="100"
@@ -39,7 +38,7 @@ const CustomCardFrame: React.FC<CustomCardFrameProps> = ({ texturePath, classNam
         preserveAspectRatio="none"
         clipPath="url(#cardClipPath)"
       />
-      {/* Outer border - reduced thickness */}
+      {/* Outer border */}
       <rect
         x="2"
         y="2"
@@ -48,20 +47,20 @@ const CustomCardFrame: React.FC<CustomCardFrameProps> = ({ texturePath, classNam
         rx="8"
         ry="8"
         stroke="#000000"
-        strokeWidth="2.1" // Reduced from 3
+        strokeWidth="2.1"
         fill="none"
         filter="url(#roughenFilterUniqueCardFrame)"
       />
-      {/* Inner border - reduced thickness */}
+      {/* Inner border */}
       <rect
-        x="6" // Positioned relative to the outer border path and its stroke
+        x="6"
         y="6"
-        width="88" // (96 - 2*strokeWidthOuter) -> then adjust for inner spacing. Current: 96 - (2*2) - (2*2) if spacing = strokeOuter
+        width="88"
         height="88"
-        rx="6" // Slightly smaller radius for inner border
+        rx="6"
         ry="6"
         stroke="#000000"
-        strokeWidth="0.7" // Reduced from 1
+        strokeWidth="0.7"
         fill="none"
         filter="url(#roughenFilterUniqueCardFrame)"
       />
