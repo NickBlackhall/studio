@@ -4,6 +4,7 @@
 import Image from 'next/image';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button'; // Added missing import
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
@@ -161,7 +162,7 @@ export default function WelcomePage() {
       isMountedRef.current = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Removed currentStep from dependency array to avoid re-fetching on query param change if component logic handles it.
+  }, []); 
 
   useEffect(() => {
     if (currentStep === 'setup') {
@@ -169,7 +170,7 @@ export default function WelcomePage() {
     } else {
       document.body.classList.remove('setup-view-active');
     }
-    return () => { // Cleanup function
+    return () => { 
       document.body.classList.remove('setup-view-active');
     };
   }, [currentStep]);
@@ -631,7 +632,6 @@ export default function WelcomePage() {
               { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
             </Button>
           </div>
-          {/* Footer removed from here */}
         </div>
       );
     }
