@@ -2,14 +2,12 @@
 "use client";
 
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
-import CurrentYear from '@/components/CurrentYear';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -628,19 +626,14 @@ export default function WelcomePage() {
     }
   }
 
-  // Fallback for initial "welcome" step (before ?step=setup)
-  // This is the section we are primarily modifying for the new visual style.
   return (
     <div className="flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative p-4">
-      {/* The mobile-background.jpg itself is applied via body::before in globals.css */}
-      
-      {/* "Enter the Chaos" button, now scaled down and centered */}
       <motion.a
         onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
-        href="/?step=setup" // Added href for direct navigation if JS is off or for SEO, though Link behavior is primary
+        href="/?step=setup" 
         animate={{ scale: [1, 1.03, 1] }}
         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        className="cursor-pointer inline-block" // Removed absolute positioning from here
+        className="cursor-pointer inline-block"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -649,7 +642,7 @@ export default function WelcomePage() {
           alt="Enter the Chaos" 
           width={280}
           height={105}
-          className="w-auto h-auto max-w-[50vw] sm:max-w-xs md:max-w-[280px]"
+          className="h-auto w-[75vw] max-w-[280px]"
           priority
           data-ai-hint="chaos button"
         />
