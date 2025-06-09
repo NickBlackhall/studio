@@ -22,7 +22,6 @@ import ReadyToggle from '@/components/game/ReadyToggle';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import CustomCardFrame from '@/components/ui/CustomCardFrame';
-import CurrentYear from '@/components/CurrentYear';
 
 
 export const dynamic = 'force-dynamic';
@@ -708,21 +707,22 @@ export default function WelcomePage() {
 
   // Welcome Screen: currentStep !== 'setup'
   return (
-    <div className="flex flex-col min-h-screen w-full items-center text-foreground text-center relative">
-      <div className="flex-grow flex items-center justify-center w-full px-4">
+    <div className="flex flex-col min-h-screen w-full text-foreground relative">
+      {/* This inner div is now the main flex container for centering the button */}
+      <div className="flex flex-grow items-center justify-center w-full px-4">
         <motion.a
           onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
           href="/?step=setup"
           animate={{ scale: [1, 1.03, 1] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="block mx-auto cursor-pointer"
+          className="block mx-auto cursor-pointer" // block mx-auto should help center if parent is full width
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
           <Image
             src="/ui/enter-the-chaos-button.png"
             alt="Enter the Chaos"
-            width={280}
+            width={280} // Using fixed dimensions for the button image
             height={105}
             className=""
             priority
@@ -730,10 +730,6 @@ export default function WelcomePage() {
           />
         </motion.a>
       </div>
-      <p className="text-xs text-center text-muted-foreground/70 py-4">
-        &copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really)
-      </p>
     </div>
   );
 }
-
