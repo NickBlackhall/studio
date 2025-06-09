@@ -442,13 +442,13 @@ export default function WelcomePage() {
             try {
                 await startGameAction(gameToStart.gameId);
             } catch (error: any) {
-                if (isMountedRef.current) {
-                    if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-                        return;
-                    }
-                    toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
-                    hideGlobalLoader();
-                }
+              if (isMountedRef.current) {
+                  if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+                      return;
+                  }
+                  toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
+                  hideGlobalLoader();
+              }
             }
         });
     }
