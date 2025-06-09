@@ -26,6 +26,11 @@ import CustomCardFrame from '@/components/ui/CustomCardFrame';
 
 export const dynamic = 'force-dynamic';
 
+// --- CONFIGURATION FLAG ---
+// Set to false to prevent the logo on the setup screen from navigating to the welcome screen (e.g., for beta testing)
+const ENABLE_SETUP_LOGO_NAVIGATION = true;
+// --- END CONFIGURATION FLAG ---
+
 export default function WelcomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -475,14 +480,28 @@ export default function WelcomePage() {
   const isSpectatorView = gameIsActuallyActive && !thisPlayerObject;
   const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject;
 
+  const SetupLogo = () => (
+    <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+  );
+
+  const ClickableSetupLogo = () => (
+    <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8 block mx-auto">
+      <SetupLogo />
+    </button>
+  );
+  
+  const StaticSetupLogo = () => (
+    <div className="mb-8 block mx-auto">
+      <SetupLogo />
+    </div>
+  );
+
 
   if (currentStep === 'setup') {
     if (isSpectatorView) {
       return (
         <div className="w-full max-w-xl mx-auto space-y-6 text-center py-12">
-           <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8 block mx-auto">
-            <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
-          </button>
+          {ENABLE_SETUP_LOGO_NAVIGATION ? <ClickableSetupLogo /> : <StaticSetupLogo />}
           <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
             <CardHeader className="p-4">
               <Lock className="h-8 w-8 mx-auto text-destructive mb-2" />
@@ -510,9 +529,7 @@ export default function WelcomePage() {
     } else if (isActivePlayerOnLobbyPage) {
       return (
         <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-           <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8">
-            <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
-          </button>
+           {ENABLE_SETUP_LOGO_NAVIGATION ? <ClickableSetupLogo /> : <StaticSetupLogo />}
           <Card className="my-4 border-primary/50 bg-muted/30 shadow-md w-full max-w-md text-center">
             <CardHeader className="p-4">
               <CardTitle className="text-lg flex items-center justify-center font-semibold text-foreground">
@@ -562,9 +579,15 @@ export default function WelcomePage() {
       return (
         <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
           <header className="mb-12 text-center">
-            <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
-              <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
-            </button>
+            {ENABLE_SETUP_LOGO_NAVIGATION ? (
+              <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
+                <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+              </button>
+            ) : (
+              <div className="mx-auto mb-4">
+                <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+              </div>
+            )}
             <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
             {isLobbyPhaseActive && (
               <>
@@ -708,3 +731,4 @@ export default function WelcomePage() {
     </div>
   );
 }
+
