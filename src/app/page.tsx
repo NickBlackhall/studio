@@ -631,38 +631,29 @@ export default function WelcomePage() {
   // Fallback for initial "welcome" step (before ?step=setup)
   // This is the section we are primarily modifying for the new visual style.
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative">
-      {/* The h1, p, and Image for logo are removed as mobile-background.jpg is expected to contain them */}
-      {/* The main content will be the button, positioned appropriately */}
+    <div className="flex flex-col items-center justify-center min-h-screen w-full text-foreground text-center relative p-4">
+      {/* The mobile-background.jpg itself is applied via body::before in globals.css */}
       
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-        {/* This div is a placeholder for content that might go on top of mobile-background.jpg, like the button */}
-        {/* The mobile-background.jpg itself is applied via body::before */}
-        
-        {/* New "Enter the Chaos" button */}
-        <div className="mt-auto mb-[15vh] sm:mb-[10vh]"> {/* Adjust margin to position button appropriately on the background */}
-          <Link href="/?step=setup" passHref legacyBehavior>
-            <motion.a
-              onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
-              animate={{ scale: [1, 1.03, 1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="cursor-pointer inline-block"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Image 
-                src="/ui/enter-the-chaos-button.png" 
-                alt="Enter the Chaos" 
-                width={400}  /* Adjust placeholder width */
-                height={150} /* Adjust placeholder height */
-                className="w-auto h-auto max-w-[70vw] sm:max-w-xs md:max-w-sm lg:max-w-md" 
-                priority
-                data-ai-hint="chaos button"
-              />
-            </motion.a>
-          </Link>
-        </div>
-      </div>
+      {/* "Enter the Chaos" button, now scaled down and centered */}
+      <motion.a
+        onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
+        href="/?step=setup" // Added href for direct navigation if JS is off or for SEO, though Link behavior is primary
+        animate={{ scale: [1, 1.03, 1] }}
+        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        className="cursor-pointer inline-block" // Removed absolute positioning from here
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <Image 
+          src="/ui/enter-the-chaos-button.png" 
+          alt="Enter the Chaos" 
+          width={280}  /* Scaled down from 400 by 30% */
+          height={105} /* Scaled down from 150 by 30% */
+          className="w-auto h-auto max-w-[50vw] sm:max-w-xs md:max-w-[280px]" /* Adjusted max-width constraints */
+          priority
+          data-ai-hint="chaos button"
+        />
+      </motion.a>
       
       {/* How to Play and Footer - these might need repositioning or restyling later */}
       <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 px-4">
