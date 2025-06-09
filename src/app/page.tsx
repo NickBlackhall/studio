@@ -193,12 +193,11 @@ export default function WelcomePage() {
         document.body.classList.remove('welcome-background-visible');
       } else { // Welcome step
         document.body.classList.remove('setup-view-active');
-        // Delay adding the visible class to allow CSS to pick up initial opacity 0
         backgroundTimerId = setTimeout(() => {
-          if (isMountedRef.current) { // Check if component is still mounted
+          if (isMountedRef.current) { 
             document.body.classList.add('welcome-background-visible');
           }
-        }, 50); // A small delay is usually sufficient
+        }, 50); 
       }
     }
 
@@ -206,9 +205,6 @@ export default function WelcomePage() {
       if (backgroundTimerId) {
         clearTimeout(backgroundTimerId);
       }
-      // More careful cleanup: only remove classes if this component instance was the one to add them,
-      // or if we're sure no other instance relies on them.
-      // For now, this simple cleanup is likely fine for this page structure.
       if (typeof window !== 'undefined') {
         document.body.classList.remove('setup-view-active');
         document.body.classList.remove('welcome-background-visible');
@@ -237,7 +233,7 @@ export default function WelcomePage() {
     const currentGameId = internalGame?.gameId;
     const currentThisPlayerId = internalThisPlayerId;
 
-    if (!currentGameId || isLoading) { // Also check local isLoading to avoid sub before initial elements render
+    if (!currentGameId || isLoading) { 
       return () => {};
     }
 
@@ -267,11 +263,9 @@ export default function WelcomePage() {
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          // console.log(`Client (Realtime): Successfully subscribed to ${playersChannelName} on WelcomePage!`);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error(`Client (Realtime): Subscription error (${playersChannelName}): "${status}"`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
         } else if (status === 'CLOSED') {
-           // console.info(`Client (Realtime): Channel ${playersChannelName} is now ${status}. Details:`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'No error details.');
         } else if (err) {
            console.error(`Client (Realtime): Unexpected error or status on ${playersChannelName} subscription (status: ${status}):`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
         }
@@ -287,11 +281,9 @@ export default function WelcomePage() {
       )
       .subscribe((status, err) => {
          if (status === 'SUBSCRIBED') {
-          // console.log(`Client (Realtime): Successfully subscribed to ${gameChannelName} on WelcomePage!`);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error(`Client (Realtime): Subscription error (${gameChannelName}): "${status}"`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
         } else if (status === 'CLOSED') {
-          // console.info(`Client (Realtime): Channel ${gameChannelName} is now ${status}. Details:`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'No error details.');
         } else if (err) {
            console.error(`Client (Realtime): Unexpected error or status on ${gameChannelName} subscription (status: ${status}):`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
         }
@@ -458,7 +450,6 @@ export default function WelcomePage() {
   if (isLoading && !internalGame ) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        {/* Global loader is active via showGlobalLoader() in useEffect */}
       </div>
     );
   }
@@ -611,14 +602,14 @@ export default function WelcomePage() {
             )}
 
             <div className={cn(
-                "relative shadow-2xl rounded-xl overflow-hidden aspect-[4/3]",
+                "relative shadow-2xl rounded-xl overflow-hidden", // Removed aspect-[4/3]
                 !showPlayerSetupForm && "md:col-span-1"
               )}>
               <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
                 className="absolute inset-0 w-full h-full"
               />
-              <div className="absolute inset-0 z-10 flex flex-col p-6 text-white">
+              <div className="absolute inset-0 z-10 flex flex-col p-8 text-white"> {/* Changed p-6 to p-8 */}
                 <div className="mb-4">
                   <h3 className="text-3xl font-bold flex items-center text-shadow-sm">
                     <Users className="mr-3 h-8 w-8" />
@@ -630,12 +621,12 @@ export default function WelcomePage() {
                 </div>
 
                 <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent pr-2 -mr-2">
-                  {sortedPlayersForDisplay.length > 0 ? (
-                    <ul className="space-y-3 px-2">
-                      {sortedPlayersForDisplay.map((player: PlayerClientState) => (
+                  <ul className="space-y-3 px-2">
+                    {sortedPlayersForDisplay.length > 0 ? (
+                      sortedPlayersForDisplay.map((player: PlayerClientState) => (
                         <li
                           key={player.id}
-                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-[1.5px] border-black"
+                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-2 border-black" // Changed border-[1.5px] to border-2
                         >
                           <div className="flex items-center">
                             {player.avatar.startsWith('/') ? (
@@ -659,11 +650,11 @@ export default function WelcomePage() {
                             )}
                           </div>
                         </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-white/80 text-center py-4">No players yet. Be the first to cause some trouble!</p>
-                  )}
+                      ))
+                    ) : (
+                      <p className="text-white/80 text-center py-4">No players yet. Be the first to cause some trouble!</p>
+                    )}
+                  </ul>
                 </div>
 
                 {showStartGameButton && (
