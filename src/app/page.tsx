@@ -708,21 +708,18 @@ export default function WelcomePage() {
   // Welcome Screen: currentStep !== 'setup'
   return (
     <div className="flex flex-col min-h-screen w-full text-foreground relative">
-      {/* This inner div is now the main flex container for centering the button */}
       <div className="flex flex-grow items-center justify-center w-full px-4">
         <motion.a
           onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
           href="/?step=setup"
-          animate={{ scale: [1, 1.03, 1] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="block mx-auto cursor-pointer" // block mx-auto should help center if parent is full width
+          className="block mx-auto cursor-pointer"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
           <Image
             src="/ui/enter-the-chaos-button.png"
             alt="Enter the Chaos"
-            width={280} // Using fixed dimensions for the button image
+            width={280}
             height={105}
             className=""
             priority
