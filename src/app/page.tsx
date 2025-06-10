@@ -6,7 +6,7 @@ import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, Crown } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
@@ -644,6 +644,9 @@ export default function WelcomePage() {
                               <span className="text-3xl mr-3">{player.avatar}</span>
                             )}
                             <span className="text-xl font-medium">{player.name}</span>
+                            {player.id === hostPlayerId && (
+                              <Crown className="ml-2 h-5 w-5 text-yellow-600" title="Host" />
+                            )}
                           </div>
                           <div className="flex items-center space-x-2">
                             {player.id === internalThisPlayerId ? (
@@ -730,9 +733,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
-
-    
-
-    
