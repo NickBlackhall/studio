@@ -1,15 +1,15 @@
 
 import type {Metadata} from 'next';
-import { Permanent_Marker, Patrick_Hand } from 'next/font/google';
+import { IM_Fell_English_SC, Patrick_Hand } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
-const permanentMarker = Permanent_Marker({
+const imFellEnglishSC = IM_Fell_English_SC({
   subsets: ['latin'],
-  weight: ['400'],
-  variable: '--font-permanent-marker',
+  weight: ['400'], // IM Fell English SC typically comes in regular weight
+  variable: '--font-im-fell-english-sc',
 });
 
 const patrickHand = Patrick_Hand({
@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${permanentMarker.variable} ${patrickHand.variable}`} suppressHydrationWarning={true}>
+    <html lang="en" className={`${imFellEnglishSC.variable} ${patrickHand.variable}`} suppressHydrationWarning={true}>
       <body className={`antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
         <LoadingProvider>
           <main className="flex-grow container mx-auto p-4">

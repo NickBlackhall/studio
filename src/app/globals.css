@@ -99,7 +99,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-patrick-hand), sans-serif;
+    font-family: var(--font-patrick-hand), sans-serif; /* Body font */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -130,8 +130,8 @@
   }
 
   h1, h2, h3, h4, h5, h6,
-  .card-title {
-    font-family: var(--font-permanent-marker), var(--font-patrick-hand), sans-serif;
+  .card-title { /* Includes CardTitle components */
+    font-family: var(--font-im-fell-english-sc), serif; /* Heading font with a generic serif fallback */
   }
 }
 
