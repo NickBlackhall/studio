@@ -99,7 +99,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-geist-sans), sans-serif; /* Reverted to Geist Sans */
+    font-family: var(--font-patrick-hand), sans-serif;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -129,10 +129,9 @@
     opacity: 1; /* Visible state */
   }
 
-  /* Ensure headings and card titles also use the body font by default, unless specifically overridden elsewhere */
   h1, h2, h3, h4, h5, h6,
   .card-title {
-    font-family: var(--font-geist-sans), sans-serif; /* Explicitly set to Geist Sans, or remove to inherit from body */
+    font-family: var(--font-permanent-marker), var(--font-patrick-hand), sans-serif;
   }
 }
 
