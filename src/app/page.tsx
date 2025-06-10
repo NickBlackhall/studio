@@ -624,7 +624,7 @@ export default function WelcomePage() {
                     <Users className="mr-3 h-8 w-8" />
                     Players ({internalGame.players.length})
                   </h3>
-                  <p className="text-white/90 text-base mt-1 text-shadow-xs">
+                  <p className="text-white text-lg font-semibold mt-2">
                     {lobbyMessage}
                   </p>
                 </div>
