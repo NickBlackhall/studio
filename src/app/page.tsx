@@ -670,14 +670,16 @@ export default function WelcomePage() {
                 </div>
 
                 {showStartGameButton && (
-                  <div className="mt-6 flex justify-center">
-                    <button
+                  <div className="mt-6 flex justify-center pb-4">
+                    <motion.button
                       onClick={handleStartGame}
                       disabled={isProcessingAction || isLoading}
                       className={cn(
                         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md",
                         (isProcessingAction || isLoading) ? "opacity-60 cursor-not-allowed" : "transition-transform duration-150 ease-in-out hover:scale-105 active:scale-95"
                       )}
+                      animate={{ scale: [1, 1.03, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                       aria-label="Start Game Now!"
                     >
                       { (isProcessingAction || isLoading) ? (
@@ -694,7 +696,7 @@ export default function WelcomePage() {
                           data-ai-hint="start game"
                         />
                       )}
-                    </button>
+                    </motion.button>
                   </div>
                 )}
               </div>
