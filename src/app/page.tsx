@@ -6,7 +6,7 @@ import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, Crown } from 'lucide-react';
+import { Users, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, Crown } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
@@ -670,16 +670,32 @@ export default function WelcomePage() {
                 </div>
 
                 {showStartGameButton && (
-                    <Button
+                  <div className="mt-6 flex justify-center">
+                    <button
                       onClick={handleStartGame}
-                      variant="default"
-                      size="lg"
-                      className="mt-6 w-full bg-yellow-500 text-black hover:bg-yellow-600 active:bg-yellow-700 text-xl font-bold py-4 shadow-lg border-2 border-black/50 transform hover:scale-105 transition-transform duration-150 ease-in-out"
                       disabled={isProcessingAction || isLoading}
+                      className={cn(
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md",
+                        (isProcessingAction || isLoading) ? "opacity-60 cursor-not-allowed" : "transition-transform duration-150 ease-in-out hover:scale-105 active:scale-95"
+                      )}
+                      aria-label="Start Game Now!"
                     >
-                      { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-3 h-7 w-7" /> }
-                      Start Game Now!
-                    </Button>
+                      { (isProcessingAction || isLoading) ? (
+                        <div className="flex items-center justify-center w-[280px] h-[70px] bg-muted rounded-md">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : (
+                        <Image
+                          src="/ui/start-game-button.png"
+                          alt="Start Game Now!"
+                          width={280}
+                          height={70}
+                          priority
+                          data-ai-hint="start game"
+                        />
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -733,3 +749,4 @@ export default function WelcomePage() {
     </div>
   );
 }
+
