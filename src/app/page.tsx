@@ -707,7 +707,7 @@ export default function WelcomePage() {
 
   // Welcome Screen: currentStep !== 'setup'
   return (
-    <div className="flex flex-col min-h-screen w-full text-foreground relative">
+    <div className="flex flex-col min-h-screen w-full text-foreground relative overflow-hidden">
       <div className="flex flex-grow items-center justify-center w-full px-4">
         <motion.a
           onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
