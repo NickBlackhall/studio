@@ -6,7 +6,7 @@ import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
-import { Users, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, Crown } from 'lucide-react';
+import { ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, Crown } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
@@ -620,9 +620,8 @@ export default function WelcomePage() {
                   !showPlayerSetupForm && ""
                 )}>
                 <div className="mb-4">
-                  <h3 className="text-3xl font-bold flex items-center text-shadow-sm">
-                    <Users className="mr-3 h-8 w-8" />
-                    Players ({internalGame.players.length})
+                  <h3 className="text-3xl font-bold">
+                    PLAYERS <span className="text-accent">{internalGame.players.length}</span>
                   </h3>
                   <p className="text-white text-lg font-semibold mt-2">
                     {lobbyMessage}
