@@ -678,7 +678,7 @@ export default function WelcomePage() {
                         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md",
                         (isProcessingAction || isLoading) ? "opacity-60 cursor-not-allowed" : "transition-transform duration-150 ease-in-out hover:scale-105 active:scale-95"
                       )}
-                      animate={{ scale: [1, 1.03, 1] }}
+                      animate={{ scale: [1, 0.85, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                       aria-label="Start Game Now!"
                     >
@@ -735,7 +735,7 @@ export default function WelcomePage() {
         className="block mx-auto cursor-pointer"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        animate={{ scale: [1, 1.03, 1] }}
+        animate={{ scale: [1, 0.85, 1] }}
         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
       >
         <Image
