@@ -681,15 +681,15 @@ export default function WelcomePage() {
                       aria-label="Start Game Now!"
                     >
                       { (isProcessingAction || isLoading) ? (
-                        <div className="flex items-center justify-center w-[280px] h-[70px] bg-muted rounded-md">
+                        <div className="flex items-center justify-center w-[224px] h-[56px] bg-muted rounded-md">
                           <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                       ) : (
                         <Image
                           src="/ui/start-game-button.png"
                           alt="Start Game Now!"
-                          width={280}
-                          height={70}
+                          width={224}
+                          height={56}
                           priority
                           data-ai-hint="start game"
                         />
