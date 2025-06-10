@@ -707,28 +707,28 @@ export default function WelcomePage() {
 
   // Welcome Screen: currentStep !== 'setup'
   return (
-    <div className="flex flex-col h-full w-full text-foreground">
-      <div className="flex-grow flex items-center justify-center w-full px-4">
-        <motion.a
-          onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
-          href="/?step=setup"
-          className="block mx-auto cursor-pointer"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Image
-            src="/ui/enter-the-chaos-button.png"
-            alt="Enter the Chaos"
-            width={280}
-            height={105}
-            className=""
-            priority
-            data-ai-hint="chaos button"
-          />
-        </motion.a>
-      </div>
+    <div className="fixed inset-0 z-10 flex flex-col items-center justify-center text-foreground">
+      <motion.a
+        onClick={(e) => { e.preventDefault(); showGlobalLoader(); router.push('/?step=setup');}}
+        href="/?step=setup"
+        className="block mx-auto cursor-pointer"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <Image
+          src="/ui/enter-the-chaos-button.png"
+          alt="Enter the Chaos"
+          width={224}
+          height={84}
+          className=""
+          priority
+          data-ai-hint="chaos button"
+        />
+      </motion.a>
     </div>
   );
 }
+
+    
 
     
