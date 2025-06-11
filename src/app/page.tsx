@@ -619,8 +619,8 @@ export default function WelcomePage() {
                   "flex flex-col flex-1 z-10 p-6 text-white",
                   !showPlayerSetupForm && ""
                 )}>
-                <div className="mb-4">
-                  <h3 className="text-4xl font-bold">
+                <div className="mb-4 pt-4"> {/* Added pt-4 here for the heading */}
+                  <h3 className="text-4xl font-bold"> 
                     PLAYERS <span className="text-accent">{internalGame.players.length}</span>
                   </h3>
                   <p className="text-white text-lg font-semibold mt-2">
