@@ -607,7 +607,7 @@ export default function WelcomePage() {
             )}
 
              <div className={cn(
-                "relative shadow-2xl rounded-xl overflow-hidden flex flex-col max-w-lg mx-auto w-full", // Added max-w-lg and mx-auto, w-full ensures it takes space in grid
+                "relative shadow-2xl rounded-xl overflow-hidden flex flex-col max-w-md mx-auto w-full",
                 !showPlayerSetupForm && "md:col-span-1",
                 "bg-transparent"
               )}>
@@ -616,11 +616,11 @@ export default function WelcomePage() {
                 className="absolute inset-0 w-full h-full -z-10"
               />
               <div className={cn(
-                  "flex flex-col flex-1 z-10 p-6 text-white", // Simplified padding to p-6
+                  "flex flex-col flex-1 z-10 p-6",
                   !showPlayerSetupForm && ""
                 )}>
                 <div className="mb-4">
-                  <h3 className="text-4xl font-bold"> 
+                  <h3 className="text-4xl font-bold">
                     PLAYERS <span className="text-accent">{internalGame.players.length}</span>
                   </h3>
                   <p className="text-white text-lg font-semibold mt-2">
