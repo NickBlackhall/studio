@@ -6,7 +6,7 @@ import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
-import { ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, Crown } from 'lucide-react';
+import { ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react'; // Removed Crown as it's handled differently
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
@@ -22,6 +22,7 @@ import ReadyToggle from '@/components/game/ReadyToggle';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import CustomCardFrame from '@/components/ui/CustomCardFrame';
+import { Crown } from 'lucide-react'; // Explicitly importing Crown
 
 
 export const dynamic = 'force-dynamic';
@@ -616,11 +617,11 @@ export default function WelcomePage() {
                 className="absolute inset-0 w-full h-full -z-10"
               />
               <div className={cn(
-                  "flex flex-col flex-1 z-10 p-6",
+                  "flex flex-col flex-1 z-10 pt-10 px-6 pb-6", // Increased top padding here
                   !showPlayerSetupForm && ""
                 )}>
-                <div className="mb-4">
-                  <h3 className="text-4xl font-bold">
+                <div className="mb-4"> 
+                  <h3 className="text-4xl font-bold text-white">
                     PLAYERS <span className="text-accent">{internalGame.players.length}</span>
                   </h3>
                   <p className="text-white text-lg font-semibold mt-2">
@@ -750,5 +751,7 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
 
     
