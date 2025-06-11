@@ -620,7 +620,7 @@ export default function WelcomePage() {
                   !showPlayerSetupForm && ""
                 )}>
                 <div className="mb-4">
-                  <h3 className="text-3xl font-bold">
+                  <h3 className="text-4xl font-bold">
                     PLAYERS <span className="text-accent">{internalGame.players.length}</span>
                   </h3>
                   <p className="text-white text-lg font-semibold mt-2">
