@@ -616,10 +616,10 @@ export default function WelcomePage() {
                 className="absolute inset-0 w-full h-full -z-10"
               />
               <div className={cn(
-                  "flex flex-col flex-1 z-10 p-6 text-white",
+                  "flex flex-col flex-1 z-10 p-6 text-white pt-6", // Adjusted: p-6 and additional pt-6 makes total 3rem top padding
                   !showPlayerSetupForm && ""
                 )}>
-                <div className="mb-4 pt-4"> {/* Added pt-4 here for the heading */}
+                <div className="mb-4"> {/* Adjusted: Removed pt-4 from here */}
                   <h3 className="text-4xl font-bold"> 
                     PLAYERS <span className="text-accent">{internalGame.players.length}</span>
                   </h3>
@@ -751,3 +751,4 @@ export default function WelcomePage() {
   );
 }
 
+    
