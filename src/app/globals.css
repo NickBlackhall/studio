@@ -131,7 +131,7 @@
 
   h1, h2, h3, h4, h5, h6,
   .card-title { /* Includes CardTitle components */
-    font-family: var(--font-im-fell-english-sc), serif; /* Heading font with a generic serif fallback */
+    font-family: var(--font-bangers), sans-serif; /* Heading font with a generic serif fallback */
   }
 }
 
