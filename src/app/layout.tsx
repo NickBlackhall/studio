@@ -6,20 +6,20 @@ import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
 // Configure Bangers font from local file
-const bangersFont = localFont({
-  src: '../../public/fonts/Bangers-Regular.ttf', // Corrected relative path
-  weight: '400',
-  variable: '--font-bangers',
-  display: 'swap',
-});
+// const bangersFont = localFont({
+//   src: '../../public/fonts/Bangers-Regular.ttf',
+//   weight: '400',
+//   variable: '--font-bangers',
+//   display: 'swap',
+// });
 
 // Configure Corben font from local file
-const corbenFont = localFont({
-  src: '../../public/fonts/Corben-Bold.ttf', // Corrected relative path
-  weight: '700',
-  variable: '--font-corben',
-  display: 'swap',
-});
+// const corbenFont = localFont({
+//   src: '../../public/fonts/Corben-Bold.ttf',
+//   weight: '700',
+//   variable: '--font-corben',
+//   display: 'swap',
+// });
 
 export const metadata = {
   title: 'Make It Terrible',
@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${bangersFont.variable} ${corbenFont.variable}`} suppressHydrationWarning={true}>
+    <html lang="en" /*className={`${bangersFont.variable} ${corbenFont.variable}`}*/ suppressHydrationWarning={true}>
       <body className={`antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
         <LoadingProvider>
           <main className="flex-grow container mx-auto p-4">
