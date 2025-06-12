@@ -6,14 +6,14 @@ import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
 const bangersFont = localFont({
-  src: '../../fonts/Bangers-Regular.ttf', // Path relative from src/app/layout.tsx to project_root/fonts/
+  src: '../../public/fonts/Bangers-Regular.ttf', // Corrected path
   weight: '400',
   variable: '--font-bangers',
   display: 'swap',
 });
 
 const corbenFont = localFont({
-  src: '../../fonts/Corben-Bold.ttf', // Path relative from src/app/layout.tsx to project_root/fonts/
+  src: '../../public/fonts/Corben-Bold.ttf', // Corrected path
   weight: '700',
   variable: '--font-corben',
   display: 'swap',
