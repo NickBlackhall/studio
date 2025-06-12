@@ -7,9 +7,9 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOi
 
 if (!supabaseUrl || supabaseUrl === 'YOUR_SUPABASE_URL_HERE') {
   // This condition should ideally not be met if NEXT_PUBLIC_SUPABASE_URL is set or hardcoded correctly
-  console.warn('Supabase URL is not configured. Please update src/lib/supabaseClient.ts or set NEXT_PUBLIC_SUPABASE_URL environment variable.');
+  throw new Error('Supabase URL is not configured. Please update src/lib/supabaseClient.ts or set NEXT_PUBLIC_SUPABASE_URL environment variable.');
 }
-if (!supabaseAnonKey || supabaseAnonKey === 'YOUR_SUPABASE_ANON_KEY_HERE' || supabaseAnonKey === 'https://fpntcspwvpmrbbiekqsv.supabase.co') {
+if (!supabaseAnonKey || supabaseAnonKey === 'YOUR_SUPABASE_ANON_KEY_HERE') {
   // This condition should ideally not be met if NEXT_PUBLIC_SUPABASE_ANON_KEY is set or hardcoded correctly
   throw new Error('Supabase anon key is not configured or is incorrect. Please update src/lib/supabaseClient.ts or set NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable.');
 }
