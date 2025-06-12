@@ -7,7 +7,7 @@ import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
 // Configure Bangers font from local file
 const bangersFont = localFont({
-  src: './fonts/Bangers-Regular.ttf', // Path relative to this file (src/app/layout.tsx)
+  src: '../../public/fonts/Bangers-Regular.ttf', // Corrected path
   weight: '400',
   variable: '--font-bangers',
   display: 'swap',
@@ -15,8 +15,8 @@ const bangersFont = localFont({
 
 // Configure Corben font from local file
 const corbenFont = localFont({
-  src: './fonts/Corben-Bold.ttf', // Path relative to this file (src/app/layout.tsx)
-  weight: '700', // Corben-Bold implies a bold weight
+  src: '../../public/fonts/Corben-Bold.ttf', // Corrected path
+  weight: '700', 
   variable: '--font-corben',
   display: 'swap',
 });
