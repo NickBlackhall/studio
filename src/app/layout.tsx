@@ -5,15 +5,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
+// Configure Bangers font
 const bangersFont = localFont({
-  src: '../../public/fonts/Bangers-Regular.ttf', // Corrected path
+  src: '../../public/fonts/Bangers-Regular.ttf', // Corrected relative path
   weight: '400',
   variable: '--font-bangers',
   display: 'swap',
 });
 
+// Configure Corben font
 const corbenFont = localFont({
-  src: '../../public/fonts/Corben-Bold.ttf', // Corrected path
+  src: '../../public/fonts/Corben-Bold.ttf', // Corrected relative path
   weight: '700',
   variable: '--font-corben',
   display: 'swap',
