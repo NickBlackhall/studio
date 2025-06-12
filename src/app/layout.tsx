@@ -1,21 +1,23 @@
 
 import type {Metadata} from 'next';
-import { Bangers, Patrick_Hand } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
-const bangers = Bangers({
-  subsets: ['latin'],
-  weight: ['400'],
+const bangersFont = localFont({
+  src: '../../public/fonts/Bangers-Regular.ttf', // Adjusted path assuming fonts are in public/fonts
+  weight: '400',
   variable: '--font-bangers',
+  display: 'swap', // Ensures text is visible while font loads
 });
 
-const patrickHand = Patrick_Hand({
-  subsets: ['latin'],
-  weight: ['400'],
-  variable: '--font-patrick-hand',
+const corbenFont = localFont({
+  src: '../../public/fonts/Corben-Bold.ttf', // Adjusted path assuming fonts are in public/fonts
+  weight: '700', // Corben-Bold implies a bold weight
+  variable: '--font-corben',
+  display: 'swap', // Ensures text is visible while font loads
 });
 
 export const metadata: Metadata = {
@@ -29,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${bangers.variable} ${patrickHand.variable}`} suppressHydrationWarning={true}>
+    <html lang="en" className={`${bangersFont.variable} ${corbenFont.variable}`} suppressHydrationWarning={true}>
       <body className={`antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
         <LoadingProvider>
           <main className="flex-grow container mx-auto p-4">
