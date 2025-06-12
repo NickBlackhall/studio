@@ -5,18 +5,18 @@ import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
-// Configure Bangers font
+// Configure Bangers font from local file
 const bangersFont = localFont({
-  src: '../../public/fonts/Bangers-Regular.ttf', // Corrected relative path
+  src: './fonts/Bangers-Regular.ttf', // Path relative to this file (src/app/layout.tsx)
   weight: '400',
   variable: '--font-bangers',
   display: 'swap',
 });
 
-// Configure Corben font
+// Configure Corben font from local file
 const corbenFont = localFont({
-  src: '../../public/fonts/Corben-Bold.ttf', // Corrected relative path
-  weight: '700',
+  src: './fonts/Corben-Bold.ttf', // Path relative to this file (src/app/layout.tsx)
+  weight: '700', // Corben-Bold implies a bold weight
   variable: '--font-corben',
   display: 'swap',
 });
