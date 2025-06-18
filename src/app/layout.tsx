@@ -1,5 +1,5 @@
 
-import localFont from 'next/font/local';
+// import localFont from 'next/font/local'; // Temporarily commented out
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
@@ -7,7 +7,7 @@ import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
 // Configure Bangers font from local file
 // const bangersFont = localFont({
-//   src: '../../public/fonts/Bangers-Regular.ttf',
+//   src: '../../public/fonts/Bangers-Regular.ttf', // Path based on public/fonts/
 //   weight: '400',
 //   variable: '--font-bangers',
 //   display: 'swap',
@@ -15,7 +15,7 @@ import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
 // Configure Corben font from local file
 // const corbenFont = localFont({
-//   src: '../../public/fonts/Corben-Bold.ttf',
+//   src: '../../public/fonts/Corben-Bold.ttf', // Path based on public/fonts/
 //   weight: '700',
 //   variable: '--font-corben',
 //   display: 'swap',

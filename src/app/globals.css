@@ -99,7 +99,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: serif; /* Simplified body font */
+    font-family: serif; /* Simplified body font - Corben disabled */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -131,7 +131,7 @@
 
   h1, h2, h3, h4, h5, h6,
   .card-title { /* Includes CardTitle components */
-    font-family: sans-serif; /* Simplified heading font */
+    font-family: sans-serif; /* Simplified heading font - Bangers disabled */
   }
 }
 
