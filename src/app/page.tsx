@@ -6,7 +6,7 @@ import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
-import { ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react'; // Removed Crown as it's handled differently
+import { ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
@@ -22,15 +22,12 @@ import ReadyToggle from '@/components/game/ReadyToggle';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import CustomCardFrame from '@/components/ui/CustomCardFrame';
-import { Crown } from 'lucide-react'; // Explicitly importing Crown
+import { Crown } from 'lucide-react';
 
 
 export const dynamic = 'force-dynamic';
 
-// --- CONFIGURATION FLAG ---
-// Set to false to prevent the logo on the setup screen from navigating to the welcome screen (e.g., for beta testing)
 const ENABLE_SETUP_LOGO_NAVIGATION = true;
-// --- END CONFIGURATION FLAG ---
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -42,7 +39,7 @@ export default function WelcomePage() {
   const [internalThisPlayerId, setInternalThisPlayerId] = useState<string | null>(null);
   const thisPlayerIdRef = useRef<string | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true); // Local loading state for initial page elements
+  const [isLoading, setIsLoading] = useState(true);
   const [isProcessingAction, startPlayerActionTransition] = useTransition();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
@@ -85,12 +82,9 @@ export default function WelcomePage() {
     }
   }, []);
 
-  const fetchGameData = useCallback(async (origin: string = "unknown", gameIdToFetch?: string) => {
-    const isInitialPageLoad = origin.includes("initial mount");
-    const isStepChange = origin.includes("step changed to");
-
-    if (isInitialPageLoad && isMountedRef.current) {
-       // Local loading for initial elements, global handled by caller for step changes
+  const fetchGameData = useCallback(async (fetchOrigin: string, gameIdToFetch?: string) => {
+    if (isMountedRef.current && (fetchOrigin.includes("initial mount") || fetchOrigin.includes("step changed to"))) {
+      setIsLoading(true); // Manage local loading state
     }
 
     try {
@@ -100,11 +94,11 @@ export default function WelcomePage() {
         if (typeof fetchedGameState.ready_player_order_str === 'string') {
             fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
         } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
-            console.warn(`Client (fetchGameData): RPO was undefined or not an array from getGame(), defaulting to []. Game ID: ${fetchedGameState.gameId}, Origin: ${origin}`);
+            console.warn(`Client (fetchGameData): RPO was undefined or not an array from getGame(), defaulting to []. Game ID: ${fetchedGameState.gameId}, Origin: ${fetchOrigin}`);
             fetchedGameState.ready_player_order = [];
         }
       } else {
-        console.warn(`Client (fetchGameData): fetchedGameState was null. (Origin: ${origin})`);
+        console.warn(`Client (fetchGameData): fetchedGameState was null. (Origin: ${fetchOrigin})`);
       }
 
       if (!isMountedRef.current) {
@@ -115,8 +109,7 @@ export default function WelcomePage() {
 
       if (fetchedGameState && fetchedGameState.gameId) {
         const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
-
-        if (fetchedGameState.players.length === 0 && (origin.includes("reset") || origin.includes("handleResetGame"))) {
+        if (fetchedGameState.players.length === 0 && (fetchOrigin.includes("reset") || fetchOrigin.includes("handleResetGame"))) {
           localStorage.removeItem(localStorageKey);
           setThisPlayerId(null);
         } else {
@@ -135,17 +128,15 @@ export default function WelcomePage() {
         }
       } else {
         setThisPlayerId(null);
-        if ((isInitialPageLoad || isStepChange) && isMountedRef.current) {
+        if ((fetchOrigin.includes("initial mount") || fetchOrigin.includes("step changed to")) && isMountedRef.current) {
             setGame(null);
             toast({ title: "Game Session Error", description: "Could not initialize or find the game session. Please try refreshing or resetting.", variant: "destructive"});
         }
       }
     } catch (error: any) {
-      console.error(`Client (fetchGameData): Failed to fetch game state (from ${origin}, gameIdToFetch: ${gameIdToFetch || 'N/A'}):`, error);
+      console.error(`Client (fetchGameData): Failed to fetch game state (from ${fetchOrigin}, gameIdToFetch: ${gameIdToFetch || 'N/A'}):`, error);
       if (isMountedRef.current) {
-        if (gameIdToFetch && !isInitialPageLoad && !isStepChange) { // Only toast for non-critical background fetches
-            toast({ title: "Game Update Failed", description: `Could not refresh game ${gameIdToFetch}: ${error.message}. State may be temporarily stale.`, variant: "default"});
-        } else if (isInitialPageLoad || isStepChange) { // Critical fetches
+         if (fetchOrigin.includes("initial mount") || fetchOrigin.includes("step changed to")) {
             setGame(null);
             setThisPlayerId(null);
             toast({ title: "Load Error", description: `Could not fetch game state: ${error.message || String(error)}`, variant: "destructive"});
@@ -153,42 +144,52 @@ export default function WelcomePage() {
       }
     } finally {
       if (isMountedRef.current) {
-        if (isInitialPageLoad) setIsLoading(false); // Local loading for page content
-        if (isInitialPageLoad || isStepChange || origin.includes("reset") || origin.includes("handleResetGame") || origin.includes("step changed to")) {
-          hideGlobalLoader(); // Ensure global loader is hidden after primary fetches
+        if (fetchOrigin.includes("initial mount") || fetchOrigin.includes("step changed to")) {
+           setIsLoading(false); // Manage local loading state
         }
       }
     }
-  }, [toast, setGame, setThisPlayerId, hideGlobalLoader, parseReadyPlayerOrderStr]);
+  }, [toast, setGame, setThisPlayerId, parseReadyPlayerOrderStr]);
 
 
-  // Effect for initial mount
   useEffect(() => {
     isMountedRef.current = true;
-    console.log("WelcomePage: Initial mount. Showing global loader.");
-    showGlobalLoader();
-    fetchGameData(`initial mount (currentStep: ${currentStep})`);
+    let isActive = true;
+
+    const loadDataForCurrentStep = async () => {
+      if (!isActive) return;
+
+      console.log(`WelcomePage: Data loading effect for currentStep '${currentStep}'. Showing global loader.`);
+      showGlobalLoader();
+      try {
+        await fetchGameData(`effect for step: ${currentStep}`);
+      } catch (error: any) {
+        console.error(`WelcomePage: Error in loadDataForCurrentStep for step ${currentStep}:`, error);
+        if (isActive && isMountedRef.current) {
+          toast({ title: "Data Load Error", description: `Could not load data. ${error.message || ''}`, variant: "destructive" });
+        }
+      } finally {
+        if (isActive && isMountedRef.current) {
+          console.log(`WelcomePage: Data loading effect for currentStep '${currentStep}'. Hiding global loader.`);
+          hideGlobalLoader();
+        }
+      }
+    };
+
+    loadDataForCurrentStep();
 
     return () => {
-      isMountedRef.current = false;
+      isActive = false;
+      // isMountedRef.current = false; // This is a global ref, reset it only on component unmount
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Runs once on initial mount
+  }, [currentStep, fetchGameData]); // fetchGameData is memoized by useCallback
 
-  // Effect for handling changes to currentStepQueryParam (e.g., after router.push)
-   useEffect(() => {
-    if (isMountedRef.current) {
-      const newStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
-      const previousStepRef = gameRef.current ? (currentStepQueryParam === 'setup' ? 'welcome' : 'setup') : 'initial';
-
-      if (newStep !== previousStepRef || !internalGame) {
-        console.log(`WelcomePage: currentStepQueryParam changed from '${previousStepRef}' to '${newStep}' or game data missing. Fetching data.`);
-        showGlobalLoader();
-        fetchGameData(`step changed to: ${newStep}`);
+  useEffect(() => { // Ensure isMountedRef is false on unmount
+      return () => {
+          isMountedRef.current = false;
       }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStepQueryParam]);
+  }, []);
 
 
   useEffect(() => {
@@ -197,7 +198,7 @@ export default function WelcomePage() {
       if (currentStep === 'setup') {
         document.body.classList.add('setup-view-active');
         document.body.classList.remove('welcome-background-visible');
-      } else { // Welcome step
+      } else {
         document.body.classList.remove('setup-view-active');
         backgroundTimerId = setTimeout(() => {
           if (isMountedRef.current) {
@@ -206,11 +207,8 @@ export default function WelcomePage() {
         }, 50);
       }
     }
-
     return () => {
-      if (backgroundTimerId) {
-        clearTimeout(backgroundTimerId);
-      }
+      if (backgroundTimerId) clearTimeout(backgroundTimerId);
       if (typeof window !== 'undefined') {
         document.body.classList.remove('setup-view-active');
         document.body.classList.remove('welcome-background-visible');
@@ -220,41 +218,40 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
-    const gameForNavCheck = internalGame;
+    const gameForNavCheck = internalGame; // Use state variable for reactiveness
     const localThisPlayerId = internalThisPlayerId;
 
     if (isMountedRef.current && gameForNavCheck && gameForNavCheck.gameId &&
         gameForNavCheck.gamePhase !== 'lobby' &&
         ACTIVE_PLAYING_PHASES.includes(gameForNavCheck.gamePhase as GamePhaseClientState) &&
-        currentStep === 'setup' &&
-        localThisPlayerId
+        currentStep === 'setup' && // Only redirect if on setup page but game is active
+        localThisPlayerId // And this user is a known player
       ) {
+      console.log(`WelcomePage: Game active (phase ${gameForNavCheck.gamePhase}), player identified, on setup. Redirecting to /game.`);
       router.push('/game');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [internalGame?.gamePhase, internalGame?.gameId, internalThisPlayerId, currentStep, router]);
+  }, [internalGame, internalThisPlayerId, currentStep, router]); // Dependencies updated
 
 
   useEffect(() => {
     const currentGameId = internalGame?.gameId;
-    const currentThisPlayerId = internalThisPlayerId;
+    if (!currentGameId || isLoading) return () => {}; // isLoading refers to local isLoading here
 
-    if (!currentGameId || isLoading) {
-      return () => {};
-    }
-
-    const uniqueChannelSuffix = currentThisPlayerId || Date.now();
+    const uniqueChannelSuffix = internalThisPlayerId || Date.now();
 
     const handlePlayersUpdate = async (payload: any) => {
-      const latestGameId = gameRef.current?.gameId;
+      const latestGameId = gameRef.current?.gameId; // Use ref for latest value
       if (isMountedRef.current && latestGameId) {
+        // Not showing global loader for background updates
         await fetchGameData(`players-lobby-${latestGameId}-${uniqueChannelSuffix} player change`, latestGameId);
       }
     };
 
     const handleGameTableUpdate = async (payload: any) => {
-      const latestGameId = gameRef.current?.gameId;
+      const latestGameId = gameRef.current?.gameId; // Use ref for latest value
       if (isMountedRef.current && latestGameId) {
+         // Not showing global loader for background updates
         await fetchGameData(`games-lobby-${latestGameId}-${uniqueChannelSuffix} game change`, latestGameId);
       }
     };
@@ -262,48 +259,27 @@ export default function WelcomePage() {
     const playersChannelName = `players-lobby-${currentGameId}-${uniqueChannelSuffix}`;
     const playersChannel = supabase
       .channel(playersChannelName)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${currentGameId}` },
-        handlePlayersUpdate
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${currentGameId}` }, handlePlayersUpdate)
       .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Client (Realtime): Subscription error (${playersChannelName}): "${status}"`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
-        } else if (status === 'CLOSED') {
-        } else if (err) {
-           console.error(`Client (Realtime): Unexpected error or status on ${playersChannelName} subscription (status: ${status}):`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
-        }
+        if (err) console.error(`Client (Realtime Players Sub Error - ${playersChannelName}):`, err);
       });
 
     const gameChannelName = `game-state-lobby-${currentGameId}-${uniqueChannelSuffix}`;
     const gameChannel = supabase
       .channel(gameChannelName)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${currentGameId}` },
-        handleGameTableUpdate
-      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${currentGameId}` }, handleGameTableUpdate)
       .subscribe((status, err) => {
-         if (status === 'SUBSCRIBED') {
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Client (Realtime): Subscription error (${gameChannelName}): "${status}"`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
-        } else if (status === 'CLOSED') {
-        } else if (err) {
-           console.error(`Client (Realtime): Unexpected error or status on ${gameChannelName} subscription (status: ${status}):`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
-        }
+        if (err) console.error(`Client (Realtime Game Sub Error - ${gameChannelName}):`, err);
       });
 
     return () => {
-      const gameIdForCleanup = gameRef.current?.gameId;
-      if (gameIdForCleanup) {
-        supabase.removeChannel(playersChannel).catch(err => console.error("Client (Realtime cleanup): Error removing players channel on WelcomePage:", err));
-        supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime cleanup): Error removing game channel on WelcomePage:", err));
+      if (gameRef.current?.gameId) { // Check ref on cleanup
+        supabase.removeChannel(playersChannel).catch(err => console.error("Client (Realtime Cleanup Error - Players):", err));
+        supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime Cleanup Error - Game):", err));
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [internalGame?.gameId, internalThisPlayerId, isLoading, fetchGameData]);
+  }, [internalGame?.gameId, internalThisPlayerId, isLoading, fetchGameData]); // fetchGameData is a dep
 
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
@@ -311,16 +287,14 @@ export default function WelcomePage() {
 
   const sortedPlayersForDisplay = useMemo(() => {
     if (!internalGame || !internalGame.players) return [];
-    if (!thisPlayerObject) return internalGame.players;
+    if (!thisPlayerObject) return internalGame.players.sort((a,b) => (a.joined_at || "").localeCompare(b.joined_at || "")); // Sort by join time if no specific player
 
-    const otherPlayers = internalGame.players.filter(p => p.id !== thisPlayerObject.id);
+    const otherPlayers = internalGame.players.filter(p => p.id !== thisPlayerObject.id).sort((a,b) => (a.joined_at || "").localeCompare(b.joined_at || ""));
     return [thisPlayerObject, ...otherPlayers];
   }, [internalGame, thisPlayerObject]);
 
   const hostPlayerId = useMemo(() => {
-    if (!internalGame || !Array.isArray(internalGame.ready_player_order)) {
-      return null;
-    }
+    if (!internalGame || !Array.isArray(internalGame.ready_player_order)) return null;
     return internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
   }, [internalGame]);
 
@@ -338,7 +312,7 @@ export default function WelcomePage() {
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
     const avatar = formData.get('avatar') as string;
-    const currentGameId = internalGame?.gameId;
+    const currentGameId = gameRef.current?.gameId; // Use ref
 
     if (!name.trim() || !avatar) {
         toast({ title: "Missing Info", description: "Please enter your name and select an avatar.", variant: "destructive" });
@@ -347,8 +321,9 @@ export default function WelcomePage() {
     if (!currentGameId) {
         toast({ title: "Error!", description: "Game session not found. Please refresh.", variant: "destructive"});
         if (isMountedRef.current) {
-            showGlobalLoader();
-            await fetchGameData("handleAddPlayer_no_gameId");
+            showGlobalLoader(); // Show loader for this explicit refresh attempt
+            try { await fetchGameData("handleAddPlayer_no_gameId"); }
+            finally { if(isMountedRef.current) hideGlobalLoader(); }
         }
         return;
     }
@@ -356,12 +331,12 @@ export default function WelcomePage() {
     startPlayerActionTransition(async () => {
       try {
         const newPlayer = await addPlayerAction(name, avatar);
-        if (newPlayer && newPlayer.id && currentGameId && isMountedRef.current) {
-          const localStorageKey = `thisPlayerId_game_${currentGameId}`;
+        if (newPlayer && newPlayer.id && gameRef.current?.id && isMountedRef.current) { // Check gameRef again
+          const localStorageKey = `thisPlayerId_game_${gameRef.current.id}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
-          setThisPlayerId(newPlayer.id);
+          setThisPlayerId(newPlayer.id); // This will trigger re-renders and potentially data re-fetches if needed by other effects
         } else if (isMountedRef.current) {
-           if (newPlayer === null && internalGame?.gamePhase !== 'lobby') {
+           if (newPlayer === null && gameRef.current?.gamePhase !== 'lobby') {
             toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
           } else if (newPlayer === null) {
             toast({ title: "Join Error", description: "Could not add player to the game.", variant: "destructive"});
@@ -381,38 +356,32 @@ export default function WelcomePage() {
   };
 
   const handleResetGame = async () => {
-    showGlobalLoader();
+    showGlobalLoader(); // Manually show loader for this action
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
+        // Redirect is handled by the action, which will trigger the main useEffect via currentStep change
       } catch (error: any) {
-        if (!isMountedRef.current) {
-            return;
-        }
+        if (!isMountedRef.current) return;
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+          // Let Next.js handle the redirect; global loader will be hidden by the subsequent page load's effect
           return;
         }
-        toast({
-          title: "Reset Failed",
-          description: `Could not reset the game. ${error.message || String(error)}`,
-          variant: "destructive",
-        });
-        if (isMountedRef.current) {
-           hideGlobalLoader();
-        }
+        toast({ title: "Reset Failed", description: `Could not reset game. ${error.message || String(error)}`, variant: "destructive"});
+        if (isMountedRef.current) hideGlobalLoader(); // Hide loader if reset fails and no redirect
       }
     });
   };
 
   const handleToggleReady = async (player: PlayerClientState) => {
-    const currentGameId = internalGame?.gameId;
-    const currentThisPlayerId = internalThisPlayerId;
+    const currentGameId = gameRef.current?.gameId; // Use ref
+    const currentThisPlayerIdValue = thisPlayerIdRef.current; // Use ref
 
-    if (!currentGameId || !currentThisPlayerId) {
+    if (!currentGameId || !currentThisPlayerIdValue) {
         toast({ title: "Error", description: "Cannot change ready status. Game or player not identified.", variant: "destructive" });
         return;
     }
-    if (player.id !== currentThisPlayerId) {
+    if (player.id !== currentThisPlayerIdValue) {
       toast({ title: "Hey!", description: "You can only ready up yourself.", variant: "destructive" });
       return;
     }
@@ -423,7 +392,7 @@ export default function WelcomePage() {
       } catch (error: any) {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            showGlobalLoader();
+            showGlobalLoader(); // Show loader as a redirect might be involved or state change
             return;
           }
           toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
@@ -433,30 +402,30 @@ export default function WelcomePage() {
   };
 
   const handleStartGame = async () => {
-    const gameToStart = internalGame;
+    const gameToStart = gameRef.current; // Use ref
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
-        showGlobalLoader();
+        showGlobalLoader(); // Manually show loader
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
+                 // Navigation to /game will happen due to gamePhase change picked up by useEffect
             } catch (error: any) {
               if (isMountedRef.current) {
                   if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-                      return;
+                      return; // Loader will be handled by next page load effect
                   }
                   toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
-                  hideGlobalLoader();
+                  hideGlobalLoader(); // Hide if start game action fails without redirect
               }
             }
         });
     }
   };
 
-
-  if (isLoading && !internalGame ) {
+  if (isLoading && !internalGame) { // This is the local isLoading
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        {/* Optional: A very minimal loader if desired before game state is known */}
+        {/* Minimal local loader while initial game state is fetched by the useEffect */}
       </div>
     );
   }
@@ -464,7 +433,6 @@ export default function WelcomePage() {
   if (!internalGame || !internalGame.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        {/* Fallback for critical error if game couldn't be fetched/initialized */}
         <p className="text-xl text-destructive mt-4">Could not initialize game session. Please try refreshing.</p>
          <Button onClick={() => { showGlobalLoader(); window.location.reload(); }} variant="outline" className="mt-4">
           Refresh Page
@@ -568,8 +536,6 @@ export default function WelcomePage() {
       } else if (showStartGameButton) {
         lobbyMessage = "All players are ready! You can start the game now!";
       } else {
-        const hostPlayerForMsg = hostPlayerId && internalGame.players ? internalGame.players.find(p => p.id === hostPlayerId) : null;
-        const hostNameForMessage = hostPlayerForMsg?.name || ( (internalGame.ready_player_order?.length || 0) > 0 ? 'first player to ready up' : 'the host');
         lobbyMessage = `Game starts once all you terrible people are ready. So hurry up!`;
       }
 
@@ -753,4 +719,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-    
