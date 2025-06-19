@@ -95,45 +95,42 @@
 
 @layer base {
   * {
-    /* @apply border-border; */ /* Temporarily removed to simplify */
-    border-color: hsl(var(--border)); /* Direct application */
+    border-color: hsl(var(--border)); 
   }
   body {
-    background-color: hsl(var(--background)); /* Direct application */
-    color: hsl(var(--foreground)); /* Direct application */
-    font-family: var(--font-corben), serif; /* Use Corben Bold for body */
+    background-color: hsl(var(--background)); 
+    color: hsl(var(--foreground)); 
+    font-family: var(--font-corben), 'Times New Roman', serif !important; /* Corben, then Times, then generic serif */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    /* background-image: url('/textures/background-tile.png'); */ /* Temporarily removed */
-    /* background-repeat: repeat; */
-    position: relative; /* Keep for body::before if needed */
+    position: relative; 
   }
 
   body:not(.setup-view-active)::before {
     content: "";
-    position: fixed; /* Use fixed to cover viewport regardless of scroll */
+    position: fixed; 
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background-image: url('/backgrounds/mobile-background.jpg');
-    background-size: contain; /* Ensures entire image is visible, respects aspect ratio */
-    background-position: center top; /* Aligns to center horizontally and top vertically */
+    background-size: contain; 
+    background-position: center top; 
     background-repeat: no-repeat;
-    z-index: -1; /* Places it behind all other body content */
-    pointer-events: none; /* Allows clicks to pass through */
-    opacity: 0; /* Initial state for transition */
-    transition: opacity 0.75s ease-in-out; /* Transition effect */
+    z-index: -1; 
+    pointer-events: none; 
+    opacity: 0; 
+    transition: opacity 0.75s ease-in-out; 
   }
 
   body.welcome-background-visible:not(.setup-view-active)::before {
-    opacity: 1; /* Visible state */
+    opacity: 1; 
   }
 
   h1, h2, h3, h4, h5, h6,
-  .card-title { /* Includes CardTitle components */
-    font-family: var(--font-bangers), sans-serif; /* Use Bangers for headings */
+  .card-title { 
+    font-family: var(--font-bangers), 'Comic Sans MS', cursive !important; /* Bangers, then Comic Sans, then generic cursive */
   }
 }
 
