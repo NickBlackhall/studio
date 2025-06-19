@@ -9,7 +9,7 @@ import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlaye
 import { ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, Crown } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
-import { CATEGORIES } from '@/lib/data'; // Corrected import path
+import { CATEGORIES } from '@/lib/data';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -26,7 +26,7 @@ import { motion } from 'framer-motion';
 export const dynamic = 'force-dynamic';
 
 const ENABLE_SETUP_LOGO_NAVIGATION = true;
-// const MotionLink = motion(Link); // No longer using motion(Link) here
+
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -104,10 +104,7 @@ export default function WelcomePage() {
         console.log(`WelcomePage: fetchGameData - getGame returned:`, fetchedGameState ? `ID: ${fetchedGameState.gameId}, Phase: ${fetchedGameState.gamePhase}` : 'null/undefined from getGame');
     } catch (error) {
         console.error(`WelcomePage: fetchGameData - ERROR during getGame() from ${fetchOrigin}:`, error);
-        if (isMountedRef.current) {
-            // toast({ title: "Game Load Failed", description: `Could not retrieve game session. ${(error as Error).message || ''}`, variant: "destructive" });
-        }
-        throw error; // Re-throw the error to be caught by loadDataForCurrentStep
+        throw error; 
     }
 
     if (!isMountedRef.current) {
@@ -144,10 +141,8 @@ export default function WelcomePage() {
           }
       }
     } else {
-      console.error(`WelcomePage: fetchGameData - getGame returned invalid state (null or no gameId) BUT DID NOT THROW. Origin: ${fetchOrigin}. This is unexpected.`, fetchedGameState);
-      if (isMountedRef.current) {
-          // toast({ title: "Game Data Issue", description: "Received incomplete game data from server. Please check console.", variant: "destructive" });
-      }
+      console.error(`WelcomePage: fetchGameData - getGame returned invalid state (null or no gameId). Origin: ${fetchOrigin}. This is unexpected.`, fetchedGameState);
+      throw new Error('Failed to retrieve a valid game session from server.');
     }
   }, [setGame, setThisPlayerId, parseReadyPlayerOrderStr]);
 
@@ -170,10 +165,10 @@ export default function WelcomePage() {
         await fetchGameData(`effect for step: ${currentStep}`);
       } catch (error: any) {
         console.error(`WelcomePage: Error in loadDataForCurrentStep for step ${currentStep}:`, error);
-        const errorMessage = `Could not load game data. ${error.message || 'Unknown error'}`;
+        const errorMessage = `Could not load game data. ${(error as Error).message || 'Unknown error'}`;
         if (isActive && isMountedRef.current) {
           setErrorLoadingGame(errorMessage);
-          // toast({ title: "Data Load Error", description: errorMessage, variant: "destructive" });
+          toast({ title: "Data Load Error", description: errorMessage, variant: "destructive" });
         }
       } finally {
         if (isActive && isMountedRef.current) {
@@ -190,7 +185,7 @@ export default function WelcomePage() {
       isActive = false;
       isMountedRef.current = false;
     };
-  }, [currentStep, fetchGameData, showGlobalLoader, hideGlobalLoader]);
+  }, [currentStep, fetchGameData, showGlobalLoader, hideGlobalLoader, toast]);
 
   useEffect(() => {
       let backgroundTimerId: NodeJS.Timeout | undefined;
@@ -336,6 +331,7 @@ export default function WelcomePage() {
         if (newPlayer && newPlayer.id && gameRef.current?.id && isMountedRef.current) {
           const localStorageKey = `thisPlayerId_game_${gameRef.current.id}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
+          setThisPlayerId(newPlayer.id); // Set this player ID immediately
 
           const newPlayerClientState: PlayerClientState = {
             id: newPlayer.id,
@@ -347,9 +343,9 @@ export default function WelcomePage() {
             isReady: newPlayer.is_ready,
           };
           
-          setThisPlayerId(newPlayer.id);
+          // Optimistically update local game state
           setGame(prevGame => {
-            if (!prevGame) { // Should ideally not happen if currentGameId was valid
+            if (!prevGame) {
                  return {
                     gameId: gameRef.current!.id, players: [newPlayerClientState], currentRound: 0, currentJudgeId: null, currentScenario: null, gamePhase: 'lobby', submissions: [], categories: CATEGORIES,
                     ready_player_order: newPlayerClientState.isReady ? [newPlayerClientState.id] : [],
@@ -366,7 +362,7 @@ export default function WelcomePage() {
           });
           
           toast({ title: "Joined!", description: `Welcome ${newPlayer.name}!`});
-          // Rely on real-time for further updates to game state.
+          // Real-time subscription will eventually reconcile further if needed
 
         } else if (isMountedRef.current) {
            if (newPlayer === null && gameRef.current?.gamePhase !== 'lobby') {
@@ -514,7 +510,7 @@ export default function WelcomePage() {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
         <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
-        <p className="text-xl text-destructive mt-4">An unexpected error occurred on the setup page. Please try refreshing.</p>
+        <p className="text-xl text-destructive mt-4">Critical error: Game data missing for setup. Please refresh.</p>
          <Button onClick={() => { if(isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); window.location.reload(); }}} variant="outline" className="mt-4">
           Refresh Page
         </Button>
@@ -529,7 +525,7 @@ export default function WelcomePage() {
            <Image src="/new-logo.png" alt="Make It Terrible Logo" width={150} height={150} className="mb-8" data-ai-hint="game logo" priority />
           <p className="text-2xl font-semibold text-center mb-4 text-foreground">A game is in progress!</p>
           <div className="space-y-3">
-            <button // Using a simple button, MotionLink/NextLink combination was problematic
+            <button
                 onClick={() => {
                     if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); }
                     router.push('/?step=setup');
@@ -539,7 +535,7 @@ export default function WelcomePage() {
                 Go to Lobby / Join
             </button>
             {thisPlayerIdRef.current && internalGame.players.find(p=>p.id === thisPlayerIdRef.current) && (
-                 <button // Using a simple button
+                 <button
                     onClick={() => {
                         if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); }
                         router.push('/game');
@@ -578,7 +574,7 @@ export default function WelcomePage() {
 
 
   if (currentStep === 'setup') {
-    if (!internalGame || !internalGame.id) {
+    if (!internalGame || !internalGame.id) { // This should now be caught by errorLoadingGame
         return <div className="text-center py-10">Critical error: Game data missing for setup. Please refresh.</div>;
     }
 
@@ -749,7 +745,7 @@ export default function WelcomePage() {
                         >
                           <div className="flex items-center">
                             {player.avatar.startsWith('/') ? (
-                              <Image src={player.avatar} alt={`${player.name}'s avatar`} width={40} height={40} className="mr-3 rounded-sm object-contain" style={{ width: '40px', height: '40px' }} />
+                              <Image src={player.avatar} alt={`${player.name}'s avatar`} width={40} height={40} className="mr-3 rounded-sm object-contain" style={{ width: '40px', height: '40px' }} data-ai-hint="player avatar"/>
                             ) : (
                               <span className="text-3xl mr-3">{player.avatar}</span>
                             )}
@@ -883,5 +879,4 @@ export default function WelcomePage() {
     </div>
   );
 }
-
     
