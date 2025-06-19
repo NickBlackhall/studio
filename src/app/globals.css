@@ -95,17 +95,19 @@
 
 @layer base {
   * {
-    @apply border-border;
+    /* @apply border-border; */ /* Temporarily removed to simplify */
+    border-color: hsl(var(--border)); /* Direct application */
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background)); /* Direct application */
+    color: hsl(var(--foreground)); /* Direct application */
     font-family: var(--font-corben), serif; /* Use Corben Bold for body */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background-image: url('/textures/background-tile.png');
-    background-repeat: repeat;
-    position: relative;
+    /* background-image: url('/textures/background-tile.png'); */ /* Temporarily removed */
+    /* background-repeat: repeat; */
+    position: relative; /* Keep for body::before if needed */
   }
 
   body:not(.setup-view-active)::before {
