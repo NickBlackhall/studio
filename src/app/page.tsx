@@ -12,7 +12,7 @@ import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link'; // Correct import for Link
+import Link from 'next/link';
 import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
@@ -61,17 +61,31 @@ export default function WelcomePage() {
     }
   }, []);
 
-  const setGame = useCallback((newGameState: GameClientState | null) => {
-    gameRef.current = newGameState;
-    if (isMountedRef.current) {
-      if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
-        const rpoArray = parseReadyPlayerOrderStr(newGameState);
-        setInternalGame({ ...newGameState, ready_player_order: rpoArray });
-      } else if (newGameState) {
-        setInternalGame({ ...newGameState, ready_player_order: newGameState.ready_player_order || [] });
-      } else {
-        setInternalGame(null);
-      }
+  const setGame = useCallback((newGameState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
+    if (typeof newGameState === 'function') {
+        gameRef.current = newGameState(gameRef.current);
+        if (isMountedRef.current) setInternalGame(prevInternalGame => {
+            const updatedGame = newGameState(prevInternalGame);
+            if (updatedGame && typeof updatedGame.ready_player_order_str === 'string') {
+                const rpoArray = parseReadyPlayerOrderStr(updatedGame);
+                return { ...updatedGame, ready_player_order: rpoArray };
+            } else if (updatedGame) {
+                return { ...updatedGame, ready_player_order: updatedGame.ready_player_order || [] };
+            }
+            return null;
+        });
+    } else {
+        gameRef.current = newGameState;
+        if (isMountedRef.current) {
+            if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
+                const rpoArray = parseReadyPlayerOrderStr(newGameState);
+                setInternalGame({ ...newGameState, ready_player_order: rpoArray });
+            } else if (newGameState) {
+                setInternalGame({ ...newGameState, ready_player_order: newGameState.ready_player_order || [] });
+            } else {
+                setInternalGame(null);
+            }
+        }
     }
   }, [parseReadyPlayerOrderStr]);
 
@@ -84,7 +98,6 @@ export default function WelcomePage() {
 
   const fetchGameData = useCallback(async (fetchOrigin: string, gameIdToFetch?: string) => {
     console.log(`WelcomePage: fetchGameData called from ${fetchOrigin}. gameIdToFetch: ${gameIdToFetch}`);
-    // Local setIsLoading is now managed by the calling useEffect
 
     let fetchedGameState = await getGame(gameIdToFetch);
 
@@ -116,8 +129,11 @@ export default function WelcomePage() {
           if (playerInGame) {
             setThisPlayerId(playerIdFromStorage);
           } else {
-            localStorage.removeItem(localStorageKey);
-            setThisPlayerId(null);
+            // Only remove if not in specific optimistic update origins to prevent premature nullification
+            if (!fetchOrigin.startsWith("handleAddPlayer_optimistic")) {
+                localStorage.removeItem(localStorageKey);
+                setThisPlayerId(null);
+            }
           }
         } else {
           setThisPlayerId(null);
@@ -304,17 +320,55 @@ export default function WelcomePage() {
 
     startPlayerActionTransition(async () => {
       try {
-        const newPlayer = await addPlayerAction(name, avatar);
+        const newPlayer = await addPlayerAction(name, avatar); // newPlayer is Tables<'players'>
         if (newPlayer && newPlayer.id && gameRef.current?.id && isMountedRef.current) {
           const localStorageKey = `thisPlayerId_game_${gameRef.current.id}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
-          setThisPlayerId(newPlayer.id);
+          setThisPlayerId(newPlayer.id); // Update thisPlayerId state immediately
+
+          // Optimistically update internalGame.players
+          const newPlayerClientState: PlayerClientState = {
+            id: newPlayer.id,
+            name: newPlayer.name,
+            avatar: newPlayer.avatar,
+            score: newPlayer.score,
+            isJudge: newPlayer.is_judge, // From DB, should be false on initial add
+            hand: [], // Assume empty hand for optimistic UI, server will sync
+            isReady: newPlayer.is_ready, // From DB, should be false
+          };
+
+          setGame(prevGame => {
+            if (!prevGame) {
+                // This case should ideally not be hit if gameRef.current.id was valid
+                // But as a fallback, create a minimal game state if needed.
+                // Or, rely on fetchGameData to populate fully.
+                // For now, let's assume prevGame is usually present.
+                 console.warn("handleAddPlayer: prevGame was null during optimistic update.");
+                 return {
+                    gameId: gameRef.current?.id || 'unknown-game-id',
+                    players: [newPlayerClientState],
+                    currentRound: 0,
+                    currentJudgeId: null,
+                    currentScenario: null,
+                    gamePhase: 'lobby',
+                    submissions: [],
+                    categories: [],
+                    ready_player_order: [],
+                 };
+            }
+            // Ensure no duplicates if player somehow already in list (defensive)
+            const existingPlayers = prevGame.players.filter(p => p.id !== newPlayerClientState.id);
+            return {
+              ...prevGame,
+              players: [...existingPlayers, newPlayerClientState]
+            };
+          });
           
-          // Explicitly fetch to ensure game state is fresh for the new player
+          // Fetch from server to get full truth and reconcile (e.g., hands, full player order)
           showGlobalLoader(); 
           setIsLoading(true); 
           try {
-            await fetchGameData("handleAddPlayer_success_explicit_fetch", gameRef.current.id);
+            await fetchGameData("handleAddPlayer_optimistic_fetch", gameRef.current.id);
           } catch (fetchError: any) {
              if (isMountedRef.current) toast({ title: "Data Sync Error", description: `Could not refresh game state after join: ${fetchError.message}`, variant: "destructive"});
           } finally {
@@ -660,7 +714,7 @@ export default function WelcomePage() {
               /> */}
               {/* console.warn("CustomCardFrame is temporarily commented out for debugging in src/app/page.tsx") */}
               <div className={cn(
-                  "flex flex-col flex-1 z-10 p-6 rounded-xl", // Removed bg-muted/80 from here, applied to parent
+                  "flex flex-col flex-1 z-10 p-6 rounded-xl", 
                   !showPlayerSetupForm && ""
                 )}>
                 <div className="mt-6">
