@@ -84,6 +84,8 @@ export default function WelcomePage() {
 
   const fetchGameData = useCallback(async (fetchOrigin: string, gameIdToFetch?: string) => {
     console.log(`WelcomePage: fetchGameData called from ${fetchOrigin}. gameIdToFetch: ${gameIdToFetch}`);
+    if (isMountedRef.current) setIsLoading(true); // Manage local loading state for this specific fetch
+
     let fetchedGameState = await getGame(gameIdToFetch);
 
     if (fetchedGameState) {
@@ -139,7 +141,7 @@ export default function WelcomePage() {
 
       console.log(`WelcomePage: Current step is '${currentStep}'. Starting data load sequence.`);
       showGlobalLoader();
-      setIsLoading(true); // Manage local loading state
+      // Local isLoading is now set within fetchGameData and its finalizer
       try {
         await fetchGameData(`effect for step: ${currentStep}`);
       } catch (error: any) {
@@ -151,7 +153,7 @@ export default function WelcomePage() {
         if (isActive && isMountedRef.current) {
           console.log(`WelcomePage: Data load sequence for step '${currentStep}' finished. Hiding global loader.`);
           hideGlobalLoader();
-          setIsLoading(false); // Manage local loading state
+          setIsLoading(false); // Ensure local isLoading is false after global loader hides
         }
       }
     };
@@ -629,10 +631,10 @@ export default function WelcomePage() {
                 !showPlayerSetupForm && "md:col-span-1" ,
                 "bg-transparent"
               )}>
-              {/* <CustomCardFrame
+              <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
                 className="absolute inset-0 w-full h-full -z-10"
-              /> */}
+              />
               <div className={cn(
                   "flex flex-col flex-1 z-10 p-6",
                   !showPlayerSetupForm && ""
