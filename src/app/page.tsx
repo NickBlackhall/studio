@@ -19,14 +19,15 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import CustomCardFrame from '@/components/ui/CustomCardFrame';
 
 
 export const dynamic = 'force-dynamic';
 
 const ENABLE_SETUP_LOGO_NAVIGATION = true;
+const MotionLink = motion(Link);
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -138,7 +139,7 @@ export default function WelcomePage() {
 
       console.log(`WelcomePage: Current step is '${currentStep}'. Starting data load sequence.`);
       showGlobalLoader();
-      setIsLoading(true);
+      // setIsLoading(true); // Managed by global loader now for this effect
       try {
         await fetchGameData(`effect for step: ${currentStep}`);
       } catch (error: any) {
@@ -149,7 +150,7 @@ export default function WelcomePage() {
       } finally {
         if (isActive && isMountedRef.current) {
           console.log(`WelcomePage: Data load sequence for step '${currentStep}' finished. Hiding global loader.`);
-          setIsLoading(false);
+          // setIsLoading(false); // Managed by global loader
           hideGlobalLoader();
         }
       }
@@ -162,7 +163,7 @@ export default function WelcomePage() {
       isMountedRef.current = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep]); // fetchGameData, toast, showGlobalLoader, hideGlobalLoader are stable
+  }, [currentStep]);
 
   useEffect(() => {
       let backgroundTimerId: NodeJS.Timeout | undefined;
@@ -207,7 +208,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     const currentGameId = internalGame?.gameId;
-    if (!currentGameId || isLoading) return () => {};
+    if (!currentGameId || isLoading) return () => {}; // isLoading is local, global loader handles visual
 
     const uniqueChannelSuffix = internalThisPlayerId || Date.now();
 
@@ -723,30 +724,48 @@ export default function WelcomePage() {
         </div>
       );
     }
-    return <div className="text-center py-10">An unexpected error occurred on the setup page. Please try refreshing.</div>;
+    // Fallback for unhandled 'setup' states if internalGame exists but phase is unexpected for this view
+    return (
+        <div className="w-full max-w-xl mx-auto space-y-6 text-center py-12">
+          {ENABLE_SETUP_LOGO_NAVIGATION ? <ClickableSetupLogo /> : <StaticSetupLogo />}
+          <Card className="my-4 shadow-md border-2 border-primary/30 rounded-lg bg-card">
+            <CardHeader className="p-4">
+              <Info className="h-8 w-8 mx-auto text-primary mb-2" />
+              <CardTitle className="text-xl font-semibold text-card-foreground">Game State: {internalGame.gamePhase}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
+                <p>The game is in an unexpected state for the setup page.</p>
+                <p>You might want to reset the game or check if a game is in progress.</p>
+            </CardContent>
+          </Card>
+          <Button onClick={handleResetGame} variant="default" className="mt-6 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isProcessingAction || isLoading}>
+            { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game
+          </Button>
+        </div>
+      );
   }
 
+  // Default: Welcome screen content (currentStep === 'welcome')
   return (
     <div className="fixed inset-0 z-10 flex flex-col h-full w-full items-center justify-center">
-      <Link href="/?step=setup" passHref>
-        <motion.a
-          className="block mx-auto cursor-pointer"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          animate={{ scale: [1, 0.85, 1] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <Image
-            src="/ui/enter-the-chaos-button.png"
-            alt="Enter the Chaos"
-            width={224}
-            height={84}
-            className=""
-            priority
-            data-ai-hint="chaos button"
-          />
-        </motion.a>
-      </Link>
+      <MotionLink
+        href="/?step=setup"
+        className="block mx-auto cursor-pointer"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        animate={{ scale: [1, 0.85, 1] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Image
+          src="/ui/enter-the-chaos-button.png"
+          alt="Enter the Chaos"
+          width={224}
+          height={84}
+          className=""
+          priority
+          data-ai-hint="chaos button"
+        />
+      </MotionLink>
     </div>
   );
 }
