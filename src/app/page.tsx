@@ -13,7 +13,6 @@ import { CATEGORIES } from '@/lib/data'; // Corrected import path
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
@@ -27,7 +26,7 @@ import { motion } from 'framer-motion';
 export const dynamic = 'force-dynamic';
 
 const ENABLE_SETUP_LOGO_NAVIGATION = true;
-const MotionLink = motion(Link);
+// const MotionLink = motion(Link); // No longer using motion(Link) here
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -40,6 +39,7 @@ export default function WelcomePage() {
   const thisPlayerIdRef = useRef<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [errorLoadingGame, setErrorLoadingGame] = useState<string | null>(null);
   const [isProcessingAction, startPlayerActionTransition] = useTransition();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
@@ -97,49 +97,57 @@ export default function WelcomePage() {
   }, []);
 
   const fetchGameData = useCallback(async (fetchOrigin: string, gameIdToFetch?: string) => {
-    console.log(`WelcomePage: fetchGameData called from ${fetchOrigin}. gameIdToFetch: ${gameIdToFetch}`);
-    let fetchedGameState = await getGame(gameIdToFetch);
-
-    if (fetchedGameState) {
-      if (typeof fetchedGameState.ready_player_order_str === 'string') {
-          fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
-      } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
-          console.warn(`Client (fetchGameData): RPO was undefined or not an array from getGame(), defaulting to []. Game ID: ${fetchedGameState.gameId}, Origin: ${fetchOrigin}`);
-          fetchedGameState.ready_player_order = [];
-      }
+    console.log(`WelcomePage: fetchGameData START from ${fetchOrigin}. gameIdToFetch: ${gameIdToFetch}`);
+    let fetchedGameState: GameClientState | null = null;
+    try {
+        fetchedGameState = await getGame(gameIdToFetch);
+        console.log(`WelcomePage: fetchGameData - getGame returned:`, fetchedGameState ? `ID: ${fetchedGameState.gameId}, Phase: ${fetchedGameState.gamePhase}` : 'null/undefined from getGame');
+    } catch (error) {
+        console.error(`WelcomePage: fetchGameData - ERROR during getGame() from ${fetchOrigin}:`, error);
+        if (isMountedRef.current) {
+            // toast({ title: "Game Load Failed", description: `Could not retrieve game session. ${(error as Error).message || ''}`, variant: "destructive" });
+        }
+        throw error; // Re-throw the error to be caught by loadDataForCurrentStep
     }
 
     if (!isMountedRef.current) {
-      console.log("WelcomePage: fetchGameData - unmounted during fetch. Aborting state update.");
+      console.log("WelcomePage: fetchGameData - unmounted. Aborting state update.");
       return;
     }
-    setGame(fetchedGameState);
 
     if (fetchedGameState && fetchedGameState.gameId) {
-        const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
-        if (fetchOrigin.includes("reset") || fetchOrigin.includes("handleResetGame")) {
-            localStorage.removeItem(localStorageKey);
-            setThisPlayerId(null);
-        } else {
-            const playerIdFromStorage = localStorage.getItem(localStorageKey);
-            if (playerIdFromStorage) {
-                const playerInFetchedGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
-                if (playerInFetchedGame) {
-                    setThisPlayerId(playerIdFromStorage);
-                } else {
-                    localStorage.removeItem(localStorageKey);
-                    setThisPlayerId(null);
-                    console.warn(`WelcomePage: Cleared stale player ID ${playerIdFromStorage} from localStorage as it was not found in fetched game ${fetchedGameState.gameId} (Origin: ${fetchOrigin})`);
-                }
-            } else {
-                setThisPlayerId(null);
-            }
-        }
+      if (typeof fetchedGameState.ready_player_order_str === 'string') {
+          fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
+      } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
+          fetchedGameState.ready_player_order = [];
+      }
+      console.log(`WelcomePage: fetchGameData - CALLING setGame with gameId: ${fetchedGameState.gameId}`);
+      setGame(fetchedGameState);
+
+      const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
+      if (fetchOrigin.includes("reset") || fetchOrigin.includes("handleResetGame")) {
+          localStorage.removeItem(localStorageKey);
+          setThisPlayerId(null);
+      } else {
+          const playerIdFromStorage = localStorage.getItem(localStorageKey);
+          if (playerIdFromStorage) {
+              const playerInFetchedGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
+              if (playerInFetchedGame) {
+                  setThisPlayerId(playerIdFromStorage);
+              } else {
+                  localStorage.removeItem(localStorageKey);
+                  setThisPlayerId(null);
+                  console.warn(`WelcomePage: Cleared stale player ID ${playerIdFromStorage} (not in game ${fetchedGameState.gameId}). Origin: ${fetchOrigin}`);
+              }
+          } else {
+              setThisPlayerId(null);
+          }
+      }
     } else {
-        setThisPlayerId(null);
-        if (isMountedRef.current && (fetchOrigin.includes("initial mount") || fetchOrigin.includes("step changed to") || fetchOrigin.includes("effect for step:"))) {
-            setGame(null);
-        }
+      console.error(`WelcomePage: fetchGameData - getGame returned invalid state (null or no gameId) BUT DID NOT THROW. Origin: ${fetchOrigin}. This is unexpected.`, fetchedGameState);
+      if (isMountedRef.current) {
+          // toast({ title: "Game Data Issue", description: "Received incomplete game data from server. Please check console.", variant: "destructive" });
+      }
     }
   }, [setGame, setThisPlayerId, parseReadyPlayerOrderStr]);
 
@@ -155,14 +163,17 @@ export default function WelcomePage() {
       if (isMountedRef.current) {
         showGlobalLoader();
         setIsLoading(true);
+        setErrorLoadingGame(null);
       }
 
       try {
         await fetchGameData(`effect for step: ${currentStep}`);
       } catch (error: any) {
         console.error(`WelcomePage: Error in loadDataForCurrentStep for step ${currentStep}:`, error);
+        const errorMessage = `Could not load game data. ${error.message || 'Unknown error'}`;
         if (isActive && isMountedRef.current) {
-          toast({ title: "Data Load Error", description: `Could not load data. ${error.message || ''}`, variant: "destructive" });
+          setErrorLoadingGame(errorMessage);
+          // toast({ title: "Data Load Error", description: errorMessage, variant: "destructive" });
         }
       } finally {
         if (isActive && isMountedRef.current) {
@@ -179,7 +190,7 @@ export default function WelcomePage() {
       isActive = false;
       isMountedRef.current = false;
     };
-  }, [currentStep, fetchGameData, showGlobalLoader, hideGlobalLoader, toast]);
+  }, [currentStep, fetchGameData, showGlobalLoader, hideGlobalLoader]);
 
   useEffect(() => {
       let backgroundTimerId: NodeJS.Timeout | undefined;
@@ -224,7 +235,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     const currentGameId = internalGame?.gameId;
-    if (!currentGameId || isLoading) return () => {};
+    if (!currentGameId || isLoading || errorLoadingGame) return () => {};
 
     const uniqueChannelSuffix = internalThisPlayerId || Date.now();
     console.log(`WelcomePage Realtime: Setting up subscriptions for gameId: ${currentGameId}, suffix: ${uniqueChannelSuffix}, isLoading: ${isLoading}`);
@@ -239,7 +250,7 @@ export default function WelcomePage() {
     };
 
     const handleGameTableUpdate = async (payload: any) => {
-      const latestGameId = gameRef.current?.gameId;
+      const latestGameId = gameRef.current?.id;
       console.log(`>>> WelcomePage Realtime (game-state-lobby for game ${latestGameId}): CHANGE DETECTED!`, payload);
       if (isMountedRef.current && latestGameId) {
         await fetchGameData(`games-lobby-${latestGameId}-${uniqueChannelSuffix} game change`, latestGameId);
@@ -269,7 +280,7 @@ export default function WelcomePage() {
       supabase.removeChannel(playersChannel).catch(err => console.error("Client (Realtime Cleanup Error - Players):", err));
       supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime Cleanup Error - Game):", err));
     };
-  }, [internalGame?.gameId, internalThisPlayerId, isLoading, fetchGameData]);
+  }, [internalGame?.gameId, internalThisPlayerId, isLoading, errorLoadingGame, fetchGameData]);
 
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
@@ -311,9 +322,10 @@ export default function WelcomePage() {
     if (!currentGameId) {
         toast({ title: "Error!", description: "Game session not found. Please refresh.", variant: "destructive"});
         if (isMountedRef.current) {
-            setIsLoading(true);
+            setIsLoading(true); showGlobalLoader(); setErrorLoadingGame(null);
             try { await fetchGameData("handleAddPlayer_no_gameId"); }
-            finally { if(isMountedRef.current) setIsLoading(false); }
+            catch(e) { /* error handled by fetchGameData rethrow */ }
+            finally { if(isMountedRef.current) { setIsLoading(false); hideGlobalLoader(); }}
         }
         return;
     }
@@ -324,8 +336,6 @@ export default function WelcomePage() {
         if (newPlayer && newPlayer.id && gameRef.current?.id && isMountedRef.current) {
           const localStorageKey = `thisPlayerId_game_${gameRef.current.id}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
-          
-          setThisPlayerId(newPlayer.id);
 
           const newPlayerClientState: PlayerClientState = {
             id: newPlayer.id,
@@ -336,40 +346,27 @@ export default function WelcomePage() {
             hand: [],
             isReady: newPlayer.is_ready,
           };
-
+          
+          setThisPlayerId(newPlayer.id);
           setGame(prevGame => {
-            if (!prevGame) {
-                 console.warn("handleAddPlayer: prevGame was null during optimistic update. Creating minimal state for game:", gameRef.current?.id);
+            if (!prevGame) { // Should ideally not happen if currentGameId was valid
                  return {
-                    gameId: gameRef.current!.id,
-                    players: [newPlayerClientState],
-                    currentRound: 0,
-                    currentJudgeId: null,
-                    currentScenario: null,
-                    gamePhase: 'lobby',
-                    submissions: [],
-                    categories: CATEGORIES,
+                    gameId: gameRef.current!.id, players: [newPlayerClientState], currentRound: 0, currentJudgeId: null, currentScenario: null, gamePhase: 'lobby', submissions: [], categories: CATEGORIES,
                     ready_player_order: newPlayerClientState.isReady ? [newPlayerClientState.id] : [],
                     ready_player_order_str: newPlayerClientState.isReady ? JSON.stringify([newPlayerClientState.id]) : JSON.stringify([]),
                  };
             }
             const filteredPlayers = prevGame.players.filter(p => p.id !== newPlayerClientState.id);
             const updatedPlayers = [...filteredPlayers, newPlayerClientState];
-            
             let updatedReadyOrder = prevGame.ready_player_order || [];
             if (newPlayerClientState.isReady && !updatedReadyOrder.includes(newPlayerClientState.id)) {
                 updatedReadyOrder = [...updatedReadyOrder, newPlayerClientState.id];
             }
-
-            return {
-              ...prevGame,
-              players: updatedPlayers,
-              ready_player_order: updatedReadyOrder,
-              ready_player_order_str: JSON.stringify(updatedReadyOrder),
-            };
+            return { ...prevGame, players: updatedPlayers, ready_player_order: updatedReadyOrder, ready_player_order_str: JSON.stringify(updatedReadyOrder) };
           });
           
           toast({ title: "Joined!", description: `Welcome ${newPlayer.name}!`});
+          // Rely on real-time for further updates to game state.
 
         } else if (isMountedRef.current) {
            if (newPlayer === null && gameRef.current?.gamePhase !== 'lobby') {
@@ -393,8 +390,7 @@ export default function WelcomePage() {
 
   const handleResetGame = async () => {
     if (isMountedRef.current) {
-      showGlobalLoader();
-      setIsLoading(true);
+      showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
     }
     startPlayerActionTransition(async () => {
       try {
@@ -404,10 +400,10 @@ export default function WelcomePage() {
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           return;
         }
+        setErrorLoadingGame(`Could not reset game. ${error.message || String(error)}`);
         toast({ title: "Reset Failed", description: `Could not reset game. ${error.message || String(error)}`, variant: "destructive"});
          if (isMountedRef.current) {
-            hideGlobalLoader();
-            setIsLoading(false);
+            hideGlobalLoader(); setIsLoading(false);
         }
       }
     });
@@ -432,7 +428,7 @@ export default function WelcomePage() {
       } catch (error: any) {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            showGlobalLoader(); setIsLoading(true);
+            showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
             return;
           }
           toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
@@ -445,8 +441,7 @@ export default function WelcomePage() {
     const gameToStart = gameRef.current;
     if (gameToStart?.id && gameToStart.gamePhase === 'lobby') {
         if (isMountedRef.current) {
-          showGlobalLoader();
-          setIsLoading(true);
+          showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
         }
         startPlayerActionTransition(async () => {
             try {
@@ -456,6 +451,7 @@ export default function WelcomePage() {
                   if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
                       return;
                   }
+                  setErrorLoadingGame(`Error starting game. ${error.message || String(error)}`);
                   toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
               }
             } finally {
@@ -470,29 +466,56 @@ export default function WelcomePage() {
     }
   };
 
+  if (errorLoadingGame) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
+        <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
+        <p className="text-xl text-destructive mt-4">Failed to Load Game Data</p>
+        <p className="text-sm text-muted-foreground mt-2">{errorLoadingGame}</p>
+        <Button
+          onClick={() => {
+            if(isMountedRef.current) {
+              setErrorLoadingGame(null);
+              setIsLoading(true);
+              showGlobalLoader();
+              fetchGameData("manual_refresh_after_error").catch(e => {
+                 if(isMountedRef.current) {
+                    const errorMessage = `Could not load game data. ${ (e as Error).message || 'Unknown error'}`;
+                    setErrorLoadingGame(errorMessage);
+                    toast({ title: "Data Load Error", description: errorMessage, variant: "destructive" });
+                 }
+              }).finally(() => {
+                 if(isMountedRef.current) {
+                    setIsLoading(false);
+                    hideGlobalLoader();
+                 }
+              });
+            }
+          }}
+          variant="outline"
+          className="mt-4"
+        >
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading && (!internalGame || currentStep !== 'welcome')) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
+         {currentStep === 'setup' && <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />}
+         {currentStep === 'setup' && <p>Loading setup details...</p>}
       </div>
     );
   }
 
-  if (currentStep === 'setup' && isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p>Loading setup details...</p>
-      </div>
-    );
-  }
-
-  if (currentStep === 'setup' && !internalGame && !isLoading) {
+  if (currentStep === 'setup' && !internalGame && !isLoading && !errorLoadingGame) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
         <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
         <p className="text-xl text-destructive mt-4">An unexpected error occurred on the setup page. Please try refreshing.</p>
-         <Button onClick={() => { showGlobalLoader(); setIsLoading(true); window.location.reload(); }} variant="outline" className="mt-4">
+         <Button onClick={() => { if(isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); window.location.reload(); }}} variant="outline" className="mt-4">
           Refresh Page
         </Button>
       </div>
@@ -506,26 +529,25 @@ export default function WelcomePage() {
            <Image src="/new-logo.png" alt="Make It Terrible Logo" width={150} height={150} className="mb-8" data-ai-hint="game logo" priority />
           <p className="text-2xl font-semibold text-center mb-4 text-foreground">A game is in progress!</p>
           <div className="space-y-3">
-            <Link href="/?step=setup" passHref>
-                <Button
-                    size="lg"
-                    className="w-64 bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => { if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); } }}
-                >
-                    Go to Lobby / Join
-                </Button>
-            </Link>
+            <button // Using a simple button, MotionLink/NextLink combination was problematic
+                onClick={() => {
+                    if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); }
+                    router.push('/?step=setup');
+                }}
+                className="inline-flex items-center justify-center h-11 px-8 rounded-md text-sm font-medium w-64 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+                Go to Lobby / Join
+            </button>
             {thisPlayerIdRef.current && internalGame.players.find(p=>p.id === thisPlayerIdRef.current) && (
-                 <Link href="/game" passHref>
-                    <Button
-                        variant="secondary"
-                        size="lg"
-                        className="w-64"
-                        onClick={() => { if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); } }}
-                    >
-                        Rejoin Active Game
-                    </Button>
-                </Link>
+                 <button // Using a simple button
+                    onClick={() => {
+                        if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); }
+                        router.push('/game');
+                    }}
+                    className="inline-flex items-center justify-center h-11 px-8 rounded-md text-sm font-medium w-64 bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                >
+                    Rejoin Active Game
+                </button>
             )}
           </div>
         </div>
@@ -543,11 +565,9 @@ export default function WelcomePage() {
   );
 
   const ClickableSetupLogo = () => (
-    <Link href="/?step=welcome" passHref>
-        <button className="cursor-pointer mb-8 block mx-auto" onClick={() => { if (isMountedRef.current) {showGlobalLoader(); setIsLoading(true);}}}>
-            <SetupLogo />
-        </button>
-    </Link>
+      <button className="cursor-pointer mb-8 block mx-auto" onClick={() => { if (isMountedRef.current) {showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); router.push('/?step=welcome');}}}>
+          <SetupLogo />
+      </button>
   );
 
   const StaticSetupLogo = () => (
@@ -623,7 +643,7 @@ export default function WelcomePage() {
             <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
               <p>The current game is in the &quot;{internalGame.gamePhase}&quot; phase.</p>
               <Button
-                onClick={() => { if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); router.push('/game'); } }}
+                onClick={() => { if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); router.push('/game'); } }}
                 variant="default"
                 size="sm"
                 className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
@@ -665,11 +685,9 @@ export default function WelcomePage() {
         <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
           <header className="mb-12 text-center">
             {ENABLE_SETUP_LOGO_NAVIGATION ? (
-              <Link href="/?step=welcome" passHref>
-                 <button className="cursor-pointer" onClick={() => { if (isMountedRef.current) {showGlobalLoader(); setIsLoading(true);}}}>
+                <button className="cursor-pointer" onClick={() => { if (isMountedRef.current) {showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); router.push('/?step=welcome');}}}>
                     <Image src="/new-logo.png" alt="Make It Terrible Logo" width={100} height={100} className="mx-auto mb-4" data-ai-hint="game logo" priority />
                 </button>
-              </Link>
             ) : (
               <div className="mx-auto mb-4">
                 <Image src="/new-logo.png" alt="Make It Terrible Logo" width={100} height={100} data-ai-hint="game logo" priority />
@@ -700,14 +718,12 @@ export default function WelcomePage() {
              <div className={cn(
                 "relative shadow-2xl rounded-xl overflow-hidden flex flex-col max-w-md mx-auto w-full",
                 !showPlayerSetupForm && "md:col-span-1",
-                "bg-card border-2 border-border"
-                // "bg-transparent" // Original when CustomCardFrame was active
+                 "bg-card border-2 border-border"
               )}>
               {/* <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
                 className="absolute inset-0 w-full h-full -z-10"
               /> */}
-              {/* console.warn("CustomCardFrame is temporarily commented out for debugging in src/app/page.tsx") */}
               <div className={cn(
                   "flex flex-col flex-1 z-10 p-6 rounded-xl",
                   !showPlayerSetupForm && ""
@@ -841,8 +857,7 @@ export default function WelcomePage() {
   // Default: Welcome screen content (currentStep === 'welcome')
   return (
     <div className="fixed inset-0 z-10 flex flex-col h-full w-full items-center justify-center">
-      <MotionLink
-        href="/?step=setup"
+      <motion.a
         className="block mx-auto cursor-pointer"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -850,8 +865,9 @@ export default function WelcomePage() {
         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
         onClick={() => {
             if (isMountedRef.current) {
-                showGlobalLoader(); setIsLoading(true);
+                showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
             }
+            router.push('/?step=setup');
         }}
       >
         <Image
@@ -863,8 +879,9 @@ export default function WelcomePage() {
           priority
           data-ai-hint="chaos button"
         />
-      </MotionLink>
+      </motion.a>
     </div>
   );
 }
+
     
