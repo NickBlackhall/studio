@@ -27,7 +27,7 @@ import CustomCardFrame from '@/components/ui/CustomCardFrame';
 export const dynamic = 'force-dynamic';
 
 const ENABLE_SETUP_LOGO_NAVIGATION = true;
-const MotionLink = motion(Link); // Correct: motion HOC wraps Link from 'next/link'
+const MotionLink = motion(Link);
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function WelcomePage() {
   const [internalThisPlayerId, setInternalThisPlayerId] = useState<string | null>(null);
   const thisPlayerIdRef = useRef<string | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Page's local loading state
   const [isProcessingAction, startPlayerActionTransition] = useTransition();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
@@ -139,6 +139,7 @@ export default function WelcomePage() {
 
       console.log(`WelcomePage: Current step is '${currentStep}'. Starting data load sequence.`);
       showGlobalLoader();
+      setIsLoading(true); // Manage local loading state
       try {
         await fetchGameData(`effect for step: ${currentStep}`);
       } catch (error: any) {
@@ -150,6 +151,7 @@ export default function WelcomePage() {
         if (isActive && isMountedRef.current) {
           console.log(`WelcomePage: Data load sequence for step '${currentStep}' finished. Hiding global loader.`);
           hideGlobalLoader();
+          setIsLoading(false); // Manage local loading state
         }
       }
     };
@@ -160,8 +162,7 @@ export default function WelcomePage() {
       isActive = false;
       isMountedRef.current = false;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep]);
+  }, [currentStep, fetchGameData, showGlobalLoader, hideGlobalLoader, toast]);
 
   useEffect(() => {
       let backgroundTimerId: NodeJS.Timeout | undefined;
@@ -397,24 +398,37 @@ export default function WelcomePage() {
     }
   };
 
+  // This is the main loading state for the page before specific content is determined
   if (isLoading && (!internalGame || currentStep !== 'welcome')) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        {/* Content intentionally blank, global loader is active */}
+        {/* Content intentionally blank, global loader is active via useLoading hook */}
       </div>
     );
   }
 
-  if (currentStep === 'setup' && !isLoading && (!internalGame || !internalGame.gameId)) {
+  // Specific loading/error state for the 'setup' step *after* global loader hides
+  if (currentStep === 'setup' && isLoading) { // Check local isLoading again after global hide
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
+         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p>Loading setup details...</p>
+      </div>
+    );
+  }
+  
+  if (currentStep === 'setup' && !internalGame && !isLoading) { // If loading is finished but no game state
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <p className="text-xl text-destructive mt-4">An unexpected error occurred on the setup page. Please try refreshing.</p>
+        <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
+        <p className="text-xl text-destructive mt-4">Failed to load game data for setup. Please try refreshing.</p>
          <Button onClick={() => { showGlobalLoader(); window.location.reload(); }} variant="outline" className="mt-4">
           Refresh Page
         </Button>
       </div>
     );
   }
+
 
   if (currentStep === 'welcome' && internalGame && internalGame.gameId && internalGame.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(internalGame.gamePhase as GamePhaseClientState)) {
      return (
@@ -474,8 +488,8 @@ export default function WelcomePage() {
 
 
   if (currentStep === 'setup') {
-    if (!internalGame || !internalGame.gameId) {
-        return <div className="text-center py-10">Loading setup... If this persists, please refresh.</div>;
+    if (!internalGame || !internalGame.gameId) { // Should be caught by earlier !internalGame && !isLoading check
+        return <div className="text-center py-10">Critical error: Game data missing for setup. Please refresh.</div>;
     }
 
     if (internalGame.gamePhase === 'game_over' || internalGame.gamePhase === 'winner_announcement') {
@@ -615,10 +629,10 @@ export default function WelcomePage() {
                 !showPlayerSetupForm && "md:col-span-1" ,
                 "bg-transparent"
               )}>
-              <CustomCardFrame
+              {/* <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
                 className="absolute inset-0 w-full h-full -z-10"
-              />
+              /> */}
               <div className={cn(
                   "flex flex-col flex-1 z-10 p-6",
                   !showPlayerSetupForm && ""
@@ -736,7 +750,7 @@ export default function WelcomePage() {
           <Card className="my-4 shadow-md border-2 border-primary/30 rounded-lg bg-card">
             <CardHeader className="p-4">
               <Info className="h-8 w-8 mx-auto text-primary mb-2" />
-              <CardTitle className="text-xl font-semibold text-card-foreground">Game State: {internalGame.gamePhase}</CardTitle>
+              <CardTitle className="text-xl font-semibold text-card-foreground">Setup Page: Game State ({internalGame?.gamePhase || 'Unknown'})</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
                 <p>The game is in an unexpected state for the setup page.</p>
