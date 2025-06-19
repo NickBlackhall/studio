@@ -9,10 +9,11 @@ import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlaye
 import { ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, Crown } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
+import { CATEGORIES } from '@/lib/data';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Link from 'next/link'; // Correct Link import
 import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
@@ -39,7 +40,7 @@ export default function WelcomePage() {
   const [internalThisPlayerId, setInternalThisPlayerId] = useState<string | null>(null);
   const thisPlayerIdRef = useRef<string | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true); // Page's local loading state
+  const [isLoading, setIsLoading] = useState(true); 
   const [isProcessingAction, startPlayerActionTransition] = useTransition();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
@@ -118,32 +119,39 @@ export default function WelcomePage() {
     setGame(fetchedGameState);
 
     if (fetchedGameState && fetchedGameState.gameId) {
-      const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
-      if (fetchedGameState.players.length === 0 && (fetchOrigin.includes("reset") || fetchOrigin.includes("handleResetGame"))) {
-        localStorage.removeItem(localStorageKey);
-        setThisPlayerId(null);
-      } else {
-        const playerIdFromStorage = localStorage.getItem(localStorageKey);
-        if (playerIdFromStorage) {
-          const playerInGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
-          if (playerInGame) {
-            setThisPlayerId(playerIdFromStorage);
-          } else {
-            // Only remove if not in specific optimistic update origins to prevent premature nullification
-            if (!fetchOrigin.startsWith("handleAddPlayer_optimistic")) {
-                localStorage.removeItem(localStorageKey);
+        const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
+        if (fetchOrigin.includes("reset") || fetchOrigin.includes("handleResetGame")) {
+            localStorage.removeItem(localStorageKey);
+            setThisPlayerId(null);
+        } else {
+            const playerIdFromStorage = localStorage.getItem(localStorageKey);
+            if (playerIdFromStorage) {
+                const playerInFetchedGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
+                if (playerInFetchedGame) {
+                    setThisPlayerId(playerIdFromStorage);
+                } else {
+                    // Player ID in storage, but not in the fetched game state.
+                    // If this fetch was triggered by "handleAddPlayer_reconcile", we *don't* nullify thisPlayerId.
+                    // It means the server data hasn't caught up with the optimistic client state.
+                    // The optimistically set internalThisPlayerId should remain.
+                    // If it's any other non-initial/non-join origin, then clear.
+                    if (fetchOrigin !== "handleAddPlayer_reconcile" && 
+                        !fetchOrigin.startsWith("effect for step:") && 
+                        !fetchOrigin.startsWith("players-lobby-") && 
+                        !fetchOrigin.startsWith("games-lobby-") ) {
+                      localStorage.removeItem(localStorageKey);
+                      setThisPlayerId(null);
+                    }
+                }
+            } else {
                 setThisPlayerId(null);
             }
-          }
-        } else {
-          setThisPlayerId(null);
         }
-      }
     } else {
-      setThisPlayerId(null);
-       if (isMountedRef.current && (fetchOrigin.includes("initial mount") || fetchOrigin.includes("step changed to") || fetchOrigin.includes("effect for step:"))) {
-          setGame(null);
-      }
+        setThisPlayerId(null);
+         if (isMountedRef.current && (fetchOrigin.includes("initial mount") || fetchOrigin.includes("step changed to") || fetchOrigin.includes("effect for step:"))) {
+            setGame(null);
+        }
     }
   }, [setGame, setThisPlayerId, parseReadyPlayerOrderStr]);
 
@@ -320,55 +328,59 @@ export default function WelcomePage() {
 
     startPlayerActionTransition(async () => {
       try {
-        const newPlayer = await addPlayerAction(name, avatar); // newPlayer is Tables<'players'>
+        const newPlayer = await addPlayerAction(name, avatar);
         if (newPlayer && newPlayer.id && gameRef.current?.id && isMountedRef.current) {
           const localStorageKey = `thisPlayerId_game_${gameRef.current.id}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
-          setThisPlayerId(newPlayer.id); // Update thisPlayerId state immediately
+          
+          setThisPlayerId(newPlayer.id);
 
-          // Optimistically update internalGame.players
           const newPlayerClientState: PlayerClientState = {
             id: newPlayer.id,
             name: newPlayer.name,
             avatar: newPlayer.avatar,
             score: newPlayer.score,
-            isJudge: newPlayer.is_judge, // From DB, should be false on initial add
-            hand: [], // Assume empty hand for optimistic UI, server will sync
-            isReady: newPlayer.is_ready, // From DB, should be false
+            isJudge: newPlayer.is_judge,
+            hand: [], 
+            isReady: newPlayer.is_ready, 
           };
 
           setGame(prevGame => {
             if (!prevGame) {
-                // This case should ideally not be hit if gameRef.current.id was valid
-                // But as a fallback, create a minimal game state if needed.
-                // Or, rely on fetchGameData to populate fully.
-                // For now, let's assume prevGame is usually present.
-                 console.warn("handleAddPlayer: prevGame was null during optimistic update.");
+                 console.warn("handleAddPlayer: prevGame was null during optimistic update. Creating minimal state.");
                  return {
-                    gameId: gameRef.current?.id || 'unknown-game-id',
+                    gameId: gameRef.current!.id, 
                     players: [newPlayerClientState],
                     currentRound: 0,
                     currentJudgeId: null,
                     currentScenario: null,
                     gamePhase: 'lobby',
                     submissions: [],
-                    categories: [],
-                    ready_player_order: [],
+                    categories: CATEGORIES, 
+                    ready_player_order: [newPlayerClientState.id], 
+                    ready_player_order_str: JSON.stringify([newPlayerClientState.id]),
                  };
             }
-            // Ensure no duplicates if player somehow already in list (defensive)
-            const existingPlayers = prevGame.players.filter(p => p.id !== newPlayerClientState.id);
+            const filteredPlayers = prevGame.players.filter(p => p.id !== newPlayerClientState.id);
+            const updatedPlayers = [...filteredPlayers, newPlayerClientState];
+            
+            let updatedReadyOrder = prevGame.ready_player_order || [];
+            if (newPlayerClientState.isReady && !updatedReadyOrder.includes(newPlayerClientState.id)) {
+                updatedReadyOrder = [...updatedReadyOrder, newPlayerClientState.id];
+            }
+
             return {
               ...prevGame,
-              players: [...existingPlayers, newPlayerClientState]
+              players: updatedPlayers,
+              ready_player_order: updatedReadyOrder,
+              ready_player_order_str: JSON.stringify(updatedReadyOrder),
             };
           });
           
-          // Fetch from server to get full truth and reconcile (e.g., hands, full player order)
           showGlobalLoader(); 
           setIsLoading(true); 
           try {
-            await fetchGameData("handleAddPlayer_optimistic_fetch", gameRef.current.id);
+            await fetchGameData("handleAddPlayer_reconcile", gameRef.current.id);
           } catch (fetchError: any) {
              if (isMountedRef.current) toast({ title: "Data Sync Error", description: `Could not refresh game state after join: ${fetchError.message}`, variant: "destructive"});
           } finally {
@@ -705,7 +717,7 @@ export default function WelcomePage() {
              <div className={cn(
                 "relative shadow-2xl rounded-xl overflow-hidden flex flex-col max-w-md mx-auto w-full",
                 !showPlayerSetupForm && "md:col-span-1" ,
-                 "bg-muted/80" // Fallback background if CustomCardFrame is out
+                 "bg-muted/30" // Fallback background
                 // "bg-transparent" // Original when CustomCardFrame was active
               )}>
               {/* <CustomCardFrame
@@ -823,10 +835,11 @@ export default function WelcomePage() {
         </div>
       );
     }
+    // Fallback for setup step if game is in an unexpected phase
     return (
         <div className="w-full max-w-xl mx-auto space-y-6 text-center py-12">
           {ENABLE_SETUP_LOGO_NAVIGATION ? <ClickableSetupLogo /> : <StaticSetupLogo />}
-          <Card className="my-4 shadow-md border-2 border-primary/30 rounded-lg bg-card">
+           <Card className="my-4 shadow-md border-2 border-primary/30 rounded-lg bg-card">
             <CardHeader className="p-4">
               <Info className="h-8 w-8 mx-auto text-primary mb-2" />
               <CardTitle className="text-xl font-semibold text-card-foreground">Setup Page: Game State ({internalGame?.gamePhase || 'Unknown'})</CardTitle>
