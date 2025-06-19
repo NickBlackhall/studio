@@ -100,7 +100,7 @@
   body {
     background-color: hsl(var(--background)); 
     color: hsl(var(--foreground)); 
-    font-family: var(--font-corben), serif; /* Corben, then generic serif */
+    font-family: serif; /* Using generic system serif font */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -130,7 +130,7 @@
 
   h1, h2, h3, h4, h5, h6,
   .card-title { 
-    font-family: var(--font-bangers), cursive; /* Bangers, then generic cursive */
+    font-family: sans-serif; /* Using generic system sans-serif font for headings */
   }
 }
 
