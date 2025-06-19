@@ -26,3 +26,5 @@ if (!supabaseAnonKey || supabaseAnonKey === 'YOUR_SUPABASE_ANON_KEY_HERE' || sup
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+    
+    
