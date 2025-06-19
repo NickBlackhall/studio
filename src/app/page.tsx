@@ -139,7 +139,6 @@ export default function WelcomePage() {
 
       console.log(`WelcomePage: Current step is '${currentStep}'. Starting data load sequence.`);
       showGlobalLoader();
-      // setIsLoading(true); // Managed by global loader now for this effect
       try {
         await fetchGameData(`effect for step: ${currentStep}`);
       } catch (error: any) {
@@ -150,7 +149,6 @@ export default function WelcomePage() {
       } finally {
         if (isActive && isMountedRef.current) {
           console.log(`WelcomePage: Data load sequence for step '${currentStep}' finished. Hiding global loader.`);
-          // setIsLoading(false); // Managed by global loader
           hideGlobalLoader();
         }
       }
@@ -208,7 +206,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     const currentGameId = internalGame?.gameId;
-    if (!currentGameId || isLoading) return () => {}; // isLoading is local, global loader handles visual
+    if (!currentGameId || isLoading) return () => {}; 
 
     const uniqueChannelSuffix = internalThisPlayerId || Date.now();
 
@@ -330,11 +328,10 @@ export default function WelcomePage() {
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
-        // No explicit fetch here; redirect should trigger new load.
       } catch (error: any) {
         if (!isMountedRef.current) return;
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          return; // Let Next.js handle redirect. Global loader will persist until next page load or error.
+          return; 
         }
         toast({ title: "Reset Failed", description: `Could not reset game. ${error.message || String(error)}`, variant: "destructive"});
         if (isMountedRef.current) hideGlobalLoader();
@@ -380,7 +377,6 @@ export default function WelcomePage() {
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
-                // Redirect will be handled by game state change if successful
             } catch (error: any) {
               if (isMountedRef.current) {
                   if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -397,7 +393,6 @@ export default function WelcomePage() {
   if (isLoading && (!internalGame || currentStep !== 'welcome')) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        {/* Minimal local loader, GlobalLoadingOverlay handles main one */}
       </div>
     );
   }
