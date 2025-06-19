@@ -12,7 +12,7 @@ import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link'; // Corrected: Ensure Link is from next/link
+import Link from 'next/link'; 
 import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
@@ -84,7 +84,7 @@ export default function WelcomePage() {
 
   const fetchGameData = useCallback(async (fetchOrigin: string, gameIdToFetch?: string) => {
     console.log(`WelcomePage: fetchGameData called from ${fetchOrigin}. gameIdToFetch: ${gameIdToFetch}`);
-    if (isMountedRef.current) setIsLoading(true); // Manage local loading state for this specific fetch
+    // setIsLoading(true); // Local loading state managed by the caller useEffect
 
     let fetchedGameState = await getGame(gameIdToFetch);
 
@@ -140,8 +140,11 @@ export default function WelcomePage() {
       if (!isActive) return;
 
       console.log(`WelcomePage: Current step is '${currentStep}'. Starting data load sequence.`);
-      showGlobalLoader();
-      // Local isLoading is now set within fetchGameData and its finalizer
+      if (isMountedRef.current) {
+        showGlobalLoader();
+        setIsLoading(true); // Set local loading for this page's specific rendering
+      }
+      
       try {
         await fetchGameData(`effect for step: ${currentStep}`);
       } catch (error: any) {
@@ -151,9 +154,9 @@ export default function WelcomePage() {
         }
       } finally {
         if (isActive && isMountedRef.current) {
-          console.log(`WelcomePage: Data load sequence for step '${currentStep}' finished. Hiding global loader.`);
+          console.log(`WelcomePage: Data load sequence for step '${currentStep}' finished. Hiding global loader and local loader.`);
           hideGlobalLoader();
-          setIsLoading(false); // Ensure local isLoading is false after global loader hides
+          setIsLoading(false); 
         }
       }
     };
@@ -209,7 +212,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     const currentGameId = internalGame?.gameId;
-    if (!currentGameId || isLoading) return () => {};
+    if (!currentGameId || isLoading) return () => {}; // Added isLoading check
 
     const uniqueChannelSuffix = internalThisPlayerId || Date.now();
 
@@ -292,8 +295,9 @@ export default function WelcomePage() {
         toast({ title: "Error!", description: "Game session not found. Please refresh.", variant: "destructive"});
         if (isMountedRef.current) {
             showGlobalLoader();
+            setIsLoading(true);
             try { await fetchGameData("handleAddPlayer_no_gameId"); }
-            finally { if(isMountedRef.current) hideGlobalLoader(); }
+            finally { if(isMountedRef.current) { hideGlobalLoader(); setIsLoading(false); } }
         }
         return;
     }
@@ -305,7 +309,11 @@ export default function WelcomePage() {
           const localStorageKey = `thisPlayerId_game_${gameRef.current.id}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id);
-          await fetchGameData("handleAddPlayer_success", gameRef.current.id);
+          // No explicit fetchGameData here, rely on subscription or parent effect if needed to refresh all players
+          // Or, if immediate full refresh is desired:
+          // showGlobalLoader(); setIsLoading(true);
+          // try { await fetchGameData("handleAddPlayer_success", gameRef.current.id); }
+          // finally { if(isMountedRef.current) { hideGlobalLoader(); setIsLoading(false); } }
         } else if (isMountedRef.current) {
            if (newPlayer === null && gameRef.current?.gamePhase !== 'lobby') {
             toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
@@ -327,23 +335,33 @@ export default function WelcomePage() {
   };
 
   const handleResetGame = async () => {
-    showGlobalLoader();
+    if (isMountedRef.current) {
+      showGlobalLoader();
+      setIsLoading(true);
+    }
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
         // fetchGameData will be called by the subscription or redirect effect
+        // if (isMountedRef.current) { // To immediately clear local state if preferred
+        //    setThisPlayerId(null);
+        //    localStorage.removeItem(`thisPlayerId_game_${gameRef.current?.id}`); // if gameRef.current.id exists
+        //    await fetchGameData("handleResetGame_success");
+        // }
       } catch (error: any) {
         if (!isMountedRef.current) return;
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          // Let Next.js handle the redirect without hiding the loader,
-          // as the page will change.
           return;
         }
         toast({ title: "Reset Failed", description: `Could not reset game. ${error.message || String(error)}`, variant: "destructive"});
-        if (isMountedRef.current) hideGlobalLoader();
+      } finally {
+         if (!isMountedRef.current || (typeof (window as any).NEXT_REDIRECT_EXPECTED !== 'undefined' && (window as any).NEXT_REDIRECT_EXPECTED)) {
+          // Don't hide loader if unmounted or if a redirect is expected (hypothetical flag)
+        } else {
+          hideGlobalLoader();
+          setIsLoading(false);
+        }
       }
-      // Do not call hideGlobalLoader here if a redirect is expected.
-      // The new page load will handle its own loader.
     });
   };
 
@@ -363,13 +381,14 @@ export default function WelcomePage() {
     startPlayerActionTransition(async () => {
       try {
         const updatedGame = await togglePlayerReadyStatus(player.id, currentGameId);
-        if (updatedGame && isMountedRef.current) {
-          setGame(updatedGame);
-        }
+        // Rely on subscription to update game state to avoid stale data or race conditions
+        // if (updatedGame && isMountedRef.current) {
+        //   setGame(updatedGame);
+        // }
       } catch (error: any) {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            showGlobalLoader(); // Show loader before redirect
+            showGlobalLoader(); setIsLoading(true);
             return;
           }
           toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
@@ -381,36 +400,42 @@ export default function WelcomePage() {
   const handleStartGame = async () => {
     const gameToStart = gameRef.current;
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
-        showGlobalLoader();
+        if (isMountedRef.current) {
+          showGlobalLoader();
+          setIsLoading(true);
+        }
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
-                // No need to setGame here, realtime update or redirect effect will handle it
             } catch (error: any) {
               if (isMountedRef.current) {
                   if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-                      // Allow Next.js to handle navigation if it's a redirect
                       return;
                   }
                   toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
-                  hideGlobalLoader();
               }
+            } finally {
+               if (!isMountedRef.current || (typeof (window as any).NEXT_REDIRECT_EXPECTED !== 'undefined' && (window as any).NEXT_REDIRECT_EXPECTED)) {
+                // Don't hide if unmounted or redirect expected
+               } else {
+                 hideGlobalLoader();
+                 setIsLoading(false);
+               }
             }
         });
     }
   };
 
-  // This is the main loading state for the page before specific content is determined
+
   if (isLoading && (!internalGame || currentStep !== 'welcome')) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        {/* Content intentionally blank, global loader is active via useLoading hook */}
+        {/* Global loader active */}
       </div>
     );
   }
-
-  // Specific loading/error state for the 'setup' step *after* global loader hides
-  if (currentStep === 'setup' && isLoading) { // Check local isLoading again after global hide
+  
+  if (currentStep === 'setup' && isLoading) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -419,12 +444,12 @@ export default function WelcomePage() {
     );
   }
   
-  if (currentStep === 'setup' && !internalGame && !isLoading) { // If loading is finished but no game state
+  if (currentStep === 'setup' && !internalGame && !isLoading) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
         <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
-        <p className="text-xl text-destructive mt-4">Failed to load game data for setup. Please try refreshing.</p>
-         <Button onClick={() => { showGlobalLoader(); window.location.reload(); }} variant="outline" className="mt-4">
+        <p className="text-xl text-destructive mt-4">An unexpected error occurred on the setup page. Please try refreshing.</p>
+         <Button onClick={() => { showGlobalLoader(); setIsLoading(true); window.location.reload(); }} variant="outline" className="mt-4">
           Refresh Page
         </Button>
       </div>
@@ -442,7 +467,7 @@ export default function WelcomePage() {
                 <Button
                     size="lg"
                     className="w-64 bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => showGlobalLoader()}
+                    onClick={() => {showGlobalLoader(); setIsLoading(true);}}
                 >
                     Go to Lobby / Join
                 </Button>
@@ -453,7 +478,7 @@ export default function WelcomePage() {
                         variant="secondary"
                         size="lg"
                         className="w-64"
-                        onClick={() => showGlobalLoader()}
+                        onClick={() => {showGlobalLoader(); setIsLoading(true);}}
                     >
                         Rejoin Active Game
                     </Button>
@@ -476,7 +501,7 @@ export default function WelcomePage() {
 
   const ClickableSetupLogo = () => (
     <Link href="/?step=welcome" passHref>
-        <button className="cursor-pointer mb-8 block mx-auto" onClick={() => showGlobalLoader()}>
+        <button className="cursor-pointer mb-8 block mx-auto" onClick={() => {showGlobalLoader(); setIsLoading(true);}}>
             <SetupLogo />
         </button>
     </Link>
@@ -490,7 +515,7 @@ export default function WelcomePage() {
 
 
   if (currentStep === 'setup') {
-    if (!internalGame || !internalGame.gameId) { // Should be caught by earlier !internalGame && !isLoading check
+    if (!internalGame || !internalGame.gameId) { 
         return <div className="text-center py-10">Critical error: Game data missing for setup. Please refresh.</div>;
     }
 
@@ -555,7 +580,7 @@ export default function WelcomePage() {
             <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
               <p>The current game is in the &quot;{internalGame.gamePhase}&quot; phase.</p>
               <Button
-                onClick={() => { showGlobalLoader(); router.push('/game'); }}
+                onClick={() => { showGlobalLoader(); setIsLoading(true); router.push('/game'); }}
                 variant="default"
                 size="sm"
                 className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
@@ -595,7 +620,7 @@ export default function WelcomePage() {
           <header className="mb-12 text-center">
             {ENABLE_SETUP_LOGO_NAVIGATION ? (
               <Link href="/?step=welcome" passHref>
-                 <button className="cursor-pointer" onClick={() => showGlobalLoader()}>
+                 <button className="cursor-pointer" onClick={() => {showGlobalLoader(); setIsLoading(true);}}>
                     <Image src="/new-logo.png" alt="Make It Terrible Logo" width={100} height={100} className="mx-auto mb-4" data-ai-hint="game logo" priority />
                 </button>
               </Link>
@@ -631,32 +656,33 @@ export default function WelcomePage() {
                 !showPlayerSetupForm && "md:col-span-1" ,
                 "bg-transparent"
               )}>
-              <CustomCardFrame
+              {/* <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
                 className="absolute inset-0 w-full h-full -z-10"
-              />
+              /> */}
+              {/* console.warn("CustomCardFrame is temporarily commented out for debugging in src/app/page.tsx") */}
               <div className={cn(
-                  "flex flex-col flex-1 z-10 p-6",
+                  "flex flex-col flex-1 z-10 p-6 bg-muted/80 rounded-xl", // Added a fallback background
                   !showPlayerSetupForm && ""
                 )}>
                 <div className="mt-6">
-                  <h3 className="text-4xl font-bold text-white text-center">
+                  <h3 className="text-4xl font-bold text-foreground text-center">
                     PLAYERS: <span className="text-accent">{internalGame.players.length}</span>
                   </h3>
                 </div>
                 <div className="mb-4">
-                  <p className="text-white text-lg font-semibold mt-2 text-center">
+                  <p className="text-foreground text-lg font-semibold mt-2 text-center">
                     {lobbyMessage}
                   </p>
                 </div>
 
-                <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent pr-2 -mr-2 pb-3">
+                <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-foreground/30 scrollbar-track-transparent pr-2 -mr-2 pb-3">
                   <ul className="space-y-3 px-3">
                     {sortedPlayersForDisplay.length > 0 ? (
                       sortedPlayersForDisplay.map((player: PlayerClientState) => (
                         <li
                           key={player.id}
-                          className="flex items-center justify-between p-3 bg-[#e3bb71] border-2 border-black text-black"
+                          className="flex items-center justify-between p-3 bg-card border-2 border-border text-card-foreground rounded-md"
                         >
                           <div className="flex items-center">
                             {player.avatar.startsWith('/') ? (
@@ -685,7 +711,7 @@ export default function WelcomePage() {
                         </li>
                       ))
                     ) : (
-                      <p className="text-white/80 text-center py-4">No players yet. Be the first to cause some trouble!</p>
+                      <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
                     )}
                   </ul>
                 </div>
@@ -745,7 +771,6 @@ export default function WelcomePage() {
         </div>
       );
     }
-    // Fallback for unhandled 'setup' states if internalGame exists but phase is unexpected for this view
     return (
         <div className="w-full max-w-xl mx-auto space-y-6 text-center py-12">
           {ENABLE_SETUP_LOGO_NAVIGATION ? <ClickableSetupLogo /> : <StaticSetupLogo />}
@@ -776,7 +801,7 @@ export default function WelcomePage() {
         whileTap={{ scale: 0.95 }}
         animate={{ scale: [1, 0.85, 1] }}
         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-        onClick={() => showGlobalLoader()}
+        onClick={() => {showGlobalLoader(); setIsLoading(true);}}
       >
         <Image
           src="/ui/enter-the-chaos-button.png"
