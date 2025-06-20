@@ -13,7 +13,7 @@ import { CATEGORIES } from '@/lib/data';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link'; // Correct import for next/link
+import Link from 'next/link';
 import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
@@ -28,7 +28,7 @@ export const dynamic = 'force-dynamic';
 
 const ENABLE_SETUP_LOGO_NAVIGATION = true;
 
-const MotionLink = motion(Link); // Correctly wrap Link from next/link
+const MotionLink = motion(Link);
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -98,13 +98,8 @@ export default function WelcomePage() {
     }
   }, []);
 
- const fetchGameData = useCallback(async (fetchOrigin: string, gameIdToFetch?: string) => {
+  const fetchGameData = useCallback(async (fetchOrigin: string, gameIdToFetch?: string) => {
     console.log(`WelcomePage: fetchGameData START from ${fetchOrigin}. gameIdToFetch: ${gameIdToFetch}`);
-    if (isMountedRef.current) {
-      // Ensure isLoading is true during fetch, if not already set by caller
-      // This prevents multiple quick fetches if isLoading isn't managed by the caller immediately
-      // setIsLoading(true); // Managed by loadDataForCurrentStep now
-    }
     let fetchedGameState: GameClientState | null = null;
     try {
         fetchedGameState = await getGame(gameIdToFetch);
@@ -112,12 +107,12 @@ export default function WelcomePage() {
 
         if (!isMountedRef.current) {
           console.log("WelcomePage: fetchGameData - unmounted. Aborting state update.");
-          return; // Early return if component unmounted
+          return;
         }
 
         if (!fetchedGameState || !fetchedGameState.gameId) {
           console.error(`WelcomePage: fetchGameData - getGame returned invalid state (null or no gameId). Origin: ${fetchOrigin}. This is unexpected.`, fetchedGameState);
-          throw new Error('Failed to retrieve a valid game session from server.'); // This will be caught by loadDataForCurrentStep
+          throw new Error('Failed to retrieve a valid game session from server.');
         }
 
         if (typeof fetchedGameState.ready_player_order_str === 'string') {
@@ -150,8 +145,7 @@ export default function WelcomePage() {
     } catch (error) {
         console.error(`WelcomePage: fetchGameData - ERROR during getGame() or processing from ${fetchOrigin}:`, error);
         if (isMountedRef.current) {
-            // No need to set errorLoadingGame here; re-throw to be caught by loadDataForCurrentStep
-            throw error;
+            throw error; // Re-throw to be caught by loadDataForCurrentStep
         }
     }
   }, [setGame, setThisPlayerId, parseReadyPlayerOrderStr]);
@@ -329,7 +323,7 @@ export default function WelcomePage() {
         if (isMountedRef.current) {
             setIsLoading(true); showGlobalLoader(); setErrorLoadingGame(null);
             try { await fetchGameData("handleAddPlayer_no_gameId"); }
-            catch(e) { /* error handled by fetchGameData rethrow */ }
+            catch(e) { /* error handled by fetchGameData rethrow which is then caught by loadDataForCurrentStep */ }
             finally { if(isMountedRef.current) { setIsLoading(false); hideGlobalLoader(); }}
         }
         return;
@@ -341,7 +335,7 @@ export default function WelcomePage() {
         if (newPlayer && newPlayer.id && gameRef.current?.id && isMountedRef.current) {
           const localStorageKey = `thisPlayerId_game_${gameRef.current.id}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
-          setThisPlayerId(newPlayer.id);
+          setThisPlayerId(newPlayer.id); // Optimistic update of player ID
 
           const newPlayerClientState: PlayerClientState = {
             id: newPlayer.id,
@@ -353,8 +347,9 @@ export default function WelcomePage() {
             isReady: newPlayer.is_ready,
           };
 
+          // Optimistic update of game state
           setGame(prevGame => {
-            if (!prevGame) {
+            if (!prevGame) { // Should not happen if currentGameId was present
                  return {
                     gameId: gameRef.current!.id, players: [newPlayerClientState], currentRound: 0, currentJudgeId: null, currentScenario: null, gamePhase: 'lobby', submissions: [], categories: CATEGORIES,
                     ready_player_order: newPlayerClientState.isReady ? [newPlayerClientState.id] : [],
@@ -371,7 +366,7 @@ export default function WelcomePage() {
           });
 
           toast({ title: "Joined!", description: `Welcome ${newPlayer.name}!`});
-          // No explicit fetchGameData here; rely on optimistic update + realtime sub
+          // Rely on Supabase subscription to trigger fetchGameData for reconciliation
 
         } else if (isMountedRef.current) {
            if (newPlayer === null && gameRef.current?.gamePhase !== 'lobby') {
@@ -400,16 +395,25 @@ export default function WelcomePage() {
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
+        // The redirect in resetGameForTesting should handle navigation
+        // No explicit fetchGameData here, page will reload/re-fetch on new route
       } catch (error: any) {
         if (!isMountedRef.current) return;
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+          // This is expected, let Next.js handle the redirect.
+          // The global loader will persist until the new page navigation completes.
           return;
         }
         setErrorLoadingGame(`Could not reset game. ${error.message || String(error)}`);
         toast({ title: "Reset Failed", description: `Could not reset game. ${error.message || String(error)}`, variant: "destructive"});
-         if (isMountedRef.current) {
+         if (isMountedRef.current) { // Ensure hide if not redirected
             hideGlobalLoader(); setIsLoading(false);
         }
+      }
+      // If no redirect happened (e.g., error before redirect), ensure loaders are hidden.
+      // This block might not be reached if redirect occurs.
+      if (isMountedRef.current) {
+         hideGlobalLoader(); setIsLoading(false);
       }
     });
   };
@@ -430,6 +434,7 @@ export default function WelcomePage() {
     startPlayerActionTransition(async () => {
       try {
         await togglePlayerReadyStatus(player.id, currentGameId);
+        // Rely on Supabase subscription to update game state
       } catch (error: any) {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -451,15 +456,19 @@ export default function WelcomePage() {
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.id);
+                 // startGameAction will cause a game_phase change, triggering subscriptions
+                 // and redirecting to /game.
             } catch (error: any) {
               if (isMountedRef.current) {
                   if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+                      // Expected for navigation to /game
                       return;
                   }
                   setErrorLoadingGame(`Error starting game. ${error.message || String(error)}`);
                   toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
               }
             } finally {
+               // Ensure loader is hidden if no redirect or if redirect fails client-side
                if (isMountedRef.current && !(typeof (window as any).NEXT_REDIRECT_EXPECTED !== 'undefined' && (window as any).NEXT_REDIRECT_EXPECTED)) {
                  hideGlobalLoader();
                  setIsLoading(false);
@@ -480,21 +489,22 @@ export default function WelcomePage() {
         <Button
           onClick={() => {
             if(isMountedRef.current) {
-              setErrorLoadingGame(null);
-              setIsLoading(true);
-              showGlobalLoader();
-              fetchGameData("manual_refresh_after_error").catch(e => {
-                 if(isMountedRef.current) {
-                    const errorMessage = `Could not load game data. ${ (e as Error).message || 'Unknown error'}`;
-                    setErrorLoadingGame(errorMessage);
-                    toast({ title: "Data Load Error", description: errorMessage, variant: "destructive" });
-                 }
-              }).finally(() => {
-                 if(isMountedRef.current) {
-                    setIsLoading(false);
-                    hideGlobalLoader();
-                 }
-              });
+              setErrorLoadingGame(null); // Clear previous error
+              // showGlobalLoader(); setIsLoading(true); // This is handled by loadDataForCurrentStep
+              const loadDataForCurrentStep = async () => { // Re-define to capture current closure
+                if (!isMountedRef.current) return;
+                console.log(`WelcomePage: Retrying data load for step '${currentStep}'.`);
+                if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); }
+                try {
+                  await fetchGameData(`manual_refresh_after_error for step: ${currentStep}`);
+                } catch (error: any) {
+                  const errorMessage = `Could not load game data. ${(error as Error).message || 'Unknown error'}`;
+                  if (isMountedRef.current) { setErrorLoadingGame(errorMessage); toast({ title: "Data Load Error", description: errorMessage, variant: "destructive" });}
+                } finally {
+                  if (isMountedRef.current) { hideGlobalLoader(); setIsLoading(false); }
+                }
+              };
+              loadDataForCurrentStep();
             }
           }}
           variant="outline"
@@ -534,7 +544,7 @@ export default function WelcomePage() {
            <Image src="/new-logo.png" alt="Make It Terrible Logo" width={150} height={150} className="mb-8" data-ai-hint="game logo" priority />
           <p className="text-2xl font-semibold text-center mb-4 text-foreground">A game is in progress!</p>
           <div className="space-y-3">
-             <motion.button // Changed from button to motion.button for consistency if MotionLink was used
+             <button
                 onClick={() => {
                     if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); }
                     router.push('/?step=setup');
@@ -542,9 +552,9 @@ export default function WelcomePage() {
                 className="inline-flex items-center justify-center h-11 px-8 rounded-md text-sm font-medium w-64 bg-primary text-primary-foreground hover:bg-primary/90"
             >
                 Go to Lobby / Join
-            </motion.button>
+            </button>
             {thisPlayerIdRef.current && internalGame.players.find(p=>p.id === thisPlayerIdRef.current) && (
-                 <motion.button // Changed from button to motion.button
+                 <button
                     onClick={() => {
                         if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); }
                         router.push('/game');
@@ -552,7 +562,7 @@ export default function WelcomePage() {
                     className="inline-flex items-center justify-center h-11 px-8 rounded-md text-sm font-medium w-64 bg-secondary text-secondary-foreground hover:bg-secondary/80"
                 >
                     Rejoin Active Game
-                </motion.button>
+                </button>
             )}
           </div>
         </div>
@@ -583,7 +593,7 @@ export default function WelcomePage() {
 
 
   if (currentStep === 'setup') {
-    if (!internalGame || !internalGame.id) {
+    if (!internalGame || !internalGame.id) { // Should be caught by errorLoadingGame or the other !internalGame checks now
         return (
           <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
             <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
@@ -731,7 +741,7 @@ export default function WelcomePage() {
              <div className={cn(
                 "relative shadow-2xl rounded-xl overflow-hidden flex flex-col max-w-md mx-auto w-full",
                 !showPlayerSetupForm && "md:col-span-1",
-                 "bg-card border-2 border-border"
+                 "bg-card border-2 border-border" // Fallback if CustomCardFrame is out
               )}>
               {/* <CustomCardFrame
                 texturePath="/textures/red-halftone-texture.png"
@@ -847,6 +857,7 @@ export default function WelcomePage() {
         </div>
       );
     }
+    // Fallback for unexpected game phase on setup page
     return (
         <div className="w-full max-w-xl mx-auto space-y-6 text-center py-12">
           {ENABLE_SETUP_LOGO_NAVIGATION ? <ClickableSetupLogo /> : <StaticSetupLogo />}
@@ -870,9 +881,7 @@ export default function WelcomePage() {
   // Default: Welcome screen content (currentStep === 'welcome')
   return (
     <div className="fixed inset-0 z-10 flex flex-col h-full w-full items-center justify-center">
-      <MotionLink
-        href="/?step=setup"
-        passHref
+      <motion.a
         className="block mx-auto cursor-pointer"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -882,6 +891,7 @@ export default function WelcomePage() {
             if (isMountedRef.current) {
                 showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
             }
+            router.push('/?step=setup');
         }}
       >
         <Image
@@ -893,7 +903,7 @@ export default function WelcomePage() {
           priority
           data-ai-hint="chaos button"
         />
-      </MotionLink>
+      </motion.a>
     </div>
   );
 }
