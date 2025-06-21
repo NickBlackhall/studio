@@ -640,7 +640,7 @@ export default function WelcomePage() {
 
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
-    <div className="relative h-full -m-4 flex flex-col items-center justify-center">
+    <div className="relative h-full -m-4 flex flex-col items-center justify-end pb-16">
         <Button 
           onClick={() => router.push('/?step=setup')} 
           size="lg" 
