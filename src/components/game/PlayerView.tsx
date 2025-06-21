@@ -378,4 +378,3 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
-
