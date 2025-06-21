@@ -641,6 +641,7 @@ export default function WelcomePage() {
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-12 bg-transparent text-foreground text-center">
+      <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto mb-8" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
       <div className="flex flex-col sm:flex-row items-center gap-4">
         <Button onClick={() => { showGlobalLoader(); router.push('/?step=setup');}} variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out">
           Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
