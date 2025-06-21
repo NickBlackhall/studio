@@ -36,7 +36,7 @@ export default function RootLayout({
     <html lang="en" className={``} suppressHydrationWarning={true}>
       <body className={`group antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
         <LoadingProvider>
-          <div className="mx-auto flex min-h-screen w-full max-w-sm flex-col border-x bg-background shadow-lg group-[.welcome-background-active]:bg-transparent">
+          <div className="flex min-h-screen w-full flex-col bg-background group-[.welcome-background-active]:bg-transparent">
             <main className="flex-grow flex flex-col">
               {children}
             </main>
