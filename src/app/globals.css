@@ -107,25 +107,9 @@
     position: relative; 
   }
 
-  body:not(.setup-view-active)::before {
-    content: "";
-    position: fixed; 
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: url('/backgrounds/mobile-background.jpg');
-    background-size: contain; 
-    background-position: center top; 
-    background-repeat: no-repeat;
-    z-index: -1; 
-    pointer-events: none; 
-    opacity: 0; 
-    transition: opacity 0.75s ease-in-out; 
-  }
-
-  body.welcome-background-visible:not(.setup-view-active)::before {
-    opacity: 1; 
+  body.welcome-background-active {
+    background-image: url('/backgrounds/background-tile.png');
+    background-repeat: repeat;
   }
 
   h1, h2, h3, h4, h5, h6,

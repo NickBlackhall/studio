@@ -43,6 +43,19 @@ export default function WelcomePage() {
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
 
+  useEffect(() => {
+    if (currentStep === 'welcome') {
+      document.body.classList.add('welcome-background-active');
+    } else {
+      document.body.classList.remove('welcome-background-active');
+    }
+
+    // Cleanup function to remove the class when the component unmounts or step changes
+    return () => {
+      document.body.classList.remove('welcome-background-active');
+    };
+  }, [currentStep]);
+
   const parseReadyPlayerOrderStr = useCallback((gameState: GameClientState | null): string[] => {
     if (!gameState || typeof gameState.ready_player_order_str !== 'string') {
       return [];
@@ -628,7 +641,7 @@ export default function WelcomePage() {
 
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
-    <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
+    <div className="flex flex-col items-center justify-center min-h-full py-12 bg-transparent text-foreground text-center">
       <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto mb-8" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
       <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
       <p className="text-2xl text-muted-foreground mb-10">The game of awful choices and hilarious outcomes!</p>
@@ -641,10 +654,7 @@ export default function WelcomePage() {
           <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
         </Dialog>
       </div>
-      <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
+      <footer className="absolute bottom-8 text-center text-sm text-foreground w-full"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
     </div>
   );
 }
-    
-
-    
