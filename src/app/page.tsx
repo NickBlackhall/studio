@@ -466,7 +466,7 @@ export default function WelcomePage() {
           alt="Make It Terrible game poster background"
           fill
           priority
-          className="object-contain"
+          className="object-cover"
           data-ai-hint="game poster"
         />
 
@@ -692,7 +692,7 @@ export default function WelcomePage() {
         alt="Make It Terrible game poster background"
         fill
         priority
-        className="object-contain"
+        className="object-cover"
         data-ai-hint="game poster"
       />
       <div className="relative z-10 flex flex-grow items-center justify-center">
