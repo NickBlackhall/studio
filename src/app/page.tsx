@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
-import { motion } from 'framer-motion';
+// import { motion } from 'framer-motion';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,11 +100,11 @@ export default function WelcomePage() {
     let fetchedGameState: GameClientState | null = null;
     
     fetchedGameState = await getGame(gameIdToFetch);
-    console.log(`WelcomePage: fetchGameData - getGame returned:`, fetchedGameState ? `ID: ${fetchedGameState.gameId}, Phase: ${fetchedGameState.gamePhase}` : 'null/undefined from getGame');
-
+    
     if (!fetchedGameState || typeof fetchedGameState !== 'object' || !fetchedGameState.gameId) {
-      console.error(`WelcomePage: fetchGameData - Critical: getGame returned invalid or incomplete state. Value:`, fetchedGameState, `Origin: ${fetchOrigin}.`);
-      throw new Error('Server returned no valid game session or game session is incomplete.');
+      const errorMsg = `Server returned no valid game session or game session is incomplete. Origin: ${fetchOrigin}.`;
+      console.error(`WelcomePage: fetchGameData - Critical: ${errorMsg}. Value:`, fetchedGameState);
+      throw new Error(errorMsg);
     }
 
     if (typeof fetchedGameState.ready_player_order_str === 'string') {
@@ -805,32 +805,30 @@ export default function WelcomePage() {
 
                 {showStartGameButton && (
                   <div className="mt-6 flex justify-center pb-4">
-                    <motion.button
-                      onClick={handleStartGame}
-                      disabled={isProcessingAction || isLoading}
-                      className={cn(
-                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md",
-                        (isProcessingAction || isLoading) ? "opacity-60 cursor-not-allowed" : "transition-transform duration-150 ease-in-out hover:scale-105 active:scale-95"
-                      )}
-                      animate={{ scale: [1, 0.85, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                      aria-label="Start Game Now!"
+                     <Button
+                        onClick={handleStartGame}
+                        disabled={isProcessingAction || isLoading}
+                        className={cn(
+                            "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md h-auto p-0",
+                            (isProcessingAction || isLoading) && "opacity-60 cursor-not-allowed"
+                        )}
+                        aria-label="Start Game Now!"
                     >
-                      { (isProcessingAction || isLoading) ? (
+                        { (isProcessingAction || isLoading) ? (
                         <div className="flex items-center justify-center w-[224px] h-[56px] bg-muted rounded-md">
-                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
-                      ) : (
+                        ) : (
                         <Image
-                          src="/ui/start-game-button.png"
-                          alt="Start Game Now!"
-                          width={224}
-                          height={56}
-                          priority
-                          data-ai-hint="start game"
+                            src="/ui/start-game-button.png"
+                            alt="Start Game Now!"
+                            width={224}
+                            height={56}
+                            priority
+                            data-ai-hint="start game"
                         />
-                      )}
-                    </motion.button>
+                        )}
+                    </Button>
                   </div>
                 )}
               </div>
@@ -883,12 +881,8 @@ export default function WelcomePage() {
   // Default: Welcome screen content (currentStep === 'welcome')
   return (
     <div className="fixed inset-0 z-10 flex flex-col h-full w-full items-center justify-center">
-      <motion.a
+      <button
         className="block mx-auto cursor-pointer"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        animate={{ scale: [1, 0.85, 1] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
         onClick={() => {
             if (isMountedRef.current) {
                 showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
@@ -905,7 +899,7 @@ export default function WelcomePage() {
           priority
           data-ai-hint="chaos button"
         />
-      </motion.a>
+      </button>
     </div>
   );
 }

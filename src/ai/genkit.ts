@@ -18,6 +18,8 @@ try {
     defineFlow: (config: any, fn: any) => fn,
     definePrompt: (config: any) => (input: any) => Promise.resolve({ output: 'Genkit not initialized.' }),
     generate: (config: any) => Promise.resolve({ text: () => 'Genkit not initialized.' }),
+    defineTool: (config: any, fn: any) => fn,
+    model: (name: string) => ({ name }),
   };
 }
 
