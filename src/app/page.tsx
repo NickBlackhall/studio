@@ -649,6 +649,17 @@ export default function WelcomePage() {
         data-ai-hint="game background"
         priority
       />
+      <div className="absolute inset-0 flex flex-col items-center justify-end p-8">
+        <Button 
+          onClick={() => router.push('/?step=setup')} 
+          size="lg" 
+          className="bg-yellow-400 text-black hover:bg-yellow-500 font-bold text-lg w-full max-w-xs shadow-lg"
+        >
+          Join the Mayhem <ArrowRight className="ml-2 h-5 w-5" />
+        </Button>
+      </div>
     </div>
   );
 }
+
+    
