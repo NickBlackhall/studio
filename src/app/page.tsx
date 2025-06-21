@@ -640,26 +640,14 @@ export default function WelcomePage() {
 
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
-    <div className="relative h-full -m-4">
-      <Image
-        src="/backgrounds/mobile-background.jpg"
-        alt="Make It Terrible background"
-        fill
-        className="object-cover"
-        data-ai-hint="game background"
-        priority
-      />
-      <div className="absolute inset-0 flex flex-col items-center justify-end p-8">
+    <div className="relative h-full -m-4 flex flex-col items-center justify-center">
         <Button 
           onClick={() => router.push('/?step=setup')} 
           size="lg" 
-          className="bg-yellow-400 text-black hover:bg-yellow-500 font-bold text-lg w-full max-w-xs shadow-lg"
+          className="bg-yellow-400 text-black hover:bg-yellow-500 font-bold text-lg w-full max-w-xs shadow-lg z-10"
         >
           Join the Mayhem <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
-      </div>
     </div>
   );
 }
-
-    
