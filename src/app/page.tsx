@@ -641,25 +641,22 @@ export default function WelcomePage() {
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
     <div className="flex-grow flex flex-col items-center justify-center p-4">
-      <div className="relative w-80 h-96 sm:w-96 sm:h-[32rem] mx-auto">
+      <button
+        onClick={() => router.push('/?step=setup')}
+        className="relative w-80 h-96 sm:w-96 sm:h-[32rem] mx-auto group focus:outline-none focus:ring-4 focus:ring-yellow-400 focus:ring-opacity-50 rounded-xl"
+        aria-label="Join the Mayhem"
+      >
         <Image
           src="/backgrounds/mobile-background.jpg"
-          alt="Make It Terrible game art background"
+          alt="Make It Terrible game poster with an angel and a devil. Click to join the mayhem."
           fill
           priority
-          className="object-contain drop-shadow-2xl"
+          className="object-contain drop-shadow-2xl group-hover:scale-105 transition-transform duration-300 ease-in-out"
           data-ai-hint="game poster"
         />
-      </div>
-      <div className="relative z-10 flex flex-col items-center p-4 mt-auto w-full">
-        <Button
-          onClick={() => router.push('/?step=setup')}
-          size="lg"
-          className="bg-yellow-400 text-black hover:bg-yellow-500 font-bold text-lg w-full max-w-xs shadow-lg"
-        >
-          Join the Mayhem <ArrowRight className="ml-2 h-5 w-5" />
-        </Button>
-      </div>
+      </button>
     </div>
   );
 }
+
+    
