@@ -2,14 +2,14 @@
 "use client";
 
 import Image from 'next/image';
+import { Button } from '@/components/ui/button';
 import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
-import { ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, Crown } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
-import { CATEGORIES } from '@/lib/data';
+import CurrentYear from '@/components/CurrentYear';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -20,17 +20,14 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
-import { motion } from 'framer-motion';
+
 
 export const dynamic = 'force-dynamic';
-
-const ENABLE_SETUP_LOGO_NAVIGATION = true;
-
 
 export default function WelcomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
+  
   const [internalGame, setInternalGame] = useState<GameClientState | null>(null);
   const gameRef = useRef<GameClientState | null>(null);
 
@@ -38,12 +35,11 @@ export default function WelcomePage() {
   const thisPlayerIdRef = useRef<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [errorLoadingGame, setErrorLoadingGame] = useState<string | null>(null);
   const [isProcessingAction, startPlayerActionTransition] = useTransition();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const { showGlobalLoader, hideGlobalLoader } = useLoading();
-
+  
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
 
@@ -60,31 +56,17 @@ export default function WelcomePage() {
     }
   }, []);
 
-  const setGame = useCallback((newGameState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
-    if (typeof newGameState === 'function') {
-        gameRef.current = newGameState(gameRef.current);
-        if (isMountedRef.current) setInternalGame(prevInternalGame => {
-            const updatedGame = newGameState(prevInternalGame);
-            if (updatedGame && typeof updatedGame.ready_player_order_str === 'string') {
-                const rpoArray = parseReadyPlayerOrderStr(updatedGame);
-                return { ...updatedGame, ready_player_order: rpoArray };
-            } else if (updatedGame) {
-                return { ...updatedGame, ready_player_order: updatedGame.ready_player_order || [] };
-            }
-            return null;
-        });
-    } else {
-        gameRef.current = newGameState;
-        if (isMountedRef.current) {
-            if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
-                const rpoArray = parseReadyPlayerOrderStr(newGameState);
-                setInternalGame({ ...newGameState, ready_player_order: rpoArray });
-            } else if (newGameState) {
-                setInternalGame({ ...newGameState, ready_player_order: newGameState.ready_player_order || [] });
-            } else {
-                setInternalGame(null);
-            }
-        }
+  const setGame = useCallback((newGameState: GameClientState | null) => {
+    gameRef.current = newGameState; 
+    if (isMountedRef.current) {
+      if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
+        const rpoArray = parseReadyPlayerOrderStr(newGameState);
+        setInternalGame({ ...newGameState, ready_player_order: rpoArray });
+      } else if (newGameState) {
+        setInternalGame({ ...newGameState, ready_player_order: newGameState.ready_player_order || [] });
+      } else {
+        setInternalGame(null);
+      }
     }
   }, [parseReadyPlayerOrderStr]);
 
@@ -95,69 +77,87 @@ export default function WelcomePage() {
     }
   }, []);
 
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    let isActive = true;
-
-    const loadDataForCurrentStep = async () => {
-      if (!isActive) return;
-      console.log(`WelcomePage: Current step is '${currentStep}'. Starting data load sequence.`);
-      if (isMountedRef.current) {
-        showGlobalLoader();
-        setIsLoading(true);
-      }
-
-      try {
-        const fetchedGameState = await getGame();
-
-        if (!fetchedGameState || typeof fetchedGameState !== 'object' || !fetchedGameState.gameId) {
-          throw new Error(`Server returned no valid game session or game session is incomplete.`);
-        }
-        
+  const fetchGameData = useCallback(async (origin: string = "unknown", gameIdToFetch?: string) => {
+    const isInitialOrResetCall = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || (!gameRef.current?.gameId && !gameIdToFetch);
+    
+    if (isInitialOrResetCall && isMountedRef.current) {
+      // setIsLoading(true); 
+    }
+    
+    try {
+      let fetchedGameState = await getGame(gameIdToFetch); 
+      
+      if (fetchedGameState) {
         if (typeof fetchedGameState.ready_player_order_str === 'string') {
             fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
         } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
+            console.warn(`Client (fetchGameData): RPO was undefined or not an array from getGame(), defaulting to []. Game ID: ${fetchedGameState.gameId}, Origin: ${origin}`);
             fetchedGameState.ready_player_order = [];
         }
+      } else {
+        console.warn(`Client (fetchGameData): fetchedGameState was null. (Origin: ${origin})`);
+      }
+      
+      if (!isMountedRef.current) {
+        return;
+      }
 
-        let determinedThisPlayerId: string | null = null;
+      setGame(fetchedGameState); 
+
+      if (fetchedGameState && fetchedGameState.gameId) {
         const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
-        const playerIdFromStorage = localStorage.getItem(localStorageKey);
-
-        if (playerIdFromStorage) {
-            const playerInFetchedGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
-            if (playerInFetchedGame) {
-                determinedThisPlayerId = playerIdFromStorage;
+        
+        if (fetchedGameState.players.length === 0 && (origin.includes("reset") || origin.includes("handleResetGame"))) {
+          localStorage.removeItem(localStorageKey);
+          setThisPlayerId(null);
+        } else {
+          const playerIdFromStorage = localStorage.getItem(localStorageKey);
+          if (playerIdFromStorage) {
+            const playerInGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
+            if (playerInGame) {
+              setThisPlayerId(playerIdFromStorage);
             } else {
-                localStorage.removeItem(localStorageKey);
+              localStorage.removeItem(localStorageKey);
+              setThisPlayerId(null);
             }
+          } else {
+            setThisPlayerId(null); 
+          }
         }
-
-        if (!isActive || !isMountedRef.current) return;
-        setGame(fetchedGameState);
-        setThisPlayerId(determinedThisPlayerId);
-        setErrorLoadingGame(null);
-
-      } catch (error: any) {
-        console.error(`WelcomePage: Error in loadDataForCurrentStep for step ${currentStep}:`, error);
-        const errorMessage = error?.message ? String(error.message) : 'An unknown error occurred while loading game data.';
-        if (isActive && isMountedRef.current) {
-          setErrorLoadingGame(errorMessage);
-        }
-      } finally {
-        if (isActive && isMountedRef.current) {
-          console.log(`WelcomePage: Data load sequence for step '${currentStep}' finished. Hiding global loader and local loader.`);
-          hideGlobalLoader();
-          setIsLoading(false);
+      } else { 
+        setThisPlayerId(null);
+        if (isInitialOrResetCall && isMountedRef.current) {
+            setGame(null); 
+            toast({ title: "Game Session Error", description: "Could not initialize or find the game session. Please try refreshing or resetting.", variant: "destructive"});
         }
       }
-    };
+    } catch (error: any) {
+      console.error(`Client (fetchGameData): Failed to fetch game state (from ${origin}, gameIdToFetch: ${gameIdToFetch || 'N/A'}):`, error);
+      if (isMountedRef.current) {
+        if (gameIdToFetch) {
+            toast({ title: "Game Update Failed", description: `Could not refresh game ${gameIdToFetch}: ${error.message}. State may be temporarily stale.`, variant: "default"});
+        } else {
+            setGame(null);
+            setThisPlayerId(null);
+            toast({ title: "Load Error", description: `Could not fetch game state: ${error.message || String(error)}`, variant: "destructive"});
+        }
+      }
+    } finally {
+      if (isInitialOrResetCall && isMountedRef.current) {
+         setIsLoading(false); 
+         hideGlobalLoader(); 
+      } else if (isMountedRef.current) {
+         // Non-initial call completed
+      }
+    }
+  }, [toast, setGame, setThisPlayerId, hideGlobalLoader, parseReadyPlayerOrderStr]);
 
-    loadDataForCurrentStep();
-
+  useEffect(() => {
+    isMountedRef.current = true;
+    showGlobalLoader(); 
+    fetchGameData(`useEffect[] mount or currentStep change to: ${currentStep}`);
+    
     return () => {
-      isActive = false;
       isMountedRef.current = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,115 +165,95 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
-      let backgroundTimerId: NodeJS.Timeout | undefined;
-      if (typeof window !== 'undefined') {
-        if (currentStep === 'setup') {
-          document.body.classList.add('setup-view-active');
-          document.body.classList.remove('welcome-background-visible');
-        } else {
-          document.body.classList.remove('setup-view-active');
-          backgroundTimerId = setTimeout(() => {
-            if (isMountedRef.current) {
-              document.body.classList.add('welcome-background-visible');
-            }
-          }, 50);
-        }
-      }
-      return () => {
-        if (backgroundTimerId) clearTimeout(backgroundTimerId);
-        if (typeof window !== 'undefined') {
-          document.body.classList.remove('setup-view-active');
-          document.body.classList.remove('welcome-background-visible');
-        }
-      };
-    }, [currentStep]);
-
-
-  useEffect(() => {
-    const gameForNavCheck = internalGame;
-    const localThisPlayerId = internalThisPlayerId;
+    const gameForNavCheck = internalGame; 
+    const localThisPlayerId = internalThisPlayerId; 
 
     if (isMountedRef.current && gameForNavCheck && gameForNavCheck.gameId &&
-        gameForNavCheck.gamePhase !== 'lobby' &&
-        ACTIVE_PLAYING_PHASES.includes(gameForNavCheck.gamePhase as GamePhaseClientState) &&
+        gameForNavCheck.gamePhase !== 'lobby' && 
+        ACTIVE_PLAYING_PHASES.includes(gameForNavCheck.gamePhase as GamePhaseClientState) && 
         currentStep === 'setup' &&
-        localThisPlayerId
+        localThisPlayerId 
       ) {
-      console.log(`WelcomePage: Game active (phase ${gameForNavCheck.gamePhase}), player identified, on setup. Redirecting to /game.`);
+      showGlobalLoader();
       router.push('/game');
     }
-  }, [internalGame, internalThisPlayerId, currentStep, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps 
+  }, [internalGame, internalThisPlayerId, currentStep, router, showGlobalLoader]);
 
 
   useEffect(() => {
-    const currentGameId = internalGame?.gameId;
-    if (!currentGameId || isLoading || errorLoadingGame) return () => {};
+    const currentGameId = internalGame?.gameId; 
+    const currentThisPlayerId = internalThisPlayerId;
 
-    const uniqueChannelSuffix = internalThisPlayerId || Date.now();
-    console.log(`WelcomePage Realtime: Setting up subscriptions for gameId: ${currentGameId}, suffix: ${uniqueChannelSuffix}, isLoading: ${isLoading}`);
+    if (!currentGameId || isLoading) { 
+      return () => {};
+    }
 
-    const handleSubscriptionUpdate = async (originTable: string, payload: any) => {
-      const latestGameId = gameRef.current?.id;
-      console.log(`>>> WelcomePage Realtime (${originTable} for game ${latestGameId}): CHANGE DETECTED!`, payload);
-      if (isMountedRef.current && latestGameId) {
-         try {
-            const fetchedGameState = await getGame(latestGameId);
+    const uniqueChannelSuffix = currentThisPlayerId || Date.now();
 
-            if (!fetchedGameState || !fetchedGameState.gameId) {
-              throw new Error("Game state from subscription update was invalid.");
-            }
-
-            if (typeof fetchedGameState.ready_player_order_str === 'string') {
-              fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
-            } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
-              fetchedGameState.ready_player_order = [];
-            }
-
-            let determinedThisPlayerId: string | null = null;
-            const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
-            const playerIdFromStorage = localStorage.getItem(localStorageKey);
-            if(playerIdFromStorage && fetchedGameState.players.some(p => p.id === playerIdFromStorage)) {
-              determinedThisPlayerId = playerIdFromStorage;
-            }
-
-            if (isMountedRef.current) {
-              setGame(fetchedGameState);
-              setThisPlayerId(determinedThisPlayerId);
-              setErrorLoadingGame(null); // Clear error on successful update from subscription
-            }
-          } catch (error) {
-            console.error(`WelcomePage Realtime: Error fetching game data after ${originTable} subscription event for ${latestGameId}:`, error);
-            if (isMountedRef.current) {
-                 setErrorLoadingGame( (error as Error)?.message || 'Failed to update game from real-time event.');
-            }
-          }
+    const handlePlayersUpdate = async (payload: any) => {
+      const latestGameId = gameRef.current?.gameId; 
+      if (isMountedRef.current && latestGameId) { 
+        await fetchGameData(`players-lobby-${latestGameId}-${uniqueChannelSuffix} player change`, latestGameId);
       }
     };
 
+    const handleGameTableUpdate = async (payload: any) => {
+      const latestGameId = gameRef.current?.gameId; 
+      if (isMountedRef.current && latestGameId) { 
+        await fetchGameData(`games-lobby-${latestGameId}-${uniqueChannelSuffix} game change`, latestGameId);
+      }
+    };
+    
     const playersChannelName = `players-lobby-${currentGameId}-${uniqueChannelSuffix}`;
     const playersChannel = supabase
       .channel(playersChannelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${currentGameId}` }, (payload) => handleSubscriptionUpdate('players', payload))
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${currentGameId}` },
+        handlePlayersUpdate
+      )
       .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') console.log(`WelcomePage Realtime: Subscribed to ${playersChannelName}`);
-        if (err) console.error(`Client (Realtime Players Sub Error - ${playersChannelName}):`, err);
+        if (status === 'SUBSCRIBED') {
+          // console.log(`Client (Realtime): Successfully subscribed to ${playersChannelName} on WelcomePage!`);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error(`Client (Realtime): Subscription error (${playersChannelName}): "${status}"`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+        } else if (status === 'CLOSED') {
+           // console.info(`Client (Realtime): Channel ${playersChannelName} is now ${status}. Details:`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'No error details.');
+        } else if (err) {
+           console.error(`Client (Realtime): Unexpected error or status on ${playersChannelName} subscription (status: ${status}):`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+        }
       });
 
     const gameChannelName = `game-state-lobby-${currentGameId}-${uniqueChannelSuffix}`;
     const gameChannel = supabase
       .channel(gameChannelName)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${currentGameId}` }, (payload) => handleSubscriptionUpdate('games', payload))
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${currentGameId}` },
+        handleGameTableUpdate
+      )
       .subscribe((status, err) => {
-         if (status === 'SUBSCRIBED') console.log(`WelcomePage Realtime: Subscribed to ${gameChannelName}`);
-        if (err) console.error(`Client (Realtime Game Sub Error - ${gameChannelName}):`, err);
+         if (status === 'SUBSCRIBED') {
+          // console.log(`Client (Realtime): Successfully subscribed to ${gameChannelName} on WelcomePage!`);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error(`Client (Realtime): Subscription error (${gameChannelName}): "${status}"`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+        } else if (status === 'CLOSED') {
+          // console.info(`Client (Realtime): Channel ${gameChannelName} is now ${status}. Details:`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'No error details.');
+        } else if (err) {
+           console.error(`Client (Realtime): Unexpected error or status on ${gameChannelName} subscription (status: ${status}):`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+        }
       });
-
+      
     return () => {
-      console.log(`WelcomePage Realtime: Cleaning up subscriptions for gameId: ${gameRef.current?.gameId}, suffix: ${uniqueChannelSuffix}`);
-      supabase.removeChannel(playersChannel).catch(err => console.error("Client (Realtime Cleanup Error - Players):", err));
-      supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime Cleanup Error - Game):", err));
+      const gameIdForCleanup = gameRef.current?.gameId; 
+      if (gameIdForCleanup) {
+        supabase.removeChannel(playersChannel).catch(err => console.error("Client (Realtime cleanup): Error removing players channel on WelcomePage:", err));
+        supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime cleanup): Error removing game channel on WelcomePage:", err));
+      }
     };
-  }, [internalGame?.gameId, internalThisPlayerId, isLoading, errorLoadingGame, setGame, setThisPlayerId, parseReadyPlayerOrderStr]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [internalGame?.gameId, internalThisPlayerId, currentStep, isLoading, fetchGameData]); 
 
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
@@ -281,17 +261,18 @@ export default function WelcomePage() {
 
   const sortedPlayersForDisplay = useMemo(() => {
     if (!internalGame || !internalGame.players) return [];
-    const sorted = [...internalGame.players].sort((a,b) => (a.joined_at || "").localeCompare(b.joined_at || ""));
-    if (!thisPlayerObject) return sorted;
-
-    const otherPlayers = sorted.filter(p => p.id !== thisPlayerObject.id);
+    if (!thisPlayerObject) return internalGame.players; 
+    
+    const otherPlayers = internalGame.players.filter(p => p.id !== thisPlayerObject.id);
     return [thisPlayerObject, ...otherPlayers];
   }, [internalGame, thisPlayerObject]);
 
   const hostPlayerId = useMemo(() => {
-    if (!internalGame || !Array.isArray(internalGame.ready_player_order)) return null;
+    if (!internalGame || !Array.isArray(internalGame.ready_player_order)) {
+      return null;
+    }
     return internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
-  }, [internalGame]);
+  }, [internalGame]); 
 
   const enoughPlayers = useMemo(() => {
     if (!internalGame || !internalGame.players) return false;
@@ -301,13 +282,13 @@ export default function WelcomePage() {
   const allPlayersReady = useMemo(() => {
     if (!internalGame || !internalGame.players || !enoughPlayers) return false;
     return internalGame.players.every(p => p.isReady);
-  }, [internalGame, enoughPlayers]);
+  }, [internalGame, enoughPlayers]); 
 
 
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
     const avatar = formData.get('avatar') as string;
-    const currentGameId = gameRef.current?.id;
+    const currentGameId = internalGame?.gameId; 
 
     if (!name.trim() || !avatar) {
         toast({ title: "Missing Info", description: "Please enter your name and select an avatar.", variant: "destructive" });
@@ -315,37 +296,25 @@ export default function WelcomePage() {
     }
     if (!currentGameId) {
         toast({ title: "Error!", description: "Game session not found. Please refresh.", variant: "destructive"});
+        if (isMountedRef.current) {
+            showGlobalLoader();
+            await fetchGameData("handleAddPlayer_no_gameId"); 
+        }
         return;
     }
-
+    
     startPlayerActionTransition(async () => {
       try {
         const newPlayer = await addPlayerAction(name, avatar);
-        if (newPlayer && newPlayer.id && gameRef.current?.id && isMountedRef.current) {
-          const localStorageKey = `thisPlayerId_game_${gameRef.current.id}`;
+        if (newPlayer && newPlayer.id && currentGameId && isMountedRef.current) {
+          const localStorageKey = `thisPlayerId_game_${currentGameId}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
-
-          // Optimistic UI update
-          const newPlayerClientState: PlayerClientState = {
-            id: newPlayer.id, name: newPlayer.name, avatar: newPlayer.avatar, score: newPlayer.score,
-            isJudge: newPlayer.is_judge, hand: [], isReady: newPlayer.is_ready,
-          };
-          setThisPlayerId(newPlayer.id);
-          setGame(prevGame => {
-            if (!prevGame) return null;
-            const filteredPlayers = prevGame.players.filter(p => p.id !== newPlayerClientState.id);
-            const updatedPlayers = [...filteredPlayers, newPlayerClientState];
-            let updatedReadyOrder = prevGame.ready_player_order || [];
-            if (newPlayerClientState.isReady && !updatedReadyOrder.includes(newPlayerClientState.id)) {
-                updatedReadyOrder = [...updatedReadyOrder, newPlayerClientState.id];
-            }
-            return { ...prevGame, players: updatedPlayers, ready_player_order: updatedReadyOrder, ready_player_order_str: JSON.stringify(updatedReadyOrder) };
-          });
-          toast({ title: "Joined!", description: `Welcome ${newPlayer.name}!`});
+          setThisPlayerId(newPlayer.id); 
+          await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`, currentGameId); 
         } else if (isMountedRef.current) {
-           if (gameRef.current?.gamePhase !== 'lobby') {
+           if (newPlayer === null && internalGame?.gamePhase !== 'lobby') { 
             toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
-          } else {
+          } else if (newPlayer === null) { 
             toast({ title: "Join Error", description: "Could not add player to the game.", variant: "destructive"});
           }
         }
@@ -363,245 +332,133 @@ export default function WelcomePage() {
   };
 
   const handleResetGame = async () => {
-    if (isMountedRef.current) {
-      showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
-    }
+    showGlobalLoader(); 
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
       } catch (error: any) {
-        if (!isMountedRef.current) return;
-        if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          return;
+        if (!isMountedRef.current) {
+            return; 
         }
-        setErrorLoadingGame(`Could not reset game. ${error.message || String(error)}`);
-        toast({ title: "Reset Failed", description: `Could not reset game. ${error.message || String(error)}`, variant: "destructive"});
-      } finally {
-        if (isMountedRef.current && !(typeof (window as any).NEXT_REDIRECT_EXPECTED !== 'undefined' && (window as any).NEXT_REDIRECT_EXPECTED)) {
-            hideGlobalLoader(); setIsLoading(false);
+        if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+          return; 
+        }
+        toast({
+          title: "Reset Failed",
+          description: `Could not reset the game. ${error.message || String(error)}`,
+          variant: "destructive",
+        });
+        if (isMountedRef.current) {
+           hideGlobalLoader(); 
         }
       }
     });
   };
 
   const handleToggleReady = async (player: PlayerClientState) => {
-    const currentGameId = gameRef.current?.id;
-    const currentThisPlayerIdValue = thisPlayerIdRef.current;
+    const currentGameId = internalGame?.gameId; 
+    const currentThisPlayerId = internalThisPlayerId; 
 
-    if (!currentGameId || !currentThisPlayerIdValue) {
+    if (!currentGameId || !currentThisPlayerId) {
         toast({ title: "Error", description: "Cannot change ready status. Game or player not identified.", variant: "destructive" });
         return;
     }
-    if (player.id !== currentThisPlayerIdValue) {
+    if (player.id !== currentThisPlayerId) {
       toast({ title: "Hey!", description: "You can only ready up yourself.", variant: "destructive" });
       return;
     }
 
     startPlayerActionTransition(async () => {
       try {
-        setGame(prevGame => {
-            if (!prevGame) return null;
-            const updatedPlayers = prevGame.players.map(p => p.id === player.id ? {...p, isReady: !p.isReady} : p);
-            let updatedReadyOrder = prevGame.ready_player_order || [];
-            if (!player.isReady) { // If player was NOT ready, they are NOW ready
-                if (!updatedReadyOrder.includes(player.id)) updatedReadyOrder.push(player.id);
-            } else { // Player WAS ready, they are NOW NOT ready
-                updatedReadyOrder = updatedReadyOrder.filter(id => id !== player.id);
+        let updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
+        if (isMountedRef.current) {
+          if (updatedGameState) {
+            if (typeof updatedGameState.ready_player_order_str === 'string') {
+              updatedGameState.ready_player_order = parseReadyPlayerOrderStr(updatedGameState);
+            } else if (typeof updatedGameState.ready_player_order === 'undefined' || !Array.isArray(updatedGameState.ready_player_order)) {
+              console.warn(`Client (handleToggleReady): RPO undefined or not an array from togglePlayerReadyStatus, defaulting to []. Game ID: ${currentGameId}`);
+              updatedGameState.ready_player_order = [];
             }
-            return {...prevGame, players: updatedPlayers, ready_player_order: updatedReadyOrder, ready_player_order_str: JSON.stringify(updatedReadyOrder)};
-        });
-        await togglePlayerReadyStatus(player.id, currentGameId);
+            setGame(updatedGameState); 
+          } else {
+            await fetchGameData(`handleToggleReady_null_fallback_game_${currentGameId}`, currentGameId);
+          }
+        }
       } catch (error: any) {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
-            return;
+            showGlobalLoader(); 
+            return; 
           }
           toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
-          // Re-fetch to revert optimistic update on error
-          const { gameState: refreshedGame, thisPlayerId: refreshedPlayerId } = await getGame(currentGameId);
-            if (isMountedRef.current) {
-                setGame(refreshedGame);
-                setThisPlayerId(refreshedPlayerId);
-            }
         }
       }
     });
   };
 
   const handleStartGame = async () => {
-    const gameToStart = gameRef.current;
-    if (gameToStart?.id && gameToStart.gamePhase === 'lobby') {
-        if (isMountedRef.current) {
-          showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
-        }
+    const gameToStart = internalGame;
+    if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
+        showGlobalLoader();
         startPlayerActionTransition(async () => {
             try {
-                await startGameAction(gameToStart.id);
+                await startGameAction(gameToStart.gameId);
             } catch (error: any) {
-              if (isMountedRef.current) {
-                  if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-                      return;
-                  }
-                  setErrorLoadingGame(`Error starting game. ${error.message || String(error)}`);
-                  toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
-              }
-            } finally {
-               if (isMountedRef.current && !(typeof (window as any).NEXT_REDIRECT_EXPECTED !== 'undefined' && (window as any).NEXT_REDIRECT_EXPECTED)) {
-                 hideGlobalLoader();
-                 setIsLoading(false);
-               }
+                if (isMountedRef.current) {
+                    if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+                        return; 
+                    }
+                    toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
+                    hideGlobalLoader();
+                }
             }
         });
-    } else {
-        toast({ title: "Cannot Start", description: `Game not found or not in lobby phase. Current game ID: ${gameToStart?.id}, Phase: ${gameToStart?.gamePhase}`, variant: "destructive"});
     }
   };
+  
 
-
-  if (isLoading && (!internalGame || currentStep !== 'welcome')) {
+  if (isLoading && !internalGame ) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-         {currentStep === 'setup' && <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />}
-         {currentStep === 'setup' && <p>Loading setup details...</p>}
+        {/* Global loader is active */}
       </div>
     );
   }
-
-  if (errorLoadingGame) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
-        <p className="text-xl text-destructive mt-4">Failed to Load Game Data</p>
-        <p className="text-sm text-muted-foreground mt-2">{errorLoadingGame}</p>
-        <Button
-          onClick={() => {
-            if(isMountedRef.current) {
-              setErrorLoadingGame(null);
-              window.location.reload(); // Simple reload is often most effective here
-            }
-          }}
-          variant="outline"
-          className="mt-4"
-        >
-          Try Again
-        </Button>
-      </div>
-    );
-  }
-
-  if (currentStep === 'setup' && !internalGame && !isLoading && !errorLoadingGame) {
+  
+  if (!internalGame || !internalGame.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
-        <p className="text-xl text-destructive mt-4">Critical error: Game data missing for setup. Please refresh.</p>
-         <Button onClick={() => { if(isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingame(null); window.location.reload(); }}} variant="outline" className="mt-4">
+        <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+        <p className="text-xl text-destructive mt-4">Could not initialize game session. Please try refreshing.</p>
+         <Button onClick={() => { showGlobalLoader(); window.location.reload(); }} variant="outline" className="mt-4">
           Refresh Page
         </Button>
       </div>
     );
   }
 
-
-  if (currentStep === 'welcome' && internalGame && internalGame.gameId && internalGame.gamePhase !== 'lobby' && ACTIVE_PLAYING_PHASES.includes(internalGame.gamePhase as GamePhaseClientState)) {
-     return (
-        <div className="fixed inset-0 z-10 flex flex-col h-full w-full items-center justify-center">
-           <Image src="/new-logo.png" alt="Make It Terrible Logo" width={150} height={150} className="mb-8" data-ai-hint="game logo" priority />
-          <p className="text-2xl font-semibold text-center mb-4 text-foreground">A game is in progress!</p>
-          <div className="space-y-3">
-             <button
-                onClick={() => {
-                    if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); }
-                    router.push('/?step=setup');
-                }}
-                className="inline-flex items-center justify-center h-11 px-8 rounded-md text-sm font-medium w-64 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-                Go to Lobby / Join
-            </button>
-            {thisPlayerIdRef.current && internalGame.players.find(p=>p.id === thisPlayerIdRef.current) && (
-                 <button
-                    onClick={() => {
-                        if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); }
-                        router.push('/game');
-                    }}
-                    className="inline-flex items-center justify-center h-11 px-8 rounded-md text-sm font-medium w-64 bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                >
-                    Rejoin Active Game
-                </button>
-            )}
-          </div>
-        </div>
-    );
-  }
-
-
-  const gameIsActuallyActive = internalGame && ACTIVE_PLAYING_PHASES.includes(internalGame.gamePhase as GamePhaseClientState);
-  const isLobbyPhaseActive = internalGame?.gamePhase === 'lobby';
-  const isSpectatorView = gameIsActuallyActive && !thisPlayerObject;
-  const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject;
-
-  const SetupLogo = () => (
-    <Image src="/new-logo.png" alt="Make It Terrible Logo" width={100} height={100} data-ai-hint="game logo" priority />
-  );
-
-  const ClickableSetupLogo = () => (
-      <button className="cursor-pointer mb-8 block mx-auto" onClick={() => { if (isMountedRef.current) {showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); router.push('/?step=welcome');}}}>
-          <SetupLogo />
-      </button>
-  );
-
-  const StaticSetupLogo = () => (
-    <div className="mb-8 block mx-auto">
-      <SetupLogo />
-    </div>
-  );
+  // These derived consts can be defined after early returns if they use internalGame which is now guaranteed to be non-null
+  const gameIsActuallyActive = ACTIVE_PLAYING_PHASES.includes(internalGame.gamePhase as GamePhaseClientState);
+  const isLobbyPhaseActive = internalGame.gamePhase === 'lobby';
+  const isSpectatorView = gameIsActuallyActive && !thisPlayerObject; 
+  const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject; 
 
 
   if (currentStep === 'setup') {
-    if (!internalGame || !internalGame.id) {
-        return (
-          <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-            <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
-            <p className="text-xl text-destructive mt-4">Critical error: Game data missing for setup. Please refresh.</p>
-            <Button onClick={() => { if(isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingame(null); window.location.reload(); }}} variant="outline" className="mt-4">
-              Refresh Page
-            </Button>
-          </div>
-        );
-    }
-
-    if (internalGame.gamePhase === 'game_over' || internalGame.gamePhase === 'winner_announcement') {
-      return (
-        <div className="w-full max-w-xl mx-auto space-y-6 text-center py-12">
-          {ENABLE_SETUP_LOGO_NAVIGATION ? <ClickableSetupLogo /> : <StaticSetupLogo />}
-          <Card className="my-4 shadow-md border-2 border-primary/30 rounded-lg bg-card">
-            <CardHeader className="p-4">
-              <Info className="h-8 w-8 mx-auto text-primary mb-2" />
-              <CardTitle className="text-xl font-semibold text-card-foreground">Game Has Concluded</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
-                <p>The previous game session has finished.</p>
-                <p>Ready for another round of terrible fun?</p>
-            </CardContent>
-          </Card>
-          <Button onClick={handleResetGame} variant="default" className="mt-6 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isProcessingAction || isLoading}>
-            { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Start New Game
-          </Button>
-        </div>
-      );
-    }
-
     if (isSpectatorView) {
       return (
         <div className="w-full max-w-xl mx-auto space-y-6 text-center py-12">
-          {ENABLE_SETUP_LOGO_NAVIGATION ? <ClickableSetupLogo /> : <StaticSetupLogo />}
+           <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8 block mx-auto">
+            <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+          </button>
           <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
             <CardHeader className="p-4">
               <Lock className="h-8 w-8 mx-auto text-destructive mb-2" />
               <CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 text-sm">
-                <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch.</p>
+                <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch you pervert.</p>
+                <p className="mt-1">Don&apos;t like waiting? Thank the idiot who programmed this thing...</p>
             </CardContent>
           </Card>
           <div className="my-6">
@@ -621,7 +478,9 @@ export default function WelcomePage() {
     } else if (isActivePlayerOnLobbyPage) {
       return (
         <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-           {ENABLE_SETUP_LOGO_NAVIGATION ? <ClickableSetupLogo /> : <StaticSetupLogo />}
+           <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8">
+            <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+          </button>
           <Card className="my-4 border-primary/50 bg-muted/30 shadow-md w-full max-w-md text-center">
             <CardHeader className="p-4">
               <CardTitle className="text-lg flex items-center justify-center font-semibold text-foreground">
@@ -631,7 +490,7 @@ export default function WelcomePage() {
             <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
               <p>The current game is in the &quot;{internalGame.gamePhase}&quot; phase.</p>
               <Button
-                onClick={() => { if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); router.push('/game'); } }}
+                onClick={() => { showGlobalLoader(); router.push('/game'); }}
                 variant="default"
                 size="sm"
                 className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
@@ -647,40 +506,33 @@ export default function WelcomePage() {
       );
     } else if (isLobbyPhaseActive) {
       const showPlayerSetupForm = !thisPlayerObject && isLobbyPhaseActive;
-
-      const showStartGameButton =
+      
+      const showStartGameButton = 
         internalThisPlayerId !== null &&
-        internalThisPlayerId === hostPlayerId &&
+        internalThisPlayerId === hostPlayerId && 
         enoughPlayers &&
         allPlayersReady;
-
+      
       let lobbyMessage = "";
       if (!enoughPlayers) {
         lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - (internalGame.players?.length || 0)} more...`;
       } else if (!allPlayersReady) {
         const unreadyCount = internalGame.players?.filter(p => !p.isReady).length || 0;
         lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. Host can then start.`;
-      } else if (showStartGameButton) {
+      } else if (showStartGameButton) { 
         lobbyMessage = "All players are ready! You can start the game now!";
-      } else if (internalThisPlayerId && internalThisPlayerId !== hostPlayerId && enoughPlayers && allPlayersReady) {
-        lobbyMessage = `All players are ready! Waiting for the host (${internalGame.players.find(p=>p.id === hostPlayerId)?.name || 'Host'}) to start the game.`;
-      }
-       else {
+      } else { 
+        const hostPlayerForMsg = hostPlayerId && internalGame.players ? internalGame.players.find(p => p.id === hostPlayerId) : null;
+        const hostNameForMessage = hostPlayerForMsg?.name || ( (internalGame.ready_player_order?.length || 0) > 0 ? 'first player to ready up' : 'the host');
         lobbyMessage = `Game starts once all you terrible people are ready. So hurry up!`;
       }
-
+      
       return (
-        <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
+        <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
           <header className="mb-12 text-center">
-            {ENABLE_SETUP_LOGO_NAVIGATION ? (
-                <button className="cursor-pointer" onClick={() => { if (isMountedRef.current) {showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); router.push('/?step=welcome');}}}>
-                    <Image src="/new-logo.png" alt="Make It Terrible Logo" width={100} height={100} className="mx-auto mb-4" data-ai-hint="game logo" priority />
-                </button>
-            ) : (
-              <div className="mx-auto mb-4">
-                <Image src="/new-logo.png" alt="Make It Terrible Logo" width={100} height={100} data-ai-hint="game logo" priority />
-              </div>
-            )}
+            <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
+              <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+            </button>
             <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
             {isLobbyPhaseActive && (
               <>
@@ -689,181 +541,110 @@ export default function WelcomePage() {
               </>
             )}
           </header>
-
+          
           <div className={cn("grid gap-8 w-full max-w-4xl", showPlayerSetupForm ? "md:grid-cols-2" : "md:grid-cols-1")}>
             {showPlayerSetupForm && (
-              <Card className="shadow-2xl border-2 border-transparent rounded-xl overflow-hidden bg-primary text-primary-foreground">
+              <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
                 <CardHeader className="bg-primary text-primary-foreground p-6">
                   <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
                   <CardDescription className="text-primary-foreground/80 text-base">Enter your name and pick your avatar.</CardDescription>
                 </CardHeader>
-                <CardContent className="p-6 bg-primary">
+                <CardContent className="p-6">
                   <PlayerSetupForm addPlayer={handleAddPlayer} />
                 </CardContent>
               </Card>
             )}
-
-             <div className={cn(
-                "relative shadow-2xl rounded-xl overflow-hidden flex flex-col max-w-md mx-auto w-full",
-                !showPlayerSetupForm && "md:col-span-1",
-                 "bg-card border-2 border-border"
-              )}>
-              <div className={cn(
-                  "flex flex-col flex-1 z-10 p-6 rounded-xl",
-                  !showPlayerSetupForm && ""
-                )}>
-                <div className="mt-6">
-                  <h3 className="text-4xl font-bold text-foreground text-center">
-                    PLAYERS: <span className="text-accent">{internalGame.players.length}</span>
-                  </h3>
-                </div>
-                <div className="mb-4">
-                  <p className="text-foreground text-lg font-semibold mt-2 text-center">
-                    {lobbyMessage}
-                  </p>
-                </div>
-
-                <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-foreground/30 scrollbar-track-transparent pr-2 -mr-2 pb-3">
-                  <ul className="space-y-3 px-3">
-                    {sortedPlayersForDisplay.length > 0 ? (
-                      sortedPlayersForDisplay.map((player: PlayerClientState) => (
-                        <li
-                          key={player.id}
-                          className="flex items-center justify-between p-3 bg-muted/50 border border-border text-card-foreground rounded-md"
-                        >
-                          <div className="flex items-center">
-                            {player.avatar.startsWith('/') ? (
-                              <Image src={player.avatar} alt={`${player.name}'s avatar`} width={40} height={40} className="mr-3 rounded-sm object-contain" style={{ width: '40px', height: '40px' }} data-ai-hint="player avatar"/>
-                            ) : (
-                              <span className="text-3xl mr-3">{player.avatar}</span>
-                            )}
-                            <span className="text-xl font-medium">{player.name}</span>
-                            {player.id === hostPlayerId && (
-                              <Crown className="ml-2 h-5 w-5 text-yellow-600" title="Host" />
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            {player.id === internalThisPlayerId ? (
-                              <ReadyToggle
-                                isReady={player.isReady}
-                                onToggle={() => handleToggleReady(player)}
-                                disabled={isProcessingAction}
-                              />
-                            ) : (
-                              player.isReady ?
-                                <CheckSquare className="h-6 w-6 text-green-700" title="Ready" /> :
-                                <XSquare className="h-6 w-6 text-red-700" title="Not Ready" />
-                            )}
-                          </div>
-                        </li>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
-                    )}
+            
+            <Card className={cn("shadow-2xl border-2 border-secondary rounded-xl overflow-hidden", !showPlayerSetupForm && "md:col-span-1")}>
+              <CardHeader className="bg-secondary text-secondary-foreground p-6">
+                <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({internalGame.players.length})</CardTitle>
+                <CardDescription className="text-secondary-foreground/80 text-base">
+                  {lobbyMessage}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                {sortedPlayersForDisplay.length > 0 ? (
+                  <ul className="space-y-3">
+                    {sortedPlayersForDisplay.map((player: PlayerClientState) => (
+                      <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
+                        <div className="flex items-center">
+                          {player.avatar.startsWith('/') ? (
+                            <Image src={player.avatar} alt={`${player.name}'s avatar`} width={40} height={40} className="mr-3 rounded-sm object-contain" style={{ width: '40px', height: '40px' }} />
+                          ) : (
+                            <span className="text-3xl mr-3">{player.avatar}</span>
+                          )}
+                          <span className="text-xl font-medium text-foreground">{player.name}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {player.id === internalThisPlayerId ? ( 
+                            <ReadyToggle
+                              isReady={player.isReady}
+                              onToggle={() => handleToggleReady(player)}
+                              disabled={isProcessingAction}
+                            />
+                          ) : (
+                            player.isReady ? 
+                              <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : 
+                              <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
+                          )}
+                        </div>
+                      </li>
+                    ))}
                   </ul>
-                </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
+                )}
 
                 {showStartGameButton && (
-                  <div className="mt-6 flex justify-center pb-4">
-                     <Button
-                        onClick={handleStartGame}
-                        disabled={isProcessingAction || isLoading}
-                        className={cn(
-                            "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md h-auto p-0",
-                            (isProcessingAction || isLoading) && "opacity-60 cursor-not-allowed"
-                        )}
-                        aria-label="Start Game Now!"
+                    <Button
+                      onClick={handleStartGame}
+                      variant="default"
+                      size="lg"
+                      className="mt-6 w-full bg-accent text-accent-foreground hover:bg-accent/90 text-xl font-bold py-6 shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
+                      disabled={isProcessingAction || isLoading}
                     >
-                        { (isProcessingAction || isLoading) ? (
-                        <div className="flex items-center justify-center w-[224px] h-[56px] bg-muted rounded-md">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                        ) : (
-                        <Image
-                            src="/ui/start-game-button.png"
-                            alt="Start Game Now!"
-                            width={224}
-                            height={56}
-                            priority
-                            data-ai-hint="start game"
-                        />
-                        )}
+                      { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-3 h-7 w-7" /> }
+                      Start Game Now!
                     </Button>
-                  </div>
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
             <Dialog>
-              <DialogTrigger asChild>
-                 <button>
-                    <Image
-                    src="/ui/how-to-play-button.png"
-                    alt="How to Play"
-                    width={180}
-                    height={50}
-                    className="cursor-pointer hover:opacity-90 transition-opacity"
-                    data-ai-hint="play instructions"
-                    />
-                 </button>
-              </DialogTrigger>
+              <DialogTrigger asChild><Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80"><HelpCircle className="mr-2 h-5 w-5" /> How to Play</Button></DialogTrigger>
               <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
             </Dialog>
             <Button onClick={handleResetGame} variant="destructive" className="hover:bg-destructive/80" disabled={isProcessingAction || isLoading }>
               { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
             </Button>
           </div>
+          <footer className="mt-12 text-center text-sm text-muted-foreground"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
         </div>
       );
     }
-    return (
-        <div className="w-full max-w-xl mx-auto space-y-6 text-center py-12">
-          {ENABLE_SETUP_LOGO_NAVIGATION ? <ClickableSetupLogo /> : <StaticSetupLogo />}
-           <Card className="my-4 shadow-md border-2 border-primary/30 rounded-lg bg-card">
-            <CardHeader className="p-4">
-              <Info className="h-8 w-8 mx-auto text-primary mb-2" />
-              <CardTitle className="text-xl font-semibold text-card-foreground">Setup Page: Game State ({internalGame?.gamePhase || 'Unknown'})</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
-                <p>The game is in an unexpected state for the setup page.</p>
-                <p>You might want to reset the game or check if a game is in progress.</p>
-            </CardContent>
-          </Card>
-          <Button onClick={handleResetGame} variant="default" className="mt-6 bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isProcessingAction || isLoading}>
-            { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game
-          </Button>
-        </div>
-      );
   }
 
-  // Default: Welcome screen content (currentStep === 'welcome')
+  // Fallback for initial "welcome" step (before ?step=setup)
   return (
-    <div className="fixed inset-0 z-10 flex flex-col h-full w-full items-center justify-center">
-      <motion.a
-        className="block mx-auto cursor-pointer"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        animate={{ scale: [1, 0.85, 1] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-        onClick={() => {
-            if (isMountedRef.current) {
-                showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
-            }
-            router.push('/?step=setup');
-        }}
-      >
-        <Image
-          src="/ui/enter-the-chaos-button.png"
-          alt="Enter the Chaos"
-          width={224}
-          height={84}
-          className=""
-          priority
-          data-ai-hint="chaos button"
-        />
-      </motion.a>
+    <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground text-center">
+      <Image src="/logo.png" alt="Make It Terrible Logo" width={365} height={109} className="mx-auto mb-8" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+      <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
+      <p className="text-2xl text-muted-foreground mb-10">The game of awful choices and hilarious outcomes!</p>
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <Button onClick={() => { showGlobalLoader(); router.push('/?step=setup');}} variant="default" size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 text-2xl px-10 py-8 font-bold shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out">
+          Join the Mayhem <ArrowRight className="ml-3 h-7 w-7" />
+        </Button>
+        <Dialog>
+          <DialogTrigger asChild><Button variant="outline" size="lg" className="text-lg px-8 py-7"><HelpCircle className="mr-2 h-6 w-6" /> How to Play</Button></DialogTrigger>
+          <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
+        </Dialog>
+      </div>
+      <footer className="absolute bottom-8 text-center text-sm text-muted-foreground w-full"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
     </div>
   );
 }
+    
+
+    

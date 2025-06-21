@@ -1,4 +1,3 @@
-
 // import localFont from 'next/font/local'; // Commented out
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -34,11 +33,13 @@ export default function RootLayout({
   return (
     // Removed font variables from className
     <html lang="en" className={``} suppressHydrationWarning={true}>
-      <body className={`antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
+      <body className={`antialiased flex flex-col min-h-screen bg-muted/40`} suppressHydrationWarning={true}>
         <LoadingProvider>
-          <main className="flex-grow container mx-auto p-4">
-            {children}
-          </main>
+          <div className="mx-auto flex min-h-screen w-full max-w-sm flex-col border-x bg-background shadow-lg">
+            <main className="flex-grow p-4">
+              {children}
+            </main>
+          </div>
           <Toaster />
           <GlobalLoadingOverlay />
         </LoadingProvider>
