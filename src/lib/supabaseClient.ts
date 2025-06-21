@@ -13,18 +13,13 @@ if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
   console.warn("Using fallback Supabase URL. Ensure this is correct for your project if environment variable is not set.");
 }
 
-
+// Aggressive error throwing at the top level can prevent the server from starting.
+// It's better to let the server start and see runtime errors if the connection fails.
 if (!supabaseUrl || supabaseUrl === 'YOUR_SUPABASE_URL_HERE' || !supabaseUrl.startsWith('https')) {
-  const errorMsg = `CRITICAL: Supabase URL is not configured or invalid. URL attempted: '${supabaseUrl}'. Please update src/lib/supabaseClient.ts or set NEXT_PUBLIC_SUPABASE_URL environment variable.`;
-  console.error(errorMsg);
-  throw new Error(errorMsg);
+  console.error(`CRITICAL: Supabase URL is not configured or invalid. URL attempted: '${supabaseUrl}'. Please update src/lib/supabaseClient.ts or set NEXT_PUBLIC_SUPABASE_URL environment variable.`);
 }
-if (!supabaseAnonKey || supabaseAnonKey === 'YOUR_SUPABASE_ANON_KEY_HERE' || supabaseAnonKey.length < 100) { // Basic check for anon key format
-  const errorMsg = "CRITICAL: Supabase anon key is not configured, appears to be a placeholder, or is too short. Please update src/lib/supabaseClient.ts or set NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable.";
-  console.error(errorMsg);
-  throw new Error(errorMsg);
+if (!supabaseAnonKey || supabaseAnonKey === 'YOUR_SUPABASE_ANON_KEY_HERE' || supabaseAnonKey.length < 100) {
+  console.error("CRITICAL: Supabase anon key is not configured, appears to be a placeholder, or is too short. Please update src/lib/supabaseClient.ts or set NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable.");
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
-    
-    
