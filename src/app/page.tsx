@@ -455,12 +455,49 @@ export default function WelcomePage() {
   const isSpectatorView = gameIsActuallyActive && !thisPlayerObject; 
   const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject; 
 
+  if (currentStep === 'welcome') {
+    return (
+      <div className="relative flex-grow flex flex-col">
+        {/* Layer 1: background tile is on body */}
+        
+        {/* Layer 2: Poster image fills the container */}
+        <Image
+          src="/backgrounds/mobile-background.jpg"
+          alt="Make It Terrible game poster background"
+          fill
+          priority
+          className="object-contain"
+          data-ai-hint="game poster"
+        />
+
+        {/* Layer 3: Button */}
+        <div className="relative z-10 flex flex-grow items-center justify-center">
+          <button
+            onClick={() => {
+              showGlobalLoader();
+              router.push('/?step=setup');
+            }}
+            className="group transition-transform duration-200 ease-in-out hover:scale-105 active:scale-100"
+          >
+            <Image
+              src="/ui/enter-the-chaos-button.png"
+              alt="Enter the Chaos"
+              width={400}
+              height={150}
+              className="object-contain drop-shadow-xl"
+              data-ai-hint="chaos button"
+              priority
+            />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (currentStep === 'setup') {
     if (isSpectatorView) {
       return (
-        <div className="mx-auto w-full max-w-sm flex-grow flex flex-col justify-center">
-          <div className="w-full space-y-6 text-center py-12">
+        <div className="w-full space-y-6 text-center">
             <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8 block mx-auto">
               <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
             </button>
@@ -487,12 +524,10 @@ export default function WelcomePage() {
               { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
             </Button>
           </div>
-        </div>
       );
     } else if (isActivePlayerOnLobbyPage) {
       return (
-        <div className="mx-auto w-full max-w-sm flex-grow flex flex-col">
-          <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
+        <div className="w-full">
             <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8">
               <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
             </button>
@@ -518,7 +553,6 @@ export default function WelcomePage() {
               { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
             </Button>
           </div>
-        </div>
       );
     } else if (isLobbyPhaseActive) {
       const showPlayerSetupForm = !thisPlayerObject && isLobbyPhaseActive;
@@ -544,8 +578,7 @@ export default function WelcomePage() {
       }
       
       return (
-        <div className="mx-auto w-full max-w-sm flex-grow flex flex-col">
-          <div className="flex flex-col items-center justify-center min-h-full p-4 bg-background text-foreground">
+          <div className="w-full">
             <header className="mb-12 text-center">
               <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
                 <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
@@ -639,7 +672,6 @@ export default function WelcomePage() {
             </div>
             
           </div>
-        </div>
       );
     }
   }
