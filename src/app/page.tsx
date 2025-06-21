@@ -640,16 +640,18 @@ export default function WelcomePage() {
 
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
-    <div className="relative flex-grow">
-      <Image
-        src="/backgrounds/mobile-background.jpg"
-        alt="Make It Terrible game art background"
-        fill
-        priority
-        style={{ objectFit: 'cover', objectPosition: 'top' }}
-        data-ai-hint="game poster"
-      />
-      <div className="relative z-10 flex flex-col items-center p-4">
+    <div className="flex-grow flex flex-col items-center justify-center p-4">
+      <div className="relative w-80 h-96 sm:w-96 sm:h-[32rem] mx-auto">
+        <Image
+          src="/backgrounds/mobile-background.jpg"
+          alt="Make It Terrible game art background"
+          fill
+          priority
+          className="object-contain drop-shadow-2xl"
+          data-ai-hint="game poster"
+        />
+      </div>
+      <div className="relative z-10 flex flex-col items-center p-4 mt-auto w-full">
         <Button
           onClick={() => router.push('/?step=setup')}
           size="lg"
