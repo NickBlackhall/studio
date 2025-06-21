@@ -108,7 +108,7 @@
   }
 
   body.welcome-background-active {
-    background-image: url('/backgrounds/background-tile.png');
+    background-image: url('/textures/background-tile.png');
     background-repeat: repeat;
   }
 
