@@ -482,8 +482,8 @@ export default function WelcomePage() {
             <Image
               src="/ui/enter-the-chaos-button.png"
               alt="Enter the Chaos"
-              width={280}
-              height={105}
+              width={252}
+              height={95}
               className="object-contain drop-shadow-xl"
               data-ai-hint="chaos button"
               priority
