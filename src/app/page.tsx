@@ -540,7 +540,7 @@ export default function WelcomePage() {
       }
       
       return (
-        <div className="flex flex-col items-center justify-center min-h-full py-12 bg-background text-foreground">
+        <div className="flex flex-col items-center justify-center min-h-full p-4 bg-background text-foreground">
           <header className="mb-12 text-center">
             <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
               <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
@@ -640,14 +640,24 @@ export default function WelcomePage() {
 
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
-    <div className="relative h-full -m-4 flex flex-col items-center justify-start pt-4">
-        <Button 
-          onClick={() => router.push('/?step=setup')} 
-          size="lg" 
-          className="bg-yellow-400 text-black hover:bg-yellow-500 font-bold text-lg w-full max-w-xs shadow-lg z-10"
+    <div className="relative flex-grow">
+      <Image
+        src="/backgrounds/mobile-background.jpg"
+        alt="Make It Terrible game art background"
+        fill
+        priority
+        style={{ objectFit: 'cover', objectPosition: 'top' }}
+        data-ai-hint="game poster"
+      />
+      <div className="relative z-10 flex flex-col items-center p-4">
+        <Button
+          onClick={() => router.push('/?step=setup')}
+          size="lg"
+          className="bg-yellow-400 text-black hover:bg-yellow-500 font-bold text-lg w-full max-w-xs shadow-lg"
         >
           Join the Mayhem <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
+      </div>
     </div>
   );
 }

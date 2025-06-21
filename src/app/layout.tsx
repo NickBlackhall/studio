@@ -34,10 +34,10 @@ export default function RootLayout({
   return (
     // Removed font variables from className
     <html lang="en" className={``} suppressHydrationWarning={true}>
-      <body className={`group antialiased flex flex-col min-h-screen bg-muted/40`} suppressHydrationWarning={true}>
+      <body className={`group antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
         <LoadingProvider>
-          <div className="mx-auto flex min-h-screen w-full max-w-sm flex-col border-x bg-background shadow-lg group-[.welcome-background-active]:bg-[url('/backgrounds/mobile-background.jpg')] group-[.welcome-background-active]:bg-cover group-[.welcome-background-active]:bg-center">
-            <main className="flex-grow p-4">
+          <div className="mx-auto flex min-h-screen w-full max-w-sm flex-col border-x bg-background shadow-lg group-[.welcome-background-active]:bg-transparent">
+            <main className="flex-grow flex flex-col">
               {children}
             </main>
           </div>
