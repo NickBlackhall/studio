@@ -563,7 +563,7 @@ export default function WelcomePage() {
           <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
             <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
             <p className="text-xl text-destructive mt-4">Critical error: Game data missing for setup. Please refresh.</p>
-            <Button onClick={() => { if(isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null); window.location.reload(); }}} variant="outline" className="mt-4">
+            <Button onClick={() => { if(isMountedRef.current) { showGlobalLoader(); setIsLoading(true); setErrorLoadingame(null); window.location.reload(); }}} variant="outline" className="mt-4">
               Refresh Page
             </Button>
           </div>
@@ -867,3 +867,4 @@ export default function WelcomePage() {
     </div>
   );
 }
+
