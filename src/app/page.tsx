@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
-// import { motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,45 +95,6 @@ export default function WelcomePage() {
     }
   }, []);
 
-  const fetchGameData = useCallback(async (fetchOrigin: string, gameIdToFetch?: string): Promise<{ gameState: GameClientState, thisPlayerId: string | null }> => {
-    console.log(`WelcomePage: fetchGameData START from ${fetchOrigin}. gameIdToFetch: ${gameIdToFetch}`);
-    let fetchedGameState: GameClientState | null = null;
-    
-    fetchedGameState = await getGame(gameIdToFetch);
-    
-    if (!fetchedGameState || typeof fetchedGameState !== 'object' || !fetchedGameState.gameId) {
-      const errorMsg = `Server returned no valid game session or game session is incomplete. Origin: ${fetchOrigin}.`;
-      console.error(`WelcomePage: fetchGameData - Critical: ${errorMsg}. Value:`, fetchedGameState);
-      throw new Error(errorMsg);
-    }
-
-    if (typeof fetchedGameState.ready_player_order_str === 'string') {
-        fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
-    } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
-        fetchedGameState.ready_player_order = [];
-    }
-
-    let determinedThisPlayerId: string | null = null;
-    const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
-
-    if (fetchOrigin.includes("reset") || fetchOrigin.includes("handleResetGame")) {
-        localStorage.removeItem(localStorageKey);
-    } else {
-        const playerIdFromStorage = localStorage.getItem(localStorageKey);
-        if (playerIdFromStorage) {
-            const playerInFetchedGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
-            if (playerInFetchedGame) {
-                determinedThisPlayerId = playerIdFromStorage;
-            } else {
-                localStorage.removeItem(localStorageKey);
-                console.warn(`WelcomePage: Cleared stale player ID ${playerIdFromStorage} (not in game ${fetchedGameState.gameId}). Origin: ${fetchOrigin}`);
-            }
-        }
-    }
-    return { gameState: fetchedGameState, thisPlayerId: determinedThisPlayerId };
-
-  }, [parseReadyPlayerOrderStr]);
-
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -148,11 +109,34 @@ export default function WelcomePage() {
       }
 
       try {
-        const result = await fetchGameData(`effect for step: ${currentStep}`);
-        if (!isActive || !isMountedRef.current) return;
+        const fetchedGameState = await getGame();
 
-        setGame(result.gameState);
-        setThisPlayerId(result.thisPlayerId);
+        if (!fetchedGameState || typeof fetchedGameState !== 'object' || !fetchedGameState.gameId) {
+          throw new Error(`Server returned no valid game session or game session is incomplete.`);
+        }
+        
+        if (typeof fetchedGameState.ready_player_order_str === 'string') {
+            fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
+        } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
+            fetchedGameState.ready_player_order = [];
+        }
+
+        let determinedThisPlayerId: string | null = null;
+        const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
+        const playerIdFromStorage = localStorage.getItem(localStorageKey);
+
+        if (playerIdFromStorage) {
+            const playerInFetchedGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
+            if (playerInFetchedGame) {
+                determinedThisPlayerId = playerIdFromStorage;
+            } else {
+                localStorage.removeItem(localStorageKey);
+            }
+        }
+
+        if (!isActive || !isMountedRef.current) return;
+        setGame(fetchedGameState);
+        setThisPlayerId(determinedThisPlayerId);
         setErrorLoadingGame(null);
 
       } catch (error: any) {
@@ -233,15 +217,29 @@ export default function WelcomePage() {
       console.log(`>>> WelcomePage Realtime (${originTable} for game ${latestGameId}): CHANGE DETECTED!`, payload);
       if (isMountedRef.current && latestGameId) {
          try {
-            const result = await fetchGameData(`${originTable}-sub-${latestGameId}-${uniqueChannelSuffix} change`, latestGameId);
+            const fetchedGameState = await getGame(latestGameId);
+
+            if (!fetchedGameState || !fetchedGameState.gameId) {
+              throw new Error("Game state from subscription update was invalid.");
+            }
+
+            if (typeof fetchedGameState.ready_player_order_str === 'string') {
+              fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
+            } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
+              fetchedGameState.ready_player_order = [];
+            }
+
+            let determinedThisPlayerId: string | null = null;
+            const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
+            const playerIdFromStorage = localStorage.getItem(localStorageKey);
+            if(playerIdFromStorage && fetchedGameState.players.some(p => p.id === playerIdFromStorage)) {
+              determinedThisPlayerId = playerIdFromStorage;
+            }
+
             if (isMountedRef.current) {
-              if (result && result.gameState) {
-                setGame(result.gameState);
-                setThisPlayerId(result.thisPlayerId);
-                setErrorLoadingGame(null); // Clear error on successful update from subscription
-              } else {
-                 console.warn(`WelcomePage Realtime: fetchGameData from subscription returned unexpected result for ${latestGameId}.`);
-              }
+              setGame(fetchedGameState);
+              setThisPlayerId(determinedThisPlayerId);
+              setErrorLoadingGame(null); // Clear error on successful update from subscription
             }
           } catch (error) {
             console.error(`WelcomePage Realtime: Error fetching game data after ${originTable} subscription event for ${latestGameId}:`, error);
@@ -275,7 +273,7 @@ export default function WelcomePage() {
       supabase.removeChannel(playersChannel).catch(err => console.error("Client (Realtime Cleanup Error - Players):", err));
       supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime Cleanup Error - Game):", err));
     };
-  }, [internalGame?.gameId, internalThisPlayerId, isLoading, errorLoadingGame, fetchGameData, setGame, setThisPlayerId]);
+  }, [internalGame?.gameId, internalThisPlayerId, isLoading, errorLoadingGame, setGame, setThisPlayerId, parseReadyPlayerOrderStr]);
 
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
@@ -317,21 +315,6 @@ export default function WelcomePage() {
     }
     if (!currentGameId) {
         toast({ title: "Error!", description: "Game session not found. Please refresh.", variant: "destructive"});
-        if (isMountedRef.current) {
-            setIsLoading(true); showGlobalLoader(); setErrorLoadingGame(null);
-            try {
-              const { gameState: refreshedGame, thisPlayerId: refreshedPlayerId } = await fetchGameData("handleAddPlayer_no_gameId_refresh");
-              if (isMountedRef.current) {
-                setGame(refreshedGame);
-                setThisPlayerId(refreshedPlayerId);
-                setErrorLoadingGame(null);
-              }
-            } catch(e: any) {
-              if (isMountedRef.current) setErrorLoadingGame(`Could not load game data. ${e.message || 'Unknown error'}`);
-            } finally {
-              if(isMountedRef.current) { setIsLoading(false); hideGlobalLoader(); }
-            }
-        }
         return;
     }
 
@@ -360,9 +343,9 @@ export default function WelcomePage() {
           });
           toast({ title: "Joined!", description: `Welcome ${newPlayer.name}!`});
         } else if (isMountedRef.current) {
-           if (newPlayer === null && gameRef.current?.gamePhase !== 'lobby') {
+           if (gameRef.current?.gamePhase !== 'lobby') {
             toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
-          } else if (newPlayer === null) {
+          } else {
             toast({ title: "Join Error", description: "Could not add player to the game.", variant: "destructive"});
           }
         }
@@ -435,13 +418,12 @@ export default function WelcomePage() {
             return;
           }
           toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
-          try {
-            const { gameState: refreshedGame, thisPlayerId: refreshedPlayerId } = await fetchGameData("handleToggleReady_error_revert");
+          // Re-fetch to revert optimistic update on error
+          const { gameState: refreshedGame, thisPlayerId: refreshedPlayerId } = await getGame(currentGameId);
             if (isMountedRef.current) {
                 setGame(refreshedGame);
                 setThisPlayerId(refreshedPlayerId);
             }
-          } catch (fetchErr) { console.error("Error reverting toggle ready status:", fetchErr); }
         }
       }
     });
@@ -496,29 +478,7 @@ export default function WelcomePage() {
           onClick={() => {
             if(isMountedRef.current) {
               setErrorLoadingGame(null);
-              const loadDataForCurrentStepRetry = async () => {
-                if (!isMountedRef.current) return;
-                console.log(`WelcomePage: Retrying data load for step '${currentStep}'.`);
-                if (isMountedRef.current) { showGlobalLoader(); setIsLoading(true); }
-                try {
-                  const result = await fetchGameData(`manual_refresh_after_error for step: ${currentStep}`);
-                   if (isMountedRef.current) {
-                     if (result && result.gameState) {
-                       setGame(result.gameState);
-                       setThisPlayerId(result.thisPlayerId);
-                       setErrorLoadingGame(null);
-                     } else {
-                       throw new Error("fetchGameData returned unexpected result on retry.");
-                     }
-                   }
-                } catch (error: any) {
-                  const errorMessage = `Could not load game data. ${(error as Error).message || 'Unknown error'}`;
-                  if (isMountedRef.current) { setErrorLoadingGame(errorMessage); }
-                } finally {
-                  if (isMountedRef.current) { hideGlobalLoader(); setIsLoading(false); }
-                }
-              };
-              loadDataForCurrentStepRetry();
+              window.location.reload(); // Simple reload is often most effective here
             }
           }}
           variant="outline"
@@ -881,8 +841,12 @@ export default function WelcomePage() {
   // Default: Welcome screen content (currentStep === 'welcome')
   return (
     <div className="fixed inset-0 z-10 flex flex-col h-full w-full items-center justify-center">
-      <button
+      <motion.a
         className="block mx-auto cursor-pointer"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        animate={{ scale: [1, 0.85, 1] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
         onClick={() => {
             if (isMountedRef.current) {
                 showGlobalLoader(); setIsLoading(true); setErrorLoadingGame(null);
@@ -899,7 +863,7 @@ export default function WelcomePage() {
           priority
           data-ai-hint="chaos button"
         />
-      </button>
+      </motion.a>
     </div>
   );
 }
