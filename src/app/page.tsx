@@ -633,7 +633,7 @@ export default function WelcomePage() {
               { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
             </Button>
           </div>
-          <footer className="mt-12 text-center text-sm text-muted-foreground"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
+          
         </div>
       );
     }
@@ -654,7 +654,7 @@ export default function WelcomePage() {
           <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
         </Dialog>
       </div>
-      <footer className="absolute bottom-8 text-center text-sm text-foreground w-full"><p>&copy; <CurrentYear /> Make It Terrible Inc. All rights reserved (not really).</p></footer>
+      
     </div>
   );
 }
