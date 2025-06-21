@@ -92,12 +92,17 @@ export default {
           '0%': { transform: 'translateX(-100%) skewX(-15deg)' },
           '100%': { transform: 'translateX(100%) skewX(-15deg)' },
         },
+        'slow-scale-pulse': {
+          '0%, 100%': { transform: 'scale(0.8)' },
+          '50%': { transform: 'scale(1)' },
+        },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
         'border-pulse': 'border-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'shimmer': 'shimmer 2.5s infinite linear',
+        'slow-scale-pulse': 'slow-scale-pulse 2s ease-in-out infinite',
   		}
   	}
   },

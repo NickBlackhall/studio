@@ -477,7 +477,7 @@ export default function WelcomePage() {
               showGlobalLoader();
               router.push('/?step=setup');
             }}
-            className="group transition-transform duration-200 ease-in-out hover:scale-105 active:scale-100"
+            className="group animate-slow-scale-pulse"
           >
             <Image
               src="/ui/enter-the-chaos-button.png"
