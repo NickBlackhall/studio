@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from 'next/image';
@@ -559,15 +558,15 @@ export default function WelcomePage() {
                             <Image
                               src={player.avatar}
                               alt={`${player.name}'s avatar`}
-                              width={48}
-                              height={48}
+                              width={56}
+                              height={56}
                               className="mr-3 rounded-sm object-cover flex-shrink-0"
                               data-ai-hint="player avatar"
                             />
                           ) : (
-                            <span className="text-4xl mr-3 flex-shrink-0">{player.avatar}</span>
+                            <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>
                           )}
-                          <span className="font-semibold text-lg text-black truncate">{player.name}</span>
+                          <span className="font-im-fell text-3xl text-black truncate">{player.name}</span>
                         </div>
                         <div className="flex-shrink-0 ml-2">
                           {player.id === thisPlayerObject?.id ? (
