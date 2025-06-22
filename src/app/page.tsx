@@ -48,6 +48,12 @@ export default function WelcomePage() {
   // State for the new inline join form
   const [name, setName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string>('');
+  const [cacheBuster, setCacheBuster] = useState('');
+
+  useEffect(() => {
+    // This runs only on the client, after hydration, to prevent server/client mismatch
+    setCacheBuster(`?t=${new Date().getTime()}`);
+  }, []);
 
   useEffect(() => {
     if (!selectedAvatar && AVATARS.length > 0) {
@@ -474,7 +480,7 @@ export default function WelcomePage() {
         
         {/* Layer 2: Poster image fills the container */}
         <Image
-          src="/backgrounds/mobile-background.jpg"
+          src={`/backgrounds/mobile-background.jpg${cacheBuster}`}
           alt="Make It Terrible game poster background"
           fill
           priority
@@ -512,7 +518,7 @@ export default function WelcomePage() {
       return (
         <div className="relative flex-grow flex flex-col">
           <Image
-            src="/backgrounds/join-screen.jpg"
+            src={`/backgrounds/join-screen.jpg${cacheBuster}`}
             alt="A poster with a red skull and crossbones inviting players to join the game"
             fill
             className="object-cover"
@@ -726,7 +732,7 @@ export default function WelcomePage() {
   return (
     <div className="relative flex-grow flex flex-col">
       <Image
-        src="/backgrounds/mobile-background.jpg"
+        src={`/backgrounds/mobile-background.jpg${cacheBuster}`}
         alt="Make It Terrible game poster background"
         fill
         priority
