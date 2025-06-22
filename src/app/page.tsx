@@ -549,8 +549,7 @@ export default function WelcomePage() {
                       <div
                         key={player.id}
                         className={cn(
-                          "flex items-center justify-between p-3 rounded-md transition-colors",
-                          player.id === thisPlayerObject?.id ? "bg-black/10" : "bg-black/5"
+                          "flex items-center justify-between p-3 rounded-md"
                         )}
                       >
                         <div className="flex items-center min-w-0">
