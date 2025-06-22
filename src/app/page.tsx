@@ -537,9 +537,22 @@ export default function WelcomePage() {
             return (
               <div className="w-full">
                 
-                <div className="w-full max-w-lg mx-auto">
-                  <Image src="/backgrounds/lobby-card.png" alt="Lobby card background" width={500} height={700} data-ai-hint="lobby card parchment"/>
+                <div className="relative w-full max-w-lg mx-auto">
+                  <Image 
+                    src="/backgrounds/lobby-card.png" 
+                    alt="Lobby card background" 
+                    width={500} 
+                    height={700} 
+                    className="w-full h-auto"
+                    data-ai-hint="lobby card parchment"
+                  />
+                  
+                  {/* Player list container */}
+                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[54%] bg-red-500/20 rounded-md overflow-y-auto">
+                    {/* This is where the player list will go. The background is for positioning help. */}
+                  </div>
                 </div>
+
                 <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
                   <Dialog>
                     <DialogTrigger asChild><Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80"><HelpCircle className="mr-2 h-5 w-5" /> How to Play</Button></DialogTrigger>
@@ -598,4 +611,3 @@ export default function WelcomePage() {
   );
 }
 
-    
