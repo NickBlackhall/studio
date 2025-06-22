@@ -177,16 +177,15 @@
   font-size: 1.125rem;
   font-weight: 700;
   text-align: center;
-  color: hsl(var(--foreground));
-  background: linear-gradient(145deg, #fef08a, #fbbf24);
+  color: #FFFFFF;
+  background: transparent;
   border: 3px solid #000;
   border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
   outline: none;
 }
 
 .name-input::placeholder {
-  color: hsl(var(--foreground) / 0.6);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* MIDDLE SECTION */
