@@ -46,6 +46,12 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
     });
   };
 
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+    }
+  };
+
   return (
     <div className="pwa-game-container">
       <form onSubmit={handleJoinSubmit} className="w-full h-full flex flex-col justify-between">
@@ -61,6 +67,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
               maxLength={20}
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={handleInputKeyDown}
               required
             />
           </div>
@@ -74,7 +81,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
             </button>
             
             <div className="avatar-display">
-              <Image src={AVATARS[avatarIndex]} alt="Selected Avatar" width={272} height={272} data-ai-hint="player avatar" priority />
+              <Image src={AVATARS[avatarIndex]} alt="Selected Avatar" width={170} height={170} data-ai-hint="player avatar" priority />
             </div>
             
             <button type="button" onClick={() => handleAvatarChange(1)} className="carousel-btn" aria-label="Next avatar">
