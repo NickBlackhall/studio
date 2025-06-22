@@ -435,9 +435,7 @@ export default function WelcomePage() {
       <div className="flex-grow w-full max-w-4xl mx-auto flex flex-col items-center justify-center p-4">
         {isSpectatorView ? (
           <div className="w-full space-y-6 text-center">
-            <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8 block mx-auto">
-              <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
-            </button>
+            
             <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
               <CardHeader className="p-4">
                 <Lock className="h-8 w-8 mx-auto text-destructive mb-2" />
@@ -463,9 +461,7 @@ export default function WelcomePage() {
           </div>
         ) : isActivePlayerOnLobbyPage ? (
           <div className="w-full">
-            <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer mb-8">
-              <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} data-ai-hint="game logo" priority style={{ height: 'auto' }} />
-            </button>
+            
             <Card className="my-4 border-primary/50 bg-muted/30 shadow-md w-full max-w-md text-center">
               <CardHeader className="p-4">
                 <CardTitle className="text-lg flex items-center justify-center font-semibold text-foreground">
@@ -509,12 +505,7 @@ export default function WelcomePage() {
             }
             return (
               <div className="w-full">
-                <header className="mb-8 text-center">
-                  <button onClick={() => { showGlobalLoader(); router.push('/?step=welcome') }} className="cursor-pointer">
-                    <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
-                  </button>
-                  <p className="text-xl text-muted-foreground mt-2">Welcome, {thisPlayerObject.name}! Toggle your ready status below.</p>
-                </header>
+                
                 <div className="w-full max-w-lg mx-auto">
                   <Card className="shadow-2xl border-2 border-secondary rounded-xl overflow-hidden">
                     <CardHeader className="bg-secondary text-secondary-foreground p-6">
