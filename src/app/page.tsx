@@ -192,100 +192,50 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
-    const currentGameId = internalGame?.gameId; 
-    const currentThisPlayerId = internalThisPlayerId;
-
-    if (!currentGameId || isLoading) { 
+    const currentGameId = internalGame?.gameId;
+    if (!currentGameId || isLoading) {
       return () => {};
     }
 
-    const uniqueChannelSuffix = currentThisPlayerId || Date.now();
+    const uniqueChannelSuffix = internalThisPlayerId || Date.now();
 
-    const handlePlayersUpdate = async (payload: any) => {
-      const latestGameId = gameRef.current?.gameId; 
-      if (isMountedRef.current && latestGameId) { 
+    const handleRealtimeUpdate = async (source: string, payload: any) => {
+      const latestGameId = gameRef.current?.gameId;
+      if (isMountedRef.current && latestGameId) {
         try {
-          let fetchedGameState = await getGame(latestGameId); 
-          
-          if (fetchedGameState) {
-            if (typeof fetchedGameState.ready_player_order_str === 'string') {
+          const fetchedGameState = await getGame(latestGameId);
+          if (isMountedRef.current && fetchedGameState) {
+             if (typeof fetchedGameState.ready_player_order_str === 'string') {
                 fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
             } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
-                console.warn(`Client (handlePlayersUpdate): RPO was undefined or not an array from getGame(), defaulting to []. Game ID: ${fetchedGameState.gameId}`);
+                console.warn(`Client (handleRealtimeUpdate from ${source}): RPO was undefined/not array, defaulting to [].`);
                 fetchedGameState.ready_player_order = [];
             }
-          }
-          
-          if (isMountedRef.current) {
             setGame(fetchedGameState);
           }
-        } catch (error: any) {
-          console.error('Error in handlePlayersUpdate:', error);
+        } catch (error) {
+          console.error(`Error in handleRealtimeUpdate (from ${source}):`, error);
         }
       }
     };
 
-    const handleGameTableUpdate = async (payload: any) => {
-      const latestGameId = gameRef.current?.gameId; 
-      if (isMountedRef.current && latestGameId) { 
-        try {
-          let fetchedGameState = await getGame(latestGameId); 
-          
-          if (fetchedGameState) {
-            if (typeof fetchedGameState.ready_player_order_str === 'string') {
-                fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
-            } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
-                console.warn(`Client (handleGameTableUpdate): RPO was undefined or not an array from getGame(), defaulting to []. Game ID: ${fetchedGameState.gameId}`);
-                fetchedGameState.ready_player_order = [];
-            }
-          }
-          
-          if (isMountedRef.current) {
-            setGame(fetchedGameState);
-          }
-        } catch (error: any) {
-          console.error('Error in handleGameTableUpdate:', error);
-        }
-      }
-    };
-    
     const playersChannelName = `players-lobby-${currentGameId}-${uniqueChannelSuffix}`;
     const playersChannel = supabase
       .channel(playersChannelName)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${currentGameId}` },
-        handlePlayersUpdate
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${currentGameId}` }, (payload) => handleRealtimeUpdate('players', payload))
       .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          // console.log(`Client (Realtime): Successfully subscribed to ${playersChannelName} on WelcomePage!`);
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Client (Realtime): Subscription error (${playersChannelName}): "${status}"`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
-        } else if (status === 'CLOSED') {
-           // console.info(`Client (Realtime): Channel ${playersChannelName} is now ${status}. Details:`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'No error details.');
-        } else if (err) {
-           console.error(`Client (Realtime): Unexpected error or status on ${playersChannelName} subscription (status: ${status}):`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || err) {
+          console.error(`Client (Realtime) - playersChannel error:`, { status, err: err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error' });
         }
       });
 
     const gameChannelName = `game-state-lobby-${currentGameId}-${uniqueChannelSuffix}`;
     const gameChannel = supabase
       .channel(gameChannelName)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${currentGameId}` },
-        handleGameTableUpdate
-      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${currentGameId}` }, (payload) => handleRealtimeUpdate('games', payload))
       .subscribe((status, err) => {
-         if (status === 'SUBSCRIBED') {
-          // console.log(`Client (Realtime): Successfully subscribed to ${gameChannelName} on WelcomePage!`);
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(`Client (Realtime): Subscription error (${gameChannelName}): "${status}"`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
-        } else if (status === 'CLOSED') {
-          // console.info(`Client (Realtime): Channel ${gameChannelName} is now ${status}. Details:`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'No error details.');
-        } else if (err) {
-           console.error(`Client (Realtime): Unexpected error or status on ${gameChannelName} subscription (status: ${status}):`, err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error object');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || err) {
+          console.error(`Client (Realtime) - gameChannel error:`, { status, err: err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error' });
         }
       });
       
@@ -544,63 +494,64 @@ export default function WelcomePage() {
                     className="w-full h-auto"
                     data-ai-hint="lobby card parchment"
                   />
-                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[54%] rounded-md overflow-y-auto px-2 py-1 space-y-2">
-                    {sortedPlayersForDisplay.map((player) => (
-                      <div
-                        key={player.id}
-                        className={cn(
-                          "flex items-center justify-between p-3 rounded-md"
-                        )}
-                      >
-                        <div className="flex items-center min-w-0">
-                          {player.avatar.startsWith('/') ? (
-                            <Image
-                              src={player.avatar}
-                              alt={`${player.name}'s avatar`}
-                              width={56}
-                              height={56}
-                              className="mr-3 rounded-sm object-cover flex-shrink-0"
-                              data-ai-hint="player avatar"
-                            />
-                          ) : (
-                            <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>
-                          )}
-                          <span className="font-im-fell text-3xl text-black truncate">{player.name}</span>
-                        </div>
-                        <div className="flex-shrink-0 ml-2">
-                          {player.id === thisPlayerObject?.id ? (
-                            <ReadyToggle
-                              isReady={player.isReady}
-                              onToggle={() => handleToggleReady(player)}
-                              disabled={isProcessingAction}
-                            />
-                          ) : (
-                            player.isReady ? (
-                              <CheckSquare className="h-7 w-7 text-green-700" />
+                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[62%] flex flex-col justify-between">
+                    <div className="flex-grow overflow-y-auto space-y-2">
+                        {sortedPlayersForDisplay.map((player) => (
+                        <div
+                            key={player.id}
+                            className={cn(
+                            "flex items-center justify-between p-3"
+                            )}
+                        >
+                            <div className="flex items-center min-w-0">
+                            {player.avatar.startsWith('/') ? (
+                                <Image
+                                src={player.avatar}
+                                alt={`${player.name}'s avatar`}
+                                width={56}
+                                height={56}
+                                className="mr-3 rounded-sm object-cover flex-shrink-0"
+                                data-ai-hint="player avatar"
+                                />
                             ) : (
-                              <XSquare className="h-7 w-7 text-red-700" />
-                            )
-                          )}
+                                <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>
+                            )}
+                            <span className="font-im-fell text-3xl text-black truncate">{player.name}</span>
+                            </div>
+                            <div className="flex-shrink-0 ml-2">
+                            {player.id === thisPlayerObject?.id ? (
+                                <ReadyToggle
+                                isReady={player.isReady}
+                                onToggle={() => handleToggleReady(player)}
+                                disabled={isProcessingAction}
+                                />
+                            ) : (
+                                player.isReady ? (
+                                <CheckSquare className="h-7 w-7 text-green-700" />
+                                ) : (
+                                <XSquare className="h-7 w-7 text-red-700" />
+                                )
+                            )}
+                            </div>
                         </div>
-                      </div>
-                    ))}
+                        ))}
+                    </div>
+                    <div className="flex-shrink-0 text-center px-4 space-y-3">
+                        <p className="text-black font-semibold bg-amber-100/80 p-2 rounded-md shadow">
+                            {lobbyMessage}
+                        </p>
+                        {showStartGameButton && (
+                            <Button
+                            onClick={handleStartGame}
+                            disabled={isProcessingAction}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-6 rounded-lg shadow-lg animate-pulse"
+                            >
+                            {isProcessingAction ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-2 h-6 w-6" />}
+                            START THE MAYHEM
+                            </Button>
+                        )}
+                    </div>
                   </div>
-                </div>
-
-                <div className="mt-4 w-full max-w-lg mx-auto text-center px-4 space-y-3">
-                  <p className="text-black font-semibold bg-amber-100/80 p-2 rounded-md shadow">
-                    {lobbyMessage}
-                  </p>
-                  {showStartGameButton && (
-                    <Button
-                      onClick={handleStartGame}
-                      disabled={isProcessingAction}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-6 rounded-lg shadow-lg animate-pulse"
-                    >
-                      {isProcessingAction ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-2 h-6 w-6" />}
-                      START THE MAYHEM
-                    </Button>
-                  )}
                 </div>
                 
                 <div className="mt-8 w-full max-w-4xl flex items-center justify-center gap-4">
