@@ -1,8 +1,7 @@
-
 import type { Scenario } from "./types";
 
 // Generate paths for avatar1.png through avatar21.png
-export const AVATARS: string[] = Array.from({ length: 21 }, (_, i) => `/ui/avatar${i + 1}.png`);
+export const AVATARS: string[] = Array.from({ length: 21 }, (_, i) => `/ui/avatar${i + 1}.png?v=2`);
 
 export const CATEGORIES: string[] = [
   "Awkward Situations",
