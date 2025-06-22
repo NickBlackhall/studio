@@ -545,12 +545,12 @@ export default function WelcomePage() {
                     className="w-full h-auto"
                     data-ai-hint="lobby card parchment"
                   />
-                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[54%] rounded-md overflow-y-auto px-2 py-1 space-y-1">
+                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[54%] rounded-md overflow-y-auto px-2 py-1 space-y-2">
                     {sortedPlayersForDisplay.map((player) => (
                       <div
                         key={player.id}
                         className={cn(
-                          "flex items-center justify-between p-2 rounded-md transition-colors",
+                          "flex items-center justify-between p-3 rounded-md transition-colors",
                           player.id === thisPlayerObject?.id ? "bg-black/10" : "bg-black/5"
                         )}
                       >
@@ -559,15 +559,15 @@ export default function WelcomePage() {
                             <Image
                               src={player.avatar}
                               alt={`${player.name}'s avatar`}
-                              width={36}
-                              height={36}
+                              width={48}
+                              height={48}
                               className="mr-3 rounded-sm object-cover flex-shrink-0"
                               data-ai-hint="player avatar"
                             />
                           ) : (
-                            <span className="text-3xl mr-3 flex-shrink-0">{player.avatar}</span>
+                            <span className="text-4xl mr-3 flex-shrink-0">{player.avatar}</span>
                           )}
-                          <span className="font-semibold text-base text-black truncate">{player.name}</span>
+                          <span className="font-semibold text-lg text-black truncate">{player.name}</span>
                         </div>
                         <div className="flex-shrink-0 ml-2">
                           {player.id === thisPlayerObject?.id ? (
@@ -661,4 +661,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
