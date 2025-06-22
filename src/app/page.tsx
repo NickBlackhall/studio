@@ -483,7 +483,7 @@ export default function WelcomePage() {
               lobbyMessage = `Waiting for ${hostNameForMessage} to start the game.`;
             }
             if (allPlayersReady && hostPlayerId === thisPlayerIdRef.current) {
-              lobbyMessage = "All players are ready!";
+              lobbyMessage = "";
             }
             return (
               <div className="w-full">
@@ -520,7 +520,7 @@ export default function WelcomePage() {
                             )}
                             <span className="font-im-fell text-3xl text-black truncate">{player.name}</span>
                             </div>
-                            <div className="flex-shrink-0 ml-2">
+                            <div className="flex-shrink-0 ml-2 flex items-center justify-center">
                             {player.id === thisPlayerObject?.id ? (
                                 <ReadyToggle
                                 isReady={player.isReady}
@@ -546,15 +546,15 @@ export default function WelcomePage() {
                           className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70"
                         >
                           {isProcessingAction ? (
-                            <div className="h-[41.4px] flex items-center justify-center">
+                            <div className="h-[59.6px] flex items-center justify-center">
                               <Loader2 className="h-8 w-8 animate-spin text-black" />
                             </div>
                           ) : (
                             <Image
                               src="/ui/start-game-button.png"
                               alt="Start the Mayhem"
-                              width={109.8}
-                              height={41.4}
+                              width={158.2}
+                              height={59.6}
                               className="object-contain drop-shadow-xl"
                               data-ai-hint="start button"
                               priority
@@ -628,3 +628,5 @@ export default function WelcomePage() {
 }
 
 
+
+    
