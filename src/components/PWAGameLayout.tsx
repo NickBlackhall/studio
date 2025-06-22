@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -7,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { AVATARS } from '@/lib/data';
 import { addPlayer as addPlayerAction } from '@/app/game/actions';
 import type { Tables } from '@/lib/database.types';
+
+// The 'imFellFont' font is now applied via globals.css to fix a build error.
 
 interface PWAGameLayoutProps {
   gameId: string;

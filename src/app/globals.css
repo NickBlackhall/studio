@@ -3,6 +3,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'IMFellEnglishSC';
+  src: url('/fonts/IMFellEnglishSC-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%; /* White */
@@ -182,6 +190,8 @@
   border: 3px solid #000;
   border-radius: 12px;
   outline: none;
+  font-family: 'IMFellEnglishSC', 'Times New Roman', serif;
+  letter-spacing: 0.5px;
 }
 
 .name-input::placeholder {
