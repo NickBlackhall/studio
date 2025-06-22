@@ -3,10 +3,9 @@
 
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import PlayerSetupForm from '@/components/game/PlayerSetupForm';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, UserPlus } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
@@ -19,6 +18,10 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AVATARS } from '@/lib/data';
+import AvatarCarousel from '@/components/game/AvatarCarousel';
 
 
 export const dynamic = 'force-dynamic';
@@ -41,6 +44,16 @@ export default function WelcomePage() {
   
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
+
+  // State for the new inline join form
+  const [name, setName] = useState('');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('');
+
+  useEffect(() => {
+    if (!selectedAvatar && AVATARS.length > 0) {
+      setSelectedAvatar(AVATARS[0]);
+    }
+  }, [selectedAvatar]);
 
   useEffect(() => {
     if (currentStep === 'welcome') {
@@ -325,6 +338,23 @@ export default function WelcomePage() {
     });
   };
 
+  const handleJoinSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!name.trim()) {
+      toast({ title: "Name Required", description: "Please enter your name.", variant: "destructive" });
+      return;
+    }
+    if (!selectedAvatar) {
+      toast({ title: "Avatar Required", description: "Please select an avatar.", variant: "destructive" });
+      return;
+    }
+    
+    const formData = new FormData(event.currentTarget);
+    formData.append('avatar', selectedAvatar);
+    
+    await handleAddPlayer(formData);
+  };
+
   const handleResetGame = async () => {
     showGlobalLoader(); 
     startPlayerActionTransition(async () => {
@@ -536,25 +566,57 @@ export default function WelcomePage() {
             </div>
         ) : isLobbyPhaseActive ? (
             !thisPlayerObject ? (
-                // ********** JOIN SCREEN **********
-                <div className="w-full">
-                    <header className="mb-12 text-center">
-                        <button onClick={() => { showGlobalLoader(); router.push('/?step=welcome') }} className="cursor-pointer">
-                            <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
-                        </button>
-                        <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-                        <p className="text-xl text-muted-foreground mt-2">Enter your details to join the mayhem!</p>
-                    </header>
-                    <div className="w-full max-w-md mx-auto">
-                        <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
-                            <CardHeader className="bg-primary text-primary-foreground p-6">
-                                <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
-                                <CardDescription className="text-primary-foreground/80 text-base">Enter your name and pick your avatar.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-6">
-                                <PlayerSetupForm addPlayer={handleAddPlayer} />
-                            </CardContent>
-                        </Card>
+                // ********** NEW JOIN SCREEN with POSTER **********
+                <div className="w-full max-w-xs sm:max-w-sm mx-auto">
+                    <div className="relative aspect-[9/16]">
+                        <Image 
+                            src="/backgrounds/join-screen.jpg" 
+                            alt="A poster with a red skull and crossbones inviting players to join the game" 
+                            fill 
+                            className="object-cover rounded-2xl shadow-2xl" 
+                            data-ai-hint="skull poster"
+                            priority
+                        />
+                        <div className="absolute inset-0 flex flex-col justify-between p-6 sm:p-8">
+                            <form onSubmit={handleJoinSubmit} className="flex flex-col h-full space-y-4">
+                                
+                                <div className="flex-shrink-0 mt-16 sm:mt-24">
+                                    <Label htmlFor="name" className="text-white text-center block text-base sm:text-lg font-bold drop-shadow-md sr-only">Enter Your Name</Label>
+                                    <Input 
+                                        id="name"
+                                        name="name"
+                                        type="text"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
+                                        placeholder="YOUR TERRIBLE NAME"
+                                        maxLength={20}
+                                        required
+                                    />
+                                </div>
+                                
+                                <div className="flex-grow flex flex-col justify-center items-center">
+                                    <AvatarCarousel
+                                        avatars={AVATARS}
+                                        initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
+                                        onAvatarSelect={setSelectedAvatar}
+                                    />
+                                </div>
+
+                                <div className="flex-shrink-0">
+                                    <Button 
+                                        type="submit" 
+                                        variant="destructive" 
+                                        disabled={isProcessingAction || !name.trim() || !selectedAvatar} 
+                                        className="w-full text-base sm:text-lg font-bold py-3 bg-red-600 hover:bg-red-700 ring-2 ring-offset-2 ring-offset-black/50 ring-white/50"
+                                    >
+                                        {isProcessingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
+                                        JOIN THE MAYHEM
+                                    </Button>
+                                </div>
+
+                            </form>
+                        </div>
                     </div>
                 </div>
             ) : (
