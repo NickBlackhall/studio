@@ -505,29 +505,32 @@ export default function WelcomePage() {
           />
           <div className="relative z-10 flex h-full w-full flex-col items-center p-4">
             <form onSubmit={handleJoinSubmit} className="flex h-full w-full max-w-xs flex-col justify-between sm:max-w-sm">
-              {/* Group 1: Name Input (Top) */}
-              <div>
-                <Label htmlFor="name" className="sr-only">Enter Your Name</Label>
-                <Input
-                    id="name"
-                    name="name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
-                    placeholder="YOUR TERRIBLE NAME"
-                    maxLength={20}
-                    required
-                />
-              </div>
-
-              {/* Group 2: Avatar Carousel (Middle) */}
-              <div>
-                  <AvatarCarousel
-                      avatars={AVATARS}
-                      initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
-                      onAvatarSelect={setSelectedAvatar}
+              {/* This div groups the top two elements */}
+              <div className="pt-16">
+                {/* Group 1: Name Input */}
+                <div>
+                  <Label htmlFor="name" className="sr-only">Enter Your Name</Label>
+                  <Input
+                      id="name"
+                      name="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
+                      placeholder="YOUR TERRIBLE NAME"
+                      maxLength={20}
+                      required
                   />
+                </div>
+
+                {/* Group 2: Avatar Carousel */}
+                <div className="mt-4">
+                    <AvatarCarousel
+                        avatars={AVATARS}
+                        initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
+                        onAvatarSelect={setSelectedAvatar}
+                    />
+                </div>
               </div>
 
               {/* Group 3: Button (Bottom) */}
