@@ -7,12 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { AVATARS } from '@/lib/data';
 import { addPlayer as addPlayerAction } from '@/app/game/actions';
 import type { Tables } from '@/lib/database.types';
-import localFont from 'next/font/local';
-
-const imFellFont = localFont({
-  src: '../../public/fonts/IMFellEnglishSC-Regular.ttf',
-  display: 'swap',
-});
 
 interface PWAGameLayoutProps {
   gameId: string;
@@ -63,7 +57,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
               name="name"
               type="text"
               placeholder="YOUR NAME"
-              className={`name-input ${imFellFont.className}`}
+              className="name-input"
               maxLength={20}
               value={name}
               onChange={(e) => setName(e.target.value)}

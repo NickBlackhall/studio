@@ -182,7 +182,7 @@
 .name-input {
   width: 100%;
   padding: 1rem 1.5rem;
-  font-size: 3.5rem;
+  font-size: 2.5rem;
   font-weight: 700;
   text-align: center;
   color: #000;
@@ -195,6 +195,7 @@
 .name-input::placeholder {
   color: rgba(0, 0, 0, 0.7);
   font-family: 'IMFellEnglishSC', 'Times New Roman', serif;
+  font-size: 2rem;
 }
 
 /* MIDDLE SECTION */
@@ -274,5 +275,3 @@
     height: 10rem;
   }
 }
-
-    
