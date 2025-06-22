@@ -477,7 +477,7 @@ export default function WelcomePage() {
               const unreadyCount = internalGame.players.filter(p => !p.isReady).length;
               lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to ready up.`;
             } else if (showStartGameButton) {
-              lobbyMessage = "All players are ready! Time to start the mayhem!";
+              lobbyMessage = "All players are ready!";
             } else {
               const hostPlayerForMsg = hostPlayerId && internalGame.players.find(p => p.id === hostPlayerId);
               const hostNameForMessage = hostPlayerForMsg?.name || 'The host';
@@ -536,7 +536,7 @@ export default function WelcomePage() {
                         </div>
                         ))}
                     </div>
-                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-2">
+                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-8">
                       {showStartGameButton && (
                         <button
                           onClick={handleStartGame}
@@ -551,8 +551,8 @@ export default function WelcomePage() {
                             <Image
                               src="/ui/start-game-button.png"
                               alt="Start the Mayhem"
-                              width={202}
-                              height={76}
+                              width={162}
+                              height={61}
                               className="object-contain drop-shadow-xl"
                               data-ai-hint="start button"
                               priority
