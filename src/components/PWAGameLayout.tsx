@@ -57,7 +57,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
               id="name"
               name="name"
               type="text"
-              placeholder="YOUR TERRIBLE NAME"
+              placeholder="YOUR NAME"
               className="name-input"
               maxLength={20}
               value={name}
