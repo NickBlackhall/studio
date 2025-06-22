@@ -411,9 +411,8 @@ export default function WelcomePage() {
       return <PWAGameLayout gameId={internalGame.gameId} onPlayerAdded={handlePlayerAdded} />;
     }
 
-    // For Spectator or Lobby view, use the centered, constrained layout
     const mainContent = (
-      <div className="flex-grow w-full flex flex-col items-center justify-center">
+      <div className="flex-grow w-full flex flex-col items-center justify-center p-4">
         {isSpectatorView ? (
           <div className="w-full space-y-6 text-center">
             
@@ -486,7 +485,7 @@ export default function WelcomePage() {
               lobbyMessage = "";
             }
             return (
-              <div className="w-full">
+              <div className="w-full max-w-lg">
                 <div className="relative w-full">
                   <Image
                     src="/backgrounds/lobby-poster.jpg"
@@ -567,10 +566,8 @@ export default function WelcomePage() {
                       ) : null}
                     </div>
                   </div>
-                </div>
-                
-                <div className="mt-8 w-full max-w-4xl flex items-center justify-center gap-4">
-                   <Dialog>
+                  <div className="absolute bottom-[2%] left-0 right-0 flex items-center justify-center gap-4">
+                    <Dialog>
                       <DialogTrigger asChild>
                         <button className="bg-transparent border-none p-0">
                           <Image
@@ -588,6 +585,7 @@ export default function WelcomePage() {
                     <Button onClick={handleResetGame} variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80" disabled={isProcessingAction || isLoading}>
                       { (isProcessingAction || isLoading) ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />} Reset Lobby
                     </Button>
+                  </div>
                 </div>
               </div>
             );
@@ -597,7 +595,7 @@ export default function WelcomePage() {
     );
     
     return (
-      <div className={cn("min-h-screen flex flex-col items-center justify-center")}>
+      <div className={cn("min-h-screen flex flex-col items-center justify-center p-4")}>
         {mainContent}
       </div>
     );
