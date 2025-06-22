@@ -502,10 +502,10 @@ export default function WelcomePage() {
             priority
           />
           <div className="relative z-10 flex h-full w-full flex-col items-center p-4">
-            <form onSubmit={handleJoinSubmit} className="flex h-full w-full max-w-xs flex-col sm:max-w-sm">
+            <form onSubmit={handleJoinSubmit} className="flex h-full w-full max-w-xs flex-col justify-between sm:max-w-sm">
               {/* Top Section */}
-              <div className="w-full pt-48 sm:pt-56">
-                <Label htmlFor="name" className="text-white text-center block text-base sm:text-lg font-bold drop-shadow-md sr-only">Enter Your Name</Label>
+              <div className="pt-48 sm:pt-56">
+                <Label htmlFor="name" className="sr-only">Enter Your Name</Label>
                 <Input
                     id="name"
                     name="name"
@@ -518,9 +518,6 @@ export default function WelcomePage() {
                     required
                 />
               </div>
-
-              {/* Spacer */}
-              <div className="flex-grow" />
 
               {/* Bottom Section */}
               <div className="space-y-8 pb-8">
@@ -737,3 +734,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
