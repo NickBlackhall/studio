@@ -494,7 +494,7 @@ export default function WelcomePage() {
       return (
         <div className="relative flex-grow flex flex-col">
           <Image
-            src="/backgrounds/join-screen.jpg"
+            src="/backgrounds/join-screen-2.jpg"
             alt="A poster with a red skull and crossbones inviting players to join the game"
             fill
             className="object-contain"
