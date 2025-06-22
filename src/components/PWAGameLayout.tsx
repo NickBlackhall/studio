@@ -132,7 +132,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
                     showGlobalLoader();
                     router.push('/');
                   }}
-                  className="absolute bottom-0 left-0 w-full h-1/2 cursor-pointer"
+                  className="absolute bottom-0 left-0 w-full h-1/2 cursor-pointer border-4 border-red-500"
                   aria-label="Go back to welcome screen"
                   title="Go back to welcome screen"
                 />
