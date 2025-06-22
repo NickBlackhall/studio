@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -143,10 +144,8 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
         <Image 
           src="/backgrounds/join-screen-2.jpg"
           alt="Make It Terrible Game Background"
-          layout="fill"
-          objectFit="cover"
-          objectPosition="center"
-          className="poster-image"
+          fill
+          className="object-cover object-center"
           data-ai-hint="skull poster"
           priority
         />

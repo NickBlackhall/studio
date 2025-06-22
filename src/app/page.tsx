@@ -395,9 +395,8 @@ export default function WelcomePage() {
         <Image
           src="/backgrounds/mobile-background.jpg"
           alt="Make It Terrible game poster background"
-          layout="fill"
-          objectFit="contain"
-          objectPosition="top"
+          fill
+          className="object-contain object-top"
           priority
           data-ai-hint="game poster"
         />
@@ -538,9 +537,8 @@ export default function WelcomePage() {
       <Image
         src="/backgrounds/mobile-background.jpg"
         alt="Make It Terrible game poster background"
-        layout="fill"
-        objectFit="contain"
-        objectPosition="top"
+        fill
+        className="object-contain object-top"
         priority
         data-ai-hint="game poster"
       />
