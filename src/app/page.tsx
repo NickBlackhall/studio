@@ -413,7 +413,7 @@ export default function WelcomePage() {
 
     // For Spectator or Lobby view, use the centered, constrained layout
     const mainContent = (
-      <div className="flex-grow w-full max-w-4xl mx-auto flex flex-col items-center justify-center p-4">
+      <div className="flex-grow w-full flex flex-col items-center justify-center">
         {isSpectatorView ? (
           <div className="w-full space-y-6 text-center">
             
@@ -487,7 +487,7 @@ export default function WelcomePage() {
             }
             return (
               <div className="w-full">
-                <div className="relative w-full max-w-lg mx-auto">
+                <div className="relative w-full">
                   <Image
                     src="/backgrounds/lobby-poster.jpg"
                     alt="Lobby poster background"
@@ -538,7 +538,7 @@ export default function WelcomePage() {
                         </div>
                         ))}
                     </div>
-                    <div className="flex-shrink-0 text-center px-4 pb-2 space-y-2">
+                    <div className="flex-shrink-0 text-center px-4 pb-1 space-y-2">
                       <p className="bg-transparent font-semibold text-black">
                         {lobbyMessage}
                       </p>
@@ -597,7 +597,7 @@ export default function WelcomePage() {
     );
     
     return (
-      <div className={cn("min-h-screen flex flex-col items-center justify-start py-8")}>
+      <div className={cn("min-h-screen flex flex-col items-center justify-center")}>
         {mainContent}
       </div>
     );
@@ -636,4 +636,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-    
