@@ -63,14 +63,14 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
 
   return (
     <div className="pwa-game-container">
-      {/* Invisible button over "MAYHEM" - with red border for debugging */}
+      {/* Invisible button over "MAYHEM" */}
       <button
         type="button"
         onClick={() => {
           showGlobalLoader();
           router.push('/');
         }}
-        className="absolute top-[12vh] left-1/2 -translate-x-1/2 w-[60vw] max-w-[250px] h-[8vh] border-4 border-red-500 z-20"
+        className="absolute top-[12vh] left-1/2 -translate-x-1/2 w-[60vw] max-w-[250px] h-[8vh] z-20"
         aria-label="Go back to welcome screen"
         title="Go back to welcome screen"
       />
