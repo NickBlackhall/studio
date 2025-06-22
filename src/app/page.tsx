@@ -493,55 +493,61 @@ export default function WelcomePage() {
     // Player has not joined yet, show the full-screen poster join view
     if (isLobbyPhaseActive && !thisPlayerObject) {
       return (
-        <div className="relative flex-grow flex flex-col bg-black">
-          <Image
-            src="/backgrounds/join-screen-2.jpg"
-            alt="A poster with a red skull and crossbones inviting players to join the game"
-            layout="fill"
-            objectFit="contain"
-            objectPosition="top"
-            data-ai-hint="skull poster"
-            priority
-            className="z-0"
-          />
-          <form onSubmit={handleJoinSubmit} className="relative z-10 flex-grow">
-            
-            {/* NAME INPUT CONTAINER */}
-            <div className="absolute top-[25%] left-1/2 w-full max-w-xs -translate-x-1/2 sm:max-w-sm">
+        <div className="relative w-screen h-screen bg-black">
+          <div className="absolute inset-0 z-0">
+            <Image
+              src="/backgrounds/join-screen-2.jpg"
+              alt="A poster with a red skull and crossbones inviting players to join the game"
+              layout="fill"
+              objectFit="cover"
+              data-ai-hint="skull poster"
+              priority
+            />
+          </div>
+
+          <form onSubmit={handleJoinSubmit} className="absolute inset-0 z-10 flex flex-col justify-between">
+            {/* TOP GROUP: Name Input */}
+            <div className="flex justify-center items-start pt-20 px-4">
+              <div className="w-full max-w-xs sm:max-w-sm">
                 <Label htmlFor="name" className="sr-only">Enter Your Name</Label>
                 <Input
-                    id="name"
-                    name="name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
-                    placeholder="YOUR TERRIBLE NAME"
-                    maxLength={20}
-                    required
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
+                  placeholder="YOUR TERRIBLE NAME"
+                  maxLength={20}
+                  required
                 />
+              </div>
             </div>
 
-            {/* AVATAR CAROUSEL CONTAINER */}
-            <div className="absolute top-[45%] left-1/2 w-full max-w-xs -translate-x-1/2 sm:max-w-sm">
+            {/* MIDDLE GROUP: Avatar Carousel */}
+            <div className="flex justify-center items-center px-4">
+              <div className="w-full max-w-xs sm:max-w-sm">
                 <AvatarCarousel
-                    avatars={AVATARS}
-                    initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
-                    onAvatarSelect={setSelectedAvatar}
+                  avatars={AVATARS}
+                  initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
+                  onAvatarSelect={setSelectedAvatar}
                 />
+              </div>
             </div>
             
-            {/* JOIN BUTTON CONTAINER */}
-            <div className="absolute bottom-[15%] left-1/2 w-full max-w-xs -translate-x-1/2 sm:max-w-sm">
-                 <Button
-                    type="submit"
-                    variant="destructive"
-                    disabled={isProcessingAction || !name.trim() || !selectedAvatar}
-                    className="w-full text-base sm:text-lg font-bold py-3 bg-red-600 hover:bg-red-700 ring-2 ring-offset-2 ring-offset-black/50 ring-white/50"
+            {/* BOTTOM GROUP: Join Button */}
+            <div className="flex justify-center items-end pb-12 px-4">
+              <div className="w-full max-w-xs sm:max-w-sm">
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  disabled={isProcessingAction || !name.trim() || !selectedAvatar}
+                  className="w-full text-base sm:text-lg font-bold py-3 bg-red-600 hover:bg-red-700 ring-2 ring-offset-2 ring-offset-black/50 ring-white/50"
                 >
-                    {isProcessingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
-                    JOIN THE MAYHEM
+                  {isProcessingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
+                  JOIN THE MAYHEM
                 </Button>
+              </div>
             </div>
           </form>
         </div>

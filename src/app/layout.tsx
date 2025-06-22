@@ -1,6 +1,7 @@
 
 // import localFont from 'next/font/local'; // Commented out
 import './globals.css';
+import type { Metadata } from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
@@ -21,9 +22,15 @@ import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 //   display: 'swap',
 // });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Make It Terrible',
   description: 'The game of terrible choices and hilarious outcomes!',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
