@@ -489,12 +489,12 @@ export default function WelcomePage() {
               <div className="w-full">
                 <div className="relative w-full max-w-lg mx-auto">
                   <Image
-                    src="/backgrounds/lobby-card.png"
-                    alt="Lobby card background"
+                    src="/backgrounds/lobby-poster.jpg"
+                    alt="Lobby poster background"
                     width={500}
                     height={700}
                     className="w-full h-auto"
-                    data-ai-hint="lobby card parchment"
+                    data-ai-hint="lobby poster"
                   />
                   <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col justify-between">
                     <div className="flex-grow overflow-y-auto space-y-2">
@@ -529,16 +529,19 @@ export default function WelcomePage() {
                                 />
                             ) : (
                                 player.isReady ? (
-                                <CheckSquare className="h-9 w-9 text-green-700" />
+                                <CheckSquare className="h-12 w-20 text-green-700" />
                                 ) : (
-                                <XSquare className="h-9 w-9 text-red-700" />
+                                <XSquare className="h-12 w-20 text-red-700" />
                                 )
                             )}
                             </div>
                         </div>
                         ))}
                     </div>
-                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-6">
+                    <div className="flex-shrink-0 text-center px-4 pb-2 space-y-2">
+                      <p className="bg-transparent font-semibold text-black">
+                        {lobbyMessage}
+                      </p>
                        {showStartGameButton ? (
                          <button
                           onClick={handleStartGame}
@@ -546,26 +549,22 @@ export default function WelcomePage() {
                           className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70"
                         >
                           {isProcessingAction ? (
-                            <div className="h-[59.6px] flex items-center justify-center">
+                            <div className="h-[71.52px] flex items-center justify-center">
                               <Loader2 className="h-8 w-8 animate-spin text-black" />
                             </div>
                           ) : (
                             <Image
                               src="/ui/start-game-button.png"
                               alt="Start the Mayhem"
-                              width={189.84}
-                              height={71.52}
+                              width={189.84 * 1.2 * 1.2 * 1.2 * 1.2}
+                              height={71.52 * 1.2 * 1.2 * 1.2 * 1.2}
                               className="object-contain drop-shadow-xl"
                               data-ai-hint="start button"
                               priority
                             />
                           )}
                         </button>
-                      ) : (
-                         <p className="text-black font-semibold bg-transparent">
-                           {lobbyMessage}
-                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
