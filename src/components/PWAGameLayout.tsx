@@ -6,8 +6,12 @@ import { useToast } from "@/hooks/use-toast";
 import { AVATARS } from '@/lib/data';
 import { addPlayer as addPlayerAction } from '@/app/game/actions';
 import type { Tables } from '@/lib/database.types';
+import localFont from 'next/font/local';
 
-// The 'imFellFont' font is now applied via globals.css to fix a build error.
+const imFellFont = localFont({
+  src: '../../public/fonts/IMFellEnglishSC-Regular.ttf',
+  display: 'swap',
+});
 
 interface PWAGameLayoutProps {
   gameId: string;
@@ -86,8 +90,24 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
 
         {/* BOTTOM SECTION - Join Button */}
         <div className="bottom-section">
-          <button type="submit" className="join-btn" disabled={isProcessing}>
-            {isProcessing ? 'JOINING...' : 'JOIN THE MAYHEM'}
+          <button
+            type="submit"
+            className="bg-transparent border-none p-0 disabled:opacity-50 transition-transform hover:scale-105"
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <span className="text-white text-2xl font-bold uppercase animate-pulse">Joining...</span>
+            ) : (
+              <Image
+                src="/ui/join-game-button.png"
+                alt="Join the Mayhem"
+                width={252}
+                height={95}
+                className="object-contain drop-shadow-xl"
+                data-ai-hint="join button"
+                priority
+              />
+            )}
           </button>
         </div>
       </form>

@@ -266,32 +266,6 @@
   position: relative;
 }
 
-.join-btn {
-  width: 100%;
-  max-width: 320px;
-  padding: 1.25rem 2rem;
-  font-size: 1.25rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  color: white;
-  background: linear-gradient(145deg, #dc2626, #b91c1c);
-  border: 3px solid #000;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  cursor: pointer;
-  transition: transform 0.2s, background-color 0.2s;
-}
-
-.join-btn:hover {
-  transform: scale(1.02);
-}
-
-.join-btn:disabled {
-  background: linear-gradient(145deg, #9ca3af, #6b7280);
-  cursor: not-allowed;
-}
-
-
 /* Mobile adjustments */
 @media (max-width: 640px) {
   .carousel-btn {
