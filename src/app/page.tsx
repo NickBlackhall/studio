@@ -505,9 +505,9 @@ export default function WelcomePage() {
             />
           </div>
 
-          <form onSubmit={handleJoinSubmit} className="absolute inset-0 z-10 flex flex-col justify-between">
+          <form onSubmit={handleJoinSubmit} className="relative w-full h-full flex flex-col justify-between z-10">
             {/* TOP GROUP: Name Input */}
-            <div className="flex justify-center items-start pt-20 px-4">
+            <div className="flex justify-center items-start pt-[25vh] px-4">
               <div className="w-full max-w-xs sm:max-w-sm">
                 <Label htmlFor="name" className="sr-only">Enter Your Name</Label>
                 <Input
@@ -525,7 +525,7 @@ export default function WelcomePage() {
             </div>
 
             {/* MIDDLE GROUP: Avatar Carousel */}
-            <div className="flex justify-center items-center px-4">
+            <div className="flex justify-center items-center px-4 -mt-16 sm:-mt-24">
               <div className="w-full max-w-xs sm:max-w-sm">
                 <AvatarCarousel
                   avatars={AVATARS}
@@ -536,7 +536,7 @@ export default function WelcomePage() {
             </div>
             
             {/* BOTTOM GROUP: Join Button */}
-            <div className="flex justify-center items-end pb-12 px-4">
+            <div className="flex justify-center items-end pb-[10vh] px-4">
               <div className="w-full max-w-xs sm:max-w-sm">
                 <Button
                   type="submit"
