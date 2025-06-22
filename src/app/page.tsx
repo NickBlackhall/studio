@@ -506,7 +506,7 @@ export default function WelcomePage() {
           <div className="relative z-10 flex h-full w-full flex-col items-center p-4">
             <form onSubmit={handleJoinSubmit} className="flex h-full w-full max-w-xs flex-col justify-between sm:max-w-sm">
               {/* Group 1: Name Input (Top) */}
-              <div className="pt-48 sm:pt-56">
+              <div>
                 <Label htmlFor="name" className="sr-only">Enter Your Name</Label>
                 <Input
                     id="name"
