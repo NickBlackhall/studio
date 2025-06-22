@@ -460,9 +460,10 @@ export default function WelcomePage() {
         <Image
           src="/backgrounds/mobile-background.jpg"
           alt="Make It Terrible game poster background"
-          fill
+          layout="fill"
+          objectFit="contain"
+          objectPosition="top"
           priority
-          className="object-contain object-top"
           data-ai-hint="game poster"
         />
         <div className="relative z-10 flex flex-grow items-center justify-center">
@@ -496,14 +497,15 @@ export default function WelcomePage() {
           <Image
             src="/backgrounds/join-screen-2.jpg"
             alt="A poster with a red skull and crossbones inviting players to join the game"
-            fill
-            className="object-contain object-top"
+            layout="fill"
+            objectFit="contain"
+            objectPosition="top"
             data-ai-hint="skull poster"
             priority
           />
           <div className="relative z-10 flex h-full w-full flex-col items-center p-4">
             <form onSubmit={handleJoinSubmit} className="flex h-full w-full max-w-xs flex-col justify-between sm:max-w-sm">
-              {/* Top Section */}
+              {/* Group 1: Name Input (Top) */}
               <div className="pt-48 sm:pt-56">
                 <Label htmlFor="name" className="sr-only">Enter Your Name</Label>
                 <Input
@@ -519,13 +521,17 @@ export default function WelcomePage() {
                 />
               </div>
 
-              {/* Bottom Section */}
-              <div className="space-y-8 pb-8">
+              {/* Group 2: Avatar Carousel (Middle) */}
+              <div>
                   <AvatarCarousel
                       avatars={AVATARS}
                       initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
                       onAvatarSelect={setSelectedAvatar}
                   />
+              </div>
+
+              {/* Group 3: Button (Bottom) */}
+              <div className="pb-8">
                   <Button
                       type="submit"
                       variant="destructive"
@@ -707,9 +713,10 @@ export default function WelcomePage() {
       <Image
         src="/backgrounds/mobile-background.jpg"
         alt="Make It Terrible game poster background"
-        fill
+        layout="fill"
+        objectFit="contain"
+        objectPosition="top"
         priority
-        className="object-contain object-top"
         data-ai-hint="game poster"
       />
       <div className="relative z-10 flex flex-grow items-center justify-center">
@@ -734,5 +741,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
