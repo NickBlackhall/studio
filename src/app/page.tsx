@@ -477,12 +477,13 @@ export default function WelcomePage() {
             } else if (!allPlayersReady) {
               const unreadyCount = internalGame.players.filter(p => !p.isReady).length;
               lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to ready up.`;
-            } else if (showStartGameButton) {
-               lobbyMessage = "All players are ready!";
             } else {
               const hostPlayerForMsg = hostPlayerId && internalGame.players.find(p => p.id === hostPlayerId);
               const hostNameForMessage = hostPlayerForMsg?.name || 'The host';
               lobbyMessage = `Waiting for ${hostNameForMessage} to start the game.`;
+            }
+            if (allPlayersReady && hostPlayerId === thisPlayerIdRef.current) {
+              lobbyMessage = "All players are ready!";
             }
             return (
               <div className="w-full">
@@ -537,32 +538,33 @@ export default function WelcomePage() {
                         </div>
                         ))}
                     </div>
-                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-4">
-                      <p className="text-black font-semibold bg-amber-100/80 p-2 rounded-md shadow">
-                        {lobbyMessage}
-                      </p>
-                      {showStartGameButton && (
+                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-2">
+                       {showStartGameButton ? (
                         <button
                           onClick={handleStartGame}
                           disabled={isProcessingAction}
                           className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70"
                         >
                           {isProcessingAction ? (
-                            <div className="h-[39.2px] flex items-center justify-center">
+                            <div className="h-[34.5px] flex items-center justify-center">
                               <Loader2 className="h-8 w-8 animate-spin text-black" />
                             </div>
                           ) : (
                             <Image
                               src="/ui/start-game-button.png"
                               alt="Start the Mayhem"
-                              width={104}
-                              height={39.2}
+                              width={91.5}
+                              height={34.5}
                               className="object-contain drop-shadow-xl"
                               data-ai-hint="start button"
                               priority
                             />
                           )}
                         </button>
+                      ) : (
+                         <p className="text-black font-semibold">
+                           {lobbyMessage}
+                         </p>
                       )}
                     </div>
                   </div>
