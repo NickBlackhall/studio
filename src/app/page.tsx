@@ -528,7 +528,7 @@ export default function WelcomePage() {
               const unreadyCount = internalGame.players.filter(p => !p.isReady).length;
               lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to ready up.`;
             } else if (showStartGameButton) {
-              lobbyMessage = "All players are ready! You can start the game!";
+              lobbyMessage = "All players are ready! Time to start the mayhem!";
             } else {
               const hostPlayerForMsg = hostPlayerId && internalGame.players.find(p => p.id === hostPlayerId);
               const hostNameForMessage = hostPlayerForMsg?.name || 'The host';
@@ -536,32 +536,83 @@ export default function WelcomePage() {
             }
             return (
               <div className="w-full">
-                
                 <div className="relative w-full max-w-lg mx-auto">
-                  <Image 
-                    src="/backgrounds/lobby-card.png" 
-                    alt="Lobby card background" 
-                    width={500} 
-                    height={700} 
+                  <Image
+                    src="/backgrounds/lobby-card.png"
+                    alt="Lobby card background"
+                    width={500}
+                    height={700}
                     className="w-full h-auto"
                     data-ai-hint="lobby card parchment"
                   />
-                  
-                  {/* Player list container */}
-                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[54%] bg-red-500/20 rounded-md overflow-y-auto">
-                    {/* This is where the player list will go. The background is for positioning help. */}
+                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[54%] rounded-md overflow-y-auto px-2 py-1 space-y-1">
+                    {sortedPlayersForDisplay.map((player) => (
+                      <div
+                        key={player.id}
+                        className={cn(
+                          "flex items-center justify-between p-2 rounded-md transition-colors",
+                          player.id === thisPlayerObject?.id ? "bg-black/10" : "bg-black/5"
+                        )}
+                      >
+                        <div className="flex items-center min-w-0">
+                          {player.avatar.startsWith('/') ? (
+                            <Image
+                              src={player.avatar}
+                              alt={`${player.name}'s avatar`}
+                              width={36}
+                              height={36}
+                              className="mr-3 rounded-sm object-cover flex-shrink-0"
+                              data-ai-hint="player avatar"
+                            />
+                          ) : (
+                            <span className="text-3xl mr-3 flex-shrink-0">{player.avatar}</span>
+                          )}
+                          <span className="font-semibold text-base text-black truncate">{player.name}</span>
+                        </div>
+                        <div className="flex-shrink-0 ml-2">
+                          {player.id === thisPlayerObject?.id ? (
+                            <ReadyToggle
+                              isReady={player.isReady}
+                              onToggle={() => handleToggleReady(player)}
+                              disabled={isProcessingAction}
+                            />
+                          ) : (
+                            player.isReady ? (
+                              <CheckSquare className="h-6 w-6 text-green-700" />
+                            ) : (
+                              <XSquare className="h-6 w-6 text-red-700" />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Dialog>
-                    <DialogTrigger asChild><Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80"><HelpCircle className="mr-2 h-5 w-5" /> How to Play</Button></DialogTrigger>
-                    <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
-                  </Dialog>
-                  <Image src="/new-logo.png" alt="Make it Terrible Logo" width={96} height={96} className="drop-shadow-lg" data-ai-hint="game logo" />
-                  <Button onClick={handleResetGame} variant="destructive" className="hover:bg-destructive/80" disabled={isProcessingAction || isLoading}>
-                    { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
-                  </Button>
+                <div className="mt-4 w-full max-w-lg mx-auto text-center px-4 space-y-3">
+                  <p className="text-black font-semibold bg-amber-100/80 p-2 rounded-md shadow">
+                    {lobbyMessage}
+                  </p>
+                  {showStartGameButton && (
+                    <Button
+                      onClick={handleStartGame}
+                      disabled={isProcessingAction}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-6 rounded-lg shadow-lg animate-pulse"
+                    >
+                      {isProcessingAction ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-2 h-6 w-6" />}
+                      START THE MAYHEM
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="mt-8 w-full max-w-4xl flex items-center justify-center gap-4">
+                   <Dialog>
+                      <DialogTrigger asChild><Button variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80"><HelpCircle className="mr-1 h-4 w-4" /> How to Play</Button></DialogTrigger>
+                      <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
+                    </Dialog>
+                    <Button onClick={handleResetGame} variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80" disabled={isProcessingAction || isLoading}>
+                      { (isProcessingAction || isLoading) ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />} Reset Lobby
+                    </Button>
                 </div>
               </div>
             );
