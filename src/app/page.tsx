@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -477,7 +478,7 @@ export default function WelcomePage() {
               const unreadyCount = internalGame.players.filter(p => !p.isReady).length;
               lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to ready up.`;
             } else if (showStartGameButton) {
-              lobbyMessage = "All players are ready!";
+               lobbyMessage = "All players are ready!";
             } else {
               const hostPlayerForMsg = hostPlayerId && internalGame.players.find(p => p.id === hostPlayerId);
               const hostNameForMessage = hostPlayerForMsg?.name || 'The host';
@@ -536,7 +537,10 @@ export default function WelcomePage() {
                         </div>
                         ))}
                     </div>
-                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-8">
+                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-2">
+                      <p className="text-black font-semibold bg-amber-100/80 p-2 rounded-md shadow">
+                        {lobbyMessage}
+                      </p>
                       {showStartGameButton && (
                         <button
                           onClick={handleStartGame}
@@ -551,8 +555,8 @@ export default function WelcomePage() {
                             <Image
                               src="/ui/start-game-button.png"
                               alt="Start the Mayhem"
-                              width={162}
-                              height={61}
+                              width={130}
+                              height={49}
                               className="object-contain drop-shadow-xl"
                               data-ai-hint="start button"
                               priority
@@ -560,9 +564,6 @@ export default function WelcomePage() {
                           )}
                         </button>
                       )}
-                      <p className="text-black font-semibold bg-amber-100/80 p-2 rounded-md shadow">
-                        {lobbyMessage}
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -623,3 +624,4 @@ export default function WelcomePage() {
     </div>
   );
 }
+
