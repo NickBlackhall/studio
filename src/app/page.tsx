@@ -462,7 +462,7 @@ export default function WelcomePage() {
           alt="Make It Terrible game poster background"
           fill
           priority
-          className="object-contain"
+          className="object-contain object-top"
           data-ai-hint="game poster"
         />
         <div className="relative z-10 flex flex-grow items-center justify-center">
@@ -503,8 +503,8 @@ export default function WelcomePage() {
           />
           <div className="relative z-10 flex flex-grow flex-col items-center justify-center p-4">
             <div className="w-full max-w-xs sm:max-w-sm h-full">
-              <div className="flex flex-col h-full justify-between py-12">
-                <form onSubmit={handleJoinSubmit} className="flex flex-col h-full justify-between space-y-4">
+              <div className="flex flex-col h-full justify-center">
+                <form onSubmit={handleJoinSubmit} className="flex flex-col space-y-8">
                   <div className="flex-shrink-0">
                     <Label htmlFor="name" className="text-white text-center block text-base sm:text-lg font-bold drop-shadow-md sr-only">Enter Your Name</Label>
                     <Input
@@ -519,7 +519,7 @@ export default function WelcomePage() {
                       required
                     />
                   </div>
-                  <div className="flex-grow flex flex-col justify-center items-center">
+                  <div className="flex flex-col justify-center items-center">
                     <AvatarCarousel
                       avatars={AVATARS}
                       initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
