@@ -477,7 +477,7 @@ export default function WelcomePage() {
 
   if (currentStep === 'welcome') {
     return (
-      <div className="relative flex-grow flex flex-col">
+      <div className="relative flex-grow flex flex-col bg-black">
         {/* Layer 1: background tile is on body */}
         
         {/* Layer 2: Poster image fills the container */}
@@ -520,7 +520,7 @@ export default function WelcomePage() {
     // Player has not joined yet, show the full-screen poster join view
     if (isLobbyPhaseActive && !thisPlayerObject) {
       return (
-        <div className="relative flex-grow flex flex-col">
+        <div className="relative flex-grow flex flex-col bg-black">
           {isClient && (
             <Image
               src={`/backgrounds/join-screen.jpg${cacheBuster}`}
@@ -736,7 +736,7 @@ export default function WelcomePage() {
 
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
-    <div className="relative flex-grow flex flex-col">
+    <div className="relative flex-grow flex flex-col bg-black">
       {isClient && (
         <Image
           src={`/backgrounds/mobile-background.jpg${cacheBuster}`}
