@@ -502,46 +502,40 @@ export default function WelcomePage() {
             priority
           />
           <div className="relative z-10 flex flex-grow flex-col items-center p-4">
-            <form onSubmit={handleJoinSubmit} className="flex h-full w-full max-w-xs flex-col justify-between sm:max-w-sm">
-
-              {/* Top section for the Name Input */}
-              <div className="pt-48 sm:pt-56"> 
-                  <div className="flex-shrink-0">
-                      <Label htmlFor="name" className="text-white text-center block text-base sm:text-lg font-bold drop-shadow-md sr-only">Enter Your Name</Label>
-                      <Input
-                          id="name"
-                          name="name"
-                          type="text"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
-                          placeholder="YOUR TERRIBLE NAME"
-                          maxLength={20}
-                          required
-                      />
-                  </div>
+            <form onSubmit={handleJoinSubmit} className="relative flex h-full w-full max-w-xs flex-col items-center justify-start sm:max-w-sm pb-32">
+              <div className="w-full pt-48 sm:pt-56">
+                <Label htmlFor="name" className="text-white text-center block text-base sm:text-lg font-bold drop-shadow-md sr-only">Enter Your Name</Label>
+                <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
+                    placeholder="YOUR TERRIBLE NAME"
+                    maxLength={20}
+                    required
+                />
               </div>
 
-              {/* Bottom section for Avatar and Button */}
-              <div className="pb-8 sm:pb-12">
-                  <div className="flex flex-col justify-center items-center">
-                      <AvatarCarousel
-                          avatars={AVATARS}
-                          initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
-                          onAvatarSelect={setSelectedAvatar}
-                      />
-                  </div>
-                  <div className="flex-shrink-0 mt-8">
-                      <Button
-                          type="submit"
-                          variant="destructive"
-                          disabled={isProcessingAction || !name.trim() || !selectedAvatar}
-                          className="w-full text-base sm:text-lg font-bold py-3 bg-red-600 hover:bg-red-700 ring-2 ring-offset-2 ring-offset-black/50 ring-white/50"
-                      >
-                          {isProcessingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
-                          JOIN THE MAYHEM
-                      </Button>
-                  </div>
+              <div className="mt-8">
+                  <AvatarCarousel
+                      avatars={AVATARS}
+                      initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
+                      onAvatarSelect={setSelectedAvatar}
+                  />
+              </div>
+
+              <div className="absolute bottom-8 left-0 w-full px-4">
+                  <Button
+                      type="submit"
+                      variant="destructive"
+                      disabled={isProcessingAction || !name.trim() || !selectedAvatar}
+                      className="w-full text-base sm:text-lg font-bold py-3 bg-red-600 hover:bg-red-700 ring-2 ring-offset-2 ring-offset-black/50 ring-white/50"
+                  >
+                      {isProcessingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
+                      JOIN THE MAYHEM
+                  </Button>
               </div>
             </form>
           </div>
