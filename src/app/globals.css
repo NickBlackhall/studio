@@ -202,9 +202,9 @@
   flex: 1;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   padding: 1rem;
-  padding-top: 5vh;
+  padding-top: 15vh; /* Pushes the vertical centering point down */
   z-index: 10;
   position: relative;
 }
