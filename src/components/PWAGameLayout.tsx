@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { AVATARS } from '@/lib/data';
 import { addPlayer as addPlayerAction } from '@/app/game/actions';
 import type { Tables } from '@/lib/database.types';
+import { useRouter } from 'next/navigation';
+import { useLoading } from '@/contexts/LoadingContext';
 
 interface PWAGameLayoutProps {
   gameId: string;
@@ -18,6 +20,8 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
   const [avatarIndex, setAvatarIndex] = useState(0);
   const [isProcessing, startTransition] = useTransition();
   const { toast } = useToast();
+  const router = useRouter();
+  const { showGlobalLoader } = useLoading();
 
   const handleAvatarChange = (direction: number) => {
     const newIndex = (avatarIndex + direction + AVATARS.length) % AVATARS.length;
@@ -98,26 +102,42 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
 
         {/* BOTTOM SECTION - Join Button */}
         <div className="bottom-section">
-          {(isReadyToJoin || isProcessing) && (
-            <button
-              type="submit"
-              className="bg-transparent border-none p-0 group animate-slow-scale-pulse join-game-button"
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <span className="text-white text-2xl font-bold uppercase animate-pulse">Joining...</span>
-              ) : (
-                <Image
-                  src="/ui/join-game-button.png"
-                  alt="Join the Mayhem"
-                  width={252}
-                  height={95}
-                  className="object-contain drop-shadow-xl"
-                  data-ai-hint="join button"
-                  priority
+          {isReadyToJoin && (
+            <div className="relative">
+              <button
+                type="submit"
+                className="bg-transparent border-none p-0 group animate-slow-scale-pulse join-game-button"
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <span className="text-white text-2xl font-bold uppercase animate-pulse">Joining...</span>
+                ) : (
+                  <Image
+                    src="/ui/join-game-button.png"
+                    alt="Join the Mayhem"
+                    width={252}
+                    height={95}
+                    className="object-contain drop-shadow-xl"
+                    data-ai-hint="join button"
+                    priority
+                  />
+                )}
+              </button>
+
+              {/* Invisible button over "MAYHEM" */}
+              {!isProcessing && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    showGlobalLoader();
+                    router.push('/');
+                  }}
+                  className="absolute bottom-0 left-0 w-full h-1/2 cursor-pointer"
+                  aria-label="Go back to welcome screen"
+                  title="Go back to welcome screen"
                 />
               )}
-            </button>
+            </div>
           )}
         </div>
       </form>
