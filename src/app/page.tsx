@@ -561,7 +561,7 @@ export default function WelcomePage() {
                     <DialogTrigger asChild><Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80"><HelpCircle className="mr-2 h-5 w-5" /> How to Play</Button></DialogTrigger>
                     <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
                   </Dialog>
-                  <Image src="/new-logo.png" alt="Make it Terrible Logo" width={72} height={72} className="drop-shadow-lg" data-ai-hint="game logo" />
+                  <Image src="/new-logo.png" alt="Make it Terrible Logo" width={96} height={96} className="drop-shadow-lg" data-ai-hint="game logo" />
                   <Button onClick={handleResetGame} variant="destructive" className="hover:bg-destructive/80" disabled={isProcessingAction || isLoading}>
                     { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
                   </Button>
@@ -614,3 +614,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
