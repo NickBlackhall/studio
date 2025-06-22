@@ -501,41 +501,48 @@ export default function WelcomePage() {
             data-ai-hint="skull poster"
             priority
           />
-          {/* Changed justify-center to justify-end and added padding-bottom to push the form up */}
-          <div className="relative z-10 flex flex-grow flex-col items-center justify-end p-4 pb-32 sm:pb-48">
-            <div className="w-full max-w-xs sm:max-w-sm">
-                <form onSubmit={handleJoinSubmit} className="flex flex-col space-y-8">
-                  <div className="flex-shrink-0">
-                    <Label htmlFor="name" className="text-white text-center block text-base sm:text-lg font-bold drop-shadow-md sr-only">Enter Your Name</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
-                      placeholder="YOUR TERRIBLE NAME"
-                      maxLength={20}
-                      required
-                    />
+          <div className="relative z-10 flex flex-grow flex-col items-center justify-center p-4 h-full">
+            <div className="w-full max-w-xs sm:max-w-sm h-full">
+                <form onSubmit={handleJoinSubmit} className="h-full flex flex-col justify-between">
+
+                  {/* Top section for the Name Input */}
+                  <div className="pt-48 sm:pt-56"> 
+                      <div className="flex-shrink-0">
+                          <Label htmlFor="name" className="text-white text-center block text-base sm:text-lg font-bold drop-shadow-md sr-only">Enter Your Name</Label>
+                          <Input
+                              id="name"
+                              name="name"
+                              type="text"
+                              value={name}
+                              onChange={(e) => setName(e.target.value)}
+                              className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
+                              placeholder="YOUR TERRIBLE NAME"
+                              maxLength={20}
+                              required
+                          />
+                      </div>
                   </div>
-                  <div className="flex flex-col justify-center items-center">
-                    <AvatarCarousel
-                      avatars={AVATARS}
-                      initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
-                      onAvatarSelect={setSelectedAvatar}
-                    />
-                  </div>
-                  <div className="flex-shrink-0">
-                    <Button
-                      type="submit"
-                      variant="destructive"
-                      disabled={isProcessingAction || !name.trim() || !selectedAvatar}
-                      className="w-full text-base sm:text-lg font-bold py-3 bg-red-600 hover:bg-red-700 ring-2 ring-offset-2 ring-offset-black/50 ring-white/50"
-                    >
-                      {isProcessingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
-                      JOIN THE MAYHEM
-                    </Button>
+
+                  {/* Bottom section for Avatar and Button */}
+                  <div className="pb-8 sm:pb-12">
+                      <div className="flex flex-col justify-center items-center">
+                          <AvatarCarousel
+                              avatars={AVATARS}
+                              initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
+                              onAvatarSelect={setSelectedAvatar}
+                          />
+                      </div>
+                      <div className="flex-shrink-0 mt-8">
+                          <Button
+                              type="submit"
+                              variant="destructive"
+                              disabled={isProcessingAction || !name.trim() || !selectedAvatar}
+                              className="w-full text-base sm:text-lg font-bold py-3 bg-red-600 hover:bg-red-700 ring-2 ring-offset-2 ring-offset-black/50 ring-white/50"
+                          >
+                              {isProcessingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
+                              JOIN THE MAYHEM
+                          </Button>
+                      </div>
                   </div>
                 </form>
             </div>
