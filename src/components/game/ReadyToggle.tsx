@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from 'next/image';
@@ -19,6 +18,7 @@ export default function ReadyToggle({ isReady, onToggle, disabled = false }: Rea
       className={cn(
         "relative h-9 w-16 cursor-pointer transition-opacity duration-200 ease-in-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-full",
+        "flex items-center justify-center",
         disabled && "opacity-60 cursor-not-allowed"
       )}
       role="switch"
