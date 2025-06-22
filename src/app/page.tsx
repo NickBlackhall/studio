@@ -572,7 +572,18 @@ export default function WelcomePage() {
                 
                 <div className="mt-8 w-full max-w-4xl flex items-center justify-center gap-4">
                    <Dialog>
-                      <DialogTrigger asChild><Button variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80"><HelpCircle className="mr-1 h-4 w-4" /> How to Play</Button></DialogTrigger>
+                      <DialogTrigger asChild>
+                        <button className="bg-transparent border-none p-0">
+                          <Image
+                            src="/ui/how-to-play-button.png"
+                            alt="How to Play"
+                            width={118}
+                            height={44}
+                            className="object-contain"
+                            data-ai-hint="how to play button"
+                          />
+                        </button>
+                      </DialogTrigger>
                       <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
                     </Dialog>
                     <Button onClick={handleResetGame} variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80" disabled={isProcessingAction || isLoading}>
@@ -626,7 +637,4 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-
-
     
