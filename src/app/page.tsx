@@ -538,23 +538,23 @@ export default function WelcomePage() {
                         </div>
                         ))}
                     </div>
-                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-2">
+                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-1">
                        {showStartGameButton ? (
-                        <button
+                         <button
                           onClick={handleStartGame}
                           disabled={isProcessingAction}
                           className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70"
                         >
                           {isProcessingAction ? (
-                            <div className="h-[34.5px] flex items-center justify-center">
+                            <div className="h-[41.4px] flex items-center justify-center">
                               <Loader2 className="h-8 w-8 animate-spin text-black" />
                             </div>
                           ) : (
                             <Image
                               src="/ui/start-game-button.png"
                               alt="Start the Mayhem"
-                              width={91.5}
-                              height={34.5}
+                              width={109.8}
+                              height={41.4}
                               className="object-contain drop-shadow-xl"
                               data-ai-hint="start button"
                               priority
@@ -562,7 +562,7 @@ export default function WelcomePage() {
                           )}
                         </button>
                       ) : (
-                         <p className="text-black font-semibold">
+                         <p className="text-black font-semibold bg-transparent">
                            {lobbyMessage}
                          </p>
                       )}
@@ -626,4 +626,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
 
