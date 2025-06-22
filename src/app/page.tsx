@@ -494,7 +494,7 @@ export default function WelcomePage() {
                     className="w-full h-auto"
                     data-ai-hint="lobby card parchment"
                   />
-                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[62%] flex flex-col justify-between">
+                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col justify-between">
                     <div className="flex-grow overflow-y-auto space-y-2">
                         {sortedPlayersForDisplay.map((player) => (
                         <div
@@ -536,7 +536,7 @@ export default function WelcomePage() {
                         </div>
                         ))}
                     </div>
-                    <div className="flex-shrink-0 text-center px-4 space-y-3">
+                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-2">
                       {showStartGameButton && (
                         <button
                           onClick={handleStartGame}
@@ -551,8 +551,8 @@ export default function WelcomePage() {
                             <Image
                               src="/ui/start-game-button.png"
                               alt="Start the Mayhem"
-                              width={252}
-                              height={95}
+                              width={202}
+                              height={76}
                               className="object-contain drop-shadow-xl"
                               data-ai-hint="start button"
                               priority
