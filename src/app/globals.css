@@ -182,12 +182,11 @@
 .name-input {
   width: 100%;
   padding: 1rem 1.5rem;
-  font-size: 4.5rem;
+  font-size: 3.5rem;
   font-weight: 700;
   text-align: center;
   color: #000;
   background: transparent;
-  border: none;
   outline: none;
   font-family: 'IMFellEnglishSC', 'Times New Roman', serif;
   letter-spacing: 0.5px;
@@ -275,3 +274,5 @@
     height: 10rem;
   }
 }
+
+    
