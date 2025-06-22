@@ -48,33 +48,12 @@ export default function WelcomePage() {
   // State for the new inline join form
   const [name, setName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string>('');
-  const [cacheBuster, setCacheBuster] = useState('');
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    // This runs only on the client, after hydration, to prevent server/client mismatch
-    setIsClient(true);
-    setCacheBuster(`?t=${new Date().getTime()}`);
-  }, []);
 
   useEffect(() => {
     if (!selectedAvatar && AVATARS.length > 0) {
       setSelectedAvatar(AVATARS[0]);
     }
   }, [selectedAvatar]);
-
-  useEffect(() => {
-    if (currentStep === 'welcome') {
-      document.body.classList.add('welcome-background-active');
-    } else {
-      document.body.classList.remove('welcome-background-active');
-    }
-
-    // Cleanup function to remove the class when the component unmounts or step changes
-    return () => {
-      document.body.classList.remove('welcome-background-active');
-    };
-  }, [currentStep]);
 
   const parseReadyPlayerOrderStr = useCallback((gameState: GameClientState | null): string[] => {
     if (!gameState || typeof gameState.ready_player_order_str !== 'string') {
@@ -477,22 +456,15 @@ export default function WelcomePage() {
 
   if (currentStep === 'welcome') {
     return (
-      <div className="relative flex-grow flex flex-col bg-black">
-        {/* Layer 1: background tile is on body */}
-        
-        {/* Layer 2: Poster image fills the container */}
-        {isClient && (
-          <Image
-            src={`/backgrounds/mobile-background.jpg${cacheBuster}`}
-            alt="Make It Terrible game poster background"
-            fill
-            priority
-            className="object-cover"
-            data-ai-hint="game poster"
-          />
-        )}
-
-        {/* Layer 3: Button */}
+      <div className="relative flex-grow flex flex-col">
+        <Image
+          src="/backgrounds/mobile-background.jpg"
+          alt="Make It Terrible game poster background"
+          fill
+          priority
+          className="object-cover"
+          data-ai-hint="game poster"
+        />
         <div className="relative z-10 flex flex-grow items-center justify-center">
           <button
             onClick={() => {
@@ -520,17 +492,15 @@ export default function WelcomePage() {
     // Player has not joined yet, show the full-screen poster join view
     if (isLobbyPhaseActive && !thisPlayerObject) {
       return (
-        <div className="relative flex-grow flex flex-col bg-black">
-          {isClient && (
-            <Image
-              src={`/backgrounds/join-screen.jpg${cacheBuster}`}
-              alt="A poster with a red skull and crossbones inviting players to join the game"
-              fill
-              className="object-cover"
-              data-ai-hint="skull poster"
-              priority
-            />
-          )}
+        <div className="relative flex-grow flex flex-col">
+          <Image
+            src="/backgrounds/join-screen.jpg"
+            alt="A poster with a red skull and crossbones inviting players to join the game"
+            fill
+            className="object-cover"
+            data-ai-hint="skull poster"
+            priority
+          />
           <div className="relative z-10 flex flex-grow flex-col items-center justify-center p-4">
             <div className="w-full max-w-xs sm:max-w-sm h-full">
               <div className="flex flex-col h-full justify-between py-12">
@@ -736,17 +706,15 @@ export default function WelcomePage() {
 
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
-    <div className="relative flex-grow flex flex-col bg-black">
-      {isClient && (
-        <Image
-          src={`/backgrounds/mobile-background.jpg${cacheBuster}`}
-          alt="Make It Terrible game poster background"
-          fill
-          priority
-          className="object-cover"
-          data-ai-hint="game poster"
-        />
-      )}
+    <div className="relative flex-grow flex flex-col">
+      <Image
+        src="/backgrounds/mobile-background.jpg"
+        alt="Make It Terrible game poster background"
+        fill
+        priority
+        className="object-cover"
+        data-ai-hint="game poster"
+      />
       <div className="relative z-10 flex flex-grow items-center justify-center">
         <button
             onClick={() => {

@@ -34,9 +34,9 @@ export default function RootLayout({
   return (
     // Removed font variables from className
     <html lang="en" className={``} suppressHydrationWarning={true}>
-      <body className={`group antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
+      <body className={`antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
         <LoadingProvider>
-          <div className="flex min-h-screen w-full flex-col bg-background group-[.welcome-background-active]:bg-transparent">
+          <div className="flex min-h-screen w-full flex-col bg-background">
             <main className="flex-grow flex flex-col">
               {children}
             </main>

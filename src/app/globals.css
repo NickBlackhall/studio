@@ -107,11 +107,6 @@
     position: relative; 
   }
 
-  body.welcome-background-active {
-    background-image: url('/textures/background-tile.png');
-    background-repeat: repeat;
-  }
-
   h1, h2, h3, h4, h5, h6,
   .card-title { 
     font-family: sans-serif; /* Using generic system sans-serif font for headings */
