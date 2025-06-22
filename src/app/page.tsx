@@ -506,55 +506,7 @@ export default function WelcomePage() {
               <div className="w-full">
                 
                 <div className="w-full max-w-lg mx-auto">
-                  <Card className="shadow-2xl border-2 border-secondary rounded-xl overflow-hidden">
-                    <CardHeader className="bg-secondary text-secondary-foreground p-6">
-                      <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({internalGame.players.length})</CardTitle>
-                      <CardDescription className="text-secondary-foreground/80 text-base">
-                        {lobbyMessage}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      {sortedPlayersForDisplay.length > 0 ? (
-                        <ul className="space-y-3">
-                          {sortedPlayersForDisplay.map((player: PlayerClientState) => (
-                            <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
-                              <div className="flex items-center">
-                                {player.avatar.startsWith('/') ? (
-                                  <Image src={player.avatar} alt={`${player.name}'s avatar`} width={40} height={40} className="mr-3 rounded-sm object-contain" style={{ width: '40px', height: '40px' }} />
-                                ) : (
-                                  <span className="text-3xl mr-3">{player.avatar}</span>
-                                )}
-                                <span className="text-xl font-medium text-foreground">{player.name}</span>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                {player.id === internalThisPlayerId ? (
-                                  <ReadyToggle isReady={player.isReady} onToggle={() => handleToggleReady(player)} disabled={isProcessingAction} />
-                                ) : (
-                                  player.isReady ?
-                                    <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> :
-                                    <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
-                                )}
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-muted-foreground text-center py-4">Waiting for players to join...</p>
-                      )}
-                      {showStartGameButton && (
-                        <Button
-                          onClick={handleStartGame}
-                          variant="default"
-                          size="lg"
-                          className="mt-6 w-full bg-accent text-accent-foreground hover:bg-accent/90 text-xl font-bold py-6 shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
-                          disabled={isProcessingAction || isLoading}
-                        >
-                          { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-3 h-7 w-7" /> }
-                          Start Game Now!
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <Image src="/backgrounds/lobby-card.png" alt="Lobby card background" width={500} height={700} data-ai-hint="lobby card parchment"/>
                 </div>
                 <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
                   <Dialog>
@@ -614,5 +566,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
