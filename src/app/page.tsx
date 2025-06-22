@@ -583,7 +583,7 @@ export default function WelcomePage() {
     );
     
     return (
-      <div className={cn("min-h-screen flex flex-col items-center justify-start py-8", currentStep === 'setup' ? 'bg-background' : '')}>
+      <div className={cn("min-h-screen flex flex-col items-center justify-start py-8", currentStep === 'setup' ? 'lobby-background' : '')}>
         {mainContent}
       </div>
     );
@@ -623,5 +623,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
