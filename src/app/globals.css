@@ -195,6 +195,7 @@
 
 .name-input::placeholder {
   color: rgba(0, 0, 0, 0.7);
+  font-family: 'IMFellEnglishSC', 'Times New Roman', serif;
 }
 
 /* MIDDLE SECTION */
@@ -237,8 +238,8 @@
 }
 
 .avatar-display {
-  width: 10rem;
-  height: 10rem;
+  width: 14rem;
+  height: 14rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -270,7 +271,7 @@
   }
   
   .avatar-display {
-    width: 8rem; /* Adjusted for smaller screens */
-    height: 8rem;
+    width: 10rem;
+    height: 10rem;
   }
 }

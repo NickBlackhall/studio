@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -62,7 +63,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
               name="name"
               type="text"
               placeholder="YOUR NAME"
-              className="name-input"
+              className={`name-input ${imFellFont.className}`}
               maxLength={20}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -79,7 +80,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
             </button>
             
             <div className="avatar-display">
-              <Image src={AVATARS[avatarIndex]} alt="Selected Avatar" width={160} height={160} data-ai-hint="player avatar" priority />
+              <Image src={AVATARS[avatarIndex]} alt="Selected Avatar" width={224} height={224} data-ai-hint="player avatar" priority />
             </div>
             
             <button type="button" onClick={() => handleAvatarChange(1)} className="carousel-btn" aria-label="Next avatar">
