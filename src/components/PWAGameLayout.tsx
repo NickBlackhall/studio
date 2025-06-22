@@ -87,7 +87,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
         <div className="bottom-section">
           <button
             type="submit"
-            className="bg-transparent border-none p-0 disabled:opacity-50 transition-transform hover:scale-105"
+            className="bg-transparent border-none p-0 disabled:opacity-50 transition-transform hover:scale-105 join-game-button"
             disabled={isProcessing}
           >
             {isProcessing ? (
