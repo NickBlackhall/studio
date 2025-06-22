@@ -538,7 +538,7 @@ export default function WelcomePage() {
                         </div>
                         ))}
                     </div>
-                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-1">
+                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-6">
                        {showStartGameButton ? (
                          <button
                           onClick={handleStartGame}
@@ -553,8 +553,8 @@ export default function WelcomePage() {
                             <Image
                               src="/ui/start-game-button.png"
                               alt="Start the Mayhem"
-                              width={158.2}
-                              height={59.6}
+                              width={189.84}
+                              height={71.52}
                               className="object-contain drop-shadow-xl"
                               data-ai-hint="start button"
                               priority
@@ -598,7 +598,7 @@ export default function WelcomePage() {
     );
     
     return (
-      <div className={cn("min-h-screen flex flex-col items-center justify-start py-8", currentStep === 'setup' ? 'lobby-background' : '')}>
+      <div className={cn("min-h-screen flex flex-col items-center justify-start py-8")}>
         {mainContent}
       </div>
     );
