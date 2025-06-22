@@ -501,8 +501,9 @@ export default function WelcomePage() {
             data-ai-hint="skull poster"
             priority
           />
-          <div className="relative z-10 flex flex-grow flex-col items-center p-4">
-            <form onSubmit={handleJoinSubmit} className="relative flex h-full w-full max-w-xs flex-col items-center justify-start sm:max-w-sm pb-32">
+          <div className="relative z-10 flex h-full w-full flex-col items-center p-4">
+            <form onSubmit={handleJoinSubmit} className="flex h-full w-full max-w-xs flex-col sm:max-w-sm">
+              {/* Top Section */}
               <div className="w-full pt-48 sm:pt-56">
                 <Label htmlFor="name" className="text-white text-center block text-base sm:text-lg font-bold drop-shadow-md sr-only">Enter Your Name</Label>
                 <Input
@@ -518,15 +519,16 @@ export default function WelcomePage() {
                 />
               </div>
 
-              <div className="mt-8">
+              {/* Spacer */}
+              <div className="flex-grow" />
+
+              {/* Bottom Section */}
+              <div className="space-y-8 pb-8">
                   <AvatarCarousel
                       avatars={AVATARS}
                       initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
                       onAvatarSelect={setSelectedAvatar}
                   />
-              </div>
-
-              <div className="absolute bottom-8 left-0 w-full px-4">
                   <Button
                       type="submit"
                       variant="destructive"
@@ -735,5 +737,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
