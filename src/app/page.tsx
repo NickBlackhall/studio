@@ -205,14 +205,48 @@ export default function WelcomePage() {
     const handlePlayersUpdate = async (payload: any) => {
       const latestGameId = gameRef.current?.gameId; 
       if (isMountedRef.current && latestGameId) { 
-        await fetchGameData(`players-lobby-${latestGameId}-${uniqueChannelSuffix} player change`, latestGameId);
+        try {
+          let fetchedGameState = await getGame(latestGameId); 
+          
+          if (fetchedGameState) {
+            if (typeof fetchedGameState.ready_player_order_str === 'string') {
+                fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
+            } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
+                console.warn(`Client (handlePlayersUpdate): RPO was undefined or not an array from getGame(), defaulting to []. Game ID: ${fetchedGameState.gameId}`);
+                fetchedGameState.ready_player_order = [];
+            }
+          }
+          
+          if (isMountedRef.current) {
+            setGame(fetchedGameState);
+          }
+        } catch (error: any) {
+          console.error('Error in handlePlayersUpdate:', error);
+        }
       }
     };
 
     const handleGameTableUpdate = async (payload: any) => {
       const latestGameId = gameRef.current?.gameId; 
       if (isMountedRef.current && latestGameId) { 
-        await fetchGameData(`games-lobby-${latestGameId}-${uniqueChannelSuffix} game change`, latestGameId);
+        try {
+          let fetchedGameState = await getGame(latestGameId); 
+          
+          if (fetchedGameState) {
+            if (typeof fetchedGameState.ready_player_order_str === 'string') {
+                fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
+            } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
+                console.warn(`Client (handleGameTableUpdate): RPO was undefined or not an array from getGame(), defaulting to []. Game ID: ${fetchedGameState.gameId}`);
+                fetchedGameState.ready_player_order = [];
+            }
+          }
+          
+          if (isMountedRef.current) {
+            setGame(fetchedGameState);
+          }
+        } catch (error: any) {
+          console.error('Error in handleGameTableUpdate:', error);
+        }
       }
     };
     
@@ -263,8 +297,7 @@ export default function WelcomePage() {
         supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime cleanup): Error removing game channel on WelcomePage:", err));
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [internalGame?.gameId, internalThisPlayerId, currentStep, isLoading, fetchGameData]); 
+  }, [internalGame?.gameId, internalThisPlayerId, currentStep, isLoading, setGame, parseReadyPlayerOrderStr]); 
 
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
@@ -564,3 +597,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
