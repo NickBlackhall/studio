@@ -17,7 +17,7 @@ export default function ReadyToggle({ isReady, onToggle, disabled = false }: Rea
       onClick={!disabled ? onToggle : undefined}
       disabled={disabled}
       className={cn(
-        "relative h-8 w-14 cursor-pointer transition-opacity duration-200 ease-in-out",
+        "relative h-9 w-16 cursor-pointer transition-opacity duration-200 ease-in-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-full",
         disabled && "opacity-60 cursor-not-allowed"
       )}
@@ -29,8 +29,8 @@ export default function ReadyToggle({ isReady, onToggle, disabled = false }: Rea
       <Image
         src={isReady ? "/ui/toggle-on.png" : "/ui/toggle-off.png"}
         alt={isReady ? "Ready toggle is on" : "Ready toggle is off"}
-        width={56}
-        height={32}
+        width={64}
+        height={36}
         className="object-contain"
         data-ai-hint="toggle on off"
       />

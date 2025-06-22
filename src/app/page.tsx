@@ -576,9 +576,9 @@ export default function WelcomePage() {
                             />
                           ) : (
                             player.isReady ? (
-                              <CheckSquare className="h-6 w-6 text-green-700" />
+                              <CheckSquare className="h-7 w-7 text-green-700" />
                             ) : (
-                              <XSquare className="h-6 w-6 text-red-700" />
+                              <XSquare className="h-7 w-7 text-red-700" />
                             )
                           )}
                         </div>
