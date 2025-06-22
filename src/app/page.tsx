@@ -208,7 +208,7 @@ export default function WelcomePage() {
              if (typeof fetchedGameState.ready_player_order_str === 'string') {
                 fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
             } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
-                console.warn(`Client (handleRealtimeUpdate from ${source}): RPO was undefined/not array, defaulting to [].`);
+                console.warn(`Client (handleRealtimeUpdate from ${source}): RPO undefined/not array, defaulting to [].`);
                 fetchedGameState.ready_player_order = [];
             }
             setGame(fetchedGameState);
@@ -527,9 +527,9 @@ export default function WelcomePage() {
                                 />
                             ) : (
                                 player.isReady ? (
-                                <CheckSquare className="h-7 w-7 text-green-700" />
+                                <CheckSquare className="h-9 w-9 text-green-700" />
                                 ) : (
-                                <XSquare className="h-7 w-7 text-red-700" />
+                                <XSquare className="h-9 w-9 text-red-700" />
                                 )
                             )}
                             </div>
@@ -537,19 +537,32 @@ export default function WelcomePage() {
                         ))}
                     </div>
                     <div className="flex-shrink-0 text-center px-4 space-y-3">
-                        <p className="text-black font-semibold bg-amber-100/80 p-2 rounded-md shadow">
-                            {lobbyMessage}
-                        </p>
-                        {showStartGameButton && (
-                            <Button
-                            onClick={handleStartGame}
-                            disabled={isProcessingAction}
-                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold text-xl py-6 rounded-lg shadow-lg animate-pulse"
-                            >
-                            {isProcessingAction ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-2 h-6 w-6" />}
-                            START THE MAYHEM
-                            </Button>
-                        )}
+                      {showStartGameButton && (
+                        <button
+                          onClick={handleStartGame}
+                          disabled={isProcessingAction}
+                          className="group animate-pulse disabled:animate-none disabled:opacity-70"
+                        >
+                          {isProcessingAction ? (
+                            <div className="h-24 flex items-center justify-center">
+                              <Loader2 className="h-8 w-8 animate-spin text-black" />
+                            </div>
+                          ) : (
+                            <Image
+                              src="/ui/start-game-button.png"
+                              alt="Start the Mayhem"
+                              width={252}
+                              height={95}
+                              className="object-contain drop-shadow-xl"
+                              data-ai-hint="start button"
+                              priority
+                            />
+                          )}
+                        </button>
+                      )}
+                      <p className="text-black font-semibold bg-amber-100/80 p-2 rounded-md shadow">
+                        {lobbyMessage}
+                      </p>
                     </div>
                   </div>
                 </div>
