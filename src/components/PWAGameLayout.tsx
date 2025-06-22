@@ -30,6 +30,10 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
       toast({ title: "Name Required", description: "Please enter your name.", variant: "destructive" });
       return;
     }
+    if (avatarIndex === 0) {
+      toast({ title: "Avatar Required", description: "Please select an avatar other than the question mark.", variant: "destructive" });
+      return;
+    }
     
     startTransition(async () => {
       try {
@@ -51,6 +55,8 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
       event.preventDefault();
     }
   };
+
+  const isButtonDisabled = isProcessing || !name.trim() || avatarIndex === 0;
 
   return (
     <div className="pwa-game-container">
@@ -95,7 +101,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
           <button
             type="submit"
             className="bg-transparent border-none p-0 disabled:opacity-50 transition-transform hover:scale-105 join-game-button"
-            disabled={isProcessing}
+            disabled={isButtonDisabled}
           >
             {isProcessing ? (
               <span className="text-white text-2xl font-bold uppercase animate-pulse">Joining...</span>
