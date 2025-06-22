@@ -1,0 +1,23 @@
+
+{
+  "name": "Make It Terrible - Party Game",
+  "short_name": "Make It Terrible",
+  "description": "The game of mayhem and questionable choices",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fef3c7",
+  "theme_color": "#f59e0b",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -25,11 +25,19 @@ import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 export const metadata: Metadata = {
   title: 'Make It Terrible',
   description: 'The game of terrible choices and hilarious outcomes!',
+  manifest: '/manifest.json',
+  themeColor: '#f59e0b',
   viewport: {
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
+    viewportFit: 'cover',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Make It Terrible',
   },
 };
 

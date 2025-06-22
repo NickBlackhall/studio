@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock, UserPlus } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
@@ -18,10 +18,8 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { AVATARS } from '@/lib/data';
-import AvatarCarousel from '@/components/game/AvatarCarousel';
+import PWAGameLayout from '@/components/PWAGameLayout';
+import type { Tables } from '@/lib/database.types';
 
 
 export const dynamic = 'force-dynamic';
@@ -44,16 +42,6 @@ export default function WelcomePage() {
   
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
-
-  // State for the new inline join form
-  const [name, setName] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState<string>('');
-
-  useEffect(() => {
-    if (!selectedAvatar && AVATARS.length > 0) {
-      setSelectedAvatar(AVATARS[0]);
-    }
-  }, [selectedAvatar]);
 
   const parseReadyPlayerOrderStr = useCallback((gameState: GameClientState | null): string[] => {
     if (!gameState || typeof gameState.ready_player_order_str !== 'string') {
@@ -163,6 +151,17 @@ export default function WelcomePage() {
       }
     }
   }, [toast, setGame, setThisPlayerId, hideGlobalLoader, parseReadyPlayerOrderStr]);
+
+  const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
+      const currentGameId = gameRef.current?.gameId;
+      if (newPlayer && newPlayer.id && currentGameId && isMountedRef.current) {
+          const localStorageKey = `thisPlayerId_game_${currentGameId}`;
+          localStorage.setItem(localStorageKey, newPlayer.id);
+          setThisPlayerId(newPlayer.id);
+          await fetchGameData(`handlePlayerAdded after creating player ${newPlayer.id}`, currentGameId);
+      }
+  }, [fetchGameData, setThisPlayerId]);
+
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -278,69 +277,6 @@ export default function WelcomePage() {
     const otherPlayers = internalGame.players.filter(p => p.id !== thisPlayerObject.id);
     return [thisPlayerObject, ...otherPlayers];
   }, [internalGame, thisPlayerObject]);
-
-  const handleAddPlayer = async (formData: FormData) => {
-    const name = formData.get('name') as string;
-    const avatar = formData.get('avatar') as string;
-    const currentGameId = internalGame?.gameId; 
-
-    if (!name.trim() || !avatar) {
-        toast({ title: "Missing Info", description: "Please enter your name and select an avatar.", variant: "destructive" });
-        return;
-    }
-    if (!currentGameId) {
-        toast({ title: "Error!", description: "Game session not found. Please refresh.", variant: "destructive"});
-        if (isMountedRef.current) {
-            showGlobalLoader();
-            await fetchGameData("handleAddPlayer_no_gameId"); 
-        }
-        return;
-    }
-    
-    startPlayerActionTransition(async () => {
-      try {
-        const newPlayer = await addPlayerAction(name, avatar);
-        if (newPlayer && newPlayer.id && currentGameId && isMountedRef.current) {
-          const localStorageKey = `thisPlayerId_game_${currentGameId}`;
-          localStorage.setItem(localStorageKey, newPlayer.id);
-          setThisPlayerId(newPlayer.id); 
-          await fetchGameData(`handleAddPlayer after action for game ${currentGameId}`, currentGameId); 
-        } else if (isMountedRef.current) {
-           if (newPlayer === null && internalGame?.gamePhase !== 'lobby') { 
-            toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
-          } else if (newPlayer === null) { 
-            toast({ title: "Join Error", description: "Could not add player to the game.", variant: "destructive"});
-          }
-        }
-      } catch (error: any) {
-        if (isMountedRef.current) {
-          const errorMsg = error.message || String(error);
-           if (errorMsg.includes("Game is already in progress")) {
-            toast({ title: "Game in Progress", description: "Cannot join now. Please wait for the next game.", variant: "destructive"});
-          } else {
-            toast({ title: "Error Adding Player", description: errorMsg, variant: "destructive"});
-          }
-        }
-      }
-    });
-  };
-
-  const handleJoinSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!name.trim()) {
-      toast({ title: "Name Required", description: "Please enter your name.", variant: "destructive" });
-      return;
-    }
-    if (!selectedAvatar) {
-      toast({ title: "Avatar Required", description: "Please select an avatar.", variant: "destructive" });
-      return;
-    }
-    
-    const formData = new FormData(event.currentTarget);
-    formData.append('avatar', selectedAvatar);
-    
-    await handleAddPlayer(formData);
-  };
 
   const handleResetGame = async () => {
     showGlobalLoader(); 
@@ -490,68 +426,8 @@ export default function WelcomePage() {
   }
 
   if (currentStep === 'setup') {
-    // Player has not joined yet, show the full-screen poster join view
     if (isLobbyPhaseActive && !thisPlayerObject) {
-      return (
-        <div className="relative w-screen h-screen bg-black">
-          <div className="absolute inset-0 z-0">
-            <Image
-              src="/backgrounds/join-screen-2.jpg"
-              alt="A poster with a red skull and crossbones inviting players to join the game"
-              layout="fill"
-              objectFit="cover"
-              data-ai-hint="skull poster"
-              priority
-            />
-          </div>
-
-          <form onSubmit={handleJoinSubmit} className="relative w-full h-full flex flex-col justify-between z-10">
-            {/* TOP GROUP: Name Input */}
-            <div className="flex justify-center items-start pt-[25vh] px-4">
-              <div className="w-full max-w-xs sm:max-w-sm">
-                <Label htmlFor="name" className="sr-only">Enter Your Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
-                  placeholder="YOUR TERRIBLE NAME"
-                  maxLength={20}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* MIDDLE GROUP: Avatar Carousel */}
-            <div className="flex justify-center items-center px-4 -mt-16 sm:-mt-24">
-              <div className="w-full max-w-xs sm:max-w-sm">
-                <AvatarCarousel
-                  avatars={AVATARS}
-                  initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
-                  onAvatarSelect={setSelectedAvatar}
-                />
-              </div>
-            </div>
-            
-            {/* BOTTOM GROUP: Join Button */}
-            <div className="flex justify-center items-end pb-[10vh] px-4">
-              <div className="w-full max-w-xs sm:max-w-sm">
-                <Button
-                  type="submit"
-                  variant="destructive"
-                  disabled={isProcessingAction || !name.trim() || !selectedAvatar}
-                  className="w-full text-base sm:text-lg font-bold py-3 bg-red-600 hover:bg-red-700 ring-2 ring-offset-2 ring-offset-black/50 ring-white/50"
-                >
-                  {isProcessingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
-                  JOIN THE MAYHEM
-                </Button>
-              </div>
-            </div>
-          </form>
-        </div>
-      );
+      return <PWAGameLayout gameId={internalGame.gameId} onPlayerAdded={handlePlayerAdded} />;
     }
 
     // For Spectator or Lobby view, use the centered, constrained layout
