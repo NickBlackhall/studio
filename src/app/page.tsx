@@ -502,51 +502,48 @@ export default function WelcomePage() {
             objectPosition="top"
             data-ai-hint="skull poster"
             priority
+            className="z-0"
           />
-          <div className="relative z-10 flex h-full w-full flex-col items-center p-4">
-            <form onSubmit={handleJoinSubmit} className="flex h-full w-full max-w-xs flex-col justify-between sm:max-w-sm">
-              {/* This div groups the top two elements */}
-              <div className="pt-16">
-                {/* Group 1: Name Input */}
-                <div>
-                  <Label htmlFor="name" className="sr-only">Enter Your Name</Label>
-                  <Input
-                      id="name"
-                      name="name"
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
-                      placeholder="YOUR TERRIBLE NAME"
-                      maxLength={20}
-                      required
-                  />
-                </div>
+          <form onSubmit={handleJoinSubmit} className="relative z-10 flex-grow">
+            
+            {/* NAME INPUT CONTAINER */}
+            <div className="absolute top-[25%] left-1/2 w-full max-w-xs -translate-x-1/2 sm:max-w-sm">
+                <Label htmlFor="name" className="sr-only">Enter Your Name</Label>
+                <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="bg-black/60 text-white text-center border-2 border-white/50 focus:border-white focus:ring-white placeholder:text-gray-300 text-lg"
+                    placeholder="YOUR TERRIBLE NAME"
+                    maxLength={20}
+                    required
+                />
+            </div>
 
-                {/* Group 2: Avatar Carousel */}
-                <div className="mt-4">
-                    <AvatarCarousel
-                        avatars={AVATARS}
-                        initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
-                        onAvatarSelect={setSelectedAvatar}
-                    />
-                </div>
-              </div>
-
-              {/* Group 3: Button (Bottom) */}
-              <div className="pb-8">
-                  <Button
-                      type="submit"
-                      variant="destructive"
-                      disabled={isProcessingAction || !name.trim() || !selectedAvatar}
-                      className="w-full text-base sm:text-lg font-bold py-3 bg-red-600 hover:bg-red-700 ring-2 ring-offset-2 ring-offset-black/50 ring-white/50"
-                  >
-                      {isProcessingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
-                      JOIN THE MAYHEM
-                  </Button>
-              </div>
-            </form>
-          </div>
+            {/* AVATAR CAROUSEL CONTAINER */}
+            <div className="absolute top-[45%] left-1/2 w-full max-w-xs -translate-x-1/2 sm:max-w-sm">
+                <AvatarCarousel
+                    avatars={AVATARS}
+                    initialAvatar={selectedAvatar || (AVATARS.length > 0 ? AVATARS[0] : '')}
+                    onAvatarSelect={setSelectedAvatar}
+                />
+            </div>
+            
+            {/* JOIN BUTTON CONTAINER */}
+            <div className="absolute bottom-[15%] left-1/2 w-full max-w-xs -translate-x-1/2 sm:max-w-sm">
+                 <Button
+                    type="submit"
+                    variant="destructive"
+                    disabled={isProcessingAction || !name.trim() || !selectedAvatar}
+                    className="w-full text-base sm:text-lg font-bold py-3 bg-red-600 hover:bg-red-700 ring-2 ring-offset-2 ring-offset-black/50 ring-white/50"
+                >
+                    {isProcessingAction ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserPlus className="mr-2 h-5 w-5" />}
+                    JOIN THE MAYHEM
+                </Button>
+            </div>
+          </form>
         </div>
       );
     }
