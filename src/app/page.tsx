@@ -456,7 +456,7 @@ export default function WelcomePage() {
 
   if (currentStep === 'welcome') {
     return (
-      <div className="relative flex-grow flex flex-col">
+      <div className="relative flex-grow flex flex-col bg-black">
         <Image
           src="/backgrounds/mobile-background.jpg"
           alt="Make It Terrible game poster background"
@@ -492,18 +492,18 @@ export default function WelcomePage() {
     // Player has not joined yet, show the full-screen poster join view
     if (isLobbyPhaseActive && !thisPlayerObject) {
       return (
-        <div className="relative flex-grow flex flex-col">
+        <div className="relative flex-grow flex flex-col bg-black">
           <Image
             src="/backgrounds/join-screen-2.jpg"
             alt="A poster with a red skull and crossbones inviting players to join the game"
             fill
-            className="object-contain"
+            className="object-contain object-top"
             data-ai-hint="skull poster"
             priority
           />
-          <div className="relative z-10 flex flex-grow flex-col items-center justify-center p-4">
-            <div className="w-full max-w-xs sm:max-w-sm h-full">
-              <div className="flex flex-col h-full justify-center">
+          {/* Changed justify-center to justify-end and added padding-bottom to push the form up */}
+          <div className="relative z-10 flex flex-grow flex-col items-center justify-end p-4 pb-32 sm:pb-48">
+            <div className="w-full max-w-xs sm:max-w-sm">
                 <form onSubmit={handleJoinSubmit} className="flex flex-col space-y-8">
                   <div className="flex-shrink-0">
                     <Label htmlFor="name" className="text-white text-center block text-base sm:text-lg font-bold drop-shadow-md sr-only">Enter Your Name</Label>
@@ -538,7 +538,6 @@ export default function WelcomePage() {
                     </Button>
                   </div>
                 </form>
-              </div>
             </div>
           </div>
         </div>
@@ -706,13 +705,13 @@ export default function WelcomePage() {
 
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
-    <div className="relative flex-grow flex flex-col">
+    <div className="relative flex-grow flex flex-col bg-black">
       <Image
         src="/backgrounds/mobile-background.jpg"
         alt="Make It Terrible game poster background"
         fill
         priority
-        className="object-contain"
+        className="object-contain object-top"
         data-ai-hint="game poster"
       />
       <div className="relative z-10 flex flex-grow items-center justify-center">
