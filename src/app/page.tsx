@@ -495,8 +495,8 @@ export default function WelcomePage() {
                     className="w-full h-auto"
                     data-ai-hint="lobby poster"
                   />
-                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col justify-between">
-                    <div className="flex-grow overflow-y-auto space-y-2">
+                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col">
+                    <div className="overflow-y-auto space-y-2">
                         {sortedPlayersForDisplay.map((player) => (
                         <div
                             key={player.id}
@@ -537,7 +537,7 @@ export default function WelcomePage() {
                         </div>
                         ))}
                     </div>
-                    <div className="flex-shrink-0 text-center px-4 pb-1 space-y-2">
+                    <div className="flex-shrink-0 text-center px-4 pt-4 space-y-2">
                       <p className="bg-transparent font-semibold text-black">
                         {lobbyMessage}
                       </p>
@@ -555,8 +555,8 @@ export default function WelcomePage() {
                             <Image
                               src="/ui/start-game-button.png"
                               alt="Start the Mayhem"
-                              width={189.84 * 1.2 * 1.2 * 1.2 * 1.2}
-                              height={71.52 * 1.2 * 1.2 * 1.2 * 1.2}
+                              width={189.84 * 1.2 * 1.2}
+                              height={71.52 * 1.2 * 1.2}
                               className="object-contain drop-shadow-xl"
                               data-ai-hint="start button"
                               priority
@@ -595,7 +595,7 @@ export default function WelcomePage() {
     );
     
     return (
-      <div className={cn("min-h-screen flex flex-col items-center justify-center p-4")}>
+      <div className={cn("min-h-screen flex flex-col items-center justify-center p-4 bg-black")}>
         {mainContent}
       </div>
     );
@@ -634,3 +634,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
