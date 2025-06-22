@@ -49,9 +49,11 @@ export default function WelcomePage() {
   const [name, setName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string>('');
   const [cacheBuster, setCacheBuster] = useState('');
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     // This runs only on the client, after hydration, to prevent server/client mismatch
+    setIsClient(true);
     setCacheBuster(`?t=${new Date().getTime()}`);
   }, []);
 
@@ -479,14 +481,16 @@ export default function WelcomePage() {
         {/* Layer 1: background tile is on body */}
         
         {/* Layer 2: Poster image fills the container */}
-        <Image
-          src={`/backgrounds/mobile-background.jpg${cacheBuster}`}
-          alt="Make It Terrible game poster background"
-          fill
-          priority
-          className="object-cover"
-          data-ai-hint="game poster"
-        />
+        {isClient && (
+          <Image
+            src={`/backgrounds/mobile-background.jpg${cacheBuster}`}
+            alt="Make It Terrible game poster background"
+            fill
+            priority
+            className="object-cover"
+            data-ai-hint="game poster"
+          />
+        )}
 
         {/* Layer 3: Button */}
         <div className="relative z-10 flex flex-grow items-center justify-center">
@@ -517,14 +521,16 @@ export default function WelcomePage() {
     if (isLobbyPhaseActive && !thisPlayerObject) {
       return (
         <div className="relative flex-grow flex flex-col">
-          <Image
-            src={`/backgrounds/join-screen.jpg${cacheBuster}`}
-            alt="A poster with a red skull and crossbones inviting players to join the game"
-            fill
-            className="object-cover"
-            data-ai-hint="skull poster"
-            priority
-          />
+          {isClient && (
+            <Image
+              src={`/backgrounds/join-screen.jpg${cacheBuster}`}
+              alt="A poster with a red skull and crossbones inviting players to join the game"
+              fill
+              className="object-cover"
+              data-ai-hint="skull poster"
+              priority
+            />
+          )}
           <div className="relative z-10 flex flex-grow flex-col items-center justify-center p-4">
             <div className="w-full max-w-xs sm:max-w-sm h-full">
               <div className="flex flex-col h-full justify-between py-12">
@@ -731,14 +737,16 @@ export default function WelcomePage() {
   // Fallback for initial "welcome" step (before ?step=setup)
   return (
     <div className="relative flex-grow flex flex-col">
-      <Image
-        src={`/backgrounds/mobile-background.jpg${cacheBuster}`}
-        alt="Make It Terrible game poster background"
-        fill
-        priority
-        className="object-cover"
-        data-ai-hint="game poster"
-      />
+      {isClient && (
+        <Image
+          src={`/backgrounds/mobile-background.jpg${cacheBuster}`}
+          alt="Make It Terrible game poster background"
+          fill
+          priority
+          className="object-cover"
+          data-ai-hint="game poster"
+        />
+      )}
       <div className="relative z-10 flex flex-grow items-center justify-center">
         <button
             onClick={() => {
