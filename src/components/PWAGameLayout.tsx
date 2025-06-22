@@ -56,7 +56,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
     }
   };
 
-  const isButtonDisabled = isProcessing || !name.trim() || avatarIndex === 0;
+  const isReadyToJoin = name.trim() && avatarIndex !== 0;
 
   return (
     <div className="pwa-game-container">
@@ -98,25 +98,27 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
 
         {/* BOTTOM SECTION - Join Button */}
         <div className="bottom-section">
-          <button
-            type="submit"
-            className="bg-transparent border-none p-0 disabled:opacity-50 transition-transform hover:scale-105 join-game-button"
-            disabled={isButtonDisabled}
-          >
-            {isProcessing ? (
-              <span className="text-white text-2xl font-bold uppercase animate-pulse">Joining...</span>
-            ) : (
-              <Image
-                src="/ui/join-game-button.png"
-                alt="Join the Mayhem"
-                width={252}
-                height={95}
-                className="object-contain drop-shadow-xl"
-                data-ai-hint="join button"
-                priority
-              />
-            )}
-          </button>
+          {(isReadyToJoin || isProcessing) && (
+            <button
+              type="submit"
+              className="bg-transparent border-none p-0 group animate-slow-scale-pulse join-game-button"
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <span className="text-white text-2xl font-bold uppercase animate-pulse">Joining...</span>
+              ) : (
+                <Image
+                  src="/ui/join-game-button.png"
+                  alt="Join the Mayhem"
+                  width={252}
+                  height={95}
+                  className="object-contain drop-shadow-xl"
+                  data-ai-hint="join button"
+                  priority
+                />
+              )}
+            </button>
+          )}
         </div>
       </form>
 
