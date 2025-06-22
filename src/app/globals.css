@@ -279,4 +279,8 @@
   .join-game-button {
     transform: scale(0.7);
   }
+
+  .bottom-section {
+    padding-bottom: 3vh;
+  }
 }
