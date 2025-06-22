@@ -103,10 +103,10 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
         {/* BOTTOM SECTION - Join Button */}
         <div className="bottom-section">
           {isReadyToJoin && (
-            <div className="relative">
+            <div className="relative join-game-button">
               <button
                 type="submit"
-                className="bg-transparent border-none p-0 group animate-slow-scale-pulse join-game-button"
+                className="bg-transparent border-none p-0 group animate-slow-scale-pulse"
                 disabled={isProcessing}
               >
                 {isProcessing ? (
