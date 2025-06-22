@@ -1,7 +1,7 @@
 
 "use client";
 
-import { motion } from "framer-motion";
+import Image from 'next/image';
 import { cn } from "@/lib/utils";
 
 interface ReadyToggleProps {
@@ -11,38 +11,29 @@ interface ReadyToggleProps {
 }
 
 export default function ReadyToggle({ isReady, onToggle, disabled = false }: ReadyToggleProps) {
-  const spring = {
-    type: "spring",
-    stiffness: 700,
-    damping: 30,
-  };
-
   return (
-    <div
+    <button
+      type="button"
       onClick={!disabled ? onToggle : undefined}
+      disabled={disabled}
       className={cn(
-        "flex items-center h-8 w-14 rounded-full p-1 cursor-pointer transition-colors duration-200 ease-in-out",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        isReady ? "bg-green-500 justify-end" : "bg-red-500 justify-start", // Changed here
+        "relative h-8 w-14 cursor-pointer transition-opacity duration-200 ease-in-out",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-full",
         disabled && "opacity-60 cursor-not-allowed"
       )}
       role="switch"
       aria-checked={isReady}
-      aria-disabled={disabled}
-      tabIndex={disabled ? -1 : 0}
-      onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
-          onToggle();
-          e.preventDefault();
-        }
-      }}
+      aria-label={isReady ? "Ready status: On" : "Ready status: Off"}
     >
       <span className="sr-only">{isReady ? "Status: Ready" : "Status: Not Ready"}</span>
-      <motion.div
-        className="h-6 w-6 bg-white rounded-full shadow-md"
-        layout
-        transition={spring}
+      <Image
+        src={isReady ? "/ui/toggle-on.png" : "/ui/toggle-off.png"}
+        alt={isReady ? "Ready toggle is on" : "Ready toggle is off"}
+        width={56}
+        height={32}
+        className="object-contain"
+        data-ai-hint="toggle on off"
       />
-    </div>
+    </button>
   );
 }
