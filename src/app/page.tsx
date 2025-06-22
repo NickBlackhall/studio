@@ -537,7 +537,7 @@ export default function WelcomePage() {
                         </div>
                         ))}
                     </div>
-                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-2">
+                    <div className="flex-shrink-0 text-center px-4 space-y-2 pb-4">
                       <p className="text-black font-semibold bg-amber-100/80 p-2 rounded-md shadow">
                         {lobbyMessage}
                       </p>
@@ -545,18 +545,18 @@ export default function WelcomePage() {
                         <button
                           onClick={handleStartGame}
                           disabled={isProcessingAction}
-                          className="group animate-pulse disabled:animate-none disabled:opacity-70"
+                          className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70"
                         >
                           {isProcessingAction ? (
-                            <div className="h-24 flex items-center justify-center">
+                            <div className="h-[39.2px] flex items-center justify-center">
                               <Loader2 className="h-8 w-8 animate-spin text-black" />
                             </div>
                           ) : (
                             <Image
                               src="/ui/start-game-button.png"
                               alt="Start the Mayhem"
-                              width={130}
-                              height={49}
+                              width={104}
+                              height={39.2}
                               className="object-contain drop-shadow-xl"
                               data-ai-hint="start button"
                               priority
