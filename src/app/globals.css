@@ -281,6 +281,6 @@
   }
 
   .bottom-section {
-    padding-bottom: 3vh;
+    padding-bottom: 2rem !important; /* Force override Tailwind */
   }
 }
