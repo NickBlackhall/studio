@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -64,6 +63,17 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
 
   return (
     <div className="pwa-game-container">
+      {/* Invisible button over "MAYHEM" - with red border for debugging */}
+      <button
+        type="button"
+        onClick={() => {
+          showGlobalLoader();
+          router.push('/');
+        }}
+        className="absolute top-[18vh] left-1/2 -translate-x-1/2 w-[60vw] max-w-[250px] h-[8vh] border-4 border-red-500 z-20"
+        aria-label="Go back to welcome screen"
+        title="Go back to welcome screen"
+      />
       <form onSubmit={handleJoinSubmit} className="w-full h-full flex flex-col justify-between">
         {/* TOP SECTION - Name Input */}
         <div className="top-section">
@@ -103,10 +113,10 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
         {/* BOTTOM SECTION - Join Button */}
         <div className="bottom-section">
           {isReadyToJoin && (
-            <div className="relative join-game-button">
+            <div className="relative join-game-button animate-slow-scale-pulse">
               <button
                 type="submit"
-                className="bg-transparent border-none p-0 group animate-slow-scale-pulse"
+                className="bg-transparent border-none p-0 group"
                 disabled={isProcessing}
               >
                 {isProcessing ? (
@@ -123,20 +133,6 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
                   />
                 )}
               </button>
-
-              {/* Invisible button over "MAYHEM" */}
-              {!isProcessing && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    showGlobalLoader();
-                    router.push('/');
-                  }}
-                  className="absolute bottom-0 left-0 w-full h-1/2 cursor-pointer border-4 border-red-500"
-                  aria-label="Go back to welcome screen"
-                  title="Go back to welcome screen"
-                />
-              )}
             </div>
           )}
         </div>
