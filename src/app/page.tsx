@@ -462,7 +462,7 @@ export default function WelcomePage() {
           alt="Make It Terrible game poster background"
           fill
           priority
-          className="object-cover"
+          className="object-cover object-top"
           data-ai-hint="game poster"
         />
         <div className="relative z-10 flex flex-grow items-center justify-center">
@@ -497,7 +497,7 @@ export default function WelcomePage() {
             src="/backgrounds/join-screen.jpg"
             alt="A poster with a red skull and crossbones inviting players to join the game"
             fill
-            className="object-cover"
+            className="object-cover object-top"
             data-ai-hint="skull poster"
             priority
           />
@@ -712,7 +712,7 @@ export default function WelcomePage() {
         alt="Make It Terrible game poster background"
         fill
         priority
-        className="object-cover"
+        className="object-cover object-top"
         data-ai-hint="game poster"
       />
       <div className="relative z-10 flex flex-grow items-center justify-center">
