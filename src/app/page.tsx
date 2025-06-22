@@ -279,24 +279,6 @@ export default function WelcomePage() {
     return [thisPlayerObject, ...otherPlayers];
   }, [internalGame, thisPlayerObject]);
 
-  const hostPlayerId = useMemo(() => {
-    if (!internalGame || !Array.isArray(internalGame.ready_player_order)) {
-      return null;
-    }
-    return internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
-  }, [internalGame]); 
-
-  const enoughPlayers = useMemo(() => {
-    if (!internalGame || !internalGame.players) return false;
-    return internalGame.players.length >= MIN_PLAYERS_TO_START;
-  }, [internalGame]);
-
-  const allPlayersReady = useMemo(() => {
-    if (!internalGame || !internalGame.players || !enoughPlayers) return false;
-    return internalGame.players.every(p => p.isReady);
-  }, [internalGame, enoughPlayers]); 
-
-
   const handleAddPlayer = async (formData: FormData) => {
     const name = formData.get('name') as string;
     const avatar = formData.get('avatar') as string;
@@ -553,126 +535,125 @@ export default function WelcomePage() {
               </Button>
             </div>
         ) : isLobbyPhaseActive ? (
-          (() => {
-            const showPlayerSetupForm = !thisPlayerObject && isLobbyPhaseActive;
-            
-            const showStartGameButton = 
-              internalThisPlayerId !== null &&
-              internalThisPlayerId === hostPlayerId && 
-              enoughPlayers &&
-              allPlayersReady;
-            
-            let lobbyMessage = "";
-            if (!enoughPlayers) {
-              lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players to start. Waiting for ${MIN_PLAYERS_TO_START - (internalGame.players?.length || 0)} more...`;
-            } else if (!allPlayersReady) {
-              const unreadyCount = internalGame.players?.filter(p => !p.isReady).length || 0;
-              lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to be ready. Host can then start.`;
-            } else if (showStartGameButton) { 
-              lobbyMessage = "All players are ready! You can start the game now!";
-            } else { 
-              const hostPlayerForMsg = hostPlayerId && internalGame.players ? internalGame.players.find(p => p.id === hostPlayerId) : null;
-              const hostNameForMessage = hostPlayerForMsg?.name || ( (internalGame.ready_player_order?.length || 0) > 0 ? 'first player to ready up' : 'the host');
-              lobbyMessage = `Game starts once all you terrible people are ready. So hurry up!`;
-            }
-            
-            return (
+            !thisPlayerObject ? (
+                // ********** JOIN SCREEN **********
                 <div className="w-full">
-                  <header className="mb-12 text-center">
-                    <button onClick={() => {showGlobalLoader(); router.push('/?step=welcome')}} className="cursor-pointer">
-                      <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
-                    </button>
-                    <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
-                    {isLobbyPhaseActive && (
-                      <>
-                        {thisPlayerObject && <p className="text-xl text-muted-foreground mt-2">Welcome, {thisPlayerObject.name}! Toggle your ready status below.</p>}
-                        {showPlayerSetupForm && <p className="text-xl text-muted-foreground mt-2">Enter your details to join, then toggle your ready status!</p>}
-                      </>
-                    )}
-                  </header>
-                  
-                  <div className={cn("grid gap-8 w-full max-w-4xl", showPlayerSetupForm ? "md:grid-cols-2" : "md:grid-cols-1")}>
-                    {showPlayerSetupForm && (
-                      <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
-                        <CardHeader className="bg-primary text-primary-foreground p-6">
-                          <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
-                          <CardDescription className="text-primary-foreground/80 text-base">Enter your name and pick your avatar.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-6">
-                          <PlayerSetupForm addPlayer={handleAddPlayer} />
-                        </CardContent>
-                      </Card>
-                    )}
-                    
-                    <Card className={cn("shadow-2xl border-2 border-secondary rounded-xl overflow-hidden", !showPlayerSetupForm && "md:col-span-1")}>
-                      <CardHeader className="bg-secondary text-secondary-foreground p-6">
-                        <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({internalGame.players.length})</CardTitle>
-                        <CardDescription className="text-secondary-foreground/80 text-base">
-                          {lobbyMessage}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="p-6">
-                        {sortedPlayersForDisplay.length > 0 ? (
-                          <ul className="space-y-3">
-                            {sortedPlayersForDisplay.map((player: PlayerClientState) => (
-                              <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
-                                <div className="flex items-center">
-                                  {player.avatar.startsWith('/') ? (
-                                    <Image src={player.avatar} alt={`${player.name}'s avatar`} width={40} height={40} className="mr-3 rounded-sm object-contain" style={{ width: '40px', height: '40px' }} />
-                                  ) : (
-                                    <span className="text-3xl mr-3">{player.avatar}</span>
-                                  )}
-                                  <span className="text-xl font-medium text-foreground">{player.name}</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  {player.id === internalThisPlayerId ? ( 
-                                    <ReadyToggle
-                                      isReady={player.isReady}
-                                      onToggle={() => handleToggleReady(player)}
-                                      disabled={isProcessingAction}
-                                    />
-                                  ) : (
-                                    player.isReady ? 
-                                      <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> : 
-                                      <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
-                                  )}
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-muted-foreground text-center py-4">No players yet. Be the first to cause some trouble!</p>
-                        )}
-
-                        {showStartGameButton && (
-                            <Button
-                              onClick={handleStartGame}
-                              variant="default"
-                              size="lg"
-                              className="mt-6 w-full bg-accent text-accent-foreground hover:bg-accent/90 text-xl font-bold py-6 shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
-                              disabled={isProcessingAction || isLoading}
-                            >
-                              { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-3 h-7 w-7" /> }
-                              Start Game Now!
-                            </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <Dialog>
-                      <DialogTrigger asChild><Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80"><HelpCircle className="mr-2 h-5 w-5" /> How to Play</Button></DialogTrigger>
-                      <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
-                    </Dialog>
-                    <Button onClick={handleResetGame} variant="destructive" className="hover:bg-destructive/80" disabled={isProcessingAction || isLoading }>
-                      { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
-                    </Button>
-                  </div>
-                  
+                    <header className="mb-12 text-center">
+                        <button onClick={() => { showGlobalLoader(); router.push('/?step=welcome') }} className="cursor-pointer">
+                            <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+                        </button>
+                        <h1 className="text-6xl font-extrabold tracking-tighter text-primary sr-only">Make It Terrible</h1>
+                        <p className="text-xl text-muted-foreground mt-2">Enter your details to join the mayhem!</p>
+                    </header>
+                    <div className="w-full max-w-md mx-auto">
+                        <Card className="shadow-2xl border-2 border-primary rounded-xl overflow-hidden">
+                            <CardHeader className="bg-primary text-primary-foreground p-6">
+                                <CardTitle className="text-3xl font-bold">Join the Mayhem!</CardTitle>
+                                <CardDescription className="text-primary-foreground/80 text-base">Enter your name and pick your avatar.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                <PlayerSetupForm addPlayer={handleAddPlayer} />
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
-            );
-          })()
+            ) : (
+                // ********** LOBBY SCREEN **********
+                (() => {
+                    const hostPlayerId = internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
+                    const enoughPlayers = internalGame.players.length >= MIN_PLAYERS_TO_START;
+                    const allPlayersReady = enoughPlayers && internalGame.players.every(p => p.isReady);
+                    const showStartGameButton = internalThisPlayerId === hostPlayerId && enoughPlayers && allPlayersReady;
+
+                    let lobbyMessage = "";
+                    if (!enoughPlayers) {
+                        lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players. Waiting for ${MIN_PLAYERS_TO_START - (internalGame.players?.length || 0)} more...`;
+                    } else if (!allPlayersReady) {
+                        const unreadyCount = internalGame.players.filter(p => !p.isReady).length;
+                        lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to ready up.`;
+                    } else if (showStartGameButton) {
+                        lobbyMessage = "All players are ready! You can start the game!";
+                    } else {
+                        const hostPlayerForMsg = hostPlayerId && internalGame.players.find(p => p.id === hostPlayerId);
+                        const hostNameForMessage = hostPlayerForMsg?.name || 'The host';
+                        lobbyMessage = `Waiting for ${hostNameForMessage} to start the game.`;
+                    }
+
+                    return (
+                        <div className="w-full">
+                            <header className="mb-8 text-center">
+                                <button onClick={() => { showGlobalLoader(); router.push('/?step=welcome') }} className="cursor-pointer">
+                                    <Image src="/logo.png" alt="Make It Terrible Logo" width={200} height={59} className="mx-auto mb-4" data-ai-hint="game logo" priority style={{ height: 'auto' }} />
+                                </button>
+                                <p className="text-xl text-muted-foreground mt-2">Welcome, {thisPlayerObject.name}! Toggle your ready status below.</p>
+                            </header>
+
+                            <div className="w-full max-w-lg mx-auto">
+                                <Card className="shadow-2xl border-2 border-secondary rounded-xl overflow-hidden">
+                                    <CardHeader className="bg-secondary text-secondary-foreground p-6">
+                                        <CardTitle className="text-3xl font-bold flex items-center"><Users className="mr-3 h-8 w-8" /> Players ({internalGame.players.length})</CardTitle>
+                                        <CardDescription className="text-secondary-foreground/80 text-base">
+                                            {lobbyMessage}
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-6">
+                                        {sortedPlayersForDisplay.length > 0 ? (
+                                            <ul className="space-y-3">
+                                                {sortedPlayersForDisplay.map((player: PlayerClientState) => (
+                                                    <li key={player.id} className="flex items-center justify-between p-3 bg-muted rounded-lg shadow">
+                                                        <div className="flex items-center">
+                                                            {player.avatar.startsWith('/') ? (
+                                                                <Image src={player.avatar} alt={`${player.name}'s avatar`} width={40} height={40} className="mr-3 rounded-sm object-contain" style={{ width: '40px', height: '40px' }} />
+                                                            ) : (
+                                                                <span className="text-3xl mr-3">{player.avatar}</span>
+                                                            )}
+                                                            <span className="text-xl font-medium text-foreground">{player.name}</span>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            {player.id === internalThisPlayerId ? (
+                                                                <ReadyToggle isReady={player.isReady} onToggle={() => handleToggleReady(player)} disabled={isProcessingAction} />
+                                                            ) : (
+                                                                player.isReady ?
+                                                                    <CheckSquare className="h-6 w-6 text-green-500" title="Ready" /> :
+                                                                    <XSquare className="h-6 w-6 text-red-500" title="Not Ready" />
+                                                            )}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p className="text-muted-foreground text-center py-4">Waiting for players to join...</p>
+                                        )}
+
+                                        {showStartGameButton && (
+                                            <Button
+                                              onClick={handleStartGame}
+                                              variant="default"
+                                              size="lg"
+                                              className="mt-6 w-full bg-accent text-accent-foreground hover:bg-accent/90 text-xl font-bold py-6 shadow-lg transform hover:scale-105 transition-transform duration-150 ease-in-out"
+                                              disabled={isProcessingAction || isLoading}
+                                            >
+                                              { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Play className="mr-3 h-7 w-7" /> }
+                                              Start Game Now!
+                                            </Button>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div className="mt-12 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-center gap-4">
+                                <Dialog>
+                                    <DialogTrigger asChild><Button variant="outline" className="border-accent text-accent-foreground hover:bg-accent/80"><HelpCircle className="mr-2 h-5 w-5" /> How to Play</Button></DialogTrigger>
+                                    <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
+                                </Dialog>
+                                <Button onClick={handleResetGame} variant="destructive" className="hover:bg-destructive/80" disabled={isProcessingAction || isLoading}>
+                                    { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
+                                </Button>
+                            </div>
+                        </div>
+                    );
+                })()
+            )
         ) : null}
       </div>
     );
@@ -696,17 +677,23 @@ export default function WelcomePage() {
         data-ai-hint="game poster"
       />
       <div className="relative z-10 flex flex-grow items-center justify-center">
-        <Button
-          onClick={() => {
-            showGlobalLoader();
-            router.push('/?step=setup');
-          }}
-          size="lg"
-          className="bg-red-600 hover:bg-red-700 text-white font-bold text-xl py-6 px-8 rounded-lg shadow-2xl border-4 border-black animate-pulse"
+        <button
+            onClick={() => {
+              showGlobalLoader();
+              router.push('/?step=setup');
+            }}
+            className="group animate-slow-scale-pulse"
         >
-          <Play className="mr-3 h-7 w-7" />
-          Join the Mayhem
-        </Button>
+          <Image
+            src="/ui/enter-the-chaos-button.png"
+            alt="Enter the Chaos"
+            width={252}
+            height={95}
+            className="object-contain drop-shadow-xl"
+            data-ai-hint="chaos button"
+            priority
+          />
+        </button>
       </div>
     </div>
   );
