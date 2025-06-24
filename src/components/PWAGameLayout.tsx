@@ -145,7 +145,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
           src="/backgrounds/join-screen-2.jpg"
           alt="Make It Terrible Game Background"
           fill
-          className="object-cover object-center"
+          className="poster-image"
           data-ai-hint="skull poster"
           priority
         />

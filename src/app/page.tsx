@@ -57,7 +57,7 @@ export default function WelcomePage() {
   }, []);
 
   const setGame = useCallback((newGameState: GameClientState | null) => {
-    gameRef.current = newGameState;
+    gameRef.current = newGameState; 
     if (isMountedRef.current) {
       if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
         const rpoArray = parseReadyPlayerOrderStr(newGameState);
@@ -367,7 +367,7 @@ export default function WelcomePage() {
           src="/backgrounds/mobile-background.jpg"
           alt="Make It Terrible game poster background"
           fill
-          className="object-cover object-center"
+          className="poster-image"
           priority
           data-ai-hint="game poster"
         />
@@ -478,7 +478,7 @@ export default function WelcomePage() {
                     src="/backgrounds/lobby-poster.jpg"
                     alt="Lobby poster background"
                     fill
-                    className="object-cover object-center"
+                    className="poster-image"
                     data-ai-hint="lobby poster"
                   />
                   <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col">
@@ -595,7 +595,7 @@ export default function WelcomePage() {
         src="/backgrounds/mobile-background.jpg"
         alt="Make It Terrible game poster background"
         fill
-        className="object-cover object-center"
+        className="poster-image"
         priority
         data-ai-hint="game poster"
       />
