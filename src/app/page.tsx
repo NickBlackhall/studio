@@ -150,7 +150,7 @@ export default function WelcomePage() {
          // Non-initial call completed
       }
     }
-  }, [toast, setGame, setThisPlayerId, hideGlobalLoader, parseReadyPlayerOrderStr]);
+  }, [toast, hideGlobalLoader, parseReadyPlayerOrderStr, setGame, setThisPlayerId]);
 
   const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
       const currentGameId = gameRef.current?.gameId;
@@ -206,12 +206,6 @@ export default function WelcomePage() {
         try {
           const fetchedGameState = await getGame(latestGameId);
           if (isMountedRef.current && fetchedGameState) {
-             if (typeof fetchedGameState.ready_player_order_str === 'string') {
-                fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
-            } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
-                console.warn(`Client (handleRealtimeUpdate from ${source}): RPO undefined/not array, defaulting to [].`);
-                fetchedGameState.ready_player_order = [];
-            }
             setGame(fetchedGameState);
           }
         } catch (error) {
@@ -303,12 +297,6 @@ export default function WelcomePage() {
         let updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
         if (isMountedRef.current) {
           if (updatedGameState) {
-            if (typeof updatedGameState.ready_player_order_str === 'string') {
-              updatedGameState.ready_player_order = parseReadyPlayerOrderStr(updatedGameState);
-            } else if (typeof updatedGameState.ready_player_order === 'undefined' || !Array.isArray(updatedGameState.ready_player_order)) {
-              console.warn(`Client (handleToggleReady): RPO undefined or not an array from togglePlayerReadyStatus, defaulting to []. Game ID: ${currentGameId}`);
-              updatedGameState.ready_player_order = [];
-            }
             setGame(updatedGameState); 
           } else {
             await fetchGameData(`handleToggleReady_null_fallback_game_${currentGameId}`, currentGameId);
@@ -412,9 +400,9 @@ export default function WelcomePage() {
     }
 
     const mainContent = (
-      <div className="flex-grow w-full flex flex-col items-center justify-center p-4">
+      <div className="flex-grow w-full flex flex-col items-center justify-center">
         {isSpectatorView ? (
-          <div className="w-full space-y-6 text-center">
+           <div className="w-full max-w-md space-y-6 text-center p-4">
             
             <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
               <CardHeader className="p-4">
@@ -422,8 +410,7 @@ export default function WelcomePage() {
                 <CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle>
               </CardHeader>
               <CardContent className="p-4 pt-0 text-sm">
-                <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch you pervert.</p>
-                <p className="mt-1">Don&apos;t like waiting? Thank the idiot who programmed this thing...</p>
+                <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch.</p>
               </CardContent>
             </Card>
             <div className="my-6">
@@ -440,9 +427,9 @@ export default function WelcomePage() {
             </Button>
           </div>
         ) : isActivePlayerOnLobbyPage ? (
-          <div className="w-full">
+          <div className="w-full max-w-md text-center p-4">
             
-            <Card className="my-4 border-primary/50 bg-muted/30 shadow-md w-full max-w-md text-center">
+            <Card className="my-4 border-primary/50 bg-muted/30 shadow-md">
               <CardHeader className="p-4">
                 <CardTitle className="text-lg flex items-center justify-center font-semibold text-foreground">
                   <Info className="mr-2 h-5 w-5 text-primary" /> Game in Progress!
@@ -485,7 +472,7 @@ export default function WelcomePage() {
               lobbyMessage = "";
             }
             return (
-              <div className="w-full max-w-lg">
+              <div className="w-full">
                 <div className="relative w-full">
                   <Image
                     src="/backgrounds/lobby-poster.jpg"
@@ -595,7 +582,7 @@ export default function WelcomePage() {
     );
     
     return (
-      <div className={cn("min-h-screen flex flex-col items-center justify-center p-4 bg-black")}>
+      <div className={cn("min-h-screen flex flex-col items-center justify-center bg-black")}>
         {mainContent}
       </div>
     );
