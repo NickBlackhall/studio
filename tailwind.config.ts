@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -10,7 +11,8 @@ export default {
   theme: {
   	extend: {
       fontFamily: {
-        'im-fell': ['"IMFellEnglishSC"', 'serif'],
+        'im-fell': ['var(--font-im-fell)', 'serif'],
+        'corben': ['var(--font-corben)', 'serif'],
       },
   		colors: {
   			background: 'hsl(var(--background))',

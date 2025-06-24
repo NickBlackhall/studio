@@ -36,6 +36,7 @@ import {
   DialogOverlay
 } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
+import GameUI from '@/components/game/GameUI';
 
 
 export default function GamePage() {
@@ -697,9 +698,8 @@ export default function GamePage() {
           </div>
         </aside>
       </div>
+      <GameUI />
     </>
   );
 }
 export const dynamic = 'force-dynamic';
-
-    

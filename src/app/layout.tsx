@@ -1,26 +1,23 @@
 
-// import localFont from 'next/font/local'; // Commented out
+import localFont from 'next/font/local';
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 
-// Configure Bangers font from local file - COMMENTED OUT
-// const bangersFont = localFont({
-//   src: '../../public/fonts/Bangers-Regular.ttf',
-//   weight: '400',
-//   variable: '--font-bangers', 
-//   display: 'swap',
-// });
+const imFellFont = localFont({
+  src: '../../public/fonts/IMFellEnglishSC-Regular.ttf',
+  variable: '--font-im-fell', 
+  display: 'swap',
+});
 
-// Configure Corben font from local file - COMMENTED OUT
-// const corbenFont = localFont({
-//   src: '../../public/fonts/Corben-Bold.ttf',
-//   weight: '700',
-//   variable: '--font-corben', 
-//   display: 'swap',
-// });
+const corbenFont = localFont({
+  src: '../../public/fonts/Corben-Regular.ttf',
+  weight: '400',
+  variable: '--font-corben', 
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Make It Terrible',
@@ -47,8 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Removed font variables from className
-    <html lang="en" className={``} suppressHydrationWarning={true}>
+    <html lang="en" className={`${imFellFont.variable} ${corbenFont.variable}`} suppressHydrationWarning={true}>
       <body className={`antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
         <LoadingProvider>
           <div className="flex min-h-screen w-full flex-col bg-background">
