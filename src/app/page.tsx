@@ -57,7 +57,7 @@ export default function WelcomePage() {
   }, []);
 
   const setGame = useCallback((newGameState: GameClientState | null) => {
-    gameRef.current = newGameState; 
+    gameRef.current = newGameState;
     if (isMountedRef.current) {
       if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
         const rpoArray = parseReadyPlayerOrderStr(newGameState);
@@ -367,7 +367,7 @@ export default function WelcomePage() {
           src="/backgrounds/mobile-background.jpg"
           alt="Make It Terrible game poster background"
           fill
-          className="object-contain object-top"
+          className="object-cover object-center"
           priority
           data-ai-hint="game poster"
         />
@@ -400,9 +400,9 @@ export default function WelcomePage() {
     }
 
     const mainContent = (
-      <div className="flex-grow w-full flex flex-col items-center justify-center">
+      <div className="w-full h-full flex flex-col items-center justify-center">
         {isSpectatorView ? (
-           <div className="w-full max-w-md space-y-6 text-center p-4">
+          <div className="w-full max-w-md space-y-6 text-center p-4">
             
             <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
               <CardHeader className="p-4">
@@ -472,14 +472,13 @@ export default function WelcomePage() {
               lobbyMessage = "";
             }
             return (
-              <div className="w-full">
-                <div className="relative w-full">
+              <div className="w-full h-screen">
+                <div className="relative w-full h-full">
                   <Image
                     src="/backgrounds/lobby-poster.jpg"
                     alt="Lobby poster background"
-                    width={500}
-                    height={700}
-                    className="w-full h-auto"
+                    fill
+                    className="object-cover object-center"
                     data-ai-hint="lobby poster"
                   />
                   <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col">
@@ -564,6 +563,7 @@ export default function WelcomePage() {
                             height={44}
                             className="object-contain"
                             data-ai-hint="how to play button"
+                            priority
                           />
                         </button>
                       </DialogTrigger>
@@ -595,7 +595,7 @@ export default function WelcomePage() {
         src="/backgrounds/mobile-background.jpg"
         alt="Make It Terrible game poster background"
         fill
-        className="object-contain object-top"
+        className="object-cover object-center"
         priority
         data-ai-hint="game poster"
       />
@@ -621,5 +621,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    

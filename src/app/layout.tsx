@@ -1,7 +1,7 @@
 
 // import localFont from 'next/font/local'; // Commented out
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
@@ -25,15 +25,15 @@ import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
 export const metadata: Metadata = {
   title: 'Make It Terrible',
   description: 'The game of terrible choices and hilarious outcomes!',
-  manifest: '/manifest.json',
-  themeColor: '#f59e0b',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover',
-  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#000000',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
