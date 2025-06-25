@@ -32,9 +32,9 @@ export default function GameUI({}: GameUIProps) {
           <div 
             className="absolute"
             style={{
-              top: '13.25%',
-              left: '4.25%',
-              width: '22.5%',
+              top: '11%',
+              left: '2%',
+              width: '27%',
               aspectRatio: '1'
             }}
           >
