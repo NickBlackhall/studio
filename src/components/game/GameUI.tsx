@@ -29,12 +29,12 @@ export default function GameUI({}: GameUIProps) {
         {/* Dynamic Content Container */}
         <div className="absolute inset-0">
           {/* Player Avatar - positioned in the golden area */}
-          <div 
+          <div
             className="absolute"
             style={{
               top: '11%',
-              left: '2%',
-              width: '27%',
+              left: '8.5%',
+              width: '24%',
               aspectRatio: '1'
             }}
           >
@@ -45,7 +45,7 @@ export default function GameUI({}: GameUIProps) {
           </div>
 
           {/* Player Name - positioned in the scroll area */}
-          <div 
+          <div
             className="absolute flex items-center justify-center"
             style={{
               top: '12%',
@@ -54,7 +54,7 @@ export default function GameUI({}: GameUIProps) {
               height: '25%'
             }}
           >
-            <p 
+            <p
               className="font-im-fell text-black font-bold leading-tight text-center"
               style={{
                 fontSize: 'clamp(0.875rem, 4vw, 1.5rem)',
@@ -66,7 +66,7 @@ export default function GameUI({}: GameUIProps) {
           </div>
 
           {/* Scores Button */}
-          <button 
+          <button
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
               top: '50%',
@@ -79,7 +79,7 @@ export default function GameUI({}: GameUIProps) {
           </button>
 
           {/* Round Indicator */}
-          <div 
+          <div
             className="absolute flex items-center justify-center"
             style={{
               top: '50%',
@@ -89,7 +89,7 @@ export default function GameUI({}: GameUIProps) {
             }}
           >
             <Image src="/ui/round-button.png" alt="Round" fill data-ai-hint="round indicator" />
-            <p 
+            <p
               className="absolute font-corben text-white font-bold drop-shadow-lg"
               style={{
                 fontSize: 'clamp(1.25rem, 6vw, 2.5rem)',
@@ -103,7 +103,7 @@ export default function GameUI({}: GameUIProps) {
           </div>
 
           {/* Menu Button */}
-          <button 
+          <button
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
               top: '50%',
