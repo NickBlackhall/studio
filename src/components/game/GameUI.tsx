@@ -69,9 +69,9 @@ export default function GameUI({}: GameUIProps) {
           <button
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
-              top: '47.6%',
-              left: '44.6%',
-              width: '20.8%',
+              top: '46.0%',
+              left: '43.6%',
+              width: '22.9%',
               aspectRatio: '1'
             }}
           >
