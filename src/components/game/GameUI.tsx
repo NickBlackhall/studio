@@ -30,7 +30,7 @@ export default function GameUI({}: GameUIProps) {
         {/* Dynamic Content Container */}
         <div className="absolute inset-0">
           {/* Player Info Section */}
-          <div className="absolute top-[15%] left-[5%] w-[40%] h-[60%] flex items-center p-2">
+          <div className="absolute top-[15%] left-[5%] w-[45%] h-[33%] flex items-center p-2">
             <Avatar className="h-full w-auto aspect-square border-[3px] border-black rounded-md shadow-lg">
               <AvatarImage src={playerAvatar} alt={playerName} />
               <AvatarFallback>TT</AvatarFallback>
