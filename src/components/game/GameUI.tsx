@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -38,7 +39,7 @@ export default function GameUI({}: GameUIProps) {
               aspectRatio: '1'
             }}
           >
-            <Avatar className="w-full h-full rounded-lg shadow-lg">
+            <Avatar className="w-full h-full rounded-lg">
               <AvatarImage src={playerAvatar} alt={playerName} />
               <AvatarFallback className="text-lg font-bold">TT</AvatarFallback>
             </Avatar>
