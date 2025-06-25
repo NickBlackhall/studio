@@ -33,7 +33,9 @@ import {
   DialogContent,
   DialogTrigger,
   DialogPortal,
-  DialogOverlay
+  DialogOverlay,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
@@ -705,6 +707,9 @@ export default function GamePage() {
       />
       <Dialog open={isScoreboardOpen} onOpenChange={setIsScoreboardOpen}>
         <DialogContent className="max-w-md p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Scoreboard</DialogTitle>
+          </DialogHeader>
           <Scoreboard
             players={internalGameState.players}
             currentJudgeId={internalGameState.currentJudgeId}
@@ -716,3 +721,5 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
+
+    
