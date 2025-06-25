@@ -66,7 +66,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             <p
               className="font-im-fell text-black font-bold leading-tight text-left"
               style={{
-                fontSize: 'clamp(0.875rem, 4vw, 2.5rem)',
+                fontSize: 'clamp(1.3125rem, 6vw, 2.25rem)',
                 textShadow: '1px 1px 2px rgba(255,255,255,0.8)'
               }}
             >

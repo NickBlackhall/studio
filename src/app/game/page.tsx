@@ -616,11 +616,6 @@ export default function GamePage() {
   };
 
   const showPendingOverlay = isActionPending && !isLoading;
-  const shouldShowPlayerInfoBar = thisPlayer &&
-                                  !thisPlayer.isJudge &&
-                                  internalGameState.gamePhase !== 'winner_announcement' &&
-                                  internalGameState.gamePhase !== 'game_over' &&
-                                  !recapStepInternal; 
 
   return (
     <>
@@ -640,27 +635,6 @@ export default function GamePage() {
               <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
                   <Loader2 className="h-12 w-12 animate-spin text-primary" />
               </div>
-          )}
-          {shouldShowPlayerInfoBar && (
-            <Card className="mb-4 bg-accent text-accent-foreground shadow-lg">
-              <CardContent className="p-2 flex items-center justify-start text-left">
-                {thisPlayer.avatar && thisPlayer.avatar.startsWith('/') ? (
-                  <Image
-                    src={thisPlayer.avatar}
-                    alt={`${thisPlayer.name}'s avatar`}
-                    width={36}
-                    height={36}
-                    className="mr-3 rounded-md object-cover"
-                    data-ai-hint="player avatar"
-                  />
-                ) : (
-                  <span className="text-3xl mr-3">{thisPlayer.avatar}</span>
-                )}
-                <p className="text-lg text-accent-foreground font-semibold">
-                  <strong>{thisPlayer.name}</strong> - {thisPlayer.score} pts
-                </p>
-              </CardContent>
-            </Card>
           )}
           {renderGameContent()}
         </main>
