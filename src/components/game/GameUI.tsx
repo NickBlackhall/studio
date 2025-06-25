@@ -32,8 +32,8 @@ export default function GameUI({}: GameUIProps) {
           <div
             className="absolute"
             style={{
-              top: '11%',
-              left: '10.8%',
+              top: '11.5%',
+              left: '6.8%',
               width: '26.4%',
               aspectRatio: '1'
             }}
@@ -48,8 +48,8 @@ export default function GameUI({}: GameUIProps) {
           <div
             className="absolute flex items-center justify-center"
             style={{
-              top: '12%',
-              left: '25%',
+              top: '27%',
+              left: '27.5%',
               width: '45%',
               height: '25%'
             }}
@@ -69,9 +69,9 @@ export default function GameUI({}: GameUIProps) {
           <button
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
-              top: '50%',
-              left: '47%',
-              width: '16%',
+              top: '47.6%',
+              left: '44.6%',
+              width: '20.8%',
               aspectRatio: '1'
             }}
           >
