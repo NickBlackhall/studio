@@ -3,16 +3,22 @@
 
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import type { GameClientState, PlayerClientState } from '@/lib/types';
 
-// We'll pass real data in later. For now, it's all static placeholders.
 interface GameUIProps {
-  // Props will be added here in future steps
+  gameState: GameClientState | null;
+  thisPlayer: PlayerClientState | null;
 }
 
-export default function GameUI({}: GameUIProps) {
-  const roundNumber = 3;
-  const playerName = "Terrible Terry";
-  const playerAvatar = "/ui/avatar5.png"; // Placeholder avatar
+export default function GameUI({ gameState, thisPlayer }: GameUIProps) {
+  if (!gameState || !thisPlayer) {
+    return null;
+  }
+
+  const roundNumber = gameState.currentRound;
+  const playerName = thisPlayer.name;
+  const playerAvatar = thisPlayer.avatar;
+  const playerInitials = playerName?.substring(0, 2).toUpperCase() || '??';
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
@@ -41,7 +47,7 @@ export default function GameUI({}: GameUIProps) {
           >
             <Avatar className="w-full h-full rounded-lg">
               <AvatarImage src={playerAvatar} alt={playerName} />
-              <AvatarFallback className="text-lg font-bold">TT</AvatarFallback>
+              <AvatarFallback className="text-lg font-bold">{playerInitials}</AvatarFallback>
             </Avatar>
           </div>
 
@@ -50,7 +56,7 @@ export default function GameUI({}: GameUIProps) {
             className="absolute flex items-center justify-center"
             style={{
               top: '27%',
-              left: '27.5%',
+              left: '29.5%',
               width: '45%',
               height: '25%'
             }}
@@ -58,7 +64,7 @@ export default function GameUI({}: GameUIProps) {
             <p
               className="font-im-fell text-black font-bold leading-tight text-center"
               style={{
-                fontSize: 'clamp(0.875rem, 4vw, 1.5rem)',
+                fontSize: 'clamp(1.05rem, 4.8vw, 1.8rem)',
                 textShadow: '1px 1px 2px rgba(255,255,255,0.8)'
               }}
             >

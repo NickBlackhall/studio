@@ -698,7 +698,7 @@ export default function GamePage() {
           </div>
         </aside>
       </div>
-      <GameUI />
+      <GameUI gameState={internalGameState} thisPlayer={thisPlayer} />
     </>
   );
 }
