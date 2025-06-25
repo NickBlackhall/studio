@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from 'next/image';
@@ -39,9 +38,9 @@ export default function GameUI({ gameState, thisPlayer }: GameUIProps) {
           <div
             className="absolute"
             style={{
-              top: '11.5%',
-              left: '6.8%',
-              width: '26.4%',
+              top: '8.5%',
+              left: '5%',
+              width: '29.4%',
               aspectRatio: '1'
             }}
           >
@@ -53,7 +52,7 @@ export default function GameUI({ gameState, thisPlayer }: GameUIProps) {
 
           {/* Player Name - positioned in the scroll area */}
           <div
-            className="absolute flex items-center justify-center"
+            className="absolute flex items-center justify-start"
             style={{
               top: '27%',
               left: '29.5%',
@@ -62,7 +61,7 @@ export default function GameUI({ gameState, thisPlayer }: GameUIProps) {
             }}
           >
             <p
-              className="font-im-fell text-black font-bold leading-tight text-center"
+              className="font-im-fell text-black font-bold leading-tight text-left"
               style={{
                 fontSize: 'clamp(1.05rem, 4.8vw, 1.8rem)',
                 textShadow: '1px 1px 2px rgba(255,255,255,0.8)'
