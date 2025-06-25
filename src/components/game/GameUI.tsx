@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -55,7 +56,7 @@ export default function GameUI({ gameState, thisPlayer }: GameUIProps) {
             className="absolute flex items-center justify-start"
             style={{
               top: '27%',
-              left: '29.5%',
+              left: '37.5%',
               width: '45%',
               height: '25%'
             }}
@@ -63,7 +64,7 @@ export default function GameUI({ gameState, thisPlayer }: GameUIProps) {
             <p
               className="font-im-fell text-black font-bold leading-tight text-left"
               style={{
-                fontSize: 'clamp(1.05rem, 4.8vw, 1.8rem)',
+                fontSize: 'clamp(0.875rem, 4vw, 1.5rem)',
                 textShadow: '1px 1px 2px rgba(255,255,255,0.8)'
               }}
             >
@@ -96,7 +97,7 @@ export default function GameUI({ gameState, thisPlayer }: GameUIProps) {
           >
             <Image src="/ui/round-button.png" alt="Round" fill data-ai-hint="round indicator" />
             <p
-              className="absolute font-corben text-white font-bold drop-shadow-lg"
+              className="absolute font-corben text-black font-bold drop-shadow-lg"
               style={{
                 fontSize: 'clamp(1.25rem, 6vw, 2.5rem)',
                 top: '63%',
