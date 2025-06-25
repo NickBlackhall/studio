@@ -98,7 +98,6 @@
   body {
     background-color: hsl(var(--background)); 
     color: hsl(var(--foreground)); 
-    font-family: serif; /* Using generic system serif font */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
