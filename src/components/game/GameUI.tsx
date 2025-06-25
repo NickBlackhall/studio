@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from 'next/image';
@@ -29,28 +28,37 @@ export default function GameUI({}: GameUIProps) {
 
         {/* Dynamic Content Container */}
         <div className="absolute inset-0">
-          {/* Player Info Section */}
+          {/* Player Avatar - positioned in the golden area */}
           <div 
-            className="absolute flex items-center"
+            className="absolute"
             style={{
-              top: '13.3%',
-              left: '5.1%',
-              width: '44%',
-              height: '33.5%',
+              top: '17%',
+              left: '8%',
+              width: '15%',
+              aspectRatio: '1'
             }}
           >
-            <Avatar 
-              className="aspect-square border-[3px] border-black rounded-md shadow-lg"
-              style={{ height: '52%' }}
-            >
+            <Avatar className="w-full h-full border-[2px] border-black rounded-lg shadow-lg">
               <AvatarImage src={playerAvatar} alt={playerName} />
-              <AvatarFallback>TT</AvatarFallback>
+              <AvatarFallback className="text-lg font-bold">TT</AvatarFallback>
             </Avatar>
+          </div>
+
+          {/* Player Name - positioned in the scroll area */}
+          <div 
+            className="absolute flex items-center justify-center"
+            style={{
+              top: '12%',
+              left: '25%',
+              width: '45%',
+              height: '25%'
+            }}
+          >
             <p 
-              className="font-im-fell text-black leading-tight drop-shadow-sm truncate"
+              className="font-im-fell text-black font-bold leading-tight text-center"
               style={{
-                fontSize: 'clamp(1rem, 5.5vw, 1.875rem)', // Responsive font size
-                marginLeft: '3%',
+                fontSize: 'clamp(0.875rem, 4vw, 1.5rem)',
+                textShadow: '1px 1px 2px rgba(255,255,255,0.8)'
               }}
             >
               {playerName}
@@ -61,10 +69,10 @@ export default function GameUI({}: GameUIProps) {
           <button 
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
-              top: '48.9%',
-              left: '47.7%',
-              width: '17.8%',
-              aspectRatio: '63 / 68'
+              top: '50%',
+              left: '47%',
+              width: '16%',
+              aspectRatio: '1'
             }}
           >
             <Image src="/ui/scores-button.png" alt="Scores" fill data-ai-hint="scores button" />
@@ -74,18 +82,20 @@ export default function GameUI({}: GameUIProps) {
           <div 
             className="absolute flex items-center justify-center"
             style={{
-              top: '48.9%',
-              left: '66.7%',
-              width: '17.8%',
-              aspectRatio: '63 / 68'
+              top: '50%',
+              left: '65%',
+              width: '16%',
+              aspectRatio: '1'
             }}
           >
             <Image src="/ui/round-button.png" alt="Round" fill data-ai-hint="round indicator" />
             <p 
-              className="relative font-corben text-white drop-shadow-md"
+              className="absolute font-corben text-white font-bold drop-shadow-lg"
               style={{
-                fontSize: 'clamp(1.5rem, 9vw, 3rem)', // Responsive font size
-                marginTop: '5%' // Fine-tune vertical position
+                fontSize: 'clamp(1.25rem, 6vw, 2.5rem)',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -40%)'
               }}
             >
               {roundNumber}
@@ -96,10 +106,10 @@ export default function GameUI({}: GameUIProps) {
           <button 
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
-              top: '48.9%',
-              left: '85.5%',
-              width: '13%',
-              aspectRatio: '47 / 68'
+              top: '50%',
+              left: '83%',
+              width: '14%',
+              aspectRatio: '1'
             }}
           >
             <Image src="/ui/menu-button.png" alt="Menu" fill data-ai-hint="menu button"/>
