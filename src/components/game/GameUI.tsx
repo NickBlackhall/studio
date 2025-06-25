@@ -38,7 +38,7 @@ export default function GameUI({}: GameUIProps) {
               aspectRatio: '1'
             }}
           >
-            <Avatar className="w-full h-full border-[2px] border-black rounded-lg shadow-lg">
+            <Avatar className="w-full h-full rounded-lg shadow-lg">
               <AvatarImage src={playerAvatar} alt={playerName} />
               <AvatarFallback className="text-lg font-bold">TT</AvatarFallback>
             </Avatar>
@@ -69,9 +69,9 @@ export default function GameUI({}: GameUIProps) {
           <button
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
-              top: '46.0%',
-              left: '43.6%',
-              width: '22.9%',
+              top: '63%',
+              left: '23%',
+              width: '22%',
               aspectRatio: '1'
             }}
           >
@@ -82,9 +82,9 @@ export default function GameUI({}: GameUIProps) {
           <div
             className="absolute flex items-center justify-center"
             style={{
-              top: '50%',
-              left: '65%',
-              width: '16%',
+              top: '63%',
+              left: '46.9%',
+              width: '22%',
               aspectRatio: '1'
             }}
           >
@@ -93,7 +93,7 @@ export default function GameUI({}: GameUIProps) {
               className="absolute font-corben text-white font-bold drop-shadow-lg"
               style={{
                 fontSize: 'clamp(1.25rem, 6vw, 2.5rem)',
-                top: '50%',
+                top: '63%',
                 left: '50%',
                 transform: 'translate(-50%, -40%)'
               }}
@@ -106,9 +106,9 @@ export default function GameUI({}: GameUIProps) {
           <button
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
-              top: '50%',
-              left: '83%',
-              width: '14%',
+              top: '63%',
+              left: '71%',
+              width: '22%',
               aspectRatio: '1'
             }}
           >
