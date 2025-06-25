@@ -11,8 +11,8 @@ export default {
   theme: {
   	extend: {
       fontFamily: {
-        'im-fell': ['var(--font-im-fell)', 'serif'],
-        'corben': ['var(--font-corben)', 'serif'],
+        'im-fell': ['IM Fell English SC', 'serif'],
+        'corben': ['Corben', 'cursive'],
       },
   		colors: {
   			background: 'hsl(var(--background))',

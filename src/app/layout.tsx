@@ -1,23 +1,9 @@
 
-import localFont from 'next/font/local';
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
-
-const imFellFont = localFont({
-  src: '../../public/fonts/IMFellEnglishSC-Regular.ttf',
-  variable: '--font-im-fell', 
-  display: 'swap',
-});
-
-const corbenFont = localFont({
-  src: '../../public/fonts/Corben-Regular.ttf',
-  weight: '400',
-  variable: '--font-corben', 
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: 'Make It Terrible',
@@ -44,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${imFellFont.variable} ${corbenFont.variable}`} suppressHydrationWarning={true}>
+    <html lang="en" suppressHydrationWarning={true}>
       <body className={`antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
         <LoadingProvider>
           <div className="flex min-h-screen w-full flex-col bg-background">
