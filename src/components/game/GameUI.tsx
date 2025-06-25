@@ -15,8 +15,9 @@ export default function GameUI({}: GameUIProps) {
   const playerAvatar = "/ui/avatar5.png"; // Placeholder avatar
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none w-full h-auto">
-      <div className="relative w-full max-w-lg mx-auto aspect-[390/190]">
+    <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
+      {/* This div centers the UI and sets its max width and aspect ratio */}
+      <div className="relative w-full max-w-lg mx-auto aspect-[2158/1431]">
         {/* Background Image */}
         <Image
           src="/ui/player-ui-background.png"
@@ -29,8 +30,8 @@ export default function GameUI({}: GameUIProps) {
         {/* Dynamic Content Container */}
         <div className="absolute inset-0">
           {/* Player Info Section */}
-          <div className="absolute top-[16%] left-[6.5%] w-[38%] h-[55%] flex items-center">
-            <Avatar className="h-[75%] w-auto aspect-square border-4 border-black rounded-md shadow-lg">
+          <div className="absolute top-[15%] left-[5%] w-[40%] h-[60%] flex items-center p-2">
+            <Avatar className="h-full w-auto aspect-square border-[3px] border-black rounded-md shadow-lg">
               <AvatarImage src={playerAvatar} alt={playerName} />
               <AvatarFallback>TT</AvatarFallback>
             </Avatar>
@@ -40,12 +41,12 @@ export default function GameUI({}: GameUIProps) {
           </div>
 
           {/* Scores Button */}
-          <button className="absolute top-[48%] left-[49.5%] w-[16%] aspect-[63/68] pointer-events-auto transition-transform hover:scale-105 active:scale-95">
+          <button className="absolute top-[49%] left-[48%] w-[18%] aspect-[63/68] pointer-events-auto transition-transform hover:scale-105 active:scale-95">
             <Image src="/ui/scores-button.png" alt="Scores" fill data-ai-hint="scores button" />
           </button>
 
           {/* Round Indicator */}
-          <div className="absolute top-[48%] left-[68%] w-[16%] aspect-[63/68] flex items-center justify-center">
+          <div className="absolute top-[49%] left-[67%] w-[18%] aspect-[63/68] flex items-center justify-center">
             <Image src="/ui/round-button.png" alt="Round" fill data-ai-hint="round indicator" />
             <p className="relative font-corben text-5xl text-white drop-shadow-md mt-1">
               {roundNumber}
@@ -53,7 +54,7 @@ export default function GameUI({}: GameUIProps) {
           </div>
 
           {/* Menu Button */}
-          <button className="absolute top-[48%] left-[85.5%] w-[12%] aspect-[47/68] pointer-events-auto transition-transform hover:scale-105 active:scale-95">
+          <button className="absolute top-[49%] left-[85%] w-[13%] aspect-[47/68] pointer-events-auto transition-transform hover:scale-105 active:scale-95">
             <Image src="/ui/menu-button.png" alt="Menu" fill data-ai-hint="menu button"/>
           </button>
         </div>
