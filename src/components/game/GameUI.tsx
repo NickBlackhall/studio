@@ -34,7 +34,7 @@ export default function GameUI({}: GameUIProps) {
             style={{
               top: '11%',
               left: '8.5%',
-              width: '24%',
+              width: '26.4%',
               aspectRatio: '1'
             }}
           >
