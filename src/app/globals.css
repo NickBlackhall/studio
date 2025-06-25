@@ -113,6 +113,7 @@
   }
   body {
     background-color: hsl(var(--background)); 
+    background-image: url('/textures/background-tile.png');
     color: hsl(var(--foreground)); 
     min-height: 100vh;
     display: flex;
