@@ -9,9 +9,10 @@ interface GameUIProps {
   gameState: GameClientState | null;
   thisPlayer: PlayerClientState | null;
   onScoresClick: () => void;
+  onMenuClick: () => void;
 }
 
-export default function GameUI({ gameState, thisPlayer, onScoresClick }: GameUIProps) {
+export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuClick }: GameUIProps) {
   if (!gameState || !thisPlayer) {
     return null;
   }
@@ -65,7 +66,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick }: GameUIP
             <p
               className="font-im-fell text-black font-bold leading-tight text-left"
               style={{
-                fontSize: 'clamp(1.3125rem, 6vw, 2.25rem)',
+                fontSize: 'clamp(0.875rem, 4vw, 2.5rem)',
                 textShadow: '1px 1px 2px rgba(255,255,255,0.8)'
               }}
             >
@@ -113,6 +114,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick }: GameUIP
 
           {/* Menu Button */}
           <button
+            onClick={onMenuClick}
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
               top: '63%',

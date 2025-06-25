@@ -36,6 +36,7 @@ import {
   DialogOverlay,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
@@ -56,6 +57,7 @@ export default function GamePage() {
   const isMountedRef = useRef(true);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
+  const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
 
   const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
   const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for visual step duration
@@ -633,7 +635,7 @@ export default function GamePage() {
         />
       )}
       <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 max-w-7xl mx-auto px-2 ${recapStepInternal ? 'opacity-20 pointer-events-none' : ''}`}>
-        <main className="flex-grow w-full md:w-2/3 lg:w-3/4 relative order-1 md:order-2">
+        <main className="flex-grow w-full md:w-full lg:w-full relative order-1 md:order-2">
           {showPendingOverlay && (
               <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
                   <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -662,48 +664,12 @@ export default function GamePage() {
           )}
           {renderGameContent()}
         </main>
-        <aside className="w-full md:w-1/3 lg:w-1/4 order-2 md:order-1">
-          <div className="text-center space-y-2">
-            <p className="text-sm text-muted-foreground">Round {internalGameState.currentRound}</p>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <Link href="/?step=setup" className="inline-block" onClick={() => {  }}>
-                <Button variant="outline" size="sm" className="border-primary/50 text-primary/80 hover:bg-primary/10 hover:text-primary w-full sm:w-auto">
-                  <Home className="mr-1 h-4 w-4" /> Exit to Lobby
-                </Button>
-              </Link>
-              <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="border-accent text-accent-foreground hover:bg-accent/80 w-full sm:w-auto">
-                    <HelpCircle className="mr-2 h-4 w-4" /> How to Play
-                  </Button>
-                </DialogTrigger>
-                {isHowToPlayModalOpen && (
-                  <DialogPortal>
-                    <DialogOverlay />
-                    <DialogContent>
-                      <HowToPlayModalContent />
-                    </DialogContent>
-                  </DialogPortal>
-                )}
-              </Dialog>
-            </div>
-            <Button
-              onClick={handleResetGameFromGamePage}
-              variant="destructive"
-              size="sm"
-              className="w-full mt-2"
-              disabled={isActionPending || isLoading}
-            >
-              { (isActionPending || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> }
-              Reset Game (Testing)
-            </Button>
-          </div>
-        </aside>
       </div>
       <GameUI
         gameState={internalGameState}
         thisPlayer={thisPlayer}
         onScoresClick={() => setIsScoreboardOpen(true)}
+        onMenuClick={() => setIsMenuModalOpen(true)}
       />
       <Dialog open={isScoreboardOpen} onOpenChange={setIsScoreboardOpen}>
         <DialogContent className="max-w-md p-0">
@@ -717,9 +683,45 @@ export default function GamePage() {
           />
         </DialogContent>
       </Dialog>
+      <Dialog open={isMenuModalOpen} onOpenChange={setIsMenuModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Game Menu</DialogTitle>
+            <DialogDescription>
+              Options and actions for the game.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-4">
+            <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <HelpCircle className="mr-2 h-4 w-4" /> How to Play
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <HowToPlayModalContent />
+              </DialogContent>
+            </Dialog>
+            <Link href="/?step=setup" className="inline-block" onClick={() => setIsMenuModalOpen(false)}>
+              <Button variant="outline" className="w-full">
+                <Home className="mr-2 h-4 w-4" /> Exit to Lobby
+              </Button>
+            </Link>
+            <Button
+              onClick={() => {
+                handleResetGameFromGamePage();
+                setIsMenuModalOpen(false);
+              }}
+              variant="destructive"
+              disabled={isActionPending || isLoading}
+            >
+              {isActionPending || isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Reset Game (Testing)
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
 export const dynamic = 'force-dynamic';
-
-    
