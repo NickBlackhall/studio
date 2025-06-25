@@ -53,6 +53,7 @@ export default function GamePage() {
   const { showGlobalLoader, hideGlobalLoader } = useLoading();
   const isMountedRef = useRef(true);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
+  const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
 
   const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
   const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for visual step duration
@@ -660,8 +661,7 @@ export default function GamePage() {
           {renderGameContent()}
         </main>
         <aside className="w-full md:w-1/3 lg:w-1/4 order-2 md:order-1">
-          <Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} />
-          <div className="mt-6 text-center space-y-2">
+          <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">Round {internalGameState.currentRound}</p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <Link href="/?step=setup" className="inline-block" onClick={() => {  }}>
@@ -698,7 +698,20 @@ export default function GamePage() {
           </div>
         </aside>
       </div>
-      <GameUI gameState={internalGameState} thisPlayer={thisPlayer} />
+      <GameUI
+        gameState={internalGameState}
+        thisPlayer={thisPlayer}
+        onScoresClick={() => setIsScoreboardOpen(true)}
+      />
+      <Dialog open={isScoreboardOpen} onOpenChange={setIsScoreboardOpen}>
+        <DialogContent className="max-w-md p-0">
+          <Scoreboard
+            players={internalGameState.players}
+            currentJudgeId={internalGameState.currentJudgeId}
+            defaultOpen={true}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
