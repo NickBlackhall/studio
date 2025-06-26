@@ -1,8 +1,9 @@
 
 import type { Scenario } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lightbulb, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { motion, MotionProps } from 'framer-motion';
+import Image from 'next/image';
 
 interface ScenarioDisplayProps extends MotionProps {
   scenario: Scenario | null;
@@ -28,17 +29,24 @@ export default function ScenarioDisplay({ scenario, ...motionProps }: ScenarioDi
 
   return (
     <motion.div {...motionProps}>
-      <Card className="shadow-xl border-2 border-primary rounded-xl bg-primary text-primary-foreground">
-        <CardHeader className="p-6">
-          <CardDescription className="text-sm uppercase tracking-wider text-primary-foreground/80 mb-1">
-            Category: {scenario.category}
-          </CardDescription>
-          <CardTitle className="text-3xl font-bold flex items-start">
-            <Lightbulb className="mr-3 mt-1 h-8 w-8 text-accent flex-shrink-0" />
-            <span>{scenario.text}</span>
-          </CardTitle>
-        </CardHeader>
-      </Card>
+      <div className="relative w-full aspect-[1536/600]">
+        <Image
+          src="/ui/scenario-card-v2.png"
+          alt="Scenario Card"
+          fill
+          className="object-contain"
+          data-ai-hint="scenario card"
+          priority
+        />
+        <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-8 md:p-12">
+            <p className="font-corben text-base md:text-lg text-black/80 uppercase tracking-wider mb-1 md:mb-2">
+                {scenario.category}
+            </p>
+            <h2 className="font-im-fell text-2xl md:text-3xl text-black leading-tight max-w-prose">
+                {scenario.text}
+            </h2>
+        </div>
+      </div>
     </motion.div>
   );
 }
