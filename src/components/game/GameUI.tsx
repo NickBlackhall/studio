@@ -47,7 +47,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
               aspectRatio: '1'
             }}
           >
-            <Avatar className="w-full h-full rounded-lg border-2 border-black/50">
+            <Avatar className="w-full h-full rounded-lg">
               <AvatarImage src={playerAvatar} alt={playerName} />
               <AvatarFallback className="text-lg font-bold">{playerInitials}</AvatarFallback>
             </Avatar>
@@ -67,8 +67,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
               className="font-im-fell text-black font-bold leading-tight text-left"
               style={{
                 fontSize: 'clamp(1.4rem, 5.6vw, 2.45rem)',
-                textShadow: '1px 1px 2px rgba(255,255,255,0.8)'
-              }}
+                }}
             >
               {playerName}
             </p>
@@ -79,9 +78,9 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             onClick={onScoresClick}
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
             style={{
-              top: '35%',
+              top: '37%',
               left: '30%',
-              width: '37%',
+              width: '38%',
               aspectRatio: '1'
             }}
             aria-label="View Scores"
@@ -100,8 +99,8 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
           <div
             className="absolute flex items-center justify-center"
             style={{
-              top: '15%',
-              left: '72%',
+              top: '42%',
+              left: '58%',
               width: '12%',
               aspectRatio: '1'
             }}
@@ -124,9 +123,9 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             onClick={onMenuClick}
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
             style={{
-              top: '15%',
-              left: '85%',
-              width: '12%',
+              top: '45%',
+              left: '65%',
+              width: '31%',
               aspectRatio: '1'
             }}
             aria-label="Open Menu"
