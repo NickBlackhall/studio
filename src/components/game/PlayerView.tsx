@@ -215,13 +215,12 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             return (
               <motion.div
                 key={`${card.id}-${player.id}-${index}`}
-                className="absolute w-full cursor-pointer [transform-style:preserve-3d]"
+                className="absolute w-full cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
                 style={{
                   top: 20 + (index * 35),
                   zIndex: isThisCardSelected ? 50 : 20 - index,
                 }}
                 animate={{
-                  height: isThisCardSelected ? '120px' : '75px',
                   opacity: hasSubmittedThisRound ? 0.6 : 1,
                 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
@@ -327,5 +326,3 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
-
-    
