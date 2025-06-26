@@ -25,10 +25,10 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
       {/* This div centers the UI and sets its max width and aspect ratio */}
-      <div className="relative w-full max-w-lg mx-auto" style={{ aspectRatio: '2158 / 1431' }}>
+      <div className="relative w-full max-w-lg mx-auto" style={{ aspectRatio: '1986 / 858' }}>
         {/* Background Image */}
         <Image
-          src="/ui/player-ui-background.png"
+          src="/ui/MIT-player-ui-v2.png"
           alt="Game UI Frame"
           fill
           priority
@@ -37,36 +37,36 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
 
         {/* Dynamic Content Container */}
         <div className="absolute inset-0">
-          {/* Player Avatar - positioned in the golden area */}
+          {/* Player Avatar */}
           <div
             className="absolute"
             style={{
-              top: '8.5%',
-              left: '5%',
-              width: '29.4%',
+              top: '15%',
+              left: '3.5%',
+              width: '15%',
               aspectRatio: '1'
             }}
           >
-            <Avatar className="w-full h-full rounded-lg">
+            <Avatar className="w-full h-full rounded-lg border-2 border-black/50">
               <AvatarImage src={playerAvatar} alt={playerName} />
               <AvatarFallback className="text-lg font-bold">{playerInitials}</AvatarFallback>
             </Avatar>
           </div>
 
-          {/* Player Name - positioned in the scroll area */}
+          {/* Player Name */}
           <div
             className="absolute flex items-center justify-start"
             style={{
-              top: '27%',
-              left: '37.5%',
-              width: '45%',
-              height: '25%'
+              top: '30%',
+              left: '21%',
+              width: '35%',
+              height: '40%'
             }}
           >
             <p
               className="font-im-fell text-black font-bold leading-tight text-left"
               style={{
-                fontSize: 'clamp(1.3125rem, 6vw, 2.25rem)',
+                fontSize: 'clamp(1rem, 4vw, 1.75rem)',
                 textShadow: '1px 1px 2px rgba(255,255,255,0.8)'
               }}
             >
@@ -79,33 +79,33 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             onClick={onScoresClick}
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
-              top: '63%',
-              left: '23%',
-              width: '22%',
+              top: '15%',
+              left: '59%',
+              width: '12%',
               aspectRatio: '1'
             }}
+            aria-label="View Scores"
           >
-            <Image src="/ui/scores-button.png" alt="Scores" fill data-ai-hint="scores button" />
+            <span className="sr-only">Scores</span>
           </button>
 
           {/* Round Indicator */}
           <div
             className="absolute flex items-center justify-center"
             style={{
-              top: '63%',
-              left: '46.9%',
-              width: '22%',
+              top: '15%',
+              left: '72%',
+              width: '12%',
               aspectRatio: '1'
             }}
           >
-            <Image src="/ui/round-button.png" alt="Round" fill data-ai-hint="round indicator" />
             <p
               className="absolute font-corben text-black font-bold drop-shadow-lg"
               style={{
-                fontSize: 'clamp(1.25rem, 6vw, 2.5rem)',
-                top: '63%',
+                fontSize: 'clamp(1.25rem, 5vw, 2rem)',
+                top: '50%',
                 left: '50%',
-                transform: 'translate(-50%, -40%)'
+                transform: 'translate(-50%, -50%)'
               }}
             >
               {roundNumber}
@@ -117,13 +117,14 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             onClick={onMenuClick}
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
             style={{
-              top: '63%',
-              left: '71%',
-              width: '22%',
+              top: '15%',
+              left: '85%',
+              width: '12%',
               aspectRatio: '1'
             }}
+            aria-label="Open Menu"
           >
-            <Image src="/ui/menu-button.png" alt="Menu" fill data-ai-hint="menu button"/>
+            <span className="sr-only">Menu</span>
           </button>
         </div>
       </div>
