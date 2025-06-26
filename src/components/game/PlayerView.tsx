@@ -267,13 +267,13 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   
                   {/* Card Front */}
                   <div className={cn(
-                      "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl border-2 flex flex-col items-center justify-center p-2 text-center text-card-foreground",
-                      isThisCardSelected 
-                        ? (card.isCustom ? 'bg-amber-100 border-amber-500' : 'bg-blue-100 border-blue-500')
-                        : (card.isCustom ? 'bg-amber-50 border-amber-400' : 'bg-stone-50 border-stone-400')
+                      "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden"
                   )}>
                     {card.isCustom ? (
-                      <div className="w-full h-full flex flex-col justify-center items-center gap-2 p-1">
+                      <div className={cn(
+                        "w-full h-full flex flex-col justify-center items-center gap-2 p-1",
+                         isThisCardSelected ? 'bg-amber-100 border-amber-500' : 'bg-amber-50 border-amber-400'
+                      )}>
                         {isThisCardSelected ? (
                           <>
                            <Textarea
@@ -294,15 +294,24 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                         )}
                       </div>
                     ) : (
-                      <div className="w-full h-full flex flex-col justify-center items-center gap-2 p-1">
-                        <span className="font-medium text-sm">{card.text}</span>
-                        {isThisCardSelected && (
-                          <Button size="sm" className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={handleSubmit} disabled={isPending}>
-                            {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckSquare className="h-4 w-4" />}
-                             Submit
-                          </Button>
-                        )}
-                      </div>
+                      <>
+                        <Image
+                          src="/ui/mit-card-front.png"
+                          alt="Response Card Front"
+                          fill
+                          className="object-cover"
+                          data-ai-hint="card front"
+                        />
+                        <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
+                          <span className="font-im-fell text-black text-2xl leading-tight px-4">{card.text}</span>
+                          {isThisCardSelected && (
+                            <Button size="sm" className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2" onClick={handleSubmit} disabled={isPending}>
+                              {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckSquare className="h-4 w-4" />}
+                               Submit
+                            </Button>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
                 </motion.div>
