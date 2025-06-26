@@ -3,10 +3,10 @@
 
 import type { GameClientState, PlayerClientState, PlayerHandCard } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, useTransition, useEffect, useRef } from 'react';
-import { Send, Loader2, ListCollapse, VenetianMask, Gavel, Edit3, CheckSquare, Sparkles } from 'lucide-react';
+import { useState, useTransition, useEffect, useMemo, useRef } from 'react';
+import { Send, Loader2, ListCollapse, VenetianMask, Gavel, Edit3, CheckSquare, Sparkles, PartyPopper, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { submitResponse } from '@/app/game/actions';
@@ -18,144 +18,125 @@ interface PlayerViewProps {
   player: PlayerClientState;
 }
 
-const CUSTOM_CARD_PLACEHOLDER = "Write your own card";
-const CUSTOM_CARD_ID_EDIT = "custom-card-edit-slot";
-const CUSTOM_CARD_ID_DISPLAY = "custom-card-display-slot";
-
-const handContainerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.091, 
-      delayChildren: 0.2,   
-    },
-  },
-};
-
-const cardCascadeVariants = {
-  hidden: { opacity: 0 }, // Cards start transparent
-  visible: { // Cards fade in
-    opacity: 1,
-    transition: { duration: 0.2 } 
-  },
-  exit: { opacity: 0, y: 20, transition: { duration: 0.25, ease: "easeIn" } }, 
-};
-
-
-const customCardSlotInitial = { opacity: 0, y: -10 };
-const customCardSlotAnimate = { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut", delay: 0.1 } };
-const customCardSlotExit = { opacity: 0, transition: { duration: 0.2 }};
-
+const CUSTOM_CARD_ID = "custom-card-id";
 
 export default function PlayerView({ gameState, player }: PlayerViewProps) {
-  const [selectedCardText, setSelectedCardText] = useState<string>('');
-  const [isCustomCardSelectedAsSubmissionTarget, setIsCustomCardSelectedAsSubmissionTarget] = useState<boolean>(false);
-
-  const [isEditingCustomCard, setIsEditingCustomCard] = useState<boolean>(false);
-  const [customCardInputText, setCustomCardInputText] = useState<string>('');
-  const [finalizedCustomCardText, setFinalizedCustomCardText] = useState<string>('');
-
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [customCardText, setCustomCardText] = useState('');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-
   const isMountedRef = useRef(true);
 
+  // Animation state
+  const [scenarioVisible, setScenarioVisible] = useState(false);
+  const [cardsVisible, setCardsVisible] = useState(0);
+  const [cardsFlipped, setCardsFlipped] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  const hasSubmittedThisRound = useMemo(() => 
+    gameState.submissions.some(sub => sub.playerId === player.id),
+    [gameState.submissions, player.id]
+  );
+  
+  const handWithCustomCard = useMemo(() => {
+    const regularCards = player.hand || [];
+    const customCard = { id: CUSTOM_CARD_ID, text: customCardText, isCustom: true, isNew: false };
+    return [...regularCards, customCard];
+  }, [player.hand, customCardText]);
+
+  // Animation Trigger
   useEffect(() => {
     isMountedRef.current = true;
+    let timers: NodeJS.Timeout[] = [];
+
+    const startAnimation = () => {
+      setIsAnimating(true);
+      setScenarioVisible(false);
+      setCardsVisible(0);
+      setCardsFlipped(0);
+      setSelectedCardId(null);
+      
+      timers.push(setTimeout(() => setScenarioVisible(true), 500));
+      
+      timers.push(setTimeout(() => {
+        handWithCustomCard.forEach((_, index) => {
+          timers.push(setTimeout(() => {
+            if (isMountedRef.current) setCardsVisible(prev => prev + 1);
+          }, (handWithCustomCard.length - 1 - index) * 150));
+        });
+      }, 1200));
+
+      timers.push(setTimeout(() => {
+        handWithCustomCard.forEach((_, index) => {
+          timers.push(setTimeout(() => {
+            if (isMountedRef.current) setCardsFlipped(prev => prev + 1);
+          }, index * 120));
+        });
+      }, 2400));
+      
+      timers.push(setTimeout(() => {
+        if (isMountedRef.current) setIsAnimating(false);
+      }, 3800));
+    };
+
+    if (gameState.gamePhase === 'player_submission' && !hasSubmittedThisRound) {
+      startAnimation();
+    } else {
+      setScenarioVisible(gameState.gamePhase === 'player_submission' && hasSubmittedThisRound);
+    }
+
     return () => {
       isMountedRef.current = false;
+      timers.forEach(clearTimeout);
     };
-  }, []);
-
-  const hasSubmittedThisRound = gameState.submissions.some(sub => sub.playerId === player.id);
-
-  useEffect(() => {
-    if (player && (gameState.currentRound > 0 && (player.isJudge || gameState.gamePhase !== 'player_submission' || hasSubmittedThisRound))) {
-        setIsEditingCustomCard(false);
-        setCustomCardInputText('');
-        setFinalizedCustomCardText('');
-        setSelectedCardText('');
-        setIsCustomCardSelectedAsSubmissionTarget(false);
-    }
-  }, [gameState.currentRound, player?.isJudge, gameState.gamePhase, player, hasSubmittedThisRound]);
+  }, [gameState.gamePhase, gameState.currentRound, hasSubmittedThisRound]);
 
 
-  const handleCustomCardEdit = () => {
-    setCustomCardInputText(finalizedCustomCardText);
-    setIsEditingCustomCard(true);
-    setSelectedCardText('');
-    setIsCustomCardSelectedAsSubmissionTarget(false);
+  const handleCardClick = (cardId: string) => {
+    if (isAnimating || hasSubmittedThisRound) return;
+    setSelectedCardId(selectedCardId === cardId ? null : cardId);
   };
-
-  const handleCustomCardDone = () => {
-    if (customCardInputText.trim() === '') {
-        toast({ title: "Empty?", description: "Your custom card needs some text!", variant: "destructive"});
-        setFinalizedCustomCardText('');
-    } else {
-        setFinalizedCustomCardText(customCardInputText.trim());
-    }
-    setIsEditingCustomCard(false);
-    if (customCardInputText.trim()) {
-        setSelectedCardText(customCardInputText.trim());
-        setIsCustomCardSelectedAsSubmissionTarget(true);
-    }
-  };
-
-  const handleSelectCard = (cardText: string, isCustom: boolean) => {
-    setSelectedCardText(cardText);
-    setIsCustomCardSelectedAsSubmissionTarget(isCustom);
-     if (isCustom && !finalizedCustomCardText && !isEditingCustomCard) {
-      handleCustomCardEdit();
-    }
-  };
-
-  const handleSubmit = () => {
-    if (!selectedCardText && !finalizedCustomCardText) {
-      toast({ title: "Whoa there!", description: "You need to pick a card or write one to submit.", variant: "destructive" });
-      return;
-    }
-    if (!gameState.gameId || gameState.currentRound <= 0 || !player) {
-      toast({ title: "Game Error", description: "Cannot submit response, game state or player is invalid.", variant: "destructive" });
+  
+  const handleSubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    
+    if (!selectedCardId) {
+      toast({ title: "No card selected!", variant: "destructive" });
       return;
     }
 
-    const textToSubmit = isCustomCardSelectedAsSubmissionTarget ? finalizedCustomCardText : selectedCardText;
+    const selectedCardData = handWithCustomCard.find(c => c.id === selectedCardId);
+    if (!selectedCardData) return;
+
+    const isCustom = selectedCardData.id === CUSTOM_CARD_ID;
+    const textToSubmit = isCustom ? customCardText : selectedCardData.text;
 
     if (!textToSubmit.trim()) {
-        toast({ title: "Empty Submission", description: "Your selected card is empty.", variant: "destructive"});
-        return;
+      toast({ title: "Empty card?", description: "Your card needs some text!", variant: "destructive" });
+      return;
     }
 
     startTransition(async () => {
       try {
-        await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustomCardSelectedAsSubmissionTarget);
+        await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustom);
+        if (isMountedRef.current) {
+          setCustomCardText('');
+          setSelectedCardId(null);
+        }
       } catch (error: any) {
         if (isMountedRef.current) {
-            toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
+          toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
         }
       }
     });
   };
 
-
-  if (!player) {
-    return (
-      <Card className="text-center shadow-lg border-2 border-dashed border-muted rounded-xl">
-        <CardHeader><CardTitle className="text-muted-foreground">Player data not available.</CardTitle></CardHeader>
-        <CardContent><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></CardContent>
-      </Card>
-    );
-  }
-
-  const isSubmitButtonActive = !isPending && !!selectedCardText.trim() && !hasSubmittedThisRound;
-
   const scenarioAnimationProps = {
-    initial: { opacity: 0, scale: 0.90 },
-    animate: { opacity: 1, scale: 1, transition: { duration: 1.0, ease: [0.04, 0.62, 0.23, 0.98] } },
-    exit: { opacity: 0, scale: 0.90, transition: { duration: 0.8, ease: [0.04, 0.62, 0.23, 0.98] } }
+    initial: { opacity: 0, y: -50, scale: 0.8 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    transition: { duration: 0.8, ease: [0.68, -0.55, 0.265, 1.55] }
   };
-
+  
   if (gameState.gamePhase === 'category_selection') {
     return (
        <Card className="text-center shadow-lg border-2 border-dashed border-muted rounded-xl">
@@ -170,185 +151,17 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     );
   }
 
-  if (!gameState.currentScenario && gameState.gamePhase === 'player_submission') {
-     return (
-       <Card className="text-center shadow-lg border-2 border-dashed border-muted rounded-xl">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold text-muted-foreground">Patience, terrible one...</CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <Loader2 className="h-12 w-12 animate-spin text-accent mx-auto" />
-          <p className="text-muted-foreground mt-4">The scenario is being prepared. Brace yourself.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (gameState.gamePhase === 'player_submission' && gameState.currentScenario) {
-    const showHandUi = !hasSubmittedThisRound;
-    const showSubmissionSentUi = hasSubmittedThisRound;
-
-    return (
-      <div className="space-y-6">
-        <AnimatePresence mode="wait">
-          {gameState.currentScenario && (
-               <ScenarioDisplay
-                  key={gameState.currentScenario.id || 'scenario-submission-active'}
-                  scenario={gameState.currentScenario}
-                  {...scenarioAnimationProps}
-                />
-          )}
-        </AnimatePresence>
-
-        <Card className="shadow-lg border-2 border-muted rounded-xl overflow-hidden">
-          <CardHeader className="p-6">
-            <CardTitle className="text-2xl font-semibold flex items-center"><ListCollapse className="mr-2 h-6 w-6 text-primary" /> Your Hand of Horrors</CardTitle>
-            <CardDescription>Pick a card, or write your own masterpiece of terrible.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 pt-2">
-            {showSubmissionSentUi && (
-              <motion.div
-                key="submission-sent-view-main"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1, transition: { duration: 0.5} }}
-                className="text-center py-8 min-h-[250px] flex flex-col items-center justify-center"
-              >
-                <VenetianMask className="mr-2 h-12 w-12 text-accent mx-auto mb-3" />
-                <p className="text-accent-foreground/90 text-xl font-semibold">Submission Sent!</p>
-                <p className="text-muted-foreground mt-1">Now, we wait for the others... and the Judge's verdict!</p>
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto mt-3" />
-              </motion.div>
-            )}
-            {showHandUi && (
-              <div className="space-y-3">
-                <AnimatePresence mode="popLayout">
-                  {isEditingCustomCard ? (
-                    <motion.div
-                      key={CUSTOM_CARD_ID_EDIT}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto', transition: { duration: 0.3 } }}
-                      exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
-                      layout
-                      className="space-y-2 p-3 border-2 border-accent rounded-md shadow-md bg-background"
-                    >
-                      <Textarea
-                        placeholder="Make it wonderfully terrible..."
-                        value={customCardInputText}
-                        onChange={(e) => setCustomCardInputText(e.target.value)}
-                        maxLength={100}
-                        rows={3}
-                        className="text-base border-muted focus:border-accent"
-                      />
-                      <div className="flex justify-end space-x-2">
-                        <Button variant="ghost" size="sm" onClick={() => { setIsEditingCustomCard(false); setCustomCardInputText(finalizedCustomCardText); }}>Cancel</Button>
-                        <Button onClick={handleCustomCardDone} size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                          <CheckSquare className="mr-2 h-4 w-4" /> Done
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.button
-                      key={CUSTOM_CARD_ID_DISPLAY}
-                      initial={customCardSlotInitial}
-                      animate={customCardSlotAnimate}
-                      exit={customCardSlotExit}
-                      layout
-                      onClick={() => handleSelectCard(finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER, true)}
-                      className={cn(
-                        `w-full h-auto p-4 text-left text-lg whitespace-normal justify-start relative min-h-[60px] rounded-md group border-2`,
-                        isCustomCardSelectedAsSubmissionTarget
-                          ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
-                          : finalizedCustomCardText
-                            ? 'border-solid border-accent hover:border-accent-foreground hover:bg-accent/10'
-                            : 'border-dashed border-accent hover:border-accent-foreground hover:bg-accent/10'
-                      )}
-                    >
-                      <span>{finalizedCustomCardText || CUSTOM_CARD_PLACEHOLDER}</span>
-                      {!finalizedCustomCardText && (
-                        <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-accent opacity-70 group-hover:opacity-100 transition-opacity" />
-                      )}
-                       {finalizedCustomCardText && !isCustomCardSelectedAsSubmissionTarget && (
-                         <Edit3 className="absolute top-1/2 right-3 transform -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-50 transition-opacity" onClick={(e) => {e.stopPropagation(); handleCustomCardEdit(); }}/>
-                       )}
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-
-                <motion.div
-                  className="space-y-3"
-                  variants={handContainerVariants}
-                  initial="hidden"
-                  animate="visible"
-                >
-                  <AnimatePresence>
-                    {player.hand &&
-                      Array.isArray(player.hand) &&
-                      player.hand.map((card: PlayerHandCard) => {
-                        const isNewCardVisual = card.isNew === true;
-                        return (
-                          <motion.button
-                            key={'card-' + card.id}
-                            variants={cardCascadeVariants}
-                            layout // Keep layout for smooth reordering when a card is removed/added
-                            onClick={() => handleSelectCard(card.text, false)}
-                            className={cn(
-                              `w-full h-auto p-3 text-left text-sm md:text-base whitespace-normal justify-start relative rounded-md border shadow-md`,
-                              selectedCardText === card.text && !isCustomCardSelectedAsSubmissionTarget
-                                ? 'bg-primary text-primary-foreground border-primary ring-2 ring-accent'
-                                : isNewCardVisual
-                                  ? 'border-red-500'
-                                  : 'border-gray-400 hover:border-foreground bg-card',
-                              selectedCardText !== card.text && !isNewCardVisual && 'hover:bg-muted/50'
-                            )}
-                          >
-                            <span>{card.text}</span>
-                            {isNewCardVisual && (
-                               <motion.span
-                                  initial={{ scale: 0, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1, transition: { delay: 0.1, type: 'spring', stiffness: 200, damping: 10 } }}
-                                  className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md flex items-center"
-                                >
-                                  NEW <Sparkles className="inline-block h-2.5 w-2.5 ml-0.5" />
-                                </motion.span>
-                            )}
-                          </motion.button>
-                        );
-                    })}
-                  </AnimatePresence>
-                </motion.div>
-              </div>
-            )}
-          </CardContent>
-          {showHandUi && (
-            <CardFooter className="p-6 pt-3">
-              <Button
-                onClick={handleSubmit}
-                disabled={!isSubmitButtonActive}
-                className={cn(
-                  "w-full bg-accent text-accent-foreground text-lg font-semibold py-3 border-2 border-primary",
-                  isSubmitButtonActive && !isPending && 'animate-border-pulse'
-                )}
-              >
-                {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
-                Submit Your Terrible Choice
-              </Button>
-            </CardFooter>
-          )}
-        </Card>
-      </div>
-    );
-  }
-
   if (gameState.gamePhase === 'judging') {
      return (
       <div className="space-y-6">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
             {gameState.currentScenario && (
-                 <ScenarioDisplay
-                    key={gameState.currentScenario.id || 'scenario-judging'}
-                    scenario={gameState.currentScenario}
-                    {...scenarioAnimationProps}
-                  />
+                 <motion.div key={gameState.currentScenario.id}>
+                    <ScenarioDisplay
+                      scenario={gameState.currentScenario}
+                      {...scenarioAnimationProps}
+                    />
+                 </motion.div>
             )}
         </AnimatePresence>
         <Card className="text-center shadow-lg border-2 border-secondary rounded-xl">
@@ -365,6 +178,136 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       </div>
     );
   }
+  
+  if (gameState.gamePhase === 'player_submission' && gameState.currentScenario) {
+    return (
+      <div className="space-y-4">
+        <AnimatePresence>
+          {scenarioVisible && gameState.currentScenario && (
+            <motion.div key={gameState.currentScenario.id}>
+              <ScenarioDisplay
+                scenario={gameState.currentScenario}
+                {...scenarioAnimationProps}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="relative min-h-[450px] [perspective:1000px]">
+          {hasSubmittedThisRound && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg z-50 flex flex-col items-center justify-center text-center p-4">
+               <VenetianMask className="h-12 w-12 text-accent mx-auto mb-3" />
+               <p className="text-foreground text-xl font-semibold">Submission Sent!</p>
+               <p className="text-muted-foreground mt-1">Now, we wait for the others... and the Judge's verdict!</p>
+               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto mt-3" />
+            </motion.div>
+          )}
+
+          {handWithCustomCard.map((card, index) => {
+            const isVisible = index < cardsVisible;
+            const isFlipped = index < cardsFlipped;
+            const isThisCardSelected = selectedCardId === card.id;
+
+            return (
+              <motion.div
+                key={`${card.id}-${player.id}-${index}`}
+                className="absolute w-full cursor-pointer [transform-style:preserve-3d]"
+                style={{
+                  top: 20 + (index * 35),
+                  zIndex: isThisCardSelected ? 50 : 20 - index,
+                }}
+                animate={{
+                  height: isThisCardSelected ? '120px' : '75px',
+                  opacity: hasSubmittedThisRound ? 0.6 : 1,
+                }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                onClick={() => handleCardClick(card.id)}
+              >
+                {card.isNew && (
+                  <motion.div 
+                    className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-50 shadow-lg flex items-center gap-1 animate-pulse"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                  >
+                    NEW <Sparkles className="h-3 w-3"/>
+                  </motion.div>
+                )}
+                
+                <motion.div
+                  className="relative w-full h-full [transform-style:preserve-3d] shadow-lg rounded-xl"
+                  initial={{ transform: 'translateY(300px) scale(0.8) rotateX(0deg)' }}
+                  animate={{
+                    transform: `
+                      ${isVisible ? 'translateY(0) scale(1)' : 'translateY(300px) scale(0.8)'}
+                      ${isThisCardSelected ? 'translateY(-20px) scale(1.05)' : ''}
+                      ${isFlipped ? 'rotateX(180deg)' : 'rotateX(0deg)'}
+                    `,
+                    boxShadow: isThisCardSelected
+                      ? '0 15px 40px rgba(52, 152, 219, 0.4)'
+                      : '0 6px 20px rgba(0,0,0,0.15)',
+                  }}
+                  transition={{ duration: 0.6, ease: [0.68, -0.55, 0.265, 1.55] }}
+                >
+                  {/* Card Back */}
+                  <div className={cn(
+                    "absolute w-full h-full [backface-visibility:hidden] rounded-xl border-2 flex flex-col items-center justify-center text-white",
+                    card.isCustom ? "bg-gradient-to-br from-amber-500 to-orange-600 border-amber-700" : "bg-gradient-to-br from-blue-500 to-blue-700 border-blue-900"
+                  )}>
+                    {card.isCustom ? <Pencil className="h-6 w-6 mb-1"/> : <PartyPopper className="h-6 w-6 mb-1"/>}
+                    <div className="text-xs font-bold tracking-wider">{card.isCustom ? "WRITE YOUR OWN" : "MAKE IT TERRIBLE"}</div>
+                  </div>
+                  
+                  {/* Card Front */}
+                  <div className={cn(
+                      "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl border-2 flex flex-col items-center justify-center p-2 text-center text-card-foreground",
+                      isThisCardSelected 
+                        ? (card.isCustom ? 'bg-amber-100 border-amber-500' : 'bg-blue-100 border-blue-500')
+                        : (card.isCustom ? 'bg-amber-50 border-amber-400' : 'bg-stone-50 border-stone-400')
+                  )}>
+                    {card.isCustom ? (
+                      <div className="w-full h-full flex flex-col justify-center items-center gap-2 p-1">
+                        {isThisCardSelected ? (
+                          <>
+                           <Textarea
+                              value={customCardText}
+                              onChange={(e) => setCustomCardText(e.target.value)}
+                              placeholder="Write your own terrible thing..."
+                              className="w-full flex-grow bg-transparent border-none focus-visible:ring-0 resize-none text-center text-sm p-0"
+                              onClick={(e) => e.stopPropagation()}
+                              maxLength={100}
+                            />
+                            <Button size="sm" className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={handleSubmit} disabled={isPending}>
+                              {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckSquare className="h-4 w-4" />}
+                              Submit
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="font-medium text-muted-foreground italic">Write your own...</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex flex-col justify-center items-center gap-2 p-1">
+                        <span className="font-medium text-sm">{card.text}</span>
+                        {isThisCardSelected && (
+                          <Button size="sm" className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={handleSubmit} disabled={isPending}>
+                            {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckSquare className="h-4 w-4" />}
+                             Submit
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Card className="text-center shadow-lg border-2 border-dashed border-muted rounded-xl">
@@ -378,3 +321,5 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
+
+    
