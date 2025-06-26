@@ -270,29 +270,40 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                       "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden"
                   )}>
                     {card.isCustom ? (
-                      <div className={cn(
-                        "w-full h-full flex flex-col justify-center items-center gap-2 p-1",
-                         isThisCardSelected ? 'bg-amber-100 border-amber-500' : 'bg-amber-50 border-amber-400'
-                      )}>
-                        {isThisCardSelected ? (
-                          <>
-                           <Textarea
-                              value={customCardText}
-                              onChange={(e) => setCustomCardText(e.target.value)}
-                              placeholder="Write your own terrible thing..."
-                              className="w-full flex-grow bg-transparent border-none focus-visible:ring-0 resize-none text-center text-sm p-0"
-                              onClick={(e) => e.stopPropagation()}
-                              maxLength={100}
-                            />
-                            <Button size="sm" className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={handleSubmit} disabled={isPending}>
-                              {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckSquare className="h-4 w-4" />}
-                              Submit
-                            </Button>
-                          </>
-                        ) : (
-                          <span className="font-medium text-muted-foreground italic">Write your own...</span>
-                        )}
-                      </div>
+                      <>
+                        <Image
+                          src="/ui/write-in-card-front.png"
+                          alt="Write-in Response Card Front"
+                          fill
+                          className="object-cover"
+                          data-ai-hint="card front"
+                        />
+                        <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
+                          {isThisCardSelected ? (
+                            <>
+                              <Textarea
+                                value={customCardText}
+                                onChange={(e) => setCustomCardText(e.target.value)}
+                                placeholder="Make it uniquely terrible..."
+                                className="w-[80%] h-[60%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-tight p-0"
+                                onClick={(e) => e.stopPropagation()}
+                                maxLength={100}
+                              />
+                              <Button
+                                size="sm"
+                                className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2"
+                                onClick={handleSubmit}
+                                disabled={isPending}
+                              >
+                                {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckSquare className="h-4 w-4" />}
+                                Submit
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="font-im-fell text-black text-2xl leading-tight">Write your own...</span>
+                          )}
+                        </div>
+                      </>
                     ) : (
                       <>
                         <Image
