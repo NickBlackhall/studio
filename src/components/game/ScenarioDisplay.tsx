@@ -40,7 +40,7 @@ export default function ScenarioDisplay({ scenario, ...motionProps }: ScenarioDi
                 <p className="text-lg font-semibold uppercase tracking-wider text-red-400">
                     {scenario.category}
                 </p>
-                <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight">
+                <h2 className="font-im-fell text-3xl md:text-4xl text-white leading-tight">
                     {scenario.text}
                 </h2>
             </div>
