@@ -41,9 +41,9 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
           <div
             className="absolute"
             style={{
-              top: '15%',
-              left: '3.5%',
-              width: '15%',
+              top: '17%',
+              left: '1.3%',
+              width: '30%',
               aspectRatio: '1'
             }}
           >
@@ -57,16 +57,16 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
           <div
             className="absolute flex items-center justify-start"
             style={{
-              top: '30%',
-              left: '21%',
-              width: '35%',
+              top: '10%',
+              left: '35%',
+              width: '3%',
               height: '40%'
             }}
           >
             <p
               className="font-im-fell text-black font-bold leading-tight text-left"
               style={{
-                fontSize: 'clamp(1rem, 4vw, 1.75rem)',
+                fontSize: 'clamp(1.4rem, 5.6vw, 2.45rem)',
                 textShadow: '1px 1px 2px rgba(255,255,255,0.8)'
               }}
             >
@@ -79,9 +79,9 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             onClick={onScoresClick}
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
             style={{
-              top: '15%',
-              left: '59%',
-              width: '12%',
+              top: '35%',
+              left: '30%',
+              width: '37%',
               aspectRatio: '1'
             }}
             aria-label="View Scores"
@@ -122,7 +122,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
           {/* Menu Button */}
           <button
             onClick={onMenuClick}
-            className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
+            className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
             style={{
               top: '15%',
               left: '85%',
@@ -131,7 +131,14 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             }}
             aria-label="Open Menu"
           >
-            <span className="sr-only">Menu</span>
+            <Image
+              src="/ui/menu-button-v2.png"
+              alt="Menu"
+              width={625}
+              height={204}
+              className="object-contain w-full h-auto"
+              data-ai-hint="menu button"
+            />
           </button>
         </div>
       </div>
