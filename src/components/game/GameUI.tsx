@@ -77,7 +77,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
           {/* Scores Button */}
           <button
             onClick={onScoresClick}
-            className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95"
+            className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
             style={{
               top: '15%',
               left: '59%',
@@ -86,7 +86,14 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             }}
             aria-label="View Scores"
           >
-            <span className="sr-only">Scores</span>
+            <Image
+              src="/ui/scores-button-v2.png"
+              alt="Scores"
+              width={625}
+              height={204}
+              className="object-contain w-[80%] h-auto"
+              data-ai-hint="scores button"
+            />
           </button>
 
           {/* Round Indicator */}
