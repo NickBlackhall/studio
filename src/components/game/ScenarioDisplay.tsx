@@ -28,25 +28,26 @@ export default function ScenarioDisplay({ scenario, ...motionProps }: ScenarioDi
 
   return (
     <motion.div {...motionProps}>
-      <Card className="relative shadow-xl border-none rounded-2xl text-center min-h-[180px] flex flex-col justify-center overflow-hidden">
+      {/* Set the aspect ratio on the card to match the image, and remove min-height */}
+      <Card className="relative shadow-xl border-none rounded-2xl text-center overflow-hidden aspect-[1536/600]">
         <Image
           src="/ui/scenario-card-v2.png"
           alt="Scenario background"
           fill
-          className="object-cover"
+          className="object-cover" // object-cover is correct with the right aspect ratio
           priority
+          data-ai-hint="scenario card"
         />
-        <div className="relative z-10 flex h-full flex-col justify-center bg-black/20 p-4">
-            <CardHeader className="pt-2 pb-2">
-              <CardDescription className="text-lg font-semibold uppercase tracking-wider text-red-300 drop-shadow-md">
-                  {scenario.category}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-2 pb-2">
-              <CardTitle className="text-2xl md:text-3xl font-bold text-white leading-tight drop-shadow-lg">
-                  {scenario.text}
-              </CardTitle>
-            </CardContent>
+        {/* Use flexbox to center the text content vertically and horizontally */}
+        <div className="relative z-10 flex h-full flex-col items-center justify-center p-4">
+            <div className="space-y-2">
+                <p className="text-lg font-semibold uppercase tracking-wider text-red-300 drop-shadow-md">
+                    {scenario.category}
+                </p>
+                <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight drop-shadow-lg">
+                    {scenario.text}
+                </h2>
+            </div>
         </div>
       </Card>
     </motion.div>
