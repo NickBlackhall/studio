@@ -37,7 +37,7 @@ export default function ScenarioDisplay({ scenario, ...motionProps }: ScenarioDi
         {/* Use flexbox to center the text content vertically and horizontally */}
         <div className="relative z-10 flex h-full flex-col items-center justify-center p-4">
             <div className="space-y-2">
-                <p className="text-lg font-semibold uppercase tracking-wider text-red-400">
+                <p className="font-corben text-xl font-bold uppercase tracking-wider text-red-400">
                     {scenario.category}
                 </p>
                 <h2 className="font-im-fell text-3xl md:text-4xl text-white leading-tight">
