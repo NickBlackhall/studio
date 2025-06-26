@@ -12,6 +12,7 @@ import ScenarioDisplay from './ScenarioDisplay';
 import { submitResponse } from '@/app/game/actions';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 
 interface PlayerViewProps {
   gameState: GameClientState;
@@ -253,11 +254,16 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 >
                   {/* Card Back */}
                   <div className={cn(
-                    "absolute w-full h-full [backface-visibility:hidden] rounded-xl border-2 flex flex-col items-center justify-center text-white",
-                    card.isCustom ? "bg-gradient-to-br from-amber-500 to-orange-600 border-amber-700" : "bg-gradient-to-br from-blue-500 to-blue-700 border-blue-900"
+                    "absolute w-full h-full [backface-visibility:hidden] rounded-xl overflow-hidden"
                   )}>
-                    {card.isCustom ? <Pencil className="h-6 w-6 mb-1"/> : <PartyPopper className="h-6 w-6 mb-1"/>}
-                    <div className="text-xs font-bold tracking-wider">{card.isCustom ? "WRITE YOUR OWN" : "MAKE IT TERRIBLE"}</div>
+                    <Image
+                      src="/ui/mit-card-back.png"
+                      alt="Card Back"
+                      fill
+                      className="object-cover"
+                      data-ai-hint="card back"
+                      priority
+                    />
                   </div>
                   
                   {/* Card Front */}
