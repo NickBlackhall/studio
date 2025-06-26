@@ -1,4 +1,3 @@
-
 import type { Scenario } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
@@ -34,7 +33,7 @@ export default function ScenarioDisplay({ scenario, ...motionProps }: ScenarioDi
           src="/ui/scenario-card-v2.png"
           alt="Scenario Card"
           fill
-          className="object-contain"
+          className="object-cover"
           data-ai-hint="scenario card"
           priority
         />
