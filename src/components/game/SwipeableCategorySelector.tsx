@@ -24,20 +24,18 @@ export default function SwipeableCategorySelector({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const enhancedCategories = useMemo(() => {
+    // This map uses the "dirty" data keys from the database, as identified from console logs.
     const categoryImageMap: { [key: string]: string } = {
-      // Matching the "dirty" data from the database logs
-      "Super Powers": "/ui/Super-Powers-panel.png",
+      " R-Rated": "/ui/rated-r-panel.png", // Note the leading space
       "Absurd & Surreal": "/ui/absurd-and-surreal-panel.png",
-      "Pop Culture & Internet ": "/ui/pop-culture-panel.png",
-      "Life things": "/ui/life-things-panel.png",
-      " R-Rated": "/ui/rated-r-panel.png",
+      "Life things": "/ui/Life-Things-panel.png", // Corrected path capitalization
+      "Pop Culture & Internet ": "/ui/pop-culture-panel.png", // Note the trailing space
+      "Super Powers": "/ui/Super-Powers-panel.png",
     };
-  
+
     return categories.map((name) => {
-      // Find a key in the map that, when trimmed, matches the trimmed name from the data.
-      // This is a more robust way to handle potential whitespace issues.
-      const foundKey = Object.keys(categoryImageMap).find(key => key.trim() === name.trim());
-      const imagePath = foundKey ? categoryImageMap[foundKey] : "";
+      // Use the existing Super Powers image as a fallback for any category not found in the map.
+      const imagePath = categoryImageMap[name] || "/ui/Super-Powers-panel.png";
       return { name, imagePath };
     });
   }, [categories]);
@@ -119,17 +117,15 @@ export default function SwipeableCategorySelector({
               onDragEnd={handleDragEnd}
               className="absolute inset-0 cursor-grab active:cursor-grabbing"
             >
-              {currentCategory.imagePath && (
-                <Image
-                  src={currentCategory.imagePath}
-                  alt={currentCategory.name}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 33vw"
-                  className="object-cover rounded-xl shadow-lg"
-                  data-ai-hint={currentCategory.name}
-                  priority={true}
-                />
-              )}
+              <Image
+                src={currentCategory.imagePath}
+                alt={currentCategory.name}
+                fill
+                sizes="(max-width: 768px) 50vw, 33vw"
+                className="object-cover rounded-xl shadow-lg"
+                data-ai-hint={currentCategory.name}
+                priority={true}
+              />
             </motion.div>
           </AnimatePresence>
         </div>
@@ -144,6 +140,7 @@ export default function SwipeableCategorySelector({
           height={2066}
           className="w-full h-auto"
           priority
+          sizes="100vw"
           data-ai-hint="selection frame"
         />
       </div>
