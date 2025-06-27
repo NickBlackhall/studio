@@ -8,15 +8,6 @@ import { Send, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
-const EMOJIS = ["🤔", "🤦", "💡", "💔", "🦸", "🎉", "🔥", "💩", "🚀", "💀", "👽", "🤖"];
-const COLORS = [
-  'hsl(var(--chart-1))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
-  'hsl(var(--chart-5))',
-];
-
 interface SwipeableCategorySelectorProps {
   categories: string[];
   onUnleashScenario: (category: string) => void;
@@ -35,18 +26,17 @@ export default function SwipeableCategorySelector({
 
   const enhancedCategories = useMemo(() => {
     // This map links the category name from your data to the actual image file path.
+    // The filenames should not have spaces.
     const categoryImageMap: { [key: string]: string } = {
       "Pop Culture and Internet": "/ui/Pop-Culture-panel.png",
       "Super Powers": "/ui/Super-Powers-panel.png",
       "R-Rated": "/ui/R-Rated-panel.png",
       "Life Things": "/ui/Life-Things-panel.png",
-      "Absurd and Surreal": "/ui/Absurd-and-Surreal-panel.png",
+      "Absurd and Surreal": "/ui/Absurd-And-Surreal-panel.png", // Corrected capitalization
     };
 
     return categories.map((name, index) => ({
       name,
-      emoji: EMOJIS[index % EMOJIS.length],
-      color: COLORS[index % COLORS.length],
       imagePath: categoryImageMap[name] || `/ui/placeholder-category.png`,
     }));
   }, [categories]);
@@ -133,7 +123,8 @@ export default function SwipeableCategorySelector({
                 alt={currentCategory.name}
                 fill
                 className="object-cover rounded-xl shadow-lg"
-                onError={() => {
+                onError={(e) => {
+                  console.error(`Failed to load image: ${currentCategory.imagePath}`);
                   setImageError(prev => new Set(prev).add(currentIndex));
                 }}
                 data-ai-hint={currentCategory.name}
