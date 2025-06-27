@@ -22,22 +22,22 @@ export default function SwipeableCategorySelector({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [imageError, setImageError] = useState<Set<number>>(new Set());
 
   const enhancedCategories = useMemo(() => {
     // This map links the category name from your data to the actual image file path.
-    // The filenames should not have spaces.
+    // The keys here MUST exactly match the category names in `src/lib/data.ts`.
     const categoryImageMap: { [key: string]: string } = {
-      "Pop Culture and Internet": "/ui/Pop-Culture-panel.png",
+      "Pop Culture and Internet": "/ui/pop-culture-panel.png",
       "Super Powers": "/ui/Super-Powers-panel.png",
-      "R-Rated": "/ui/R-Rated-panel.png",
-      "Life Things": "/ui/Life-Things-panel.png",
-      "Absurd and Surreal": "/ui/Absurd-And-Surreal-panel.png", // Corrected capitalization
+      "R-Rated": "/ui/rated-r-panel.png",
+      "Life Things": "/ui/life-things-panel.png",
+      "Absurd and Surreal": "/ui/absurd-and-surreal-panel.png",
     };
 
-    return categories.map((name, index) => ({
+    return categories.map((name) => ({
       name,
-      imagePath: categoryImageMap[name] || `/ui/placeholder-category.png`,
+      // This now directly looks up the path. If a name is not in the map, it will be an empty string.
+      imagePath: categoryImageMap[name] || "",
     }));
   }, [categories]);
 
@@ -118,18 +118,17 @@ export default function SwipeableCategorySelector({
               onDragEnd={handleDragEnd}
               className="absolute inset-0 cursor-grab active:cursor-grabbing"
             >
-              <Image
-                src={imageError.has(currentIndex) ? '/ui/placeholder-category.png' : currentCategory.imagePath}
-                alt={currentCategory.name}
-                fill
-                className="object-cover rounded-xl shadow-lg"
-                onError={(e) => {
-                  console.error(`Failed to load image: ${currentCategory.imagePath}`);
-                  setImageError(prev => new Set(prev).add(currentIndex));
-                }}
-                data-ai-hint={currentCategory.name}
-                priority={true}
-              />
+              {currentCategory.imagePath && (
+                <Image
+                  src={currentCategory.imagePath}
+                  alt={currentCategory.name}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 33vw"
+                  className="object-cover rounded-xl shadow-lg"
+                  data-ai-hint={currentCategory.name}
+                  priority={true}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
