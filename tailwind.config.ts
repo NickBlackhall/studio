@@ -100,6 +100,10 @@ export default {
           '0%, 100%': { transform: 'scale(0.8)' },
           '50%': { transform: 'scale(1)' },
         },
+        'judge-badge-pulse': {
+          '0%, 100%': { transform: 'scale(0.9)' },
+          '50%': { transform: 'scale(1)' },
+        },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
@@ -107,6 +111,7 @@ export default {
         'border-pulse': 'border-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'shimmer': 'shimmer 2.5s infinite linear',
         'slow-scale-pulse': 'slow-scale-pulse 2s ease-in-out infinite',
+        'judge-badge-pulse': 'judge-badge-pulse 3s ease-in-out infinite',
   		}
   	}
   },

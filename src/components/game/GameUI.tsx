@@ -55,11 +55,11 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
 
           {thisPlayer.isJudge && (
             <div
-                className="absolute pointer-events-none"
+                className="absolute pointer-events-none animate-judge-badge-pulse"
                 style={{
-                    top: '50%',
-                    left: '18%',
-                    width: '16%',
+                    top: '-5%',
+                    left: '65%',
+                    width: '30%',
                     aspectRatio: '1',
                 }}
             >
