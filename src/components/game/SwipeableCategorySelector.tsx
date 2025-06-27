@@ -5,7 +5,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Send, ArrowLeft, ArrowRight, Bomb } from 'lucide-react';
+import { Send, ArrowLeft, ArrowRight, Bomb, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 const EMOJIS = ["🤔", "🤦", "💡", "💔", "🦸", "🎉", "🔥", "💩", "🚀", "💀", "👽", "🤖"];
@@ -81,115 +81,117 @@ export default function SwipeableCategorySelector({
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto space-y-6 p-4 md:p-8 border-2 border-muted rounded-2xl shadow-lg bg-card/80 backdrop-blur-sm overflow-hidden">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-primary flex items-center justify-center gap-2">
-            <Bomb className="h-7 w-7"/> Select a Category
-        </h2>
-        <p className="text-muted-foreground mt-1">Choose the arena for this round's terrible choices.</p>
-      </div>
-
-      <div className="flex justify-center items-center gap-4">
-        <svg width="40" height="40" viewBox="0 0 100 100" className="-rotate-90">
-            <circle cx="50" cy="50" r="45" stroke="hsl(var(--border))" strokeWidth="10" fill="transparent" />
-            <motion.circle
-                cx="50" cy="50" r="45"
-                stroke={currentColor}
-                strokeWidth="10"
-                fill="transparent"
-                strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 45}
-                animate={{ strokeDashoffset: (2 * Math.PI * 45) * (1 - progress) }}
-                transition={{ duration: 0.5 }}
-            />
-        </svg>
-        <div className="font-semibold text-lg text-muted-foreground">
-          {currentIndex + 1} / {categories.length}
+    <Card className="w-full max-w-2xl mx-auto border-2 border-muted rounded-2xl shadow-lg bg-card/80 backdrop-blur-sm overflow-hidden relative p-0">
+      <div className="relative z-10 p-4 md:p-8 space-y-6">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-primary flex items-center justify-center gap-2">
+              <Bomb className="h-7 w-7"/> Select a Category
+          </h2>
+          <p className="text-muted-foreground mt-1">Choose the arena for this round's terrible choices.</p>
         </div>
-      </div>
 
-      <div className="relative h-64 md:h-72 flex items-center justify-center">
-        <Button onClick={() => paginate(-1)} variant="outline" size="icon" className="absolute left-0 md:-left-4 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <AnimatePresence initial={false} custom={direction} mode="wait">
-          <motion.div
-            key={currentIndex}
-            custom={direction}
-            variants={variants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-              x: { type: "spring", stiffness: 300, damping: 30 },
-              opacity: { duration: 0.2 }
-            }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
-            onDragEnd={handleDragEnd}
-            className="absolute w-full h-full flex items-center justify-center"
-          >
+        <div className="flex justify-center items-center gap-4">
+          <svg width="40" height="40" viewBox="0 0 100 100" className="-rotate-90">
+              <circle cx="50" cy="50" r="45" stroke="hsl(var(--border))" strokeWidth="10" fill="transparent" />
+              <motion.circle
+                  cx="50" cy="50" r="45"
+                  stroke={currentColor}
+                  strokeWidth="10"
+                  fill="transparent"
+                  strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 45}
+                  animate={{ strokeDashoffset: (2 * Math.PI * 45) * (1 - progress) }}
+                  transition={{ duration: 0.5 }}
+              />
+          </svg>
+          <div className="font-semibold text-lg text-muted-foreground">
+            {currentIndex + 1} / {categories.length}
+          </div>
+        </div>
+
+        <div className="relative h-64 md:h-72 flex items-center justify-center">
+          <Button onClick={() => paginate(-1)} variant="outline" size="icon" className="absolute left-0 md:-left-4 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <AnimatePresence initial={false} custom={direction} mode="wait">
             <motion.div
-              onClick={() => handleCategorySelect(currentCategoryName)}
-              className={cn(
-                "w-10/12 max-w-xs h-full rounded-2xl shadow-lg cursor-pointer transform transition-all duration-300",
-                "flex flex-col items-center justify-center text-center p-4",
-                "border-4 bg-background",
-                selectedCategory === currentCategoryName ? 'scale-105' : 'hover:scale-105'
-              )}
-              style={{
-                 borderColor: selectedCategory === currentCategoryName ? currentColor : 'hsl(var(--border))'
+              key={currentIndex}
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{
+                x: { type: "spring", stiffness: 300, damping: 30 },
+                opacity: { duration: 0.2 }
               }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragEnd={handleDragEnd}
+              className="absolute w-full h-full flex items-center justify-center"
             >
-              <div className="text-5xl mb-4">{EMOJIS[currentIndex % EMOJIS.length]}</div>
-              <h3 className="text-xl font-bold text-foreground">{currentCategoryName}</h3>
-              <p className="text-xs text-muted-foreground mt-2">Tap to select</p>
+              <motion.div
+                onClick={() => handleCategorySelect(currentCategoryName)}
+                className={cn(
+                  "w-10/12 max-w-xs h-full rounded-2xl shadow-lg cursor-pointer transform transition-all duration-300",
+                  "flex flex-col items-center justify-center text-center p-4",
+                  "border-4 bg-background",
+                  selectedCategory === currentCategoryName ? 'scale-105' : 'hover:scale-105'
+                )}
+                style={{
+                  borderColor: selectedCategory === currentCategoryName ? currentColor : 'hsl(var(--border))'
+                }}
+              >
+                <div className="text-5xl mb-4">{EMOJIS[currentIndex % EMOJIS.length]}</div>
+                <h3 className="text-xl font-bold text-foreground">{currentCategoryName}</h3>
+                <p className="text-xs text-muted-foreground mt-2">Tap to select</p>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        </AnimatePresence>
-        <Button onClick={() => paginate(1)} variant="outline" size="icon" className="absolute right-0 md:-right-4 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10">
-          <ArrowRight className="h-5 w-5" />
-        </Button>
-      </div>
+          </AnimatePresence>
+          <Button onClick={() => paginate(1)} variant="outline" size="icon" className="absolute right-0 md:-right-4 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10">
+            <ArrowRight className="h-5 w-5" />
+          </Button>
+        </div>
 
-       <div className="flex justify-center gap-2">
-        {categories.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => {
-              setDirection(index > currentIndex ? 1 : -1);
-              setCurrentIndex(index);
-            }}
-            className={cn(
-              "w-2.5 h-2.5 rounded-full transition-colors",
-              index === currentIndex ? "bg-primary" : "bg-muted hover:bg-muted-foreground/50"
-            )}
-            style={{ backgroundColor: index === currentIndex ? currentColor : undefined }}
-          />
-        ))}
-      </div>
-
-       <div className="px-4">
-         <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <motion.div className="h-2 rounded-full"
-                style={{ backgroundColor: currentColor }}
-                initial={{ width: '0%' }}
-                animate={{ width: `${progress * 100}%` }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
+        <div className="flex justify-center gap-2">
+          {categories.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                setDirection(index > currentIndex ? 1 : -1);
+                setCurrentIndex(index);
+              }}
+              className={cn(
+                "w-2.5 h-2.5 rounded-full transition-colors",
+                index === currentIndex ? "bg-primary" : "bg-muted hover:bg-muted-foreground/50"
+              )}
+              style={{ backgroundColor: index === currentIndex ? currentColor : undefined }}
             />
-         </div>
-       </div>
+          ))}
+        </div>
 
-      <div className="px-4 pt-2">
-        <Button
-          onClick={handleUnleash}
-          disabled={!selectedCategory || isPending}
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold py-3"
-        >
-          {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
-          Unleash Scenario
-        </Button>
+        <div className="px-4">
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <motion.div className="h-2 rounded-full"
+                  style={{ backgroundColor: currentColor }}
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${progress * 100}%` }}
+                  transition={{ duration: 0.5, ease: "easeInOut" }}
+              />
+          </div>
+        </div>
+
+        <div className="px-4 pt-2">
+          <Button
+            onClick={handleUnleash}
+            disabled={!selectedCategory || isPending}
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold py-3"
+          >
+            {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
+            Unleash Scenario
+          </Button>
+        </div>
       </div>
     </Card>
   );
