@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -34,10 +35,11 @@ export default function SwipeableCategorySelector({
     };
 
     return categories.map((name) => {
-      const imagePath = categoryImageMap[name] || "";
+      const imagePath = categoryImageMap[name];
       if (!imagePath) {
         // This log helps identify missing images during development
-        console.warn(`CategorySelector: No image map found for category: "${name}".`);
+        console.warn(`CategorySelector: No image map found for category: "${name}". Using Super Powers as fallback.`);
+        return { name, imagePath: "/ui/Super-Powers-panel.png" };
       }
       return { name, imagePath };
     });
@@ -79,21 +81,18 @@ export default function SwipeableCategorySelector({
 
   const variants = {
     enter: (direction: number) => ({
-      x: direction > 0 ? '100%' : '-100%',
+      x: direction > 0 ? "80%" : "-80%",
       opacity: 0,
-      scale: 0.9,
     }),
     center: {
       zIndex: 1,
       x: 0,
       opacity: 1,
-      scale: 1,
     },
     exit: (direction: number) => ({
       zIndex: 0,
-      x: direction < 0 ? '100%' : '-100%',
+      x: direction < 0 ? "80%" : "-80%",
       opacity: 0,
-      scale: 0.9,
     }),
   };
 
@@ -101,8 +100,8 @@ export default function SwipeableCategorySelector({
     <div className="w-full max-w-2xl mx-auto relative">
       {/* Layer 1: Swipeable Category Images (Bottom) */}
       <div className="absolute inset-0 z-10 flex items-center justify-center">
-        <div className="absolute top-[28%] left-1/2 -translate-x-1/2 w-[50%] h-[35%]">
-          <AnimatePresence initial={false} custom={direction} mode="wait">
+        <div className="absolute top-[28.4%] left-1/2 -translate-x-1/2 w-[59%] h-[40%]">
+          <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={currentIndex}
               custom={direction}
@@ -120,18 +119,21 @@ export default function SwipeableCategorySelector({
               onDragEnd={handleDragEnd}
               className="absolute inset-0 cursor-grab active:cursor-grabbing"
             >
-              {currentCategory.imagePath ? (
-                <Image
-                  key={currentCategory.imagePath}
-                  src={currentCategory.imagePath}
-                  alt={currentCategory.name}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 33vw"
-                  className="object-cover rounded-xl shadow-lg"
-                  data-ai-hint={currentCategory.name}
-                  priority={true}
-                />
-              ) : null }
+              <Image
+                key={currentCategory.imagePath}
+                src={currentCategory.imagePath}
+                alt={currentCategory.name}
+                fill
+                sizes="(max-width: 768px) 50vw, 33vw"
+                className="object-cover rounded-xl shadow-lg"
+                data-ai-hint={currentCategory.name}
+                priority
+                onError={(e) => {
+                  console.error(`🔴 FAILED TO LOAD IMAGE for category "${currentCategory.name}". Tried path: "${currentCategory.imagePath}". Please check if this file exists in the /public/ui/ folder and if the path is correct.`);
+                  // Fallback to a known good image to prevent broken UI
+                  (e.target as HTMLImageElement).src = '/ui/Super-Powers-panel.png';
+                }}
+              />
             </motion.div>
           </AnimatePresence>
         </div>
