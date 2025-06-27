@@ -102,7 +102,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
 
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {gameState.gamePhase === 'category_selection' && (
         <SwipeableCategorySelector
           categories={gameState.categories}
