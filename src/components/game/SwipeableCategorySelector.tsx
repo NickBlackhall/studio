@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -27,15 +26,19 @@ export default function SwipeableCategorySelector({
     // These keys must EXACTLY match the category names from the database,
     // including any typos, extra spaces, or ampersands.
     const categoryImageMap: { [key: string]: string } = {
-      " R-Rated": "/ui/rated-r-panel.png",
-      "Absurd & Surreal": "/ui/absurd-and-surreal-panel.png",
-      "Life things": "/ui/Life-things-panel.png",
-      "Pop Culture & Internet ": "/ui/pop-culture-panel.png",
-      "Super Powers": "/ui/Super-Powers-panel.png",
+        " R-Rated": "/ui/rated-r-panel.png",
+        "Absurd & Surreal": "/ui/absurd-and-surreal-panel.png",
+        "Life things": "/ui/Life-things-panel.png",
+        "Pop Culture & Internet ": "/ui/pop-culture-panel.png",
+        "Super Powers": "/ui/Super-Powers-panel.png",
     };
 
     return categories.map((name) => {
       const imagePath = categoryImageMap[name] || "";
+      if (!imagePath) {
+        // This log helps identify missing images during development
+        console.warn(`CategorySelector: No image map found for category: "${name}".`);
+      }
       return { name, imagePath };
     });
   }, [categories]);
@@ -76,9 +79,9 @@ export default function SwipeableCategorySelector({
 
   const variants = {
     enter: (direction: number) => ({
-      x: direction > 0 ? 300 : -300,
+      x: direction > 0 ? '100%' : '-100%',
       opacity: 0,
-      scale: 0.8,
+      scale: 0.9,
     }),
     center: {
       zIndex: 1,
@@ -88,9 +91,9 @@ export default function SwipeableCategorySelector({
     },
     exit: (direction: number) => ({
       zIndex: 0,
-      x: direction < 0 ? 300 : -300,
+      x: direction < 0 ? '100%' : '-100%',
       opacity: 0,
-      scale: 0.8,
+      scale: 0.9,
     }),
   };
 
@@ -117,16 +120,18 @@ export default function SwipeableCategorySelector({
               onDragEnd={handleDragEnd}
               className="absolute inset-0 cursor-grab active:cursor-grabbing"
             >
-              <Image
-                key={currentCategory.imagePath}
-                src={currentCategory.imagePath}
-                alt={currentCategory.name}
-                fill
-                sizes="(max-width: 768px) 50vw, 33vw"
-                className="object-cover rounded-xl shadow-lg"
-                data-ai-hint={currentCategory.name}
-                priority={true}
-              />
+              {currentCategory.imagePath ? (
+                <Image
+                  key={currentCategory.imagePath}
+                  src={currentCategory.imagePath}
+                  alt={currentCategory.name}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 33vw"
+                  className="object-cover rounded-xl shadow-lg"
+                  data-ai-hint={currentCategory.name}
+                  priority={true}
+                />
+              ) : null }
             </motion.div>
           </AnimatePresence>
         </div>
