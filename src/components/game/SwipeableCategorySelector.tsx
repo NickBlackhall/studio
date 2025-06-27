@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -24,8 +23,8 @@ export default function SwipeableCategorySelector({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const enhancedCategories = useMemo(() => {
-    // This map links the category name from your data to the actual image file path.
-    // The keys here MUST exactly match the category names in `src/lib/data.ts`.
+    console.log('Raw categories from data:', categories);
+    
     const categoryImageMap: { [key: string]: string } = {
       "Pop Culture and Internet": "/ui/pop-culture-panel.png",
       "Super Powers": "/ui/Super-Powers-panel.png",
@@ -33,12 +32,14 @@ export default function SwipeableCategorySelector({
       "Life Things": "/ui/life-things-panel.png",
       "Absurd and Surreal": "/ui/absurd-and-surreal-panel.png",
     };
-
-    return categories.map((name) => ({
-      name,
-      // This now directly looks up the path. If a name is not in the map, it will be an empty string.
-      imagePath: categoryImageMap[name] || "",
-    }));
+  
+    console.log('Available map keys:', Object.keys(categoryImageMap));
+  
+    return categories.map((name, index) => {
+      const imagePath = categoryImageMap[name] || "";
+      console.log(`[${index}] "${name}" -> "${imagePath}" (${imagePath ? 'FOUND' : 'NOT FOUND'})`);
+      return { name, imagePath };
+    });
   }, [categories]);
 
   useEffect(() => {
