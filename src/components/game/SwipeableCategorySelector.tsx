@@ -37,12 +37,9 @@ export default function SwipeableCategorySelector({
       name,
       emoji: EMOJIS[index % EMOJIS.length],
       color: COLORS[index % COLORS.length],
-      //
-      // <<<--- EDIT THIS LINE TO CHANGE CATEGORY IMAGES ---<<<
-      // Replace the URL with the path to your actual category images.
-      // For example: imagePath: `/ui/categories/${name.toLowerCase().replace(/\s+/g, '-')}.png`
-      //
-      imagePath: `https://picsum.photos/1024/1024?random=${index}`,
+      // Using local images from the public folder now.
+      // Assumes files are named like 'awkward-situations.png' in /public/ui/categories/
+      imagePath: `/ui/categories/${name.toLowerCase().replace(/\s+/g, '-')}.png`,
     }));
   }, [categories]);
 
@@ -104,7 +101,7 @@ export default function SwipeableCategorySelector({
     <div className="w-full max-w-2xl mx-auto relative">
       {/* Layer 1: Swipeable Category Images (Bottom) */}
       <div className="absolute inset-0 z-10 flex items-center justify-center">
-        <div className="absolute top-[28%] left-1/2 -translate-x-1/2 w-[50%] h-[35%]">
+        <div className="absolute top-[28.5%] left-1/2 -translate-x-1/2 w-[59%] h-[43%]">
           <AnimatePresence initial={false} custom={direction} mode="wait">
             <motion.div
               key={currentIndex}
