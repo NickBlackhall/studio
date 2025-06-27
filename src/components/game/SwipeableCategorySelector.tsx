@@ -35,12 +35,13 @@ export default function SwipeableCategorySelector({
 
   const enhancedCategories = useMemo(() => {
     // This map links the category name from your data to the actual image file path.
+    // Assumes you have renamed files to remove spaces, e.g., "Super Powers panel.png" -> "Super-Powers-panel.png"
     const categoryImageMap: { [key: string]: string } = {
-      "Awkward Situations": "/ui/Awkward%20Situations%20panel.png",
-      "Bad Advice": "/ui/Bad%20Advice%20panel.png",
-      "Terrible Inventions": "/ui/Terrible%20Inventions%20panel.png",
-      "Horrible Dates": "/ui/Horrible%20Dates%20panel.png",
-      "Unfortunate Superpowers": "/ui/Super%20Powers%20panel.png",
+      "Awkward Situations": "/ui/Awkward-Situations-panel.png",
+      "Bad Advice": "/ui/Bad-Advice-panel.png",
+      "Terrible Inventions": "/ui/Terrible-Inventions-panel.png",
+      "Horrible Dates": "/ui/Horrible-Dates-panel.png",
+      "Unfortunate Superpowers": "/ui/Super-Powers-panel.png",
     };
 
     return categories.map((name, index) => ({
