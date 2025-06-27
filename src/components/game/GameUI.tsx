@@ -57,9 +57,9 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             <div
                 className="absolute pointer-events-none"
                 style={{
-                    top: '45%',
-                    left: '20%',
-                    width: '18%',
+                    top: '50%',
+                    left: '18%',
+                    width: '16%',
                     aspectRatio: '1',
                 }}
             >
