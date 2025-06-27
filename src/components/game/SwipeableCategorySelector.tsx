@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -184,9 +183,6 @@ export default function SwipeableCategorySelector({
         
         {/* Bottom Content Area */}
         <div className="absolute bottom-[8%] left-[10%] right-[10%] flex flex-col items-center gap-4 pointer-events-auto">
-          <h2 className="font-im-fell text-4xl text-black text-center leading-tight">
-            {currentCategory.name}
-          </h2>
           <div className="flex justify-center gap-2">
             {enhancedCategories.map((cat, index) => (
               <button
