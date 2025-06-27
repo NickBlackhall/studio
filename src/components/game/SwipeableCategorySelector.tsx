@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -144,9 +145,9 @@ export default function SwipeableCategorySelector({
       </div>
 
       {/* Layer 3: UI Controls (Top) */}
-      <div className="absolute inset-0 z-30 pointer-events-none">
+      <div className="absolute inset-0 z-30 pointer-events-auto">
         {/* Top Content Area */}
-        <div className="absolute top-[18%] left-1/2 -translate-x-1/2 w-full flex flex-col items-center gap-2 pointer-events-auto">
+        <div className="absolute top-[18%] left-1/2 -translate-x-1/2 w-full flex flex-col items-center gap-2">
           <div className="font-semibold text-xl text-black/80">
             {currentIndex + 1} / {enhancedCategories.length}
           </div>
@@ -162,7 +163,7 @@ export default function SwipeableCategorySelector({
         </div>
 
         {/* Carousel Navigation Arrows */}
-        <div className="absolute top-1/2 -translate-y-[10%] w-full flex justify-between px-[6%] pointer-events-auto">
+        <div className="absolute top-1/2 -translate-y-[10%] w-full flex justify-between px-[6%]">
           <Button 
             onClick={() => paginate(-1)} 
             variant="ghost" 
@@ -182,28 +183,7 @@ export default function SwipeableCategorySelector({
         </div>
         
         {/* Bottom Content Area */}
-        <div className="absolute bottom-[8%] left-[10%] right-[10%] flex flex-col items-center gap-4 pointer-events-auto">
-          <div className="flex justify-center gap-2">
-            {enhancedCategories.map((cat, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  setDirection(index > currentIndex ? 1 : -1);
-                  setCurrentIndex(index);
-                  setSelectedCategory(cat.name);
-                }}
-                className={cn(
-                  "w-3 h-3 rounded-full transition-all duration-200",
-                  index === currentIndex 
-                    ? "scale-125 ring-2 ring-white ring-offset-2 ring-offset-transparent" 
-                    : "bg-black/30 hover:bg-black/50"
-                )}
-                style={{ 
-                  backgroundColor: index === currentIndex ? cat.color : undefined 
-                }}
-              />
-            ))}
-          </div>
+        <div className="absolute bottom-[8%] left-[10%] right-[10%] flex flex-col items-center gap-4">
           <Button
             onClick={handleUnleash}
             disabled={!selectedCategory || isPending}
