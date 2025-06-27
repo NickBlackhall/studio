@@ -182,7 +182,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   
   if (gameState.gamePhase === 'player_submission' && gameState.currentScenario) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         <AnimatePresence>
           {scenarioVisible && gameState.currentScenario && (
             <motion.div key={gameState.currentScenario.id}>
