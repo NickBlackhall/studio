@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Send, ArrowLeft, ArrowRight, Bomb, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 const EMOJIS = ["🤔", "🤦", "💡", "💔", "🦸", "🎉", "🔥", "💩", "🚀", "💀", "👽", "🤖"];
 const COLORS = [
@@ -81,7 +82,15 @@ export default function SwipeableCategorySelector({
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto border-2 border-muted rounded-2xl shadow-lg bg-card/80 backdrop-blur-sm overflow-hidden relative p-0">
+    <Card className="w-full max-w-2xl mx-auto rounded-2xl overflow-hidden relative p-0 border-none bg-transparent shadow-none">
+       <Image
+          src="/ui/judge selection overlay.png"
+          alt="Category selection background with a parchment texture"
+          fill
+          className="object-cover"
+          data-ai-hint="parchment paper"
+          priority
+        />
       <div className="relative z-10 p-4 md:p-8 space-y-6">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-primary flex items-center justify-center gap-2">
