@@ -53,6 +53,26 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             </Avatar>
           </div>
 
+          {thisPlayer.isJudge && (
+            <div
+                className="absolute pointer-events-none"
+                style={{
+                    top: '45%',
+                    left: '20%',
+                    width: '18%',
+                    aspectRatio: '1',
+                }}
+            >
+                <Image
+                    src="/ui/judge badge v2.png"
+                    alt="Judge Badge"
+                    fill
+                    className="object-contain"
+                    data-ai-hint="judge badge"
+                />
+            </div>
+          )}
+
           {/* Player Name */}
           <div
             className="absolute flex items-center justify-start"

@@ -103,38 +103,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-lg border-2 border-accent rounded-xl">
-        <CardHeader className="bg-accent text-accent-foreground p-6">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex-1">
-              <CardTitle className="text-3xl font-bold flex items-center">
-                <Gavel className="mr-3 h-8 w-8" /> You are the Judge!
-              </CardTitle>
-              <CardDescription className="text-accent-foreground/80 text-base mt-1">
-                Wield your power with terrible responsibility.
-              </CardDescription>
-            </div>
-            <div className="flex items-center text-right ml-4">
-              {judge.avatar && judge.avatar.startsWith('/') ? (
-                <Image
-                  src={judge.avatar}
-                  alt={`${judge.name}'s avatar`}
-                  width={56}
-                  height={56}
-                  className="rounded-md object-cover mr-3"
-                />
-              ) : (
-                <span className="text-5xl mr-3">{judge.avatar}</span>
-              )}
-              <div className="min-w-0">
-                <p className="text-xl font-semibold truncate max-w-[150px] sm:max-w-[200px]">{judge.name}</p>
-                <p className="text-md text-accent-foreground/90">{judge.score} pts</p>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
       {gameState.gamePhase === 'category_selection' && (
         <SwipeableCategorySelector
           categories={gameState.categories}
@@ -288,6 +256,4 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
-    
-
     
