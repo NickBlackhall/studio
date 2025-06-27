@@ -29,16 +29,13 @@ export default function SwipeableCategorySelector({
     const categoryImageMap: { [key: string]: string } = {
       " R-Rated": "/ui/rated-r-panel.png",
       "Absurd & Surreal": "/ui/absurd-and-surreal-panel.png",
-      "Life things": "/ui/life-things-panel.png", // Attempting the lowercase path from the previous error log
+      "Life things": "/ui/Life-things-panel.png",
       "Pop Culture & Internet ": "/ui/pop-culture-panel.png",
       "Super Powers": "/ui/Super-Powers-panel.png",
     };
 
-    // A known-good image to use as a fallback if a path is wrong.
-    const fallbackImagePath = "/ui/Super-Powers-panel.png";
-
     return categories.map((name) => {
-      const imagePath = categoryImageMap[name] || fallbackImagePath;
+      const imagePath = categoryImageMap[name] || "";
       return { name, imagePath };
     });
   }, [categories]);
@@ -121,7 +118,7 @@ export default function SwipeableCategorySelector({
               className="absolute inset-0 cursor-grab active:cursor-grabbing"
             >
               <Image
-                key={currentCategory.imagePath} // Use a key to force re-render on path change
+                key={currentCategory.imagePath}
                 src={currentCategory.imagePath}
                 alt={currentCategory.name}
                 fill
@@ -129,14 +126,6 @@ export default function SwipeableCategorySelector({
                 className="object-cover rounded-xl shadow-lg"
                 data-ai-hint={currentCategory.name}
                 priority={true}
-                onError={(e) => {
-                  // This will log an error ONLY if an image fails to load.
-                  // It helps debug incorrect file paths.
-                  console.error(
-                    `🔴 FAILED TO LOAD IMAGE for category "${currentCategory.name}". Tried path: "${currentCategory.imagePath}". Please check if this file exists in the /public/ui/ folder and if the path is correct.`
-                  );
-                  // The UI will use the fallback path automatically from the logic above.
-                }}
               />
             </motion.div>
           </AnimatePresence>
