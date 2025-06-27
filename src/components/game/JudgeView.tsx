@@ -4,7 +4,6 @@
 import type { GameClientState, PlayerClientState } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useState, useTransition, useEffect } from 'react';
 import { Gavel, Send, CheckCircle, Loader2, ListChecks, Crown, PlusCircle, XCircle } from 'lucide-react';
@@ -14,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { handleJudgeApprovalForCustomCard } from '@/app/game/actions';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
+import SwipeableCategorySelector from './SwipeableCategorySelector';
 
 
 interface JudgeViewProps {
@@ -24,7 +24,6 @@ interface JudgeViewProps {
 }
 
 export default function JudgeView({ gameState, judge, onSelectCategory, onSelectWinner }: JudgeViewProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedWinningCard, setSelectedWinningCard] = useState<string>('');
   const [isPendingCategory, startTransitionCategory] = useTransition();
   const [isPendingWinner, startTransitionWinner] = useTransition();
@@ -39,9 +38,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   useEffect(() => {
     if (gameState.gamePhase !== 'judging') {
         setSelectedWinningCard('');
-    }
-    if (gameState.gamePhase !== 'category_selection') {
-        setSelectedCategory('');
     }
   }, [gameState.gamePhase]);
 
@@ -61,14 +57,13 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   }, [gameState.gamePhase, gameState.currentRound, gameState.submissions, judgingRound, shuffledSubmissions]);
 
 
-  const handleCategorySubmit = () => {
-    if (!selectedCategory) {
+  const handleUnleashScenario = (category: string) => {
+    if (!category) {
       toast({ title: "Hold up!", description: "Please select a category first.", variant: "destructive" });
       return;
     }
     startTransitionCategory(async () => {
-      await onSelectCategory(selectedCategory);
-      // toast({ title: "Category Selected!", description: `Scenario from "${selectedCategory}" is up!` });
+      await onSelectCategory(category);
     });
   };
 
@@ -94,7 +89,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const isUnleashScenarioButtonActive = !isPendingCategory && !!selectedCategory && gameState.categories.length > 0;
   const isCrownWinnerButtonActive = !isPendingWinner && !!selectedWinningCard && shuffledSubmissions.length > 0;
 
   const lastRoundWinnerForModal = gameState.lastWinner?.player;
@@ -142,34 +136,11 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       </Card>
 
       {gameState.gamePhase === 'category_selection' && (
-        <Card className="shadow-lg border-2 border-muted rounded-xl">
-          <CardHeader className="p-6">
-            <CardTitle className="text-2xl font-semibold flex items-center"><ListChecks className="mr-2 h-6 w-6 text-primary" /> Select a Category</CardTitle>
-            <CardDescription>Choose the arena for this round's terrible choices.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <Select value={selectedCategory} onValueChange={setSelectedCategory} disabled={gameState.categories.length === 0}>
-              <SelectTrigger className="w-full text-lg py-3 border-2 focus:border-primary">
-                <SelectValue placeholder={gameState.categories.length > 0 ? "Pick a category of terribleness..." : "Loading categories..."} />
-              </SelectTrigger>
-              <SelectContent>
-                {gameState.categories.map((category) => (
-                  <SelectItem key={category} value={category} className="text-lg">
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={handleCategorySubmit}
-              disabled={!isUnleashScenarioButtonActive}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-semibold py-3"
-            >
-              {isPendingCategory ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
-              Unleash Scenario
-            </Button>
-          </CardContent>
-        </Card>
+        <SwipeableCategorySelector
+          categories={gameState.categories}
+          onUnleashScenario={handleUnleashScenario}
+          isPending={isPendingCategory}
+        />
       )}
 
       {gameState.gamePhase === 'player_submission' && (
