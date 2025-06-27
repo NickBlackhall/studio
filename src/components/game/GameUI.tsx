@@ -32,6 +32,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
           alt="Game UI Frame"
           fill
           priority
+          sizes="100vw"
           data-ai-hint="game ui frame"
         />
 
@@ -67,6 +68,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
                     src="/ui/judge badge v2.png"
                     alt="Judge Badge"
                     fill
+                    sizes="33vw"
                     className="object-contain"
                     data-ai-hint="judge badge"
                 />

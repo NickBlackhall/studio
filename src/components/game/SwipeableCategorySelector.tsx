@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -23,21 +24,20 @@ export default function SwipeableCategorySelector({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const enhancedCategories = useMemo(() => {
-    console.log('Raw categories from data:', categories);
-    
     const categoryImageMap: { [key: string]: string } = {
-      "Pop Culture and Internet": "/ui/pop-culture-panel.png",
+      // Matching the "dirty" data from the database logs
       "Super Powers": "/ui/Super-Powers-panel.png",
-      "R-Rated": "/ui/rated-r-panel.png",
-      "Life Things": "/ui/life-things-panel.png",
-      "Absurd and Surreal": "/ui/absurd-and-surreal-panel.png",
+      "Absurd & Surreal": "/ui/absurd-and-surreal-panel.png",
+      "Pop Culture & Internet ": "/ui/pop-culture-panel.png",
+      "Life things": "/ui/life-things-panel.png",
+      " R-Rated": "/ui/rated-r-panel.png",
     };
   
-    console.log('Available map keys:', Object.keys(categoryImageMap));
-  
-    return categories.map((name, index) => {
-      const imagePath = categoryImageMap[name] || "";
-      console.log(`[${index}] "${name}" -> "${imagePath}" (${imagePath ? 'FOUND' : 'NOT FOUND'})`);
+    return categories.map((name) => {
+      // Find a key in the map that, when trimmed, matches the trimmed name from the data.
+      // This is a more robust way to handle potential whitespace issues.
+      const foundKey = Object.keys(categoryImageMap).find(key => key.trim() === name.trim());
+      const imagePath = foundKey ? categoryImageMap[foundKey] : "";
       return { name, imagePath };
     });
   }, [categories]);
