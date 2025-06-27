@@ -37,7 +37,12 @@ export default function SwipeableCategorySelector({
       name,
       emoji: EMOJIS[index % EMOJIS.length],
       color: COLORS[index % COLORS.length],
-      imagePath: `https://placehold.co/1024x1024.png?text=${encodeURIComponent(EMOJIS[index % EMOJIS.length])}`,
+      //
+      // <<<--- EDIT THIS LINE TO CHANGE CATEGORY IMAGES ---<<<
+      // Replace the URL with the path to your actual category images.
+      // For example: imagePath: `/ui/categories/${name.toLowerCase().replace(/\s+/g, '-')}.png`
+      //
+      imagePath: `https://picsum.photos/1024/1024?random=${index}`,
     }));
   }, [categories]);
 
