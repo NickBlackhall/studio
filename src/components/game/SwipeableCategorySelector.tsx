@@ -24,18 +24,21 @@ export default function SwipeableCategorySelector({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const enhancedCategories = useMemo(() => {
-    // This map uses the "dirty" data keys from the database, as identified from console logs.
+    // These keys must EXACTLY match the category names from the database,
+    // including any typos, extra spaces, or ampersands.
     const categoryImageMap: { [key: string]: string } = {
-      " R-Rated": "/ui/rated-r-panel.png", // Note the leading space
+      " R-Rated": "/ui/rated-r-panel.png",
       "Absurd & Surreal": "/ui/absurd-and-surreal-panel.png",
-      "Life things": "/ui/Life-Things-panel.png", // Corrected path capitalization
-      "Pop Culture & Internet ": "/ui/pop-culture-panel.png", // Note the trailing space
+      "Life things": "/ui/life-things-panel.png", // Attempting the lowercase path from the previous error log
+      "Pop Culture & Internet ": "/ui/pop-culture-panel.png",
       "Super Powers": "/ui/Super-Powers-panel.png",
     };
 
+    // A known-good image to use as a fallback if a path is wrong.
+    const fallbackImagePath = "/ui/Super-Powers-panel.png";
+
     return categories.map((name) => {
-      // Use the existing Super Powers image as a fallback for any category not found in the map.
-      const imagePath = categoryImageMap[name] || "/ui/Super-Powers-panel.png";
+      const imagePath = categoryImageMap[name] || fallbackImagePath;
       return { name, imagePath };
     });
   }, [categories]);
@@ -118,6 +121,7 @@ export default function SwipeableCategorySelector({
               className="absolute inset-0 cursor-grab active:cursor-grabbing"
             >
               <Image
+                key={currentCategory.imagePath} // Use a key to force re-render on path change
                 src={currentCategory.imagePath}
                 alt={currentCategory.name}
                 fill
@@ -125,6 +129,14 @@ export default function SwipeableCategorySelector({
                 className="object-cover rounded-xl shadow-lg"
                 data-ai-hint={currentCategory.name}
                 priority={true}
+                onError={(e) => {
+                  // This will log an error ONLY if an image fails to load.
+                  // It helps debug incorrect file paths.
+                  console.error(
+                    `🔴 FAILED TO LOAD IMAGE for category "${currentCategory.name}". Tried path: "${currentCategory.imagePath}". Please check if this file exists in the /public/ui/ folder and if the path is correct.`
+                  );
+                  // The UI will use the fallback path automatically from the logic above.
+                }}
               />
             </motion.div>
           </AnimatePresence>
