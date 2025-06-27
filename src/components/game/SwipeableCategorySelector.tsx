@@ -31,14 +31,23 @@ export default function SwipeableCategorySelector({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<Set<number>>(new Set());
 
   const enhancedCategories = useMemo(() => {
+    // This map links the category name from your data to the actual image file path.
+    const categoryImageMap: { [key: string]: string } = {
+      "Awkward Situations": "/ui/Awkward Situations panel.png",
+      "Bad Advice": "/ui/Bad Advice panel.png",
+      "Terrible Inventions": "/ui/Terrible Inventions panel.png",
+      "Horrible Dates": "/ui/Horrible Dates panel.png",
+      "Unfortunate Superpowers": "/ui/Super Powers panel.png",
+    };
+
     return categories.map((name, index) => ({
       name,
       emoji: EMOJIS[index % EMOJIS.length],
       color: COLORS[index % COLORS.length],
-      // This line now creates local paths like: /ui/categories/awkward-situations.png
-      imagePath: `/ui/categories/${name.toLowerCase().replace(/\s+/g, '-')}.png`,
+      imagePath: categoryImageMap[name] || `/ui/placeholder-category.png`,
     }));
   }, [categories]);
 
@@ -95,8 +104,6 @@ export default function SwipeableCategorySelector({
       scale: 0.8,
     }),
   };
-  
-  const progress = (currentIndex + 1) / (enhancedCategories.length || 1);
 
   return (
     <div className="w-full max-w-2xl mx-auto relative">
@@ -122,10 +129,13 @@ export default function SwipeableCategorySelector({
               className="absolute inset-0 cursor-grab active:cursor-grabbing"
             >
               <Image
-                src={currentCategory.imagePath}
+                src={imageError.has(currentIndex) ? '/ui/placeholder-category.png' : currentCategory.imagePath}
                 alt={currentCategory.name}
                 fill
                 className="object-cover rounded-xl shadow-lg"
+                onError={() => {
+                  setImageError(prev => new Set(prev).add(currentIndex));
+                }}
                 data-ai-hint={currentCategory.name}
                 priority={true}
               />
