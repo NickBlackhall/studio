@@ -37,8 +37,7 @@ export default function SwipeableCategorySelector({
       name,
       emoji: EMOJIS[index % EMOJIS.length],
       color: COLORS[index % COLORS.length],
-      // Using local images from the public folder now.
-      // Assumes files are named like 'awkward-situations.png' in /public/ui/categories/
+      // This line now creates local paths like: /ui/categories/awkward-situations.png
       imagePath: `/ui/categories/${name.toLowerCase().replace(/\s+/g, '-')}.png`,
     }));
   }, [categories]);
@@ -96,12 +95,14 @@ export default function SwipeableCategorySelector({
       scale: 0.8,
     }),
   };
+  
+  const progress = (currentIndex + 1) / (enhancedCategories.length || 1);
 
   return (
     <div className="w-full max-w-2xl mx-auto relative">
       {/* Layer 1: Swipeable Category Images (Bottom) */}
       <div className="absolute inset-0 z-10 flex items-center justify-center">
-        <div className="absolute top-[28.5%] left-1/2 -translate-x-1/2 w-[59%] h-[43%]">
+        <div className="absolute top-[28%] left-1/2 -translate-x-1/2 w-[50%] h-[35%]">
           <AnimatePresence initial={false} custom={direction} mode="wait">
             <motion.div
               key={currentIndex}
@@ -132,7 +133,7 @@ export default function SwipeableCategorySelector({
           </AnimatePresence>
         </div>
       </div>
-
+      
       {/* Layer 2: The Frame Graphic (Middle) */}
       <div className="relative z-20 pointer-events-none">
         <Image
@@ -142,6 +143,7 @@ export default function SwipeableCategorySelector({
           height={2066}
           className="w-full h-auto"
           priority
+          data-ai-hint="selection frame"
         />
       </div>
 
