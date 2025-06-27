@@ -74,7 +74,6 @@ export default function SwipeableCategorySelector({
   }
   
   const currentCategory = enhancedCategories[currentIndex];
-  const progress = (currentIndex + 1) / enhancedCategories.length;
 
   const variants = {
     enter: (direction: number) => ({
@@ -146,22 +145,6 @@ export default function SwipeableCategorySelector({
 
       {/* Layer 3: UI Controls (Top) */}
       <div className="absolute inset-0 z-30 pointer-events-auto">
-        {/* Top Content Area */}
-        <div className="absolute top-[18%] left-1/2 -translate-x-1/2 w-full flex flex-col items-center gap-2">
-          <div className="font-semibold text-xl text-black/80">
-            {currentIndex + 1} / {enhancedCategories.length}
-          </div>
-          <div className="h-2 bg-black/20 rounded-full overflow-hidden w-1/3">
-            <motion.div
-              className="h-full rounded-full"
-              style={{ backgroundColor: currentCategory.color }}
-              initial={{ width: '0%' }}
-              animate={{ width: `${progress * 100}%` }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-            />
-          </div>
-        </div>
-
         {/* Carousel Navigation Arrows */}
         <div className="absolute top-1/2 -translate-y-[10%] w-full flex justify-between px-[6%]">
           <Button 
