@@ -1,51 +1,52 @@
+
 import type { Scenario } from "./types";
 
 // Generate paths for avatar1.png through avatar21.png
 export const AVATARS: string[] = Array.from({ length: 21 }, (_, i) => `/ui/avatar${i + 1}.png?v=2`);
 
 export const CATEGORIES: string[] = [
-  "Awkward Situations",
-  "Bad Advice",
-  "Terrible Inventions",
-  "Horrible Dates",
-  "Unfortunate Superpowers"
+  "Pop Culture and Internet",
+  "Super Powers",
+  "R-Rated",
+  "Life Things",
+  "Absurd and Surreal"
 ];
 
 export const SCENARIOS_DATA: Record<string, string[]> = {
-  "Awkward Situations": [
-    "You realize you've been calling your boss by the wrong name for a year. What do you do?",
-    "You're on a date and accidentally spill a drink all over them. How do you make it worse?",
-    "You walk into the wrong bathroom. What's your exit strategy?",
-    "You find a compromising photo of your friend on a public computer. What's the terrible thing to do?",
-    "Your fly has been down all day during an important presentation. Someone finally tells you. Your response?"
+  "Pop Culture and Internet": [
+    "You have to explain a viral TikTok trend to your grandparents. How do you make it as confusing as possible?",
+    "What's the worst possible #ad to post on your Instagram?",
+    "You get to create a new Netflix show. What's the title and one-sentence pitch?",
+    "Describe the most terrible influencer apology video.",
+    "You're a contestant on a reality show. What's your catchphrase?"
   ],
-  "Bad Advice": [
-    "Your friend wants to quit their job to become a professional thumb wrestler. What terrible advice do you give?",
-    "How do you 'subtly' tell someone they have bad breath?",
-    "What's the worst way to ask for a raise?",
-    "Your sibling is meeting their partner's parents for the first time. What's your worst tip?",
-    "What's the most unhelpful advice for surviving a zombie apocalypse?"
-  ],
-  "Terrible Inventions": [
-    "Invent a device that makes a common task 10x harder.",
-    "What's a new social media app that everyone would hate?",
-    "Describe a new food delivery service that is guaranteed to fail.",
-    "What's a useless kitchen gadget that would sell surprisingly well?",
-    "Design a piece of clothing that is both uncomfortable and unfashionable."
-  ],
-  "Horrible Dates": [
-    "Describe the most cringeworthy thing to do on a first date.",
-    "What's an instant deal-breaker when meeting someone new?",
-    "How can you ensure there's no second date?",
-    "What's the worst possible restaurant to take someone to?",
-    "Your date reveals a truly bizarre hobby. How do you react terribly?"
-  ],
-  "Unfortunate Superpowers": [
-    "If you could have any superpower, what's the most inconvenient one?",
+  "Super Powers": [
     "You can talk to animals, but they all hate you. How does this play out?",
     "You can turn invisible, but only when no one is looking. What's the downside?",
     "You can fly, but only at a snail's pace. How is this terrible?",
-    "You have super strength, but only in your pinky toes. What's the problem?"
+    "You have super strength, but only in your pinky toes. What's the problem?",
+    "You can teleport, but only to places you've already been in the last 5 minutes."
+  ],
+  "R-Rated": [
+    "What's the worst thing to whisper to someone during a hug?",
+    "Describe a terrible pickup line that somehow works.",
+    "You're making a new horror movie. What's the terrible, non-scary monster?",
+    "What's the most inappropriate thing to bring to a potluck?",
+    "How do you ruin a wedding with just one sentence?"
+  ],
+  "Life Things": [
+    "What's the worst way to assemble IKEA furniture?",
+    "You have to parallel park in front of a huge crowd. How do you fail spectacularly?",
+    "Describe the most passive-aggressive note you could leave for a roommate.",
+    "You're stuck in an elevator with your boss. What's the worst conversation starter?",
+    "How do you terribly 'fix' a clogged toilet at a friend's house?"
+  ],
+  "Absurd and Surreal": [
+    "A flock of sentient chairs is chasing you. What's their demand?",
+    "You wake up and your hands have been replaced with baguettes. What's for breakfast?",
+    "The sky turns plaid. How does the world react?",
+    "You discover a button that, when pressed, makes a random person nearby quack like a duck. How do you use this power for evil?",
+    "Your shadow has started giving you terrible life advice. What's its latest suggestion?"
   ]
 };
 
