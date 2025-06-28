@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from '@/components/ui/button';
 import { Send, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
@@ -21,11 +21,8 @@ export default function SwipeableCategorySelector({
 }: SwipeableCategorySelectorProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const enhancedCategories = useMemo(() => {
-    // These keys must EXACTLY match the category names from the database,
-    // including any typos, extra spaces, or ampersands.
     const categoryImageMap: { [key: string]: string } = {
         " R-Rated": "/ui/rated-r-panel.png",
         "Absurd & Surreal": "/ui/absurd-and-surreal-panel.png",
@@ -36,26 +33,16 @@ export default function SwipeableCategorySelector({
 
     return categories.map((name) => {
       const imagePath = categoryImageMap[name];
-      // Use fallback if image path is not found for a category
-      const finalImagePath = imagePath || "/ui/Super-Powers-panel.png";
-      if (!imagePath) {
-        console.warn(`CategorySelector: No image map found for category: "${name}". Using Super Powers as fallback.`);
-      }
+      const finalImagePath = imagePath || "/ui/Super-Powers-panel.png"; // Fallback
       return { name, imagePath: finalImagePath };
     });
   }, [categories]);
-
-  useEffect(() => {
-    if (enhancedCategories.length > 0 && !selectedCategory) {
-      setSelectedCategory(enhancedCategories[0].name);
-    }
-  }, [enhancedCategories, selectedCategory]);
+  
+  const selectedCategory = enhancedCategories[currentIndex]?.name;
 
   const paginate = (newDirection: number) => {
     setDirection(newDirection);
-    const newIndex = (currentIndex + newDirection + enhancedCategories.length) % enhancedCategories.length;
-    setCurrentIndex(newIndex);
-    setSelectedCategory(enhancedCategories[newIndex].name);
+    setCurrentIndex((prevIndex) => (prevIndex + newDirection + enhancedCategories.length) % enhancedCategories.length);
   };
   
   const handleDragEnd = (event: any, info: any) => {
@@ -83,25 +70,28 @@ export default function SwipeableCategorySelector({
     enter: (direction: number) => ({
       x: direction > 0 ? "80%" : "-80%",
       opacity: 0,
+      scale: 0.95,
     }),
     center: {
       zIndex: 1,
       x: 0,
       opacity: 1,
+      scale: 1,
     },
     exit: (direction: number) => ({
       zIndex: 0,
       x: direction < 0 ? "80%" : "-80%",
       opacity: 0,
+      scale: 0.95,
     }),
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto relative">
+    <div className="w-full relative">
       {/* Layer 1: Swipeable Category Images (Bottom) */}
       <div className="absolute inset-0 z-10 flex items-center justify-center">
         <div className="absolute top-[28.4%] left-1/2 -translate-x-1/2 w-[59%] h-[40%]">
-          <AnimatePresence initial={false} custom={direction} mode="popLayout">
+          <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={currentIndex}
               custom={direction}
@@ -125,7 +115,7 @@ export default function SwipeableCategorySelector({
                 alt={currentCategory.name}
                 fill
                 priority
-                sizes="(max-width: 768px) 50vw, 33vw"
+                sizes="(max-width: 768px) 80vw, 50vw"
                 className="object-cover rounded-xl shadow-lg"
                 data-ai-hint={currentCategory.name}
               />
