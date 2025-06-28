@@ -40,28 +40,29 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   // Effect to manage animation state and shuffled submissions based on game phase and round
   useEffect(() => {
     isMountedRef.current = true;
-    
-    // When judging begins for a new round
-    if (gameState.gamePhase === 'judging' && !isAnimationComplete) {
-      if (prefersReducedMotion) {
-        setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
-        setIsAnimationComplete(true);
-      } else {
-        // Shuffle cards for this round immediately
-        setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
-      }
+
+    // When judging begins for a new round, shuffle the cards for the reveal
+    if (gameState.gamePhase === 'judging') {
+        // Only shuffle once per round's submissions
+        if (shuffledSubmissions.length !== gameState.submissions.length) {
+            setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
+        }
+        if (prefersReducedMotion) {
+            setIsAnimationComplete(true);
+        }
     }
     
-    if (gameState.gamePhase !== 'judging') {
-        setSelectedWinningCard('');
+    // Reset animation states if we move away from the judging phase
+    if (gameState.gamePhase !== 'judging' && isAnimationComplete) {
         setIsAnimationComplete(false);
+        setShuffledSubmissions([]);
     }
     
     // Cleanup if component unmounts
     return () => {
       isMountedRef.current = false;
     };
-  }, [gameState.gamePhase, gameState.submissions, isAnimationComplete, prefersReducedMotion]);
+  }, [gameState.gamePhase, gameState.submissions, isAnimationComplete, prefersReducedMotion, shuffledSubmissions.length]);
 
 
   const handleUnleashScenario = (category: string) => {
@@ -98,7 +99,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
 
   const handleCardClick = (cardText: string) => {
     if (!isAnimationComplete) return; // Don't allow selection until cards are flipped
-    setSelectedWinningCard(cardText);
+    setSelectedWinningCard(selectedWinningCard === cardText ? '' : cardText);
   };
   
   const isCrownWinnerButtonActive = !isPendingWinner && !!selectedWinningCard && shuffledSubmissions.length > 0 && isAnimationComplete;
@@ -134,14 +135,14 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               />
             )}
           </AnimatePresence>
-          <div className="text-center py-8">
+          <div className="text-center py-6">
             <h2 className="text-2xl font-semibold text-foreground">Players are making terrible choices...</h2>
             <Loader2 className="h-10 w-10 animate-spin text-accent mx-auto my-4" />
             <p className="text-muted-foreground mt-1 text-lg">
               ({gameState.submissions?.length || 0} / {gameState.players.filter(p => p.id !== judge.id).length} submitted)
             </p>
           </div>
-          <div className="relative min-h-[350px] [perspective:1200px]">
+          <div className="relative mt-4 min-h-[350px] [perspective:1200px]">
             <AnimatePresence>
               {gameState.submissions.map((submission, index) => (
                 <motion.div
@@ -179,7 +180,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             )}
           </AnimatePresence>
           
-          <div className="relative mt-8 min-h-[450px] [perspective:1200px]">
+          <div className="relative mt-12 min-h-[450px] [perspective:1200px]">
             {shuffledSubmissions.map((submission, index) => {
               const isSelected = selectedWinningCard === submission.cardText;
               return (
@@ -192,20 +193,15 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                     scale: 1 - (shuffledSubmissions.length - 1 - index) * 0.05,
                     zIndex: index
                   }}
-                  animate={prefersReducedMotion ? {
-                      rotateX: 180,
-                      y: index * 75,
-                      scale: isSelected ? 1.1 : 1,
-                      zIndex: isSelected ? 100 : index,
-                  } : {
-                    rotateX: 180,
-                    y: index * 75,
-                    scale: isSelected ? 1.1 : 1,
+                  animate={{
+                    rotateX: isAnimationComplete ? 180 : 0,
+                    y: isAnimationComplete ? index * 75 : index * 30,
+                    scale: isAnimationComplete && isSelected ? 1.1 : (isAnimationComplete ? 1 : 1 - (shuffledSubmissions.length - 1 - index) * 0.05),
                     zIndex: isSelected ? 100 : index,
+                    transition: { type: 'spring', stiffness: 100, damping: 15, delay: isAnimationComplete ? index * 0.1 : 0 }
                   }}
-                  transition={{ type: 'spring', stiffness: 120, damping: 18, delay: index * 0.1 }}
                   onAnimationComplete={() => {
-                      if (index === shuffledSubmissions.length - 1) {
+                      if (index === shuffledSubmissions.length - 1 && !prefersReducedMotion) {
                           if (isMountedRef.current) setIsAnimationComplete(true);
                       }
                   }}
