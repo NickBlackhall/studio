@@ -25,8 +25,8 @@ interface JudgeViewProps {
 
 export default function JudgeView({ gameState, judge, onSelectCategory, onSelectWinner }: JudgeViewProps) {
   const [selectedWinningCard, setSelectedWinningCard] = useState<string>('');
+  const [pendingWinnerCard, setPendingWinnerCard] = useState<string>('');
   const [isPendingCategory, startTransitionCategory] = useTransition();
-  const [isPendingWinner, startTransitionWinner] = useTransition();
   const [isPendingApproval, startTransitionApproval] = useTransition();
   const { toast } = useToast();
 
@@ -37,30 +37,24 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
 
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
 
-  // Effect to manage animation state and shuffled submissions based on game phase and round
   useEffect(() => {
     isMountedRef.current = true;
     
-    // When judging begins for a new round, shuffle the cards for the reveal
     if (gameState.gamePhase === 'judging' && !isAnimationComplete) {
-        // Shuffle and set if we haven't already or if submissions have changed
         if (shuffledSubmissions.length !== gameState.submissions.length || shuffledSubmissions.length === 0) {
             setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
         }
 
-        // Directly set animation complete if user prefers reduced motion
         if (prefersReducedMotion) {
             setIsAnimationComplete(true);
         }
     }
     
-    // Reset animation states if we move away from the judging phase
     if (gameState.gamePhase !== 'judging' && (isAnimationComplete || shuffledSubmissions.length > 0)) {
         setIsAnimationComplete(false);
         setShuffledSubmissions([]);
     }
     
-    // Cleanup if component unmounts
     return () => {
       isMountedRef.current = false;
     };
@@ -77,17 +71,25 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleWinnerSubmit = (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
-    e.stopPropagation(); // Stop the event from bubbling up to the card div
-
+  const handleWinnerSubmit = async (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
+    e.stopPropagation();
+    
     if (!cardText) {
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
     }
 
-    startTransitionWinner(async () => {
-      await onSelectWinner(cardText);
-    });
+    setPendingWinnerCard(cardText);
+    
+    try {
+        await onSelectWinner(cardText);
+    } catch (error: any) {
+        toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
+    } finally {
+        if (isMountedRef.current) {
+          setPendingWinnerCard('');
+        }
+    }
   };
 
   const handleApprovalDecision = (addToDeck: boolean) => {
@@ -103,7 +105,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   };
 
   const handleCardClick = (cardText: string) => {
-    if (!isAnimationComplete) return;
+    if (!isAnimationComplete || pendingWinnerCard) return;
     setSelectedWinningCard(prevSelected => {
         const newSelected = prevSelected === cardText ? '' : cardText;
         return newSelected;
@@ -220,7 +222,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   }}
                   onClick={() => handleCardClick(submission.cardText)}
                 >
-                  {/* Card Front (with text, becomes visible after flip) */}
                   <div className={cn(
                       'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
                       isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
@@ -229,17 +230,20 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                       {isSelected && (
                         <Button
                           size="sm"
-                          className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2"
+                          className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-10 pointer-events-auto"
                           onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
-                          disabled={isPendingWinner}
+                          disabled={!!pendingWinnerCard}
                         >
-                            {isPendingWinner ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="h-4 w-4" />}
+                            {pendingWinnerCard === submission.cardText ? (
+                              <Loader2 className="h-4 w-4 animate-spin"/>
+                            ) : (
+                              <CheckCircle className="h-4 w-4" />
+                            )}
                             Crown
                         </Button>
                       )}
                   </div>
 
-                  {/* Card Back (image, visible before flip) */}
                   <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
                     <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
