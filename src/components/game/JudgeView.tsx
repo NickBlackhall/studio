@@ -75,8 +75,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('Crown button clicked for:', cardText); // Add this debug line
-    
     if (!cardText) {
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
@@ -85,11 +83,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     setPendingWinnerCard(cardText);
     
     try {
-        console.log('Calling onSelectWinner with:', cardText); // Add this debug line
         await onSelectWinner(cardText);
-        console.log('onSelectWinner completed successfully'); // Add this debug line
     } catch (error: any) {
-        console.error('Error in onSelectWinner:', error); // Add this debug line
         toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
         if (isMountedRef.current) {
@@ -110,7 +105,11 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleCardClick = (cardText: string) => {
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>, cardText: string) => {
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+
     if (!isAnimationComplete || !!pendingWinnerCard) return;
     setSelectedWinningCard(prevSelected => {
         const newSelected = prevSelected === cardText ? '' : cardText;
@@ -226,7 +225,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                           if (isMountedRef.current) setIsAnimationComplete(true);
                       }
                   }}
-                  onClick={() => handleCardClick(submission.cardText)}
+                  onClick={(e) => handleCardClick(e, submission.cardText)}
                 >
                   <div className={cn(
                       'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
@@ -237,15 +236,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                         <Button
                           size="sm"
                           className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleWinnerSubmit(e, submission.cardText);
-                          }}
+                          onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
                           disabled={pendingWinnerCard === submission.cardText}
                         >
                             {pendingWinnerCard === submission.cardText ? (
@@ -259,7 +250,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   </div>
 
                   <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
-                    <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" />
+                    <Image src="/ui/mit-card-back.png" alt="Response Card Back" fill className="object-cover" data-ai-hint="card back" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
                         <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
                     </div>
@@ -343,5 +334,3 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
-
-    
