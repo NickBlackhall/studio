@@ -36,12 +36,12 @@ export default function SwipeableCategorySelector({
 
     return categories.map((name) => {
       const imagePath = categoryImageMap[name];
+      // Use fallback if image path is not found for a category
+      const finalImagePath = imagePath || "/ui/Super-Powers-panel.png";
       if (!imagePath) {
-        // This log helps identify missing images during development
         console.warn(`CategorySelector: No image map found for category: "${name}". Using Super Powers as fallback.`);
-        return { name, imagePath: "/ui/Super-Powers-panel.png" };
       }
-      return { name, imagePath };
+      return { name, imagePath: finalImagePath };
     });
   }, [categories]);
 
@@ -97,11 +97,11 @@ export default function SwipeableCategorySelector({
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto relative">
+    <div className="w-full max-w-4xl mx-auto relative">
       {/* Layer 1: Swipeable Category Images (Bottom) */}
       <div className="absolute inset-0 z-10 flex items-center justify-center">
         <div className="absolute top-[28.4%] left-1/2 -translate-x-1/2 w-[59%] h-[40%]">
-          <AnimatePresence initial={false} custom={direction}>
+          <AnimatePresence initial={false} custom={direction} mode="popLayout">
             <motion.div
               key={currentIndex}
               custom={direction}
@@ -128,11 +128,6 @@ export default function SwipeableCategorySelector({
                 sizes="(max-width: 768px) 50vw, 33vw"
                 className="object-cover rounded-xl shadow-lg"
                 data-ai-hint={currentCategory.name}
-                onError={(e) => {
-                  console.error(`🔴 FAILED TO LOAD IMAGE for category "${currentCategory.name}". Tried path: "${currentCategory.imagePath}". Please check if this file exists in the /public/ui/ folder and if the path is correct.`);
-                  // Fallback to a known good image to prevent broken UI
-                  (e.target as HTMLImageElement).src = '/ui/Super-Powers-panel.png';
-                }}
               />
             </motion.div>
           </AnimatePresence>
