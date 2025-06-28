@@ -142,12 +142,12 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               ({gameState.submissions?.length || 0} / {gameState.players.filter(p => p.id !== judge.id).length} submitted)
             </p>
           </div>
-          <div className="relative mt-4 min-h-[350px] [perspective:1200px]">
+          <div className="relative mt-8 min-h-[350px] [perspective:1200px]">
             <AnimatePresence>
               {gameState.submissions.map((submission, index) => (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-full max-w-sm left-1/2 -translate-x-1/2 will-change-transform"
+                  className="absolute w-full max-w-xs left-1/2 -translate-x-1/2 will-change-transform"
                   style={{ zIndex: index }}
                   initial={{ opacity: 0, y: -100 }}
                   animate={{
@@ -186,7 +186,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               return (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-full max-w-sm left-1/2 -translate-x-1/2 [transform-style:preserve-3d] cursor-pointer will-change-transform"
+                  className="absolute w-full max-w-xs left-1/2 -translate-x-1/2 [transform-style:preserve-3d] cursor-pointer will-change-transform"
                   style={{ willChange: 'transform' }}
                   initial={{ 
                     y: index * 30,
@@ -322,4 +322,5 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
+
     
