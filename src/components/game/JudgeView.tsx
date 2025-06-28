@@ -82,28 +82,28 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🎯 Crown button clicked for:', cardText);
-    console.log('🎯 Event target:', e.target);
+    console.log('🎯 Crown button clicked for:', cardText); // ADD THIS DEBUG LINE
+    console.log('🎯 Event target:', e.target); // ADD THIS DEBUG LINE
     
     if (!cardText) {
-        console.log('❌ No card text provided');
+        console.log('❌ No card text provided'); // ADD THIS DEBUG LINE
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
     }
 
-    console.log('🎯 Setting pending winner card to:', cardText);
+    console.log('🎯 Setting pending winner card to:', cardText); // ADD THIS DEBUG LINE
     setPendingWinnerCard(cardText);
     
     try {
-        console.log('🎯 Calling onSelectWinner with:', cardText);
+        console.log('🎯 Calling onSelectWinner with:', cardText); // ADD THIS DEBUG LINE
         await onSelectWinner(cardText);
-        console.log('✅ onSelectWinner completed successfully');
+        console.log('✅ onSelectWinner completed successfully'); // ADD THIS DEBUG LINE
     } catch (error: any) {
-        console.error('❌ Error in onSelectWinner:', error);
+        console.error('❌ Error in onSelectWinner:', error); // ADD THIS DEBUG LINE
         toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
         if (isMountedRef.current) {
-          console.log('🎯 Clearing pending winner card');
+          console.log('🎯 Clearing pending winner card'); // ADD THIS DEBUG LINE
           setPendingWinnerCard('');
         }
     }
@@ -222,7 +222,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               return (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-80 left-0 right-0 mx-auto [transform-style:preserve-3d] cursor-pointer will-change-transform"
+                  className="absolute w-80 left-0 right-0 mx-auto [transform-style:preserve-3d] will-change-transform"
                   style={{ willChange: 'transform' }}
                   initial={{ 
                     y: index * 30,
@@ -259,7 +259,14 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                             {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
                             <Button
                                 size="sm"
-                                className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto border-2 border-yellow-300"
+                                className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto"
+                                style={{ 
+                                  backgroundColor: 'red', 
+                                  border: '3px solid yellow',
+                                  transform: 'translateZ(10px)',
+                                  backfaceVisibility: 'visible',
+                                  position: 'relative'
+                                }}
                                 onMouseDown={(e) => {
                                     console.log('🎯 Button mousedown');
                                     e.preventDefault();
@@ -272,7 +279,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                                     handleWinnerSubmit(e, submission.cardText);
                                 }}
                                 disabled={pendingWinnerCard === submission.cardText}
-                                style={{ backgroundColor: 'red', border: '3px solid yellow' }}
                             >
                                 {pendingWinnerCard === submission.cardText ? (
                                     <Loader2 className="h-4 w-4 animate-spin"/>
