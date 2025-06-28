@@ -31,7 +31,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const { toast } = useToast();
 
   const [shuffledSubmissions, setShuffledSubmissions] = useState<GameClientState['submissions']>([]);
-  const [judgingRound, setJudgingRound] = useState<number | null>(null);
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const isMountedRef = useRef(true);
   const prefersReducedMotion = useReducedMotion();
@@ -43,30 +42,26 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     isMountedRef.current = true;
     
     // When judging begins for a new round
-    if (gameState.gamePhase === 'judging' && judgingRound !== gameState.currentRound) {
-      // Reset animation, shuffle cards for this round
-      setIsAnimationComplete(false);
-      setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
-      setJudgingRound(gameState.currentRound);
-      
-      // For users who prefer reduced motion, skip animations entirely
+    if (gameState.gamePhase === 'judging' && !isAnimationComplete) {
       if (prefersReducedMotion) {
+        setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
         setIsAnimationComplete(true);
+      } else {
+        // Shuffle cards for this round immediately
+        setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
       }
+    }
+    
+    if (gameState.gamePhase !== 'judging') {
+        setSelectedWinningCard('');
+        setIsAnimationComplete(false);
     }
     
     // Cleanup if component unmounts
     return () => {
       isMountedRef.current = false;
     };
-  }, [gameState.gamePhase, gameState.currentRound, gameState.submissions, judgingRound, prefersReducedMotion]);
-
-  // Effect to reset selection when the phase is no longer 'judging'
-  useEffect(() => {
-    if (gameState.gamePhase !== 'judging') {
-        setSelectedWinningCard('');
-    }
-  }, [gameState.gamePhase]);
+  }, [gameState.gamePhase, gameState.submissions, isAnimationComplete, prefersReducedMotion]);
 
 
   const handleUnleashScenario = (category: string) => {
@@ -146,6 +141,29 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               ({gameState.submissions?.length || 0} / {gameState.players.filter(p => p.id !== judge.id).length} submitted)
             </p>
           </div>
+          <div className="relative min-h-[350px] [perspective:1200px]">
+            <AnimatePresence>
+              {gameState.submissions.map((submission, index) => (
+                <motion.div
+                  key={submission.playerId}
+                  className="absolute w-full max-w-sm left-1/2 -translate-x-1/2 will-change-transform"
+                  style={{ zIndex: index }}
+                  initial={{ opacity: 0, y: -100 }}
+                  animate={{
+                      opacity: 1,
+                      y: index * 30,
+                      scale: 1 - (gameState.submissions.length - 1 - index) * 0.05,
+                      transition: { type: 'spring', stiffness: 100, damping: 15 }
+                  }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                >
+                  <div className="w-full aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
+                    <Image src="/ui/mit-card-back.png" alt="Card Back" fill className="object-cover" data-ai-hint="card back" />
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         </>
       )}
 
@@ -167,18 +185,23 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               return (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-full max-w-md left-1/2 -translate-x-1/2 [transform-style:preserve-3d] cursor-pointer"
+                  className="absolute w-full max-w-sm left-1/2 -translate-x-1/2 [transform-style:preserve-3d] cursor-pointer will-change-transform"
                   style={{ willChange: 'transform' }}
                   initial={{ 
-                    y: 0, 
-                    scale: 1 - ((shuffledSubmissions.length - 1 - index) * 0.04), 
-                    zIndex: index 
+                    y: index * 30,
+                    scale: 1 - (shuffledSubmissions.length - 1 - index) * 0.05,
+                    zIndex: index
                   }}
-                  animate={{
-                    rotateX: isAnimationComplete ? 180 : 0,
-                    y: isAnimationComplete ? index * 75 : 0,
-                    scale: isAnimationComplete ? (isSelected ? 1.1 : 1) : (1 - ((shuffledSubmissions.length - 1 - index) * 0.04)),
-                    zIndex: isAnimationComplete ? (isSelected ? 100 : index) : index,
+                  animate={prefersReducedMotion ? {
+                      rotateX: 180,
+                      y: index * 75,
+                      scale: isSelected ? 1.1 : 1,
+                      zIndex: isSelected ? 100 : index,
+                  } : {
+                    rotateX: 180,
+                    y: index * 75,
+                    scale: isSelected ? 1.1 : 1,
+                    zIndex: isSelected ? 100 : index,
                   }}
                   transition={{ type: 'spring', stiffness: 120, damping: 18, delay: index * 0.1 }}
                   onAnimationComplete={() => {
