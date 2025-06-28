@@ -71,10 +71,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleWinnerSubmit = async (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
+  const handleWinnerSubmit = async (e: React.MouseEvent<HTMLElement>, cardText: string) => {
     e.stopPropagation();
-    
-    console.log('Crown button clicked for:', cardText); // Add this debug line
     
     if (!cardText) {
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
@@ -84,11 +82,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     setPendingWinnerCard(cardText);
     
     try {
-        console.log('Calling onSelectWinner with:', cardText); // Add this debug line
         await onSelectWinner(cardText);
-        console.log('onSelectWinner completed successfully'); // Add this debug line
     } catch (error: any) {
-        console.error('Error in onSelectWinner:', error); // Add this debug line
         toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
         if (isMountedRef.current) {
@@ -109,8 +104,16 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleCardClick = (cardText: string) => {
-    if (!isAnimationComplete || pendingWinnerCard) return;
+  const handleCardClick = (cardText: string, e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+
+    // If the click came from the button or its children, let handleWinnerSubmit take over.
+    if (target.closest('button')) {
+      return;
+    }
+      
+    if (!isAnimationComplete || !!pendingWinnerCard) return;
+
     setSelectedWinningCard(prevSelected => {
         const newSelected = prevSelected === cardText ? '' : cardText;
         return newSelected;
@@ -155,7 +158,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               ({gameState.submissions?.length || 0} / {gameState.players.filter(p => p.id !== judge.id).length} submitted)
             </p>
           </div>
-          <div className="relative mt-8 min-h-[450px] [perspective:1200px]">
+          <div className="relative mt-12 min-h-[450px] [perspective:1200px]">
             <AnimatePresence>
               {gameState.submissions.map((submission, index) => (
                 <motion.div
@@ -196,7 +199,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             )}
           </AnimatePresence>
           
-          <div className="relative mt-8 min-h-[450px] [perspective:1200px]">
+          <div className="relative mt-12 min-h-[450px] [perspective:1200px]">
             {shuffledSubmissions.map((submission, index) => {
               const isSelected = selectedWinningCard === submission.cardText;
               return (
@@ -225,7 +228,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                           if (isMountedRef.current) setIsAnimationComplete(true);
                       }
                   }}
-                  onClick={() => handleCardClick(submission.cardText)}
+                  onClick={(e) => handleCardClick(submission.cardText, e)}
                 >
                   <div className={cn(
                       'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
@@ -236,7 +239,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                         <Button
                           size="sm"
                           className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto"
-                          onMouseDown={(e) => e.stopPropagation()}
                           onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
                           disabled={pendingWinnerCard === submission.cardText}
                         >
