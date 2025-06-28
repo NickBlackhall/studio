@@ -69,9 +69,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleWinnerSubmit = (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
-    e.stopPropagation();
-    
+  const handleWinnerSubmit = async (cardText: string) => {
     if (!cardText) {
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
@@ -83,20 +81,18 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
 
     setPendingWinnerCard(cardText);
     
-    startTransitionCategory(async () => {
-      try {
-          await onSelectWinner(cardText);
-          if (isMountedRef.current) {
-            setSelectedWinningCard('');
-          }
-      } catch (error: any) {
-          toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
-      } finally {
-          if (isMountedRef.current) {
-            setPendingWinnerCard('');
-          }
-      }
-    });
+    try {
+        await onSelectWinner(cardText);
+        if (isMountedRef.current) {
+          setSelectedWinningCard('');
+        }
+    } catch (error: any) {
+        toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
+    } finally {
+        if (isMountedRef.current) {
+          setPendingWinnerCard('');
+        }
+    }
   };
   
   const handleCardClick = (cardText: string) => {
@@ -208,62 +204,77 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               return (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-full max-w-sm mx-auto left-0 right-0 cursor-pointer [transform-style:preserve-3d]"
+                  className="absolute w-full max-w-sm mx-auto left-0 right-0 cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
                   style={{
                     top: 20 + (index * 35),
-                    zIndex: isSelected ? 100 : 20 - index,
+                    zIndex: isSelected ? 50 : 20 - index,
+                  }}
+                  animate={{
+                    y: isAnimationComplete ? index * 75 : index * 30,
+                    scale: isAnimationComplete && isSelected ? 1.1 : (isAnimationComplete ? 1 : 1 - (shuffledSubmissions.length - 1 - index) * 0.05),
+                    transition: { type: 'spring', stiffness: 100, damping: 15, delay: isAnimationComplete ? index * 0.1 : 0 }
+                  }}
+                  onAnimationComplete={() => {
+                    if (!prefersReducedMotion && index === shuffledSubmissions.length - 1) {
+                      if (isMountedRef.current) setIsAnimationComplete(true);
+                    }
                   }}
                   onClick={() => handleCardClick(submission.cardText)}
-                  animate={{
-                     y: isSelected ? 0 : 20 + (index * 35),
-                     scale: isSelected ? 1.1 : 1,
-                  }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 >
-                    <motion.div
-                      className="relative w-full [transform-style:preserve-3d] aspect-[1536/600]"
-                      initial={{ transform: 'rotateX(0deg)' }}
-                      animate={{ transform: isAnimationComplete ? 'rotateX(180deg)' : 'rotateX(0deg)' }}
-                      transition={{ duration: 0.6, ease: "easeInOut" }}
-                       onAnimationComplete={() => {
-                          if (index === shuffledSubmissions.length - 1 && !isAnimationComplete) {
-                            if (isMountedRef.current) setIsAnimationComplete(true);
-                          }
-                       }}
-                    >
-                        {/* Card Back */}
-                        <div className={cn( "absolute w-full h-full [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg" )}>
-                          <Image src="/ui/mit-card-back.png" alt="Response Card Back" fill className="object-cover" data-ai-hint="card back" sizes="320px" />
-                        </div>
-                        
-                        {/* Card Front */}
-                        <div className={cn( "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden border-4 shadow-xl", isSelected ? "border-accent" : "border-primary" )}>
-                          <Image src="/ui/mit-card-front.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card front" sizes="320px" />
-                           <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                              <p className="font-im-fell text-black text-2xl leading-tight text-center flex-grow flex items-center">{submission.cardText}</p>
-                              {isSelected && isAnimationComplete && (
-                                <div className="flex-shrink-0 py-2">
-                                      <Button
-                                          size="sm"
-                                          className={cn(
-                                              "h-10 px-4 text-sm font-bold shadow-xl",
-                                              isPending 
-                                                  ? "bg-gray-400 cursor-not-allowed" 
-                                                  : "bg-green-600 hover:bg-green-700 text-white"
-                                          )}
-                                          onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
-                                          disabled={isPending}
-                                      >
-                                          <div className="flex items-center gap-2">
-                                              {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Crown className="h-4 w-4" />}
-                                              <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
-                                          </div>
-                                      </Button>
-                                </div>
-                              )}
-                           </div>
-                        </div>
-                    </motion.div>
+                  <motion.div
+                    className="relative w-full h-full [transform-style:preserve-3d] shadow-lg rounded-xl"
+                    initial={{ transform: 'rotateX(0deg)' }}
+                    animate={{ transform: isAnimationComplete ? 'rotateX(180deg)' : 'rotateX(0deg)' }}
+                    transition={{ duration: 0.6, ease: "easeInOut" }}
+                  >
+                    {/* Card Back */}
+                    <div className={cn(
+                      "absolute w-full h-full [backface-visibility:hidden] rounded-xl overflow-hidden"
+                    )}>
+                      <Image
+                        src="/ui/mit-card-back.png"
+                        alt="Card Back"
+                        fill
+                        className="object-cover transform scale-[1.03]"
+                        data-ai-hint="card back"
+                        priority
+                        sizes="320px"
+                      />
+                    </div>
+                    
+                    {/* Card Front */}
+                    <div className={cn(
+                        "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden"
+                    )}>
+                      <Image
+                        src="/ui/mit-card-front.png"
+                        alt="Response Card Front"
+                        fill
+                        className="object-cover transform scale-[1.03]"
+                        data-ai-hint="card front"
+                        sizes="320px"
+                      />
+                      <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
+                        <span className="font-im-fell text-black text-2xl leading-tight px-4 flex-grow flex items-center">{submission.cardText}</span>
+                        {isSelected && isAnimationComplete && (
+                          <div className="flex-shrink-0 py-2">
+                             <Button
+                                size="sm"
+                                className={cn("h-10 px-4 text-sm font-bold shadow-xl", isPending ? "bg-muted text-muted-foreground" : "bg-green-600 hover:bg-green-700 text-white")}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleWinnerSubmit(submission.cardText);
+                                }}
+                                disabled={isPending}
+                            >
+                                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Crown className="mr-2 h-4 w-4" />}
+                                <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
                 </motion.div>
               );
             })}

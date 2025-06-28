@@ -259,7 +259,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                       src="/ui/mit-card-back.png"
                       alt="Card Back"
                       fill
-                      className="object-cover"
+                      className="object-cover transform scale-[1.03]"
                       data-ai-hint="card back"
                       priority
                     />
@@ -275,7 +275,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                           src="/ui/write-in-card-front.png"
                           alt="Write-in Response Card Front"
                           fill
-                          className="object-cover"
+                          className="object-cover transform scale-[1.03]"
                           data-ai-hint="card front"
                         />
                         <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
@@ -310,7 +310,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                           src="/ui/mit-card-front.png"
                           alt="Response Card Front"
                           fill
-                          className="object-cover"
+                          className="object-cover transform scale-[1.03]"
                           data-ai-hint="card front"
                         />
                         <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
