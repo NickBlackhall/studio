@@ -34,6 +34,15 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const isMountedRef = useRef(true);
   const prefersReducedMotion = useReducedMotion();
 
+  // DEBUG STATEMENTS
+  console.log('🔍 Shuffled submissions:', shuffledSubmissions);
+  console.log('🔍 Selected winning card:', selectedWinningCard);
+  console.log('🔍 Animation complete:', isAnimationComplete);
+  console.log('🔍 Current game phase:', gameState.gamePhase);
+  console.log('🔍 Current judge ID:', gameState.currentJudgeId);
+  console.log('🔍 Current player ID:', judge.id);
+
+
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
   
   useEffect(() => {
@@ -73,37 +82,46 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🎯 Crown button clicked for:', cardText); // ADD THIS DEBUG LINE
-    console.log('🎯 Event target:', e.target); // ADD THIS DEBUG LINE
+    console.log('🎯 Crown button clicked for:', cardText);
+    console.log('🎯 Event target:', e.target);
     
     if (!cardText) {
-        console.log('❌ No card text provided'); // ADD THIS DEBUG LINE
+        console.log('❌ No card text provided');
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
     }
 
-    console.log('🎯 Setting pending winner card to:', cardText); // ADD THIS DEBUG LINE
+    console.log('🎯 Setting pending winner card to:', cardText);
     setPendingWinnerCard(cardText);
     
     try {
-        console.log('🎯 Calling onSelectWinner with:', cardText); // ADD THIS DEBUG LINE
+        console.log('🎯 Calling onSelectWinner with:', cardText);
         await onSelectWinner(cardText);
-        console.log('✅ onSelectWinner completed successfully'); // ADD THIS DEBUG LINE
+        console.log('✅ onSelectWinner completed successfully');
     } catch (error: any) {
-        console.error('❌ Error in onSelectWinner:', error); // ADD THIS DEBUG LINE
+        console.error('❌ Error in onSelectWinner:', error);
         toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
         if (isMountedRef.current) {
-          console.log('🎯 Clearing pending winner card'); // ADD THIS DEBUG LINE
+          console.log('🎯 Clearing pending winner card');
           setPendingWinnerCard('');
         }
     }
   };
   
   const handleCardClick = (cardText: string) => {
-    if (!isAnimationComplete || !!pendingWinnerCard) return;
+    console.log('🔍 Card clicked:', cardText);
+    console.log('🔍 Animation complete:', isAnimationComplete);
+    console.log('🔍 Pending winner card:', pendingWinnerCard);
+    
+    if (!isAnimationComplete || !!pendingWinnerCard) {
+        console.log('🔍 Card click blocked - animation incomplete or pending');
+        return;
+    }
+    
     setSelectedWinningCard(prevSelected => {
         const newSelected = prevSelected === cardText ? '' : cardText;
+        console.log('🔍 Card selection changed from', prevSelected, 'to', newSelected);
         return newSelected;
     });
   };
@@ -237,29 +255,33 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   >
                     <p className="font-im-fell text-black text-2xl leading-tight px-4">{submission.cardText}</p>
                     {isSelected && (
-                      <Button
-                        size="sm"
-                        className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto"
-                        onMouseDown={(e) => {
-                            console.log('🎯 Button mousedown'); // ADD THIS DEBUG LINE
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }}
-                        onClick={(e) => {
-                            console.log('🎯 Button onClick triggered'); // ADD THIS DEBUG LINE
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleWinnerSubmit(e, submission.cardText);
-                        }}
-                        disabled={pendingWinnerCard === submission.cardText}
-                      >
-                        {pendingWinnerCard === submission.cardText ? (
-                          <Loader2 className="h-4 w-4 animate-spin"/>
-                        ) : (
-                          <CheckCircle className="h-4 w-4" />
-                        )}
-                        Crown
-                      </Button>
+                        <>
+                            {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
+                            <Button
+                                size="sm"
+                                className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto border-2 border-yellow-300"
+                                onMouseDown={(e) => {
+                                    console.log('🎯 Button mousedown');
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }}
+                                onClick={(e) => {
+                                    console.log('🎯 Button onClick triggered');
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleWinnerSubmit(e, submission.cardText);
+                                }}
+                                disabled={pendingWinnerCard === submission.cardText}
+                                style={{ backgroundColor: 'red', border: '3px solid yellow' }}
+                            >
+                                {pendingWinnerCard === submission.cardText ? (
+                                    <Loader2 className="h-4 w-4 animate-spin"/>
+                                ) : (
+                                    <CheckCircle className="h-4 w-4" />
+                                )}
+                                Crown
+                            </Button>
+                        </>
                     )}
                   </div>
                   
@@ -346,5 +368,3 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
-
-    
