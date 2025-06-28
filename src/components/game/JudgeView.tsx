@@ -74,6 +74,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const handleWinnerSubmit = async (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
     e.stopPropagation();
     
+    console.log('Crown button clicked for:', cardText); // Add this debug line
+    
     if (!cardText) {
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
@@ -82,8 +84,11 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     setPendingWinnerCard(cardText);
     
     try {
+        console.log('Calling onSelectWinner with:', cardText); // Add this debug line
         await onSelectWinner(cardText);
+        console.log('onSelectWinner completed successfully'); // Add this debug line
     } catch (error: any) {
+        console.error('Error in onSelectWinner:', error); // Add this debug line
         toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
         if (isMountedRef.current) {
@@ -230,9 +235,10 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                       {isSelected && (
                         <Button
                           size="sm"
-                          className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-10 pointer-events-auto"
+                          className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto"
+                          onMouseDown={(e) => e.stopPropagation()}
                           onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
-                          disabled={!!pendingWinnerCard}
+                          disabled={pendingWinnerCard === submission.cardText}
                         >
                             {pendingWinnerCard === submission.cardText ? (
                               <Loader2 className="h-4 w-4 animate-spin"/>
