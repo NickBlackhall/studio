@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { GameClientState, PlayerClientState } from '@/lib/types';
@@ -77,7 +76,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleWinnerSubmit = async (cardText: string) => {
+  const handleWinnerSubmit = (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
+    e.stopPropagation(); // Prevent the card's onClick from firing
     console.log('🎯 handleWinnerSubmit called with:', cardText);
     
     if (!cardText) {
@@ -94,22 +94,24 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     console.log('🎯 Setting pending winner card to:', cardText);
     setPendingWinnerCard(cardText);
     
-    try {
-        console.log('🎯 Calling onSelectWinner with:', cardText);
-        await onSelectWinner(cardText);
-        console.log('✅ onSelectWinner completed successfully');
-        
-        // Clear selection after successful winner selection
-        setSelectedWinningCard('');
-    } catch (error: any) {
-        console.error('❌ Error in onSelectWinner:', error);
-        toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
-    } finally {
-        if (isMountedRef.current) {
-          console.log('🎯 Clearing pending winner card');
-          setPendingWinnerCard('');
-        }
-    }
+    startTransitionCategory(async () => {
+      try {
+          console.log('🎯 Calling onSelectWinner with:', cardText);
+          await onSelectWinner(cardText);
+          console.log('✅ onSelectWinner completed successfully');
+          if (isMountedRef.current) {
+            setSelectedWinningCard('');
+          }
+      } catch (error: any) {
+          console.error('❌ Error in onSelectWinner:', error);
+          toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
+      } finally {
+          if (isMountedRef.current) {
+            console.log('🎯 Clearing pending winner card');
+            setPendingWinnerCard('');
+          }
+      }
+    });
   };
   
   const handleCardClick = (cardText: string) => {
@@ -195,7 +197,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   exit={{ opacity: 0, scale: 0.8 }}
                 >
                   <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
-                    <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" />
+                    <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" sizes="320px" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
                       <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
                     </div>
@@ -219,103 +221,75 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             )}
           </AnimatePresence>
           
-          <div className="relative mt-12 min-h-[450px]">
+          <div className="relative mt-12 min-h-[450px] [perspective:1000px]">
             {shuffledSubmissions.map((submission, index) => {
               const isSelected = selectedWinningCard === submission.cardText;
               const isPending = pendingWinnerCard === submission.cardText;
               
               return (
-                <div key={submission.playerId} className="relative">
-                  {/* Card */}
-                  <motion.div
-                    className="absolute w-80 left-0 right-0 mx-auto cursor-pointer [transform-style:preserve-3d]"
-                    style={{ zIndex: isSelected ? 100 : index }}
-                    initial={{ 
-                      y: index * 30,
-                      scale: 1 - (shuffledSubmissions.length - 1 - index) * 0.05,
-                      rotateX: 0
-                    }}
-                    animate={prefersReducedMotion ? {
-                      y: index * 75,
-                      scale: isSelected ? 1.1 : 1,
-                      rotateX: 180
-                    } : {
-                      rotateX: isAnimationComplete ? 180 : 0,
-                      y: isAnimationComplete ? index * 75 : index * 30,
-                      scale: isAnimationComplete && isSelected ? 1.1 : (isAnimationComplete ? 1 : 1 - (shuffledSubmissions.length - 1 - index) * 0.05),
-                      transition: { type: 'spring', stiffness: 100, damping: 15, delay: isAnimationComplete ? index * 0.1 : 0 }
-                    }}
-                    onAnimationComplete={() => {
-                      if (!prefersReducedMotion && index === shuffledSubmissions.length - 1) {
-                        if (isMountedRef.current) setIsAnimationComplete(true);
-                      }
-                    }}
-                    onClick={() => {
-                      console.log('🔍 Motion div clicked for:', submission.cardText);
-                      handleCardClick(submission.cardText);
-                    }}
-                  >
-                    {/* Card Front (Face-up text) */}
-                    <div
-                      className={cn(
-                          'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-white shadow-xl transition-all aspect-[1536/600]',
-                          isSelected ? 'border-blue-500 ring-4 ring-blue-500/50' : 'border-gray-400'
-                      )}
+                <motion.div
+                  key={submission.playerId}
+                  className="absolute w-full max-w-sm mx-auto left-0 right-0 cursor-pointer [transform-style:preserve-3d]"
+                  style={{
+                    top: 20 + (index * 35),
+                    zIndex: isSelected ? 100 : 20 - index,
+                  }}
+                  onClick={() => handleCardClick(submission.cardText)}
+                  animate={{
+                     y: isSelected ? 0 : 20 + (index * 35),
+                     scale: isSelected ? 1.1 : 1,
+                  }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                >
+                    <motion.div
+                      className="relative w-full [transform-style:preserve-3d] aspect-[1536/600]"
+                      initial={{ transform: 'rotateX(0deg)' }}
+                      animate={{ transform: isAnimationComplete ? 'rotateX(180deg)' : 'rotateX(0deg)' }}
+                      transition={{ duration: 0.6, ease: "easeInOut" }}
+                       onAnimationComplete={() => {
+                          if (index === shuffledSubmissions.length - 1 && !isAnimationComplete) {
+                            if (isMountedRef.current) setIsAnimationComplete(true);
+                          }
+                       }}
                     >
-                      <p className="text-black text-2xl leading-tight px-4 font-bold flex-1 flex items-center justify-center">{submission.cardText}</p>
-                      
-                      {/* Crown Button ON the card */}
-                      {isSelected && isAnimationComplete && (
-                          <>
-                            {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
-                            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-                              <Button
-                                  size="sm"
-                                  className={cn(
-                                      "h-10 px-4 text-sm font-bold shadow-xl pointer-events-auto",
-                                      isPending 
-                                          ? "bg-gray-400 cursor-not-allowed" 
-                                          : "bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95"
-                                  )}
-                                  onMouseDown={(e) => {
-                                      console.log('🎯 Button mousedown');
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                  }}
-                                  onClick={(e) => {
-                                      console.log('🎯 Button onClick triggered for:', submission.cardText);
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleWinnerSubmit(submission.cardText);
-                                  }}
-                                  disabled={!!pendingWinnerCard}
-                                  style={{ 
-                                    backgroundColor: 'red', 
-                                    border: '3px solid yellow',
-                                    transform: 'translateZ(20px)',
-                                    position: 'relative'
-                                  }}
-                              >
-                                  <div className="flex items-center gap-2">
-                                      {isPending ? (
-                                          <Loader2 className="h-4 w-4 animate-spin"/>
-                                      ) : (
-                                          <Crown className="h-4 w-4" />
-                                      )}
-                                      <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
+                        {/* Card Back */}
+                        <div className={cn( "absolute w-full h-full [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg" )}>
+                          <Image src="/ui/mit-card-back.png" alt="Response Card Back" fill className="object-cover" data-ai-hint="card back" sizes="320px" />
+                        </div>
+                        
+                        {/* Card Front */}
+                        <div className={cn( "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden border-4 shadow-xl", isSelected ? "border-accent" : "border-primary" )}>
+                          <Image src="/ui/mit-card-front.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card front" sizes="320px" />
+                           <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+                              <p className="font-im-fell text-black text-2xl leading-tight text-center flex-grow flex items-center">{submission.cardText}</p>
+                              {isSelected && isAnimationComplete && (
+                                <>
+                                  {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
+                                  <div className="flex-shrink-0 py-2">
+                                      <Button
+                                          size="sm"
+                                          className={cn(
+                                              "h-10 px-4 text-sm font-bold shadow-xl",
+                                              isPending 
+                                                  ? "bg-gray-400 cursor-not-allowed" 
+                                                  : "bg-green-600 hover:bg-green-700"
+                                          )}
+                                          onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
+                                          disabled={isPending}
+                                          style={{ backgroundColor: 'red', border: '3px solid yellow' }}
+                                      >
+                                          <div className="flex items-center gap-2">
+                                              {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Crown className="h-4 w-4" />}
+                                              <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
+                                          </div>
+                                      </Button>
                                   </div>
-                              </Button>
-                            </div>
-                          </>
-                      )}
-                    </div>
-                    
-                    {/* Card Back */}
-                    <div className="absolute inset-0 aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
-                      <Image src="/ui/mit-card-back.png" alt="Response Card Back" fill className="object-cover" data-ai-hint="card back" />
-                    </div>
-                  </motion.div>
-                </div>
+                                </>
+                              )}
+                           </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
               );
             })}
           </div>
@@ -392,3 +366,4 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
+    
