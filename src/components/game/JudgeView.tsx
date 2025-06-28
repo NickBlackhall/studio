@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { GameClientState, PlayerClientState } from '@/lib/types';
@@ -112,16 +111,10 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     }
   };
   
-  const handleCardClick = (cardText: string, isButtonClick: boolean = false) => {
-    console.log('🔍 Card clicked:', cardText, 'isButtonClick:', isButtonClick);
+  const handleCardClick = (cardText: string) => {
+    console.log('🔍 Card clicked:', cardText);
     console.log('🔍 Animation complete:', isAnimationComplete);
     console.log('🔍 Pending winner card:', pendingWinnerCard);
-    
-    // Don't handle card clicks if it's a button click
-    if (isButtonClick) {
-        console.log('🔍 Ignoring card click - button was clicked');
-        return;
-    }
     
     if (!isAnimationComplete || !!pendingWinnerCard) {
         console.log('🔍 Card click blocked - animation incomplete or pending');
@@ -225,107 +218,114 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             )}
           </AnimatePresence>
           
-          <div className="relative mt-12 min-h-[450px] [perspective:1200px]">
+          <div className="relative mt-12 min-h-[450px]">
             {shuffledSubmissions.map((submission, index) => {
               const isSelected = selectedWinningCard === submission.cardText;
               const isPending = pendingWinnerCard === submission.cardText;
               
               return (
-                <motion.div
-                  key={submission.playerId}
-                  className="absolute w-80 left-0 right-0 mx-auto [transform-style:preserve-3d] will-change-transform pointer-events-auto"
-                  style={{ willChange: 'transform', pointerEvents: 'auto' }}
-                  initial={{ 
-                    y: index * 30,
-                    scale: 1 - (shuffledSubmissions.length - 1 - index) * 0.05,
-                    zIndex: index
-                  }}
-                  animate={prefersReducedMotion ? {
-                    y: index * 75,
-                    scale: isSelected ? 1.1 : 1,
-                    zIndex: isSelected ? 100 : index,
-                  } : {
-                    rotateX: isAnimationComplete ? 180 : 0,
-                    y: isAnimationComplete ? index * 75 : index * 30,
-                    scale: isAnimationComplete && isSelected ? 1.1 : (isAnimationComplete ? 1 : 1 - (shuffledSubmissions.length - 1 - index) * 0.05),
-                    zIndex: isSelected ? 100 : index,
-                    transition: { type: 'spring', stiffness: 100, damping: 15, delay: isAnimationComplete ? index * 0.1 : 0 }
-                  }}
-                  onAnimationComplete={() => {
-                    if (!prefersReducedMotion && index === shuffledSubmissions.length - 1) {
-                      if (isMountedRef.current) setIsAnimationComplete(true);
-                    }
-                  }}
-                  onClick={(e) => {
-                    // Check if the click target is the button or its children
-                    const target = e.target as HTMLElement;
-                    const isButtonClick = target.closest('button') !== null;
-                    console.log('🔍 Motion div clicked, isButtonClick:', isButtonClick, 'target:', target);
-                    handleCardClick(submission.cardText, isButtonClick);
-                  }}
-                >
-                  <div
-                    className={cn(
-                        'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all cursor-pointer pointer-events-auto',
-                        isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
-                    )}
+                <div key={submission.playerId} className="relative">
+                  {/* Card */}
+                  <motion.div
+                    className="absolute w-80 left-0 right-0 mx-auto cursor-pointer"
+                    style={{ zIndex: isSelected ? 100 : index }}
+                    initial={{ 
+                      y: index * 30,
+                      scale: 1 - (shuffledSubmissions.length - 1 - index) * 0.05
+                    }}
+                    animate={prefersReducedMotion ? {
+                      y: index * 75,
+                      scale: isSelected ? 1.1 : 1,
+                    } : {
+                      rotateX: isAnimationComplete ? 180 : 0,
+                      y: isAnimationComplete ? index * 75 : index * 30,
+                      scale: isAnimationComplete && isSelected ? 1.1 : (isAnimationComplete ? 1 : 1 - (shuffledSubmissions.length - 1 - index) * 0.05),
+                      transition: { type: 'spring', stiffness: 100, damping: 15, delay: isAnimationComplete ? index * 0.1 : 0 }
+                    }}
+                    onAnimationComplete={() => {
+                      if (!prefersReducedMotion && index === shuffledSubmissions.length - 1) {
+                        if (isMountedRef.current) setIsAnimationComplete(true);
+                      }
+                    }}
+                    onClick={() => {
+                      console.log('🔍 Motion div clicked for:', submission.cardText);
+                      handleCardClick(submission.cardText);
+                    }}
                   >
-                    <p className="font-im-fell text-black text-2xl leading-tight px-4">{submission.cardText}</p>
-                    
-                    {/* Crown Button - Only show when card is selected and animation is complete */}
-                    {isSelected && isAnimationComplete && (
-                        <>
-                          {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
-                          <div className="relative z-[70] mt-3">
-                              <Button
-                                  size="sm"
-                                  className={cn(
-                                      "h-10 px-4 text-sm font-bold shadow-lg transition-all duration-200 pointer-events-auto",
-                                      isPending 
-                                          ? "bg-gray-400 cursor-not-allowed" 
-                                          : "bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95"
-                                  )}
-                                   style={{ 
-                                      backgroundColor: 'red', 
-                                      border: '3px solid yellow',
-                                      transform: 'translateZ(20px)',
-                                      backfaceVisibility: 'visible',
-                                      position: 'relative'
-                                    }}
-                                  onMouseDown={(e) => {
-                                      console.log('🎯 Button mousedown');
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                  }}
-                                  onClick={(e) => {
-                                      console.log('🎯 Button onClick triggered for:', submission.cardText);
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleWinnerSubmit(submission.cardText);
-                                  }}
-                                  disabled={!!pendingWinnerCard}
-                              >
-                                  <div className="flex items-center gap-2">
-                                      {isPending ? (
-                                          <Loader2 className="h-4 w-4 animate-spin"/>
-                                      ) : (
-                                          <Crown className="h-4 w-4" />
-                                      )}
-                                      <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
-                                  </div>
-                              </Button>
-                          </div>
-                        </>
-                    )}
-                  </div>
-                  
-                  <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
-                    <Image src="/ui/mit-card-back.png" alt="Response Card Back" fill className="object-cover" data-ai-hint="card back" />
-                    <div className="absolute inset-0 flex flex-col justify-center items-center">
-                      <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
+                    {/* Card Front (Flipped) */}
+                    <div
+                      className={cn(
+                          'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all aspect-[1536/600]',
+                          isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
+                      )}
+                    >
+                      <p className="font-im-fell text-black text-2xl leading-tight px-4">{submission.cardText}</p>
                     </div>
-                  </div>
-                </motion.div>
+                    
+                    {/* Card Back */}
+                    <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
+                      <Image src="/ui/mit-card-back.png" alt="Response Card Back" fill className="object-cover" data-ai-hint="card back" />
+                      <div className="absolute inset-0 flex flex-col justify-center items-center">
+                        <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Crown Button - Positioned OUTSIDE the 3D transform */}
+                  {isSelected && isAnimationComplete && (
+                      <>
+                        {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
+                        <motion.div
+                          className="absolute w-80 left-0 right-0 mx-auto pointer-events-none"
+                          style={{ 
+                            zIndex: 200,
+                            y: (isAnimationComplete ? index * 75 : index * 30) + 50
+                          }}
+                          initial={false}
+                          animate={{
+                            y: (isAnimationComplete ? index * 75 : index * 30) + 200
+                          }}
+                        >
+                          <div className="flex justify-center pointer-events-auto">
+                            <Button
+                                size="sm"
+                                className={cn(
+                                    "h-12 px-6 text-lg font-bold shadow-xl transition-all duration-200 pointer-events-auto",
+                                    isPending 
+                                        ? "bg-gray-400 cursor-not-allowed" 
+                                        : "bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95"
+                                )}
+                                onMouseDown={(e) => {
+                                    console.log('🎯 Button mousedown');
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }}
+                                onClick={(e) => {
+                                    console.log('🎯 Button onClick triggered for:', submission.cardText);
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleWinnerSubmit(submission.cardText);
+                                }}
+                                disabled={!!pendingWinnerCard}
+                                style={{ 
+                                  backgroundColor: 'red', 
+                                  border: '3px solid yellow'
+                                }}
+                            >
+                                <div className="flex items-center gap-2">
+                                    {isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin"/>
+                                    ) : (
+                                        <Crown className="h-4 w-4" />
+                                    )}
+                                    <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
+                                </div>
+                            </Button>
+                          </div>
+                        </motion.div>
+                      </>
+                  )}
+                </div>
               );
             })}
           </div>
