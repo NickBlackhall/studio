@@ -2,9 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Button } from '@/components/ui/button';
-import { Send, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { Loader2 } from 'lucide-react';
 import Image from "next/image";
 
 interface SwipeableCategorySelectorProps {
@@ -141,22 +139,36 @@ export default function SwipeableCategorySelector({
       <div className="absolute inset-0 z-30 pointer-events-auto">
         {/* Carousel Navigation Arrows */}
         <div className="absolute top-1/2 -translate-y-[10%] w-full flex justify-between px-[6%]">
-          <Button 
-            onClick={() => paginate(-1)} 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full w-14 h-14 bg-white/80 hover:bg-white/90 shadow-lg"
+          <button
+            onClick={() => paginate(-1)}
+            type="button"
+            className="bg-transparent border-none p-0 transition-transform hover:scale-105 active:scale-95"
+            aria-label="Previous Category"
           >
-            <ArrowLeft className="h-6 w-6 text-black" />
-          </Button>
-          <Button 
-            onClick={() => paginate(1)} 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full w-14 h-14 bg-white/80 hover:bg-white/90 shadow-lg"
+            <Image
+              src="/ui/category-select-left-button.png"
+              alt="Previous Category"
+              width={56}
+              height={56}
+              className="object-contain"
+              data-ai-hint="previous button"
+            />
+          </button>
+          <button
+            onClick={() => paginate(1)}
+            type="button"
+            className="bg-transparent border-none p-0 transition-transform hover:scale-105 active:scale-95"
+            aria-label="Next Category"
           >
-            <ArrowRight className="h-6 w-6 text-black" />
-          </Button>
+            <Image
+              src="/ui/category-select-right-button.png"
+              alt="Next Category"
+              width={56}
+              height={56}
+              className="object-contain"
+              data-ai-hint="next button"
+            />
+          </button>
         </div>
         
         {/* Bottom Content Area */}
@@ -167,15 +179,15 @@ export default function SwipeableCategorySelector({
             className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70"
           >
             {isPending ? (
-              <div className="h-[95px] flex items-center justify-center">
+              <div className="h-[81px] flex items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-white" />
               </div>
             ) : (
               <Image
                 src="/ui/unleash-scenario-button.png"
                 alt="Unleash Scenario"
-                width={252}
-                height={95}
+                width={214}
+                height={81}
                 className="object-contain drop-shadow-xl"
                 data-ai-hint="unleash button"
                 priority
