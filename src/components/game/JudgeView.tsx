@@ -77,21 +77,14 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleWinnerSubmit = (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
-    console.log(`handleWinnerSubmit triggered for card: "${cardText}"`);
-    e.stopPropagation();
-    console.log("  - Event propagation stopped.");
-
+  const handleWinnerSubmit = (cardText: string) => {
     if (!cardText) {
-        console.error("  - Error: Card text is missing.");
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
     }
 
-    console.log(`  - Starting transition to select winner: "${cardText}"`);
     startTransitionWinner(async () => {
       await onSelectWinner(cardText);
-      console.log(`  - onSelectWinner action called for "${cardText}"`);
     });
   };
 
@@ -108,12 +101,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   };
 
   const handleCardClick = (cardText: string) => {
-    console.log(`handleCardClick triggered for card: "${cardText}"`);
-    console.log(`  - Before click, selected card was: "${selectedWinningCard}"`);
-    if (!isAnimationComplete) return; // Don't allow selection until cards are flipped
+    if (!isAnimationComplete) return;
     setSelectedWinningCard(prevSelected => {
         const newSelected = prevSelected === cardText ? '' : cardText;
-        console.log(`  - After click, new selected card is: "${newSelected}"`);
         return newSelected;
     });
   };
@@ -172,7 +162,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   }}
                   exit={{ opacity: 0, scale: 0.8 }}
                 >
-                  <div className="aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
+                  <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
                     <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
                         <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
@@ -238,7 +228,10 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                         <Button
                           size="sm"
                           className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2"
-                          onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWinnerSubmit(submission.cardText);
+                          }}
                           disabled={isPendingWinner}
                         >
                             {isPendingWinner ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="h-4 w-4" />}
@@ -248,7 +241,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   </div>
 
                   {/* Card Back (image, visible before flip) */}
-                  <div className="aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
+                  <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
                     <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
                         <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
