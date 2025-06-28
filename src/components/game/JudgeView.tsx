@@ -104,8 +104,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     setSelectedWinningCard(selectedWinningCard === cardText ? '' : cardText);
   };
   
-  const isCrownWinnerButtonActive = !isPendingWinner && !!selectedWinningCard && shuffledSubmissions.length > 0 && isAnimationComplete;
-
   const lastRoundWinnerForModal = gameState.lastWinner?.player;
   const lastRoundCardTextForModal = gameState.lastWinner?.cardText;
 
@@ -218,10 +216,24 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                 >
                   {/* Card Front (with text, becomes visible after flip) */}
                   <div className={cn(
-                      'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex items-center justify-center p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
+                      'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
                       isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
                     )}>
-                      <p className="font-im-fell text-black text-xl leading-tight px-4">{submission.cardText}</p>
+                      <p className="font-im-fell text-black text-2xl leading-tight px-4">{submission.cardText}</p>
+                      {isSelected && (
+                        <Button
+                          size="sm"
+                          className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2"
+                          onClick={(e) => {
+                              e.stopPropagation();
+                              handleWinnerSubmit();
+                          }}
+                          disabled={isPendingWinner}
+                        >
+                            {isPendingWinner ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="h-4 w-4" />}
+                            Crown
+                        </Button>
+                      )}
                   </div>
 
                   {/* Card Back (image, visible before flip) */}
@@ -236,27 +248,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             })}
           </div>
 
-          <AnimatePresence>
-            {isAnimationComplete && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }} 
-                animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
-                className="mt-4 pt-4"
-              >
-                <Button
-                  onClick={handleWinnerSubmit}
-                  disabled={!isCrownWinnerButtonActive}
-                  className={cn(
-                    "w-full bg-gradient-to-br from-accent/80 via-accent to-accent/70 text-accent-foreground text-lg font-semibold py-3 border-2 border-primary",
-                    isCrownWinnerButtonActive && 'animate-border-pulse'
-                  )}
-                >
-                  {isPendingWinner ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" />}
-                  Crown the Winner!
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </>
       )}
 
