@@ -42,7 +42,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     isMountedRef.current = true;
 
     // When judging begins for a new round, shuffle the cards for the reveal
-    if (gameState.gamePhase === 'judging') {
+    if (gameState.gamePhase === 'judging' && !isAnimationComplete) {
         // Only shuffle once per round's submissions
         if (shuffledSubmissions.length !== gameState.submissions.length || shuffledSubmissions.length === 0) {
             setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
@@ -158,7 +158,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   }}
                   exit={{ opacity: 0, scale: 0.8 }}
                 >
-                  <div className="w-full aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
+                  <div className="aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
                     <Image src="/ui/mit-card-back.png" alt="Card Back" fill className="object-cover" data-ai-hint="card back" />
                   </div>
                 </motion.div>
@@ -193,7 +193,11 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                     scale: 1 - (shuffledSubmissions.length - 1 - index) * 0.05,
                     zIndex: index
                   }}
-                  animate={{
+                  animate={prefersReducedMotion ? {
+                    y: index * 75,
+                    scale: isSelected ? 1.1 : 1,
+                    zIndex: isSelected ? 100 : index,
+                  } : {
                     rotateX: isAnimationComplete ? 180 : 0,
                     y: isAnimationComplete ? index * 75 : index * 30,
                     scale: isAnimationComplete && isSelected ? 1.1 : (isAnimationComplete ? 1 : 1 - (shuffledSubmissions.length - 1 - index) * 0.05),
@@ -209,14 +213,14 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                 >
                   {/* Card Front (with text, becomes visible after flip) */}
                   <div className={cn(
-                      'absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex items-center justify-center p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
+                      'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex items-center justify-center p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
                       isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
                     )}>
                       <p className="font-im-fell text-black text-2xl leading-tight px-4">{submission.cardText}</p>
                   </div>
 
                   {/* Card Back (image, visible before flip) */}
-                  <div className="w-full aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
+                  <div className="aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
                     <Image src="/ui/mit-card-front.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card front" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
                         <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
