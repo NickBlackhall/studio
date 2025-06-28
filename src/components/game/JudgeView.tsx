@@ -15,7 +15,6 @@ import Image from 'next/image';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import SwipeableCategorySelector from './SwipeableCategorySelector';
 
-
 interface JudgeViewProps {
   gameState: GameClientState;
   judge: PlayerClientState;
@@ -29,38 +28,37 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [isPendingCategory, startTransitionCategory] = useTransition();
   const [isPendingApproval, startTransitionApproval] = useTransition();
   const { toast } = useToast();
-
+  
   const [shuffledSubmissions, setShuffledSubmissions] = useState<GameClientState['submissions']>([]);
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const isMountedRef = useRef(true);
   const prefersReducedMotion = useReducedMotion();
 
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
-
+  
   useEffect(() => {
     isMountedRef.current = true;
     
     if (gameState.gamePhase === 'judging' && !isAnimationComplete) {
-        if (shuffledSubmissions.length !== gameState.submissions.length || shuffledSubmissions.length === 0) {
-            setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
-        }
-
-        if (prefersReducedMotion) {
-            setIsAnimationComplete(true);
-        }
+      if (shuffledSubmissions.length !== gameState.submissions.length || shuffledSubmissions.length === 0) {
+        setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
+      }
+      
+      if (prefersReducedMotion) {
+        setIsAnimationComplete(true);
+      }
     }
     
     if (gameState.gamePhase !== 'judging' && (isAnimationComplete || shuffledSubmissions.length > 0)) {
-        setIsAnimationComplete(false);
-        setShuffledSubmissions([]);
+      setIsAnimationComplete(false);
+      setShuffledSubmissions([]);
     }
     
     return () => {
       isMountedRef.current = false;
     };
   }, [gameState.gamePhase, gameState.submissions, isAnimationComplete, prefersReducedMotion, shuffledSubmissions.length]);
-
-
+  
   const handleUnleashScenario = (category: string) => {
     if (!category) {
       toast({ title: "Hold up!", description: "Please select a category first.", variant: "destructive" });
@@ -75,24 +73,41 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     e.preventDefault();
     e.stopPropagation();
     
+    console.log('🎯 Crown button clicked for:', cardText); // ADD THIS DEBUG LINE
+    console.log('🎯 Event target:', e.target); // ADD THIS DEBUG LINE
+    
     if (!cardText) {
+        console.log('❌ No card text provided'); // ADD THIS DEBUG LINE
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
     }
 
+    console.log('🎯 Setting pending winner card to:', cardText); // ADD THIS DEBUG LINE
     setPendingWinnerCard(cardText);
     
     try {
+        console.log('🎯 Calling onSelectWinner with:', cardText); // ADD THIS DEBUG LINE
         await onSelectWinner(cardText);
+        console.log('✅ onSelectWinner completed successfully'); // ADD THIS DEBUG LINE
     } catch (error: any) {
+        console.error('❌ Error in onSelectWinner:', error); // ADD THIS DEBUG LINE
         toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
         if (isMountedRef.current) {
+          console.log('🎯 Clearing pending winner card'); // ADD THIS DEBUG LINE
           setPendingWinnerCard('');
         }
     }
   };
 
+  const handleCardClick = (cardText: string) => {
+    if (!isAnimationComplete || !!pendingWinnerCard) return;
+    setSelectedWinningCard(prevSelected => {
+        const newSelected = prevSelected === cardText ? '' : cardText;
+        return newSelected;
+    });
+  };
+  
   const handleApprovalDecision = (addToDeck: boolean) => {
     if (!gameState.gameId) return;
     startTransitionApproval(async () => {
@@ -104,29 +119,16 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       }
     });
   };
-
-  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>, cardText: string) => {
-    if ((e.target as HTMLElement).closest('button')) {
-      return;
-    }
-
-    if (!isAnimationComplete || !!pendingWinnerCard) return;
-    setSelectedWinningCard(prevSelected => {
-        const newSelected = prevSelected === cardText ? '' : cardText;
-        return newSelected;
-    });
-  };
   
   const lastRoundWinnerForModal = gameState.lastWinner?.player;
   const lastRoundCardTextForModal = gameState.lastWinner?.cardText;
-
+  
   const scenarioAnimationProps = {
     initial: { opacity: 0, scale: 0.90 },
     animate: { opacity: 1, scale: 1, transition: { duration: 1.0, ease: [0.04, 0.62, 0.23, 0.98] } }, 
     exit: { opacity: 0, scale: 0.90, transition: { duration: 0.8, ease: [0.04, 0.62, 0.23, 0.98] } } 
   };
-
-
+  
   return (
     <div className="space-y-4">
       {gameState.gamePhase === 'category_selection' && (
@@ -136,7 +138,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
           isPending={isPendingCategory}
         />
       )}
-
+      
       {gameState.gamePhase === 'player_submission' && (
         <>
           <AnimatePresence mode="wait">
@@ -164,17 +166,17 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   style={{ zIndex: index }}
                   initial={{ opacity: 0, y: -100 }}
                   animate={{
-                      opacity: 1,
-                      y: index * 30,
-                      scale: 1 - (gameState.submissions.length - 1 - index) * 0.05,
-                      transition: { type: 'spring', stiffness: 100, damping: 15 }
+                    opacity: 1,
+                    y: index * 30,
+                    scale: 1 - (gameState.submissions.length - 1 - index) * 0.05,
+                    transition: { type: 'spring', stiffness: 100, damping: 15 }
                   }}
                   exit={{ opacity: 0, scale: 0.8 }}
                 >
                   <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
                     <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
-                        <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
+                      <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
                     </div>
                   </div>
                 </motion.div>
@@ -183,7 +185,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
           </div>
         </>
       )}
-
+      
       {gameState.gamePhase === 'judging' && (
         <>
           <AnimatePresence mode="wait">
@@ -221,48 +223,57 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                     transition: { type: 'spring', stiffness: 100, damping: 15, delay: isAnimationComplete ? index * 0.1 : 0 }
                   }}
                   onAnimationComplete={() => {
-                      if (!prefersReducedMotion && index === shuffledSubmissions.length - 1) {
-                          if (isMountedRef.current) setIsAnimationComplete(true);
-                      }
+                    if (!prefersReducedMotion && index === shuffledSubmissions.length - 1) {
+                      if (isMountedRef.current) setIsAnimationComplete(true);
+                    }
                   }}
-                  onClick={(e) => handleCardClick(e, submission.cardText)}
+                  onClick={() => handleCardClick(submission.cardText)}
                 >
                   <div className={cn(
-                      'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
-                      isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
-                    )}>
-                      <p className="font-im-fell text-black text-2xl leading-tight px-4">{submission.cardText}</p>
-                      {isSelected && (
-                        <Button
-                          size="sm"
-                          className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto"
-                          onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
-                          disabled={pendingWinnerCard === submission.cardText}
-                        >
-                            {pendingWinnerCard === submission.cardText ? (
-                              <Loader2 className="h-4 w-4 animate-spin"/>
-                            ) : (
-                              <CheckCircle className="h-4 w-4" />
-                            )}
-                            Crown
-                        </Button>
-                      )}
+                    'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
+                    isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
+                  )}>
+                    <p className="font-im-fell text-black text-2xl leading-tight px-4">{submission.cardText}</p>
+                    {isSelected && (
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto"
+                        onMouseDown={(e) => {
+                          console.log('🎯 Button mousedown'); // ADD THIS DEBUG LINE
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        onClick={(e) => {
+                          console.log('🎯 Button onClick triggered'); // ADD THIS DEBUG LINE
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleWinnerSubmit(e, submission.cardText);
+                        }}
+                        disabled={pendingWinnerCard === submission.cardText}
+                      >
+                        {pendingWinnerCard === submission.cardText ? (
+                          <Loader2 className="h-4 w-4 animate-spin"/>
+                        ) : (
+                          <CheckCircle className="h-4 w-4" />
+                        )}
+                        Crown
+                      </Button>
+                    )}
                   </div>
-
+                  
                   <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
                     <Image src="/ui/mit-card-back.png" alt="Response Card Back" fill className="object-cover" data-ai-hint="card back" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
-                        <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
+                      <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
                     </div>
                   </div>
                 </motion.div>
               );
             })}
           </div>
-
         </>
       )}
-
+      
       {gameState.gamePhase === 'judge_approval_pending' && (
          <>
           <AnimatePresence mode="wait">
@@ -292,7 +303,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
            </Card>
          </>
       )}
-
+      
       <AlertDialog open={showApprovalModal}>
         <AlertDialogContent className="border-2 border-primary rounded-xl bg-background shadow-xl p-0">
           <AlertDialogHeader className="bg-primary text-primary-foreground p-6 rounded-t-lg">
@@ -330,7 +341,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   );
 }
