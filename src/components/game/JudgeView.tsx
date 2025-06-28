@@ -99,7 +99,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
         }
     }
   };
-
+  
   const handleCardClick = (cardText: string) => {
     if (!isAnimationComplete || !!pendingWinnerCard) return;
     setSelectedWinningCard(prevSelected => {
@@ -227,13 +227,13 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                       if (isMountedRef.current) setIsAnimationComplete(true);
                     }
                   }}
+                  onClick={() => handleCardClick(submission.cardText)}
                 >
-                  <div 
+                  <div
                     className={cn(
                         'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
                         isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
                     )}
-                    onClick={() => handleCardClick(submission.cardText)}
                   >
                     <p className="font-im-fell text-black text-2xl leading-tight px-4">{submission.cardText}</p>
                     {isSelected && (
@@ -241,15 +241,15 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                         size="sm"
                         className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto"
                         onMouseDown={(e) => {
-                          console.log('🎯 Button mousedown');
-                          e.preventDefault();
-                          e.stopPropagation();
+                            console.log('🎯 Button mousedown'); // ADD THIS DEBUG LINE
+                            e.preventDefault();
+                            e.stopPropagation();
                         }}
                         onClick={(e) => {
-                          console.log('🎯 Button onClick triggered');
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleWinnerSubmit(e, submission.cardText);
+                            console.log('🎯 Button onClick triggered'); // ADD THIS DEBUG LINE
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleWinnerSubmit(e, submission.cardText);
                         }}
                         disabled={pendingWinnerCard === submission.cardText}
                       >
@@ -263,10 +263,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                     )}
                   </div>
                   
-                  <div 
-                    className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg"
-                    onClick={() => handleCardClick(submission.cardText)}
-                  >
+                  <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
                     <Image src="/ui/mit-card-back.png" alt="Response Card Back" fill className="object-cover" data-ai-hint="card back" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
                       <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
@@ -349,3 +346,5 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
+
+    
