@@ -78,15 +78,20 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   };
 
   const handleWinnerSubmit = (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
-    e.stopPropagation(); // Stop the event from bubbling up to the card's onClick
+    console.log(`handleWinnerSubmit triggered for card: "${cardText}"`);
+    e.stopPropagation();
+    console.log("  - Event propagation stopped.");
 
     if (!cardText) {
-      toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
-      return;
+        console.error("  - Error: Card text is missing.");
+        toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
+        return;
     }
 
+    console.log(`  - Starting transition to select winner: "${cardText}"`);
     startTransitionWinner(async () => {
       await onSelectWinner(cardText);
+      console.log(`  - onSelectWinner action called for "${cardText}"`);
     });
   };
 
@@ -103,8 +108,14 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   };
 
   const handleCardClick = (cardText: string) => {
+    console.log(`handleCardClick triggered for card: "${cardText}"`);
+    console.log(`  - Before click, selected card was: "${selectedWinningCard}"`);
     if (!isAnimationComplete) return; // Don't allow selection until cards are flipped
-    setSelectedWinningCard(selectedWinningCard === cardText ? '' : cardText);
+    setSelectedWinningCard(prevSelected => {
+        const newSelected = prevSelected === cardText ? '' : cardText;
+        console.log(`  - After click, new selected card is: "${newSelected}"`);
+        return newSelected;
+    });
   };
   
   const lastRoundWinnerForModal = gameState.lastWinner?.player;
@@ -162,7 +173,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   exit={{ opacity: 0, scale: 0.8 }}
                 >
                   <div className="aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
-                    <Image src="/ui/mit-card-front.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card front" />
+                    <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
                         <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
                     </div>
@@ -238,7 +249,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
 
                   {/* Card Back (image, visible before flip) */}
                   <div className="aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
-                    <Image src="/ui/mit-card-front.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card front" />
+                    <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" />
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
                         <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
                     </div>
