@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { GameClientState, PlayerClientState } from '@/lib/types';
@@ -32,14 +33,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const isMountedRef = useRef(true);
   const prefersReducedMotion = useReducedMotion();
-
-  // DEBUG STATEMENTS
-  console.log('🔍 Shuffled submissions:', shuffledSubmissions);
-  console.log('🔍 Selected winning card:', selectedWinningCard);
-  console.log('🔍 Animation complete:', isAnimationComplete);
-  console.log('🔍 Current game phase:', gameState.gamePhase);
-  console.log('🔍 Current judge ID:', gameState.currentJudgeId);
-  console.log('🔍 Current player ID:', judge.id);
 
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
   
@@ -77,37 +70,29 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   };
 
   const handleWinnerSubmit = (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
-    e.stopPropagation(); // Prevent the card's onClick from firing
-    console.log('🎯 handleWinnerSubmit called with:', cardText);
+    e.stopPropagation();
     
     if (!cardText) {
-        console.log('❌ No card text provided');
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
     }
 
     if (pendingWinnerCard) {
-        console.log('❌ Already processing a winner selection');
         return;
     }
 
-    console.log('🎯 Setting pending winner card to:', cardText);
     setPendingWinnerCard(cardText);
     
     startTransitionCategory(async () => {
       try {
-          console.log('🎯 Calling onSelectWinner with:', cardText);
           await onSelectWinner(cardText);
-          console.log('✅ onSelectWinner completed successfully');
           if (isMountedRef.current) {
             setSelectedWinningCard('');
           }
       } catch (error: any) {
-          console.error('❌ Error in onSelectWinner:', error);
           toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
       } finally {
           if (isMountedRef.current) {
-            console.log('🎯 Clearing pending winner card');
             setPendingWinnerCard('');
           }
       }
@@ -115,18 +100,12 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   };
   
   const handleCardClick = (cardText: string) => {
-    console.log('🔍 Card clicked:', cardText);
-    console.log('🔍 Animation complete:', isAnimationComplete);
-    console.log('🔍 Pending winner card:', pendingWinnerCard);
-    
     if (!isAnimationComplete || !!pendingWinnerCard) {
-        console.log('🔍 Card click blocked - animation incomplete or pending');
         return;
     }
     
     setSelectedWinningCard(prevSelected => {
         const newSelected = prevSelected === cardText ? '' : cardText;
-        console.log('🔍 Card selection changed from', prevSelected, 'to', newSelected);
         return newSelected;
     });
   };
@@ -197,7 +176,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   exit={{ opacity: 0, scale: 0.8 }}
                 >
                   <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
-                    <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" sizes="320px" />
+                    <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" sizes="320px"/>
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
                       <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
                     </div>
@@ -263,28 +242,24 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                            <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
                               <p className="font-im-fell text-black text-2xl leading-tight text-center flex-grow flex items-center">{submission.cardText}</p>
                               {isSelected && isAnimationComplete && (
-                                <>
-                                  {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
-                                  <div className="flex-shrink-0 py-2">
+                                <div className="flex-shrink-0 py-2">
                                       <Button
                                           size="sm"
                                           className={cn(
                                               "h-10 px-4 text-sm font-bold shadow-xl",
                                               isPending 
                                                   ? "bg-gray-400 cursor-not-allowed" 
-                                                  : "bg-green-600 hover:bg-green-700"
+                                                  : "bg-green-600 hover:bg-green-700 text-white"
                                           )}
                                           onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
                                           disabled={isPending}
-                                          style={{ backgroundColor: 'red', border: '3px solid yellow' }}
                                       >
                                           <div className="flex items-center gap-2">
                                               {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Crown className="h-4 w-4" />}
                                               <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
                                           </div>
                                       </Button>
-                                  </div>
-                                </>
+                                </div>
                               )}
                            </div>
                         </div>
@@ -366,4 +341,3 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
-    
