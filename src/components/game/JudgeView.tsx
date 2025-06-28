@@ -43,8 +43,14 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     
     // When judging begins for a new round, shuffle the cards for the reveal
     if (gameState.gamePhase === 'judging' && !isAnimationComplete) {
+        // Shuffle and set if we haven't already or if submissions have changed
         if (shuffledSubmissions.length !== gameState.submissions.length || shuffledSubmissions.length === 0) {
             setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
+        }
+
+        // Directly set animation complete if user prefers reduced motion
+        if (prefersReducedMotion) {
+            setIsAnimationComplete(true);
         }
     }
     
@@ -138,12 +144,12 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               ({gameState.submissions?.length || 0} / {gameState.players.filter(p => p.id !== judge.id).length} submitted)
             </p>
           </div>
-          <div className="relative mt-12 min-h-[450px] [perspective:1200px]">
+          <div className="relative mt-8 min-h-[450px] [perspective:1200px]">
             <AnimatePresence>
               {gameState.submissions.map((submission, index) => (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-72 left-0 right-0 mx-auto will-change-transform"
+                  className="absolute w-80 left-0 right-0 mx-auto will-change-transform"
                   style={{ zIndex: index }}
                   initial={{ opacity: 0, y: -100 }}
                   animate={{
@@ -155,7 +161,10 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   exit={{ opacity: 0, scale: 0.8 }}
                 >
                   <div className="aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
-                    <Image src="/ui/mit-card-back.png" alt="Card Back" fill className="object-cover" data-ai-hint="card back" />
+                    <Image src="/ui/mit-card-front.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card front" />
+                    <div className="absolute inset-0 flex flex-col justify-center items-center">
+                        <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -176,13 +185,13 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             )}
           </AnimatePresence>
           
-          <div className="relative mt-12 min-h-[450px] [perspective:1200px]">
+          <div className="relative mt-8 min-h-[450px] [perspective:1200px]">
             {shuffledSubmissions.map((submission, index) => {
               const isSelected = selectedWinningCard === submission.cardText;
               return (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-72 left-0 right-0 mx-auto [transform-style:preserve-3d] cursor-pointer will-change-transform"
+                  className="absolute w-80 left-0 right-0 mx-auto [transform-style:preserve-3d] cursor-pointer will-change-transform"
                   style={{ willChange: 'transform' }}
                   initial={{ 
                     y: index * 30,
@@ -212,7 +221,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                       'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex items-center justify-center p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
                       isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
                     )}>
-                      <p className="font-im-fell text-black text-2xl leading-tight px-4">{submission.cardText}</p>
+                      <p className="font-im-fell text-black text-xl leading-tight px-4">{submission.cardText}</p>
                   </div>
 
                   {/* Card Back (image, visible before flip) */}
