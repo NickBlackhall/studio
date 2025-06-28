@@ -71,8 +71,11 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleWinnerSubmit = async (e: React.MouseEvent<HTMLElement>, cardText: string) => {
+  const handleWinnerSubmit = async (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
+    e.preventDefault();
     e.stopPropagation();
+    
+    console.log('Crown button clicked for:', cardText); // Add this debug line
     
     if (!cardText) {
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
@@ -82,8 +85,11 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     setPendingWinnerCard(cardText);
     
     try {
+        console.log('Calling onSelectWinner with:', cardText); // Add this debug line
         await onSelectWinner(cardText);
+        console.log('onSelectWinner completed successfully'); // Add this debug line
     } catch (error: any) {
+        console.error('Error in onSelectWinner:', error); // Add this debug line
         toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
         if (isMountedRef.current) {
@@ -104,16 +110,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleCardClick = (cardText: string, e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-
-    // If the click came from the button or its children, let handleWinnerSubmit take over.
-    if (target.closest('button')) {
-      return;
-    }
-      
+  const handleCardClick = (cardText: string) => {
     if (!isAnimationComplete || !!pendingWinnerCard) return;
-
     setSelectedWinningCard(prevSelected => {
         const newSelected = prevSelected === cardText ? '' : cardText;
         return newSelected;
@@ -228,7 +226,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                           if (isMountedRef.current) setIsAnimationComplete(true);
                       }
                   }}
-                  onClick={(e) => handleCardClick(submission.cardText, e)}
+                  onClick={() => handleCardClick(submission.cardText)}
                 >
                   <div className={cn(
                       'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
@@ -239,7 +237,15 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                         <Button
                           size="sm"
                           className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto"
-                          onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleWinnerSubmit(e, submission.cardText);
+                          }}
                           disabled={pendingWinnerCard === submission.cardText}
                         >
                             {pendingWinnerCard === submission.cardText ? (
@@ -337,3 +343,5 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
+
+    
