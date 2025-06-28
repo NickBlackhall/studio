@@ -161,14 +161,27 @@ export default function SwipeableCategorySelector({
         
         {/* Bottom Content Area */}
         <div className="absolute bottom-[8%] left-[10%] right-[10%] flex flex-col items-center gap-4">
-          <Button
+          <button
             onClick={handleUnleash}
             disabled={!selectedCategory || isPending}
-            className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xl font-bold py-6 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-200"
+            className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70"
           >
-            {isPending ? <Loader2 className="mr-3 h-6 w-6 animate-spin" /> : <Send className="mr-3 h-6 w-6" />}
-            Unleash Scenario
-          </Button>
+            {isPending ? (
+              <div className="h-[95px] flex items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-white" />
+              </div>
+            ) : (
+              <Image
+                src="/ui/unleash-scenario-button.png"
+                alt="Unleash Scenario"
+                width={252}
+                height={95}
+                className="object-contain drop-shadow-xl"
+                data-ai-hint="unleash button"
+                priority
+              />
+            )}
+          </button>
         </div>
       </div>
     </div>
