@@ -77,7 +77,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleWinnerSubmit = (cardText: string) => {
+  const handleWinnerSubmit = (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
+    e.stopPropagation(); // Stop the event from bubbling up to the card div
+
     if (!cardText) {
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
@@ -228,10 +230,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                         <Button
                           size="sm"
                           className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleWinnerSubmit(submission.cardText);
-                          }}
+                          onClick={(e) => handleWinnerSubmit(e, submission.cardText)}
                           disabled={isPendingWinner}
                         >
                             {isPendingWinner ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="h-4 w-4" />}
