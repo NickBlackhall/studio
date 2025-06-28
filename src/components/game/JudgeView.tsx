@@ -112,10 +112,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     }
   };
   
-  const handleCardClick = (cardText: string, e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    const isButtonClick = target.closest('button') !== null;
-    
+  const handleCardClick = (cardText: string, isButtonClick: boolean = false) => {
     console.log('🔍 Card clicked:', cardText, 'isButtonClick:', isButtonClick);
     console.log('🔍 Animation complete:', isAnimationComplete);
     console.log('🔍 Pending winner card:', pendingWinnerCard);
@@ -236,8 +233,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               return (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-80 left-0 right-0 mx-auto [transform-style:preserve-3d] will-change-transform"
-                  style={{ willChange: 'transform' }}
+                  className="absolute w-80 left-0 right-0 mx-auto [transform-style:preserve-3d] will-change-transform pointer-events-auto"
+                  style={{ willChange: 'transform', pointerEvents: 'auto' }}
                   initial={{ 
                     y: index * 30,
                     scale: 1 - (shuffledSubmissions.length - 1 - index) * 0.05,
@@ -259,11 +256,17 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                       if (isMountedRef.current) setIsAnimationComplete(true);
                     }
                   }}
-                  onClick={(e) => handleCardClick(submission.cardText, e) }
+                  onClick={(e) => {
+                    // Check if the click target is the button or its children
+                    const target = e.target as HTMLElement;
+                    const isButtonClick = target.closest('button') !== null;
+                    console.log('🔍 Motion div clicked, isButtonClick:', isButtonClick, 'target:', target);
+                    handleCardClick(submission.cardText, isButtonClick);
+                  }}
                 >
                   <div
                     className={cn(
-                        'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all cursor-pointer',
+                        'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all cursor-pointer pointer-events-auto',
                         isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
                     )}
                   >
@@ -273,28 +276,34 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                     {isSelected && isAnimationComplete && (
                         <>
                           {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
-                          <div className="relative z-50 mt-3">
+                          <div className="relative z-[70] mt-3">
                               <Button
                                   size="sm"
                                   className={cn(
-                                      "h-10 px-4 text-sm font-bold shadow-lg transition-all duration-200",
+                                      "h-10 px-4 text-sm font-bold shadow-lg transition-all duration-200 pointer-events-auto",
                                       isPending 
                                           ? "bg-gray-400 cursor-not-allowed" 
                                           : "bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95"
                                   )}
+                                   style={{ 
+                                      backgroundColor: 'red', 
+                                      border: '3px solid yellow',
+                                      transform: 'translateZ(20px)',
+                                      backfaceVisibility: 'visible',
+                                      position: 'relative'
+                                    }}
                                   onMouseDown={(e) => {
                                       console.log('🎯 Button mousedown');
                                       e.preventDefault();
                                       e.stopPropagation();
                                   }}
                                   onClick={(e) => {
-                                      console.log('🎯 Button onClick triggered');
+                                      console.log('🎯 Button onClick triggered for:', submission.cardText);
                                       e.preventDefault();
                                       e.stopPropagation();
                                       handleWinnerSubmit(submission.cardText);
                                   }}
                                   disabled={!!pendingWinnerCard}
-                                  style={{ backgroundColor: 'red', border: '3px solid yellow' }}
                               >
                                   <div className="flex items-center gap-2">
                                       {isPending ? (
