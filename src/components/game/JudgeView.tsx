@@ -42,7 +42,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   console.log('🔍 Current judge ID:', gameState.currentJudgeId);
   console.log('🔍 Current player ID:', judge.id);
 
-
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
   
   useEffect(() => {
@@ -78,41 +77,51 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     });
   };
 
-  const handleWinnerSubmit = async (e: React.MouseEvent<HTMLButtonElement>, cardText: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log('🎯 Crown button clicked for:', cardText); // ADD THIS DEBUG LINE
-    console.log('🎯 Event target:', e.target); // ADD THIS DEBUG LINE
+  const handleWinnerSubmit = async (cardText: string) => {
+    console.log('🎯 handleWinnerSubmit called with:', cardText);
     
     if (!cardText) {
-        console.log('❌ No card text provided'); // ADD THIS DEBUG LINE
+        console.log('❌ No card text provided');
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
     }
 
-    console.log('🎯 Setting pending winner card to:', cardText); // ADD THIS DEBUG LINE
+    if (pendingWinnerCard) {
+        console.log('❌ Already processing a winner selection');
+        return;
+    }
+
+    console.log('🎯 Setting pending winner card to:', cardText);
     setPendingWinnerCard(cardText);
     
     try {
-        console.log('🎯 Calling onSelectWinner with:', cardText); // ADD THIS DEBUG LINE
+        console.log('🎯 Calling onSelectWinner with:', cardText);
         await onSelectWinner(cardText);
-        console.log('✅ onSelectWinner completed successfully'); // ADD THIS DEBUG LINE
+        console.log('✅ onSelectWinner completed successfully');
+        
+        // Clear selection after successful winner selection
+        setSelectedWinningCard('');
     } catch (error: any) {
-        console.error('❌ Error in onSelectWinner:', error); // ADD THIS DEBUG LINE
+        console.error('❌ Error in onSelectWinner:', error);
         toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
         if (isMountedRef.current) {
-          console.log('🎯 Clearing pending winner card'); // ADD THIS DEBUG LINE
+          console.log('🎯 Clearing pending winner card');
           setPendingWinnerCard('');
         }
     }
   };
   
-  const handleCardClick = (cardText: string) => {
-    console.log('🔍 Card clicked:', cardText);
+  const handleCardClick = (cardText: string, isButtonClick: boolean = false) => {
+    console.log('🔍 Card clicked:', cardText, 'isButtonClick:', isButtonClick);
     console.log('🔍 Animation complete:', isAnimationComplete);
     console.log('🔍 Pending winner card:', pendingWinnerCard);
+    
+    // Don't handle card clicks if it's a button click
+    if (isButtonClick) {
+        console.log('🔍 Ignoring card click - button was clicked');
+        return;
+    }
     
     if (!isAnimationComplete || !!pendingWinnerCard) {
         console.log('🔍 Card click blocked - animation incomplete or pending');
@@ -219,6 +228,8 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
           <div className="relative mt-12 min-h-[450px] [perspective:1200px]">
             {shuffledSubmissions.map((submission, index) => {
               const isSelected = selectedWinningCard === submission.cardText;
+              const isPending = pendingWinnerCard === submission.cardText;
+              
               return (
                 <motion.div
                   key={submission.playerId}
@@ -245,49 +256,56 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                       if (isMountedRef.current) setIsAnimationComplete(true);
                     }
                   }}
-                  onClick={() => handleCardClick(submission.cardText)}
+                  onClick={(e) => {
+                    // Check if the click target is the button or its children
+                    const target = e.target as HTMLElement;
+                    const isButtonClick = target.closest('button') !== null;
+                    console.log('🔍 Motion div clicked, isButtonClick:', isButtonClick, 'target:', target);
+                    handleCardClick(submission.cardText, isButtonClick);
+                  }}
                 >
                   <div
                     className={cn(
-                        'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all',
+                        'absolute inset-0 [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden flex flex-col items-center justify-center gap-2 p-6 text-center border-4 bg-card text-card-foreground shadow-xl transition-all cursor-pointer',
                         isSelected ? 'border-accent ring-4 ring-accent/50' : 'border-primary'
                     )}
                   >
                     <p className="font-im-fell text-black text-2xl leading-tight px-4">{submission.cardText}</p>
-                    {isSelected && (
-                        <>
-                            {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
+                    
+                    {/* Crown Button - Only show when card is selected and animation is complete */}
+                    {isSelected && isAnimationComplete && (
+                        <div className="relative z-50 mt-3">
                             <Button
                                 size="sm"
-                                className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2 relative z-50 pointer-events-auto"
-                                style={{ 
-                                  backgroundColor: 'red', 
-                                  border: '3px solid yellow',
-                                  transform: 'translateZ(10px)',
-                                  backfaceVisibility: 'visible',
-                                  position: 'relative'
-                                }}
+                                className={cn(
+                                    "h-10 px-4 text-sm font-bold shadow-lg transition-all duration-200",
+                                    isPending 
+                                        ? "bg-gray-400 cursor-not-allowed" 
+                                        : "bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95"
+                                )}
                                 onMouseDown={(e) => {
                                     console.log('🎯 Button mousedown');
                                     e.preventDefault();
                                     e.stopPropagation();
                                 }}
                                 onClick={(e) => {
-                                    console.log('🎯 Button onClick triggered');
+                                    console.log('🎯 Button onClick triggered for:', submission.cardText);
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    handleWinnerSubmit(e, submission.cardText);
+                                    handleWinnerSubmit(submission.cardText);
                                 }}
-                                disabled={pendingWinnerCard === submission.cardText}
+                                disabled={!!pendingWinnerCard}
                             >
-                                {pendingWinnerCard === submission.cardText ? (
-                                    <Loader2 className="h-4 w-4 animate-spin"/>
-                                ) : (
-                                    <CheckCircle className="h-4 w-4" />
-                                )}
-                                Crown
+                                <div className="flex items-center gap-2">
+                                    {isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin"/>
+                                    ) : (
+                                        <Crown className="h-4 w-4" />
+                                    )}
+                                    <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
+                                </div>
                             </Button>
-                        </>
+                        </div>
                     )}
                   </div>
                   
