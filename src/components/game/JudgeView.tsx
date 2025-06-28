@@ -44,7 +44,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     // When judging begins for a new round, shuffle the cards for the reveal
     if (gameState.gamePhase === 'judging') {
         // Only shuffle once per round's submissions
-        if (shuffledSubmissions.length !== gameState.submissions.length) {
+        if (shuffledSubmissions.length !== gameState.submissions.length || shuffledSubmissions.length === 0) {
             setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
         }
         if (prefersReducedMotion) {
@@ -53,7 +53,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     }
     
     // Reset animation states if we move away from the judging phase
-    if (gameState.gamePhase !== 'judging' && isAnimationComplete) {
+    if (gameState.gamePhase !== 'judging' && (isAnimationComplete || shuffledSubmissions.length > 0)) {
         setIsAnimationComplete(false);
         setShuffledSubmissions([]);
     }
@@ -142,12 +142,12 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               ({gameState.submissions?.length || 0} / {gameState.players.filter(p => p.id !== judge.id).length} submitted)
             </p>
           </div>
-          <div className="relative mt-8 min-h-[350px] [perspective:1200px]">
+          <div className="relative mt-12 min-h-[350px] [perspective:1200px]">
             <AnimatePresence>
               {gameState.submissions.map((submission, index) => (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-full max-w-xs left-1/2 -translate-x-1/2 will-change-transform"
+                  className="absolute w-80 left-1/2 -translate-x-1/2 will-change-transform"
                   style={{ zIndex: index }}
                   initial={{ opacity: 0, y: -100 }}
                   animate={{
@@ -186,7 +186,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               return (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-full max-w-xs left-1/2 -translate-x-1/2 [transform-style:preserve-3d] cursor-pointer will-change-transform"
+                  className="absolute w-80 left-1/2 -translate-x-1/2 [transform-style:preserve-3d] cursor-pointer will-change-transform"
                   style={{ willChange: 'transform' }}
                   initial={{ 
                     y: index * 30,
@@ -322,5 +322,3 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
-
-    
