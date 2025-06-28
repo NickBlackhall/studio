@@ -97,7 +97,7 @@ export default function SwipeableCategorySelector({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto relative">
+    <div className="w-full max-w-3xl mx-auto relative">
       {/* Layer 1: Swipeable Category Images (Bottom) */}
       <div className="absolute inset-0 z-10 flex items-center justify-center">
         <div className="absolute top-[28.4%] left-1/2 -translate-x-1/2 w-[59%] h-[40%]">
@@ -124,10 +124,10 @@ export default function SwipeableCategorySelector({
                 src={currentCategory.imagePath}
                 alt={currentCategory.name}
                 fill
+                priority
                 sizes="(max-width: 768px) 50vw, 33vw"
                 className="object-cover rounded-xl shadow-lg"
                 data-ai-hint={currentCategory.name}
-                priority
                 onError={(e) => {
                   console.error(`🔴 FAILED TO LOAD IMAGE for category "${currentCategory.name}". Tried path: "${currentCategory.imagePath}". Please check if this file exists in the /public/ui/ folder and if the path is correct.`);
                   // Fallback to a known good image to prevent broken UI
