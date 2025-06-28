@@ -40,15 +40,11 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   // Effect to manage animation state and shuffled submissions based on game phase and round
   useEffect(() => {
     isMountedRef.current = true;
-
+    
     // When judging begins for a new round, shuffle the cards for the reveal
     if (gameState.gamePhase === 'judging' && !isAnimationComplete) {
-        // Only shuffle once per round's submissions
         if (shuffledSubmissions.length !== gameState.submissions.length || shuffledSubmissions.length === 0) {
             setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
-        }
-        if (prefersReducedMotion) {
-            setIsAnimationComplete(true);
         }
     }
     
@@ -142,12 +138,12 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               ({gameState.submissions?.length || 0} / {gameState.players.filter(p => p.id !== judge.id).length} submitted)
             </p>
           </div>
-          <div className="relative mt-12 min-h-[350px] [perspective:1200px]">
+          <div className="relative mt-12 min-h-[450px] [perspective:1200px]">
             <AnimatePresence>
               {gameState.submissions.map((submission, index) => (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-80 left-1/2 -translate-x-1/2 will-change-transform"
+                  className="absolute w-72 left-0 right-0 mx-auto will-change-transform"
                   style={{ zIndex: index }}
                   initial={{ opacity: 0, y: -100 }}
                   animate={{
@@ -186,7 +182,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
               return (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-80 left-1/2 -translate-x-1/2 [transform-style:preserve-3d] cursor-pointer will-change-transform"
+                  className="absolute w-72 left-0 right-0 mx-auto [transform-style:preserve-3d] cursor-pointer will-change-transform"
                   style={{ willChange: 'transform' }}
                   initial={{ 
                     y: index * 30,
@@ -205,7 +201,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                     transition: { type: 'spring', stiffness: 100, damping: 15, delay: isAnimationComplete ? index * 0.1 : 0 }
                   }}
                   onAnimationComplete={() => {
-                      if (index === shuffledSubmissions.length - 1 && !prefersReducedMotion) {
+                      if (!prefersReducedMotion && index === shuffledSubmissions.length - 1) {
                           if (isMountedRef.current) setIsAnimationComplete(true);
                       }
                   }}
