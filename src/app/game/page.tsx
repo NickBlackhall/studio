@@ -629,7 +629,7 @@ export default function GamePage() {
           defaultOpenScoreboard={recapStepInternal === 'scoreboard'}
         />
       )}
-      <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 max-w-7xl mx-auto px-2 ${recapStepInternal ? 'opacity-20 pointer-events-none' : ''}`}>
+      <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 ${recapStepInternal ? 'opacity-20 pointer-events-none' : ''}`}>
         <main className="flex-grow w-full md:w-full lg:w-full relative order-1 md:order-2">
           {showPendingOverlay && (
               <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
