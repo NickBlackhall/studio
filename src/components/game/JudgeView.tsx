@@ -112,7 +112,10 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     }
   };
   
-  const handleCardClick = (cardText: string, isButtonClick: boolean = false) => {
+  const handleCardClick = (cardText: string, e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const isButtonClick = target.closest('button') !== null;
+    
     console.log('🔍 Card clicked:', cardText, 'isButtonClick:', isButtonClick);
     console.log('🔍 Animation complete:', isAnimationComplete);
     console.log('🔍 Pending winner card:', pendingWinnerCard);
@@ -256,13 +259,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                       if (isMountedRef.current) setIsAnimationComplete(true);
                     }
                   }}
-                  onClick={(e) => {
-                    // Check if the click target is the button or its children
-                    const target = e.target as HTMLElement;
-                    const isButtonClick = target.closest('button') !== null;
-                    console.log('🔍 Motion div clicked, isButtonClick:', isButtonClick, 'target:', target);
-                    handleCardClick(submission.cardText, isButtonClick);
-                  }}
+                  onClick={(e) => handleCardClick(submission.cardText, e) }
                 >
                   <div
                     className={cn(
@@ -274,38 +271,42 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                     
                     {/* Crown Button - Only show when card is selected and animation is complete */}
                     {isSelected && isAnimationComplete && (
-                        <div className="relative z-50 mt-3">
-                            <Button
-                                size="sm"
-                                className={cn(
-                                    "h-10 px-4 text-sm font-bold shadow-lg transition-all duration-200",
-                                    isPending 
-                                        ? "bg-gray-400 cursor-not-allowed" 
-                                        : "bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95"
-                                )}
-                                onMouseDown={(e) => {
-                                    console.log('🎯 Button mousedown');
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                }}
-                                onClick={(e) => {
-                                    console.log('🎯 Button onClick triggered for:', submission.cardText);
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleWinnerSubmit(submission.cardText);
-                                }}
-                                disabled={!!pendingWinnerCard}
-                            >
-                                <div className="flex items-center gap-2">
-                                    {isPending ? (
-                                        <Loader2 className="h-4 w-4 animate-spin"/>
-                                    ) : (
-                                        <Crown className="h-4 w-4" />
-                                    )}
-                                    <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
-                                </div>
-                            </Button>
-                        </div>
+                        <>
+                          {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
+                          <div className="relative z-50 mt-3">
+                              <Button
+                                  size="sm"
+                                  className={cn(
+                                      "h-10 px-4 text-sm font-bold shadow-lg transition-all duration-200",
+                                      isPending 
+                                          ? "bg-gray-400 cursor-not-allowed" 
+                                          : "bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95"
+                                  )}
+                                  onMouseDown={(e) => {
+                                      console.log('🎯 Button mousedown');
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                  }}
+                                  onClick={(e) => {
+                                      console.log('🎯 Button onClick triggered');
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleWinnerSubmit(submission.cardText);
+                                  }}
+                                  disabled={!!pendingWinnerCard}
+                                  style={{ backgroundColor: 'red', border: '3px solid yellow' }}
+                              >
+                                  <div className="flex items-center gap-2">
+                                      {isPending ? (
+                                          <Loader2 className="h-4 w-4 animate-spin"/>
+                                      ) : (
+                                          <Crown className="h-4 w-4" />
+                                      )}
+                                      <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
+                                  </div>
+                              </Button>
+                          </div>
+                        </>
                     )}
                   </div>
                   
