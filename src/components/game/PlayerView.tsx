@@ -249,7 +249,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 >
                   {/* Card Back */}
                   <div className={cn(
-                    "absolute w-full h-full [backface-visibility:hidden] rounded-xl overflow-hidden"
+                    "absolute w-full h-full [backface-visibility:hidden] rounded-xl"
                   )}>
                     <Image
                       src="/ui/mit-card-back.png"
@@ -263,7 +263,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   
                   {/* Card Front */}
                   <div className={cn(
-                      "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden"
+                      "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl"
                   )}>
                     {card.isCustom ? (
                       <>
