@@ -345,24 +345,24 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                         </div>
                       </>
                     )}
+                    {/* New Card Badge - moved inside the card front */}
+                    {card.isNew && (
+                      <motion.div
+                        className="absolute -top-4 -right-4 w-16 h-16 z-10 animate-pulse"
+                        initial={{ scale: 0, rotate: -15 }}
+                        animate={{ scale: isFlipped ? 1 : 0, rotate: 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                      >
+                        <Image
+                          src="/ui/new-card-badge.png"
+                          alt="New Card"
+                          fill
+                          className="object-contain"
+                          data-ai-hint="new card badge"
+                        />
+                      </motion.div>
+                    )}
                   </div>
-                   {/* New Card Badge - moved inside the flipping container */}
-                  {card.isNew && (
-                    <motion.div
-                      className="absolute -top-4 -right-4 w-16 h-16 z-10 animate-pulse [backface-visibility:hidden] [transform:rotateX(180deg)]"
-                      initial={{ scale: 0, rotate: -15 }}
-                      animate={{ scale: isFlipped ? 1 : 0, rotate: 0 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    >
-                      <Image
-                        src="/ui/new-card-badge.png"
-                        alt="New Card"
-                        fill
-                        className="object-contain"
-                        data-ai-hint="new card badge"
-                      />
-                    </motion.div>
-                  )}
                 </motion.div>
               </motion.div>
             );
