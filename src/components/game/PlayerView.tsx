@@ -215,7 +215,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             return (
               <motion.div
                 key={`${card.id}-${player.id}-${index}`}
-                className="absolute w-full cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
+                className="absolute w-80 left-0 right-0 mx-auto cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
                 style={{
                   top: 20 + (index * 35),
                   zIndex: isThisCardSelected ? 50 : 20 - index,
