@@ -69,7 +69,7 @@ export default function GamePage() {
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[Math.floor(Math.random() * loadingMessages.length)]);
+  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
 
   const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
   const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for visual step duration
@@ -155,6 +155,7 @@ export default function GamePage() {
   useEffect(() => {
     isMountedRef.current = true;
     console.log("GamePage: Mounting. Starting initial data fetch.");
+    setLoadingMessage(loadingMessages[Math.floor(Math.random() * loadingMessages.length)]);
     fetchGameAndPlayer("initial mount");
 
     return () => {
@@ -711,5 +712,7 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
+
+    
 
     
