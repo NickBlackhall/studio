@@ -90,7 +90,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       isMountedRef.current = false;
       timers.forEach(clearTimeout);
     };
-  }, [gameState.gamePhase, gameState.currentRound, hasSubmittedThisRound]);
+  }, [gameState.gamePhase, gameState.currentRound, hasSubmittedThisRound, handWithCustomCard.length]);
 
 
   const handleCardClick = (cardId: string) => {
@@ -215,7 +215,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             return (
               <motion.div
                 key={`${card.id}-${player.id}-${index}`}
-                className="absolute w-[25rem] left-0 right-0 mx-auto cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
+                className="absolute w-[22rem] left-0 right-0 mx-auto cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
                 style={{
                   top: 20 + (index * 35),
                   zIndex: isThisCardSelected ? 50 : 20 - index,
@@ -227,12 +227,19 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 onClick={() => handleCardClick(card.id)}
               >
                 {card.isNew && (
-                  <motion.div 
-                    className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-50 shadow-lg flex items-center gap-1 animate-pulse"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
+                  <motion.div
+                    className="absolute -top-4 -right-4 w-16 h-16 z-50 animate-pulse"
+                    initial={{ scale: 0, rotate: -15 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
-                    NEW <Sparkles className="h-3 w-3"/>
+                    <Image
+                      src="/ui/new-card-badge.png"
+                      alt="New Card"
+                      fill
+                      className="object-contain"
+                      data-ai-hint="new card badge"
+                    />
                   </motion.div>
                 )}
                 
