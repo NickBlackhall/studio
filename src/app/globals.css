@@ -212,7 +212,7 @@
   justify-content: center;
   align-items: center;
   padding: 1rem;
-  padding-top: 15vh; /* Pushes the vertical centering point down */
+  padding-top: 10vh;
   z-index: 10;
   position: relative;
 }
