@@ -283,10 +283,6 @@
     height: 12.6rem;
   }
 
-  .join-game-button {
-    transform: scale(0.65);
-  }
-
   .bottom-section {
     padding-bottom: 2rem !important; /* Force override Tailwind */
   }

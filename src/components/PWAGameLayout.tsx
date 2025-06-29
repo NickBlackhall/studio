@@ -126,8 +126,8 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
                   <Image
                     src="/ui/join-game-button.png"
                     alt="Join the Mayhem"
-                    width={252}
-                    height={95}
+                    width={227}
+                    height={86}
                     className="object-contain drop-shadow-xl"
                     data-ai-hint="join button"
                     priority
