@@ -1,7 +1,7 @@
 import type { ScenarioClientState as Scenario } from "./types";
 
-// Generate paths for avatar1.png through avatar21.png
-export const AVATARS: string[] = Array.from({ length: 21 }, (_, i) => `/ui/avatar${i + 1}.png?v=2`);
+// Generate paths for avatar1.png through avatar22.png
+export const AVATARS: string[] = Array.from({ length: 22 }, (_, i) => `/ui/avatar${i + 1}.png?v=2`);
 
 export const CATEGORIES: string[] = [
   "Pop Culture and Internet",
