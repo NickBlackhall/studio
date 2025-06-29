@@ -1,3 +1,4 @@
+
 import type { ScenarioClientState as Scenario } from "./types";
 
 // Generate paths for avatar1.png through avatar22.png
