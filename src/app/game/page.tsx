@@ -42,6 +42,16 @@ import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
 
 
+const loadingMessages = [
+  "Polishing the terrible choices...",
+  "Dealing out the chaos...",
+  "Consulting the humor overlords...",
+  "Shuffling the deck of bad ideas...",
+  "Warming up the judge's gavel...",
+  "Finding the worst possible scenarios...",
+];
+
+
 export default function GamePage() {
   const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
   const gameStateRef = useRef<GameClientState | null>(null);
@@ -58,6 +68,7 @@ export default function GamePage() {
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
 
   const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
   const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for visual step duration
@@ -143,6 +154,7 @@ export default function GamePage() {
   useEffect(() => {
     isMountedRef.current = true;
     console.log("GamePage: Mounting. Starting initial data fetch.");
+    setLoadingMessage(loadingMessages[Math.floor(Math.random() * loadingMessages.length)]);
     fetchGameAndPlayer("initial mount");
 
     return () => {
@@ -505,7 +517,7 @@ export default function GamePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
-        <p className="text-2xl text-muted-foreground">Loading Game Awesomeness...</p>
+        <p className="text-2xl text-muted-foreground">{loadingMessage}</p>
       </div>
     );
   }
