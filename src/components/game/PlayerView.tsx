@@ -40,9 +40,15 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   );
   
   const handWithCustomCard = useMemo(() => {
-    const regularCards = player.hand || [];
+    // Sort the hand so the 'new' card is last, which will render it on top of the stack.
+    const sortedHand = [...(player.hand || [])].sort((a, b) => {
+      if (a.isNew && !b.isNew) return 1;
+      if (b.isNew && !a.isNew) return -1;
+      return 0;
+    });
+
     const customCard = { id: CUSTOM_CARD_ID, text: customCardText, isCustom: true, isNew: false };
-    return [...regularCards, customCard];
+    return [...sortedHand, customCard];
   }, [player.hand, customCardText]);
 
   // Animation Trigger
