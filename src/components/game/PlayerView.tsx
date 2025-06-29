@@ -40,10 +40,10 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   );
   
   const handWithCustomCard = useMemo(() => {
-    // Sort the hand so the 'new' card is last, which will render it on top of the stack.
+    // Sort the hand so the 'new' card is first, which will render it on top of the stack.
     const sortedHand = [...(player.hand || [])].sort((a, b) => {
-      if (a.isNew && !b.isNew) return 1;
-      if (b.isNew && !a.isNew) return -1;
+      if (a.isNew && !b.isNew) return -1; // a (new card) comes before b
+      if (!a.isNew && b.isNew) return 1; // b (new card) comes before a
       return 0;
     });
 
