@@ -215,7 +215,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             return (
               <motion.div
                 key={`${card.id}-${player.id}-${index}`}
-                className="absolute w-80 left-0 right-0 mx-auto cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
+                className="absolute w-[25rem] left-0 right-0 mx-auto cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
                 style={{
                   top: 20 + (index * 35),
                   zIndex: isThisCardSelected ? 50 : 20 - index,
@@ -289,15 +289,28 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                                 onClick={(e) => e.stopPropagation()}
                                 maxLength={100}
                               />
-                              <Button
-                                size="sm"
-                                className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2"
+                              <button
+                                type="button"
+                                className="bg-transparent border-none p-0 group"
                                 onClick={handleSubmit}
                                 disabled={isPending}
                               >
-                                {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckSquare className="h-4 w-4" />}
-                                Submit
-                              </Button>
+                                {isPending ? (
+                                  <div className="h-[45px] w-[120px] flex items-center justify-center">
+                                    <Loader2 className="h-6 w-6 animate-spin text-white" />
+                                  </div>
+                                ) : (
+                                  <Image
+                                    src="/ui/submit-card-button.png"
+                                    alt="Submit Card"
+                                    width={120}
+                                    height={45}
+                                    className="object-contain drop-shadow-lg"
+                                    data-ai-hint="submit button"
+                                    priority
+                                  />
+                                )}
+                              </button>
                             </>
                           ) : (
                             <span className="font-im-fell text-black text-2xl leading-tight">Write your own...</span>
@@ -316,10 +329,28 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                         <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
                           <span className="font-im-fell text-black text-2xl leading-tight px-4">{card.text}</span>
                           {isThisCardSelected && (
-                            <Button size="sm" className="h-7 px-3 text-xs bg-green-600 hover:bg-green-700 text-white mt-2" onClick={handleSubmit} disabled={isPending}>
-                              {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckSquare className="h-4 w-4" />}
-                               Submit
-                            </Button>
+                            <button
+                              type="button"
+                              className="bg-transparent border-none p-0 group"
+                              onClick={handleSubmit}
+                              disabled={isPending}
+                            >
+                              {isPending ? (
+                                <div className="h-[45px] w-[120px] flex items-center justify-center">
+                                  <Loader2 className="h-6 w-6 animate-spin text-white" />
+                                </div>
+                              ) : (
+                                <Image
+                                  src="/ui/submit-card-button.png"
+                                  alt="Submit Card"
+                                  width={120}
+                                  height={45}
+                                  className="object-contain drop-shadow-lg"
+                                  data-ai-hint="submit button"
+                                  priority
+                                />
+                              )}
+                            </button>
                           )}
                         </div>
                       </>
