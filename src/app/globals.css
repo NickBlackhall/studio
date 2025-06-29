@@ -194,14 +194,14 @@
   color: #000;
   background: transparent;
   outline: none;
-  font-family: 'var(--font-im-fell)', 'Times New Roman', serif;
+  font-family: 'IM Fell English SC', serif;
   letter-spacing: 0.5px;
   border: none;
 }
 
 .name-input::placeholder {
   color: rgba(0, 0, 0, 0.7);
-  font-family: 'var(--font-im-fell)', 'Times New Roman', serif;
+  font-family: 'IM Fell English SC', serif;
   font-size: 2rem;
 }
 
