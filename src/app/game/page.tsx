@@ -43,12 +43,13 @@ import GameUI from '@/components/game/GameUI';
 
 
 const loadingMessages = [
-  "Polishing the terrible choices...",
-  "Dealing out the chaos...",
+  "Loading your mother's butt...",
+  "Looooong fart noises loading....",
   "Consulting the humor overlords...",
-  "Shuffling the deck of bad ideas...",
-  "Warming up the judge's gavel...",
-  "Finding the worst possible scenarios...",
+  "Should I...? No. That's over the line. Oh, sorry. Loading the game or whatever...",
+  "Thinking of something funny to say since you obviously can't...",
+  "🎶 After these messages....We'll be right back 🎵",
+  "Have you seen the dog avatar? That's Ellie. She's the best"
 ];
 
 
