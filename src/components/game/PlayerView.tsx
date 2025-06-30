@@ -164,9 +164,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             priority
             data-ai-hint="waiting judge poster"
           />
-          <div className="absolute top-[80%] left-1/2 -translate-x-1/2 w-[90%] text-center">
+          <div className="absolute top-[64%] left-1/2 -translate-x-1/2 w-[90%] text-center">
             <p className="font-im-fell text-black text-xl xl:text-2xl font-semibold leading-tight">
-              The Judge is pondering which category of doom to unleash...
+              The Judge is picking a category.<br/>Tell them to hurry up!
             </p>
             
             <div className="flex items-center justify-center space-x-2 mt-3">
@@ -201,14 +201,11 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           />
           <div className="absolute top-[78%] left-1/2 -translate-x-1/2 w-[95%] text-center">
             <p className="font-im-fell text-black text-xl xl:text-2xl font-semibold leading-tight">
-              All responses are in. The<br/>
-              Judge is now deliberating.<br/>
-              Who will be crowned the
+              All responses are in.<br/>
+              Who will be crowned the<br/>
+              MOST TERRIBLE?
             </p>
-            <p className="font-im-fell text-black text-2xl xl:text-3xl font-bold leading-tight mt-3">
-                MOST TERRIBLE?
-            </p>
-            
+                        
             <div className="flex items-center justify-center space-x-2 mt-3">
               <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0 }} />
               <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />
@@ -315,7 +312,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                                 value={customCardText}
                                 onChange={(e) => setCustomCardText(e.target.value)}
                                 placeholder="Make it uniquely terrible..."
-                                className="w-[80%] h-[60%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-tight p-0"
+                                className="w-[80%] h-[60%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-none p-0"
                                 onClick={(e) => e.stopPropagation()}
                                 maxLength={100}
                               />

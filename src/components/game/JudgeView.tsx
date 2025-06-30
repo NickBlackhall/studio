@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { GameClientState, PlayerClientState } from '@/lib/types';
@@ -32,14 +33,6 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const isMountedRef = useRef(true);
   const prefersReducedMotion = useReducedMotion();
-
-  // DEBUG STATEMENTS
-  console.log('🔍 Shuffled submissions:', shuffledSubmissions);
-  console.log('🔍 Selected winning card:', selectedWinningCard);
-  console.log('🔍 Animation complete:', isAnimationComplete);
-  console.log('🔍 Current game phase:', gameState.gamePhase);
-  console.log('🔍 Current judge ID:', gameState.currentJudgeId);
-  console.log('🔍 Current player ID:', judge.id);
 
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
   
@@ -77,53 +70,37 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   };
 
   const handleWinnerSubmit = async (cardText: string) => {
-    console.log('🎯 handleWinnerSubmit called with:', cardText);
-    
     if (!cardText) {
-        console.log('❌ No card text provided');
         toast({ title: "Error", description: "Card text is missing.", variant: "destructive" });
         return;
     }
 
     if (pendingWinnerCard) {
-        console.log('❌ Already processing a winner selection');
         return;
     }
 
-    console.log('🎯 Setting pending winner card to:', cardText);
     setPendingWinnerCard(cardText);
     
     try {
-        console.log('🎯 Calling onSelectWinner with:', cardText);
         await onSelectWinner(cardText);
-        console.log('✅ onSelectWinner completed successfully');
         
-        // Clear selection after successful winner selection
         setSelectedWinningCard('');
     } catch (error: any) {
-        console.error('❌ Error in onSelectWinner:', error);
         toast({ title: "Error selecting winner", description: error.message || "An unknown error occurred.", variant: "destructive" });
     } finally {
         if (isMountedRef.current) {
-          console.log('🎯 Clearing pending winner card');
           setPendingWinnerCard('');
         }
     }
   };
   
   const handleCardClick = (cardText: string) => {
-    console.log('🔍 Card clicked:', cardText);
-    console.log('🔍 Animation complete:', isAnimationComplete);
-    console.log('🔍 Pending winner card:', pendingWinnerCard);
-    
     if (!isAnimationComplete || !!pendingWinnerCard) {
-        console.log('🔍 Card click blocked - animation incomplete or pending');
         return;
     }
     
     setSelectedWinningCard(prevSelected => {
         const newSelected = prevSelected === cardText ? '' : cardText;
-        console.log('🔍 Card selection changed from', prevSelected, 'to', newSelected);
         return newSelected;
     });
   };
@@ -277,47 +254,36 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                         sizes="320px"
                       />
                       <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
-                        <span className="font-im-fell text-black text-2xl leading-tight px-4 flex-grow flex items-center">{submission.cardText}</span>
+                        <span className="font-im-fell text-black text-2xl leading-none px-4 flex-grow flex items-center">{submission.cardText}</span>
                         {isSelected && isAnimationComplete && (
-                           <>
-                            {console.log('🔍 BUTTON IS RENDERING for card:', submission.cardText)}
-                            <div className="flex-shrink-0 py-2" style={{ transform: 'translateZ(20px)'}}>
-                              <Button
-                                  size="sm"
-                                  className={cn(
-                                      "h-10 px-4 text-sm font-bold shadow-xl pointer-events-auto",
-                                      isPending 
-                                          ? "bg-gray-400 cursor-not-allowed" 
-                                          : "bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95"
-                                  )}
-                                  onMouseDown={(e) => {
-                                      console.log('🎯 Button mousedown');
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                  }}
-                                  onClick={(e) => {
-                                      console.log('🎯 Button onClick triggered for:', submission.cardText);
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleWinnerSubmit(submission.cardText);
-                                  }}
-                                  disabled={!!pendingWinnerCard}
-                                  style={{ 
-                                    backgroundColor: 'red', 
-                                    border: '3px solid yellow',
-                                  }}
-                              >
-                                  <div className="flex items-center gap-2">
-                                      {isPending ? (
-                                          <Loader2 className="h-4 w-4 animate-spin"/>
-                                      ) : (
-                                          <Crown className="h-4 w-4" />
-                                      )}
-                                      <span>{isPending ? 'Crowning...' : 'Crown Winner'}</span>
-                                  </div>
-                              </Button>
-                            </div>
-                          </>
+                          <div className="flex-shrink-0 py-2" style={{ transform: 'translateZ(20px)'}}>
+                            <button
+                              type="button"
+                              className="bg-transparent border-none p-0 group"
+                              onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleWinnerSubmit(submission.cardText);
+                              }}
+                              disabled={!!pendingWinnerCard}
+                            >
+                              {isPending ? (
+                                <div className="h-[45px] w-[137px] flex items-center justify-center">
+                                  <Loader2 className="h-6 w-6 animate-spin text-black" />
+                                </div>
+                              ) : (
+                                <Image
+                                  src="/ui/crown-winner-button-v1.png"
+                                  alt="Crown Winner"
+                                  width={137}
+                                  height={45}
+                                  className="object-contain drop-shadow-lg transition-transform group-hover:scale-105"
+                                  data-ai-hint="crown winner button"
+                                  priority
+                                />
+                              )}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -399,3 +365,5 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
+
+    
