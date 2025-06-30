@@ -172,21 +172,17 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           <Image
             src="/ui/time-for-judgement-poster.png"
             alt="Judgement Time"
-            width={500}
-            height={375}
+            width={600}
+            height={475}
             className="object-contain"
             priority
             data-ai-hint="judgement poster"
           />
-          <div className="absolute top-[60%] left-1/2 -translate-x-1/2 w-[75%] text-center">
+          <div className="absolute top-[78%] left-1/2 -translate-x-1/2 w-[95%] text-center">
             <p className="font-im-fell text-black text-xl xl:text-2xl font-semibold leading-tight">
-              All responses are in. The<br/>
-              Judge is now deliberating.<br/>
-              Who will be crowned the
+              All responses are in.<br/> Who will be crowned the <br/>MOST TERRIBLE?
             </p>
-            <p className="font-im-fell text-black text-2xl xl:text-3xl font-bold leading-tight mt-3">
-              MOST TERRIBLE?
-            </p>
+            
             <div className="flex items-center justify-center space-x-2 mt-3">
               <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0 }} />
               <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />

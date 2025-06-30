@@ -126,8 +126,8 @@ export default function SwipeableCategorySelector({
         <Image
           src="/ui/judge selection overlay.png"
           alt="Category selection frame"
-          width={1344}
-          height={2066}
+          width={1028}
+          height={1580}
           className="w-full h-auto"
           priority
           sizes="100vw"

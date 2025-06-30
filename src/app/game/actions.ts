@@ -144,7 +144,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     return {
       id: p.id,
       name: p.name,
-      avatar: p.avatar ? `${p.avatar.split('?')[0]}?t=${Date.now()}` : '',
+      avatar: p.avatar || '',
       score: p.score,
       isJudge: p.id === gameRow.current_judge_id,
       hand: playerHandCards,
@@ -1244,7 +1244,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
   return {
     id: playerData.id,
     name: playerData.name,
-    avatar: playerData.avatar ? `${playerData.avatar.split('?')[0]}?t=${Date.now()}` : '',
+    avatar: playerData.avatar || '',
     score: playerData.score,
     isJudge: gameData ? playerData.id === gameData.current_judge_id : false,
     hand: handCards,
@@ -1330,5 +1330,6 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
     
 
     
+
 
 
