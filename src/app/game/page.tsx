@@ -28,16 +28,8 @@ import { Home, Play, Loader2, RefreshCw, HelpCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-  DialogPortal,
-  DialogOverlay,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
+import { MorphingDialogContent } from '@/components/MorphingDialogContent';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
 
@@ -658,39 +650,46 @@ export default function GamePage() {
         onScoresClick={() => setIsScoreboardOpen(true)}
         onMenuClick={() => setIsMenuModalOpen(true)}
       />
+      
+      {/* Scoreboard Modal */}
       <Dialog open={isScoreboardOpen} onOpenChange={setIsScoreboardOpen}>
-        <DialogContent className="max-w-md p-0">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Scoreboard</DialogTitle>
-          </DialogHeader>
+        <MorphingDialogContent
+          variant="scoreboard"
+          icon="🏆"
+          title="Scoreboard"
+          className="particle-overlay"
+        >
           <Scoreboard
             players={internalGameState.players}
             currentJudgeId={internalGameState.currentJudgeId}
             defaultOpen={true}
           />
-        </DialogContent>
+        </MorphingDialogContent>
       </Dialog>
+
+      {/* Menu Modal */}
       <Dialog open={isMenuModalOpen} onOpenChange={setIsMenuModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Game Menu</DialogTitle>
-            <DialogDescription>
-              Options and actions for the game.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-3 py-4">
-            <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <HelpCircle className="mr-2 h-4 w-4" /> How to Play
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <HowToPlayModalContent />
-              </DialogContent>
-            </Dialog>
+        <MorphingDialogContent
+          variant="settings"
+          icon="⚙️"
+          title="Game Menu"
+        >
+          <div className="text-white/90 mb-5">
+            Options and actions for the game.
+          </div>
+          <div className="flex flex-col gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsMenuModalOpen(false);
+                setIsHowToPlayModalOpen(true);
+              }}
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            >
+              <HelpCircle className="mr-2 h-4 w-4" /> How to Play
+            </Button>
             <Link href="/?step=setup" className="inline-block" onClick={() => setIsMenuModalOpen(false)}>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full bg-white/20 hover:bg-white/30 text-white border-white/30">
                 <Home className="mr-2 h-4 w-4" /> Exit to Lobby
               </Button>
             </Link>
@@ -699,20 +698,27 @@ export default function GamePage() {
                 handleResetGameFromGamePage();
                 setIsMenuModalOpen(false);
               }}
-              variant="destructive"
+              className="bg-red-500/80 hover:bg-red-600/80 text-white"
               disabled={isActionPending || isLoading}
             >
               {isActionPending || isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Reset Game (Testing)
             </Button>
           </div>
-        </DialogContent>
+        </MorphingDialogContent>
+      </Dialog>
+
+      {/* How to Play Modal */}
+      <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
+        <MorphingDialogContent
+          variant="default"
+          icon="❓"
+          title="How to Play"
+        >
+          <HowToPlayModalContent />
+        </MorphingDialogContent>
       </Dialog>
     </>
   );
 }
 export const dynamic = 'force-dynamic';
-
-    
-
-    

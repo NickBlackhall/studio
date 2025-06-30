@@ -287,3 +287,106 @@
     padding-bottom: 2rem !important; /* Force override Tailwind */
   }
 }
+
+/* Morphing Modal Special Effects & Scrollbar */
+
+/* --- Animated Gradient --- */
+@keyframes animatedGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animated-gradient {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab) !important;
+  background-size: 400% 400% !important;
+  animation: animatedGradient 15s ease infinite;
+}
+
+/* --- Particle Overlay --- */
+.particle-overlay {
+  position: relative;
+  overflow: hidden;
+}
+.particle-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.4)"/><circle cx="30" cy="60" r="1.5" fill="rgba(255,255,255,0.5)"/><circle cx="50" cy="30" r="1" fill="rgba(255,255,255,0.3)"/><circle cx="70" cy="70" r="2" fill="rgba(255,255,255,0.6)"/><circle cx="20" cy="40" r="0.8" fill="rgba(255,255,255,0.2)"/><circle cx="60" cy="15" r="1.2" fill="rgba(255,255,255,0.4)"/></svg>');
+  animation: float 40s linear infinite;
+  z-index: 1;
+}
+@keyframes float {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-100%); }
+}
+
+/* --- Fireworks --- */
+.fireworks { position: relative; overflow: hidden; }
+.fireworks::before, .fireworks::after {
+    content: '';
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px 2px #fff, 0 0 20px 4px #f0f, 0 0 30px 6px #0ff;
+    animation: fireworks-burst 1.5s ease-out infinite;
+}
+.fireworks::after {
+    animation-delay: 0.75s;
+    left: 20%;
+    top: 80%;
+}
+@keyframes fireworks-burst {
+    0% { transform: scale(0); opacity: 1; top: 100%; left: 50%; }
+    50% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.5); opacity: 0; top: 20%; left: 50%; }
+}
+
+/* --- Celebration Burst --- */
+@keyframes celebration-burst-animate {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.celebration-burst::before {
+    content: '🎉🎊🥳';
+    position: absolute;
+    inset: 0;
+    font-size: 5rem;
+    text-align: center;
+    opacity: 0;
+    animation: celebration-burst-animate 1s ease-out forwards;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Pattern Background --- */
+.pattern-background {
+  background-image:
+    linear-gradient(rgba(0,0,0,0) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0) 1px, transparent 1px),
+    radial-gradient(circle at 2px 2px, rgba(255,255,255,0.1) 1px, transparent 1px) !important;
+  background-size: 20px 20px, 20px 20px, 20px 20px !important;
+}
+
+/* --- Pulse Glow --- */
+.pulse-glow {
+  animation: pulse-glow-animation 2s infinite ease-in-out;
+}
+@keyframes pulse-glow-animation {
+  0%, 100% { box-shadow: 0 0 20px 5px hsla(var(--accent), 0.4); }
+  50% { box-shadow: 0 0 40px 15px hsla(var(--accent), 0.6); }
+}
+
+/* Custom scrollbar for modals */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
