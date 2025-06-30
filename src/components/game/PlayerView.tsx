@@ -165,7 +165,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         isOpen={true}
         onClose={() => {}}
         isDismissable={false}
-        className="p-0 bg-transparent w-auto h-auto max-w-lg"
+        variant="image"
+        className="p-0 w-auto h-auto max-w-lg"
       >
         <div className="relative">
           <Image
@@ -177,14 +178,19 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             priority
             data-ai-hint="judgement poster"
           />
-          <div className="absolute bottom-[10%] left-0 right-0 px-6 flex flex-col items-center justify-center space-y-3">
-            <p className="font-im-fell text-black text-2xl text-center font-semibold">
-              All responses are in. The Judge is now deliberating. Who will be crowned the most terrible?
+          <div className="absolute top-[60%] left-1/2 -translate-x-1/2 w-[75%] text-center">
+            <p className="font-im-fell text-black text-xl xl:text-2xl font-semibold leading-tight">
+              All responses are in. The<br/>
+              Judge is now deliberating.<br/>
+              Who will be crowned the
             </p>
-            <div className="flex items-center justify-center space-x-2">
-              <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0 }} />
-              <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />
-              <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} />
+            <p className="font-im-fell text-black text-2xl xl:text-3xl font-bold leading-tight mt-3">
+              MOST TERRIBLE?
+            </p>
+            <div className="flex items-center justify-center space-x-2 mt-3">
+              <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0 }} />
+              <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />
+              <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} />
             </div>
           </div>
         </div>

@@ -10,7 +10,7 @@ interface PureMorphingModalProps {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  variant?: 'default' | 'winner' | 'scoreboard' | 'settings' | 'gameOver';
+  variant?: 'default' | 'winner' | 'scoreboard' | 'settings' | 'gameOver' | 'image';
   icon?: string;
   title?: string;
   backgroundImage?: string;
@@ -34,7 +34,8 @@ const PureMorphingModal: React.FC<PureMorphingModalProps> = ({
     winner: 'bg-gradient-to-br from-green-500 to-green-600',
     scoreboard: 'bg-gradient-to-br from-red-500 to-red-600', 
     settings: 'bg-gradient-to-br from-purple-600 to-purple-700',
-    gameOver: 'bg-gradient-to-br from-gray-800 to-gray-900'
+    gameOver: 'bg-gradient-to-br from-gray-800 to-gray-900',
+    image: 'bg-transparent',
   };
 
   return (
