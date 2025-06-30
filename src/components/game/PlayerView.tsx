@@ -305,42 +305,35 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                           className="object-cover"
                           data-ai-hint="card front"
                         />
-                        <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
+                        <div className="absolute inset-0">
                           {isThisCardSelected ? (
-                            <>
+                            <div className="relative w-full h-full">
                               <Textarea
                                 value={customCardText}
                                 onChange={(e) => setCustomCardText(e.target.value)}
                                 placeholder="Make it uniquely terrible..."
-                                className="w-[80%] h-[60%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-none p-0"
+                                className="absolute top-[18%] left-[50%] -translate-x-1/2 w-[85%] h-[40%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-normal p-2"
                                 onClick={(e) => e.stopPropagation()}
                                 maxLength={100}
                               />
                               <button
                                 type="button"
-                                className="bg-transparent border-none p-0 group"
+                                className="absolute bottom-[16%] left-1/2 -translate-x-1/2 w-[45%] h-[20%] bg-transparent group"
                                 onClick={handleSubmit}
                                 disabled={isPending}
+                                aria-label="Submit custom card"
                               >
-                                {isPending ? (
-                                  <div className="h-[45px] w-[120px] flex items-center justify-center">
-                                    <Loader2 className="h-6 w-6 animate-spin text-white" />
+                                {isPending && (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Loader2 className="h-6 w-6 animate-spin text-black" />
                                   </div>
-                                ) : (
-                                  <Image
-                                    src="/ui/submit-card-button.png"
-                                    alt="Submit Card"
-                                    width={120}
-                                    height={45}
-                                    className="object-contain drop-shadow-lg"
-                                    data-ai-hint="submit button"
-                                    priority
-                                  />
                                 )}
                               </button>
-                            </>
+                            </div>
                           ) : (
-                            <span className="font-im-fell text-black text-2xl leading-tight">Write your own...</span>
+                            <div className="w-full h-full flex justify-center items-center">
+                              <span className="font-im-fell text-black text-2xl leading-tight">Write your own...</span>
+                            </div>
                           )}
                         </div>
                       </>
@@ -421,3 +414,5 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
+
+    
