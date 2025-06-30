@@ -182,7 +182,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             priority
           />
           <div className="absolute bottom-[8%] left-0 right-0 px-6 space-y-2">
-            <p className="text-white text-lg font-semibold drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+            <p className="font-im-fell text-white text-lg font-semibold drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
               All responses are in. The Judge is now deliberating. Who will be crowned the most terrible?
             </p>
             <Loader2 className="h-8 w-8 animate-spin text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] mx-auto mt-2" />
