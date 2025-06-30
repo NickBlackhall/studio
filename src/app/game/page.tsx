@@ -27,8 +27,7 @@ import { Home, Play, Loader2, RefreshCw, HelpCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MorphingDialogWrapper } from '@/components/MorphingDialogWrapper';
+import { PureMorphingModal } from '@/components/PureMorphingModal';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
 
@@ -651,78 +650,72 @@ export default function GamePage() {
       />
       
       {/* Scoreboard Modal */}
-      <Dialog open={isScoreboardOpen} onOpenChange={setIsScoreboardOpen}>
-        <DialogContent className="border-0 p-0 bg-transparent shadow-none overflow-visible max-w-md">
-          <MorphingDialogWrapper
-            variant="scoreboard"
-            icon="🏆"
-            title="Scoreboard"
-            className="particle-overlay"
-          >
-            <Scoreboard
-              players={internalGameState.players}
-              currentJudgeId={internalGameState.currentJudgeId}
-              defaultOpen={true}
-            />
-          </MorphingDialogWrapper>
-        </DialogContent>
-      </Dialog>
+      <PureMorphingModal
+        isOpen={isScoreboardOpen}
+        onClose={() => setIsScoreboardOpen(false)}
+        variant="scoreboard"
+        icon="🏆"
+        title="Scoreboard"
+        className="particle-overlay"
+      >
+        <Scoreboard
+          players={internalGameState.players}
+          currentJudgeId={internalGameState.currentJudgeId}
+          defaultOpen={true}
+        />
+      </PureMorphingModal>
 
       {/* Menu Modal */}
-      <Dialog open={isMenuModalOpen} onOpenChange={setIsMenuModalOpen}>
-        <DialogContent className="border-0 p-0 bg-transparent shadow-none overflow-visible max-w-md">
-          <MorphingDialogWrapper
-            variant="settings"
-            icon="⚙️"
-            title="Game Menu"
+      <PureMorphingModal
+        isOpen={isMenuModalOpen}
+        onClose={() => setIsMenuModalOpen(false)}
+        variant="settings"
+        icon="⚙️"
+        title="Game Menu"
+      >
+        <div className="text-white/90 mb-5">
+          Options and actions for the game.
+        </div>
+        <div className="flex flex-col gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setIsMenuModalOpen(false);
+              setIsHowToPlayModalOpen(true);
+            }}
+            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
           >
-            <div className="text-white/90 mb-5">
-              Options and actions for the game.
-            </div>
-            <div className="flex flex-col gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setIsMenuModalOpen(false);
-                  setIsHowToPlayModalOpen(true);
-                }}
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-              >
-                <HelpCircle className="mr-2 h-4 w-4" /> How to Play
-              </Button>
-              <Link href="/?step=setup" className="inline-block" onClick={() => setIsMenuModalOpen(false)}>
-                <Button variant="outline" className="w-full bg-white/20 hover:bg-white/30 text-white border-white/30">
-                  <Home className="mr-2 h-4 w-4" /> Exit to Lobby
-                </Button>
-              </Link>
-              <Button
-                onClick={() => {
-                  handleResetGameFromGamePage();
-                  setIsMenuModalOpen(false);
-                }}
-                className="bg-red-500/80 hover:bg-red-600/80 text-white"
-                disabled={isActionPending || isLoading}
-              >
-                {isActionPending || isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                Reset Game (Testing)
-              </Button>
-            </div>
-          </MorphingDialogWrapper>
-        </DialogContent>
-      </Dialog>
+            <HelpCircle className="mr-2 h-4 w-4" /> How to Play
+          </Button>
+          <Link href="/?step=setup" className="inline-block" onClick={() => setIsMenuModalOpen(false)}>
+            <Button variant="outline" className="w-full bg-white/20 hover:bg-white/30 text-white border-white/30">
+              <Home className="mr-2 h-4 w-4" /> Exit to Lobby
+            </Button>
+          </Link>
+          <Button
+            onClick={() => {
+              handleResetGameFromGamePage();
+              setIsMenuModalOpen(false);
+            }}
+            className="bg-red-500/80 hover:bg-red-600/80 text-white"
+            disabled={isActionPending || isLoading}
+          >
+            {isActionPending || isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Reset Game (Testing)
+          </Button>
+        </div>
+      </PureMorphingModal>
 
       {/* How to Play Modal */}
-      <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
-        <DialogContent className="border-0 p-0 bg-transparent shadow-none overflow-visible max-w-md">
-          <MorphingDialogWrapper
-            variant="default"
-            icon="❓"
-            title="How to Play"
-          >
-            <HowToPlayModalContent />
-          </MorphingDialogWrapper>
-        </DialogContent>
-      </Dialog>
+      <PureMorphingModal
+        isOpen={isHowToPlayModalOpen}
+        onClose={() => setIsHowToPlayModalOpen(false)}
+        variant="default"
+        icon="❓"
+        title="How to Play"
+      >
+        <HowToPlayModalContent />
+      </PureMorphingModal>
     </>
   );
 }
