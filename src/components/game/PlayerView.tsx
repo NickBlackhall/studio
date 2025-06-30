@@ -171,17 +171,23 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                  </motion.div>
             )}
         </AnimatePresence>
-        <Card className="text-center shadow-lg border-2 border-secondary rounded-xl">
-          <CardHeader className="bg-secondary text-secondary-foreground p-6">
-            <CardTitle className="text-2xl font-semibold flex items-center justify-center"><Gavel className="mr-2 h-6 w-6" /> Judgment Time!</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <p className="text-muted-foreground text-lg">
+        <div className="relative w-full max-w-lg mx-auto text-center">
+          <Image
+            src="/ui/time-for-judgement-poster.png"
+            alt="A poster that says Time for Judgement, with skulls and a gavel"
+            width={1024}
+            height={1280}
+            className="w-full h-auto object-contain"
+            data-ai-hint="judgement poster"
+            priority
+          />
+          <div className="absolute bottom-[8%] left-0 right-0 px-6 space-y-2">
+            <p className="text-white text-lg font-semibold drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
               All responses are in. The Judge is now deliberating. Who will be crowned the most terrible?
             </p>
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mt-4" />
-          </CardContent>
-        </Card>
+            <Loader2 className="h-8 w-8 animate-spin text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] mx-auto mt-2" />
+          </div>
+        </div>
       </div>
     );
   }
