@@ -165,18 +165,27 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         isOpen={true}
         onClose={() => {}}
         isDismissable={false}
-        backgroundImage="/ui/time-for-judgement-poster.png"
-        backgroundOverlay="rgba(0,0,0,0)"
-        className="p-0 select-none"
+        className="p-0 bg-transparent w-auto h-auto max-w-lg"
       >
-        <div className="absolute bottom-[10%] left-0 right-0 px-6 flex flex-col items-center justify-center space-y-3">
-          <p className="font-im-fell text-black text-2xl text-center font-semibold">
-            All responses are in. The Judge is now deliberating. Who will be crowned the most terrible?
-          </p>
-          <div className="flex items-center justify-center space-x-2">
-            <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0 }} />
-            <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />
-            <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} />
+        <div className="relative">
+          <Image
+            src="/ui/time-for-judgement-poster.png"
+            alt="Judgement Time"
+            width={500}
+            height={375}
+            className="object-contain"
+            priority
+            data-ai-hint="judgement poster"
+          />
+          <div className="absolute bottom-[10%] left-0 right-0 px-6 flex flex-col items-center justify-center space-y-3">
+            <p className="font-im-fell text-black text-2xl text-center font-semibold">
+              All responses are in. The Judge is now deliberating. Who will be crowned the most terrible?
+            </p>
+            <div className="flex items-center justify-center space-x-2">
+              <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0 }} />
+              <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />
+              <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} />
+            </div>
           </div>
         </div>
       </PureMorphingModal>

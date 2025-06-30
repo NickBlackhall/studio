@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -68,7 +69,7 @@ const PureMorphingModal: React.FC<PureMorphingModalProps> = ({
                   ease: [0.175, 0.885, 0.32, 1.275]
                 }}
                 className={`
-                  w-full max-w-md h-auto min-h-[300px] p-8 text-center text-white 
+                  w-full max-w-md h-auto p-8 text-center text-white 
                   rounded-lg overflow-hidden relative
                   ${variantStyles[variant]}
                   ${className}
