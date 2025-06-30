@@ -13,6 +13,7 @@ import { submitResponse } from '@/app/game/actions';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { PureMorphingModal } from '../PureMorphingModal';
 
 interface PlayerViewProps {
   gameState: GameClientState;
@@ -159,36 +160,26 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   }
 
   if (gameState.gamePhase === 'judging') {
-     return (
-      <div className="space-y-6">
-        <AnimatePresence>
-            {gameState.currentScenario && (
-                 <motion.div key={gameState.currentScenario.id}>
-                    <ScenarioDisplay
-                      scenario={gameState.currentScenario}
-                      {...scenarioAnimationProps}
-                    />
-                 </motion.div>
-            )}
-        </AnimatePresence>
-        <div className="relative w-full max-w-lg mx-auto text-center">
-          <Image
-            src="/ui/judgement-time-v3.png"
-            alt="A poster that says Judgement Time"
-            width={1024}
-            height={1280}
-            className="w-full h-auto object-contain"
-            data-ai-hint="judgement poster"
-            priority
-          />
-          <div className="absolute bottom-[8%] left-0 right-0 px-6 space-y-2">
-            <p className="font-im-fell text-black text-lg font-semibold">
-              All responses are in. The Judge is now deliberating. Who will be crowned the most terrible?
-            </p>
-            <Loader2 className="h-8 w-8 animate-spin text-black mx-auto mt-2" />
+    return (
+      <PureMorphingModal
+        isOpen={true}
+        onClose={() => {}}
+        isDismissable={false}
+        backgroundImage="/ui/time-for-judgement-poster.png"
+        backgroundOverlay="rgba(0,0,0,0)"
+        className="p-0 select-none"
+      >
+        <div className="absolute bottom-[10%] left-0 right-0 px-6 flex flex-col items-center justify-center space-y-3">
+          <p className="font-im-fell text-black text-2xl text-center font-semibold">
+            All responses are in. The Judge is now deliberating. Who will be crowned the most terrible?
+          </p>
+          <div className="flex items-center justify-center space-x-2">
+            <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0 }} />
+            <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />
+            <motion.span className="block w-3 h-3 bg-black rounded-full" animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} />
           </div>
         </div>
-      </div>
+      </PureMorphingModal>
     );
   }
   

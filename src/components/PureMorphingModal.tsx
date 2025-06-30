@@ -14,6 +14,7 @@ interface PureMorphingModalProps {
   title?: string;
   backgroundImage?: string;
   className?: string;
+  isDismissable?: boolean;
 }
 
 const PureMorphingModal: React.FC<PureMorphingModalProps> = ({ 
@@ -24,7 +25,8 @@ const PureMorphingModal: React.FC<PureMorphingModalProps> = ({
   icon,
   title,
   backgroundImage,
-  className = ''
+  className = '',
+  isDismissable = true,
 }) => {
   const variantStyles = {
     default: 'bg-gradient-to-br from-purple-600 to-purple-700',
@@ -35,7 +37,7 @@ const PureMorphingModal: React.FC<PureMorphingModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open && isDismissable) onClose(); }}>
       <AnimatePresence>
         {isOpen && (
           <DialogPortal>
@@ -46,7 +48,7 @@ const PureMorphingModal: React.FC<PureMorphingModalProps> = ({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
               className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
-              onClick={onClose}
+              onClick={isDismissable ? onClose : undefined}
             />
             
             {/* Modal Container - Perfectly Centered */}
@@ -81,13 +83,15 @@ const PureMorphingModal: React.FC<PureMorphingModalProps> = ({
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Close Button */}
-                <button
-                  onClick={onClose}
-                  className="absolute right-4 top-4 z-20 rounded-full p-1 opacity-70 
-                            transition-opacity hover:opacity-100 bg-white/10 hover:bg-white/20"
-                >
-                  <X className="h-5 w-5 text-white" />
-                </button>
+                {isDismissable && (
+                  <button
+                    onClick={onClose}
+                    className="absolute right-4 top-4 z-20 rounded-full p-1 opacity-70 
+                              transition-opacity hover:opacity-100 bg-white/10 hover:bg-white/20"
+                  >
+                    <X className="h-5 w-5 text-white" />
+                  </button>
+                )}
 
                 {/* Icon */}
                 {icon && (
