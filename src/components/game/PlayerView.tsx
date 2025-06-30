@@ -152,7 +152,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         onClose={() => {}}
         isDismissable={false}
         variant="image"
-        className="p-0 w-auto h-auto max-w-lg"
+        className="p-0 w-auto h-auto max-w-lg bg-transparent"
       >
         <div className="relative">
           <Image
@@ -187,7 +187,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         onClose={() => {}}
         isDismissable={false}
         variant="image"
-        className="p-0 w-auto h-auto max-w-lg"
+        className="p-0 w-auto h-auto max-w-lg bg-transparent"
       >
         <div className="relative">
           <Image
@@ -199,13 +199,15 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             priority
             data-ai-hint="judgement poster"
           />
-          <div className="absolute top-[78%] left-1/2 -translate-x-1/2 w-[95%] text-center">
-            <p className="font-im-fell text-black text-xl xl:text-2xl font-semibold leading-tight">
-              All responses are in.<br/>
-              Who will be crowned the<br/>
-              MOST TERRIBLE?
-            </p>
-                        
+          <div className="absolute top-[60%] left-1/2 -translate-x-1/2 w-[75%] text-center">
+             <p className="font-im-fell text-black text-xl xl:text-2xl font-semibold leading-tight">
+               All responses are in. The<br/>
+               Judge is now deliberating.<br/>
+               Who will be crowned the
+             </p>
+             <p className="font-im-fell text-black text-2xl xl:text-3xl font-bold leading-tight mt-3">
+               MOST TERRIBLE?
+             </p>
             <div className="flex items-center justify-center space-x-2 mt-3">
               <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0 }} />
               <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />
@@ -233,14 +235,22 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
         <div className="relative min-h-[450px] [perspective:1000px]">
           {hasSubmittedThisRound && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg z-50 flex flex-col items-center justify-center text-center p-4">
-               <VenetianMask className="h-12 w-12 text-accent mx-auto mb-3" />
-               <p className="text-foreground text-xl font-semibold">Submission Sent!</p>
-               <p className="text-muted-foreground mt-1">Now, we wait for the others... and the Judge's verdict!</p>
-               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto mt-3" />
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg z-50 flex flex-col items-center justify-center text-center p-4"
+            >
+              <Image
+                src="/ui/waiting-v1.png"
+                alt="Waiting for other players"
+                width={300}
+                height={300}
+                className="object-contain"
+                data-ai-hint="waiting poster"
+              />
+              <p className="text-foreground text-xl font-semibold mt-6">Submission Sent!</p>
+              <p className="text-muted-foreground mt-2">Now, we wait for the others... and the Judge's verdict!</p>
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto mt-4" />
             </motion.div>
           )}
 
@@ -306,35 +316,29 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                           data-ai-hint="card front"
                         />
                         <div className="absolute inset-0">
-                          {isThisCardSelected ? (
-                            <div className="relative w-full h-full">
-                              <Textarea
-                                value={customCardText}
-                                onChange={(e) => setCustomCardText(e.target.value)}
-                                placeholder="Make it uniquely terrible..."
-                                className="absolute top-[18%] left-[50%] -translate-x-1/2 w-[85%] h-[40%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-normal p-2"
-                                onClick={(e) => e.stopPropagation()}
-                                maxLength={100}
-                              />
-                              <button
-                                type="button"
-                                className="absolute bottom-[16%] left-1/2 -translate-x-1/2 w-[45%] h-[20%] bg-transparent group"
-                                onClick={handleSubmit}
-                                disabled={isPending}
-                                aria-label="Submit custom card"
-                              >
-                                {isPending && (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Loader2 className="h-6 w-6 animate-spin text-black" />
-                                  </div>
-                                )}
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="w-full h-full flex justify-center items-center">
-                              <span className="font-im-fell text-black text-2xl leading-tight">Write your own...</span>
-                            </div>
-                          )}
+                          <div className="relative w-full h-full">
+                            <Textarea
+                              value={customCardText}
+                              onChange={(e) => setCustomCardText(e.target.value)}
+                              placeholder="Make it uniquely terrible..."
+                              className="absolute top-[18%] left-[50%] -translate-x-1/2 w-[85%] h-[40%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-normal p-2"
+                              onClick={(e) => e.stopPropagation()}
+                              maxLength={100}
+                            />
+                            <button
+                              type="button"
+                              className="absolute bottom-[16%] left-1/2 -translate-x-1/2 w-[45%] h-[20%] bg-transparent group"
+                              onClick={handleSubmit}
+                              disabled={isPending}
+                              aria-label="Submit custom card"
+                            >
+                              {isPending && (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Loader2 className="h-6 w-6 animate-spin text-black" />
+                                </div>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </>
                     ) : (
@@ -414,5 +418,3 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
-
-    
