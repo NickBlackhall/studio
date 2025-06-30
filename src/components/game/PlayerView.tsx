@@ -147,15 +147,36 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   
   if (gameState.gamePhase === 'category_selection') {
     return (
-       <Card className="text-center shadow-lg border-2 border-dashed border-muted rounded-xl">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold text-muted-foreground">Waiting for Judge</CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <Loader2 className="h-12 w-12 animate-spin text-accent mx-auto" />
-          <p className="text-muted-foreground mt-4">The Judge is pondering which category of doom to unleash...</p>
-        </CardContent>
-      </Card>
+      <PureMorphingModal
+        isOpen={true}
+        onClose={() => {}}
+        isDismissable={false}
+        variant="image"
+        className="p-0 w-auto h-auto max-w-lg"
+      >
+        <div className="relative">
+          <Image
+            src="/ui/waiting-for-judge-v1.png"
+            alt="Waiting for the Judge to select a category"
+            width={600}
+            height={750}
+            className="object-contain"
+            priority
+            data-ai-hint="waiting judge poster"
+          />
+          <div className="absolute top-[80%] left-1/2 -translate-x-1/2 w-[90%] text-center">
+            <p className="font-im-fell text-black text-xl xl:text-2xl font-semibold leading-tight">
+              The Judge is pondering which category of doom to unleash...
+            </p>
+            
+            <div className="flex items-center justify-center space-x-2 mt-3">
+              <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0 }} />
+              <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />
+              <motion.span className="block w-2.5 h-2.5 bg-black rounded-full" animate={{ y: [0, -6, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} />
+            </div>
+          </div>
+        </div>
+      </PureMorphingModal>
     );
   }
 
@@ -180,7 +201,12 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           />
           <div className="absolute top-[78%] left-1/2 -translate-x-1/2 w-[95%] text-center">
             <p className="font-im-fell text-black text-xl xl:text-2xl font-semibold leading-tight">
-              All responses are in.<br/> Who will be crowned the <br/>MOST TERRIBLE?
+              All responses are in. The<br/>
+              Judge is now deliberating.<br/>
+              Who will be crowned the
+            </p>
+            <p className="font-im-fell text-black text-2xl xl:text-3xl font-bold leading-tight mt-3">
+                MOST TERRIBLE?
             </p>
             
             <div className="flex items-center justify-center space-x-2 mt-3">
