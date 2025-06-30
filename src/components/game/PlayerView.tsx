@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { GameClientState, PlayerClientState, PlayerHandCard } from '@/lib/types';
@@ -173,8 +172,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         </AnimatePresence>
         <div className="relative w-full max-w-lg mx-auto text-center">
           <Image
-            src="/ui/time-for-judgement-poster.png"
-            alt="A poster that says Time for Judgement, with skulls and a gavel"
+            src="/ui/judgement-time-v2.png"
+            alt="A poster that says Judgement Time"
             width={1024}
             height={1280}
             className="w-full h-auto object-contain"
