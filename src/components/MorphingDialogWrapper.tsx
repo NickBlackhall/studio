@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -29,7 +28,7 @@ const MorphingDialogWrapper: React.FC<MorphingDialogWrapperProps> = ({
   const variantStyles = {
     default: 'bg-gradient-to-br from-purple-600 to-purple-700',
     winner: 'bg-gradient-to-br from-green-500 to-green-600',
-    scoreboard: 'bg-gradient-to-br from-red-500 to-red-600', 
+    scoreboard: 'bg-gradient-to-br from-red-500 to-red-600',
     settings: 'bg-gradient-to-br from-purple-600 to-purple-700',
     gameOver: 'bg-gradient-to-br from-gray-800 to-gray-900'
   };
@@ -45,29 +44,26 @@ const MorphingDialogWrapper: React.FC<MorphingDialogWrapperProps> = ({
     <motion.div
       initial={{ 
         clipPath: 'circle(0% at 50% 50%)',
-        scale: 0.5,
-        rotate: 10
       }}
       animate={{ 
         clipPath: 'circle(100% at 50% 50%)',
-        scale: 1,
-        rotate: 0
       }}
       exit={{ 
         clipPath: 'circle(0% at 50% 50%)',
-        scale: 0.5,
-        rotate: -10
       }}
       transition={{
-        duration: 0.6,
+        duration: 0.8,
         ease: [0.175, 0.885, 0.32, 1.275]
       }}
       className={cn(
-        `w-full h-full p-8 text-center text-white relative z-10 rounded-lg`,
+        `w-full h-full p-8 text-center text-white relative z-10 rounded-lg overflow-hidden`,
         !backgroundImage && variantStyles[variant],
         className
       )}
-      style={backgroundStyle}
+      style={{
+        ...backgroundStyle,
+        transformOrigin: 'center center'
+      }}
     >
       {icon && (
         <motion.div 
