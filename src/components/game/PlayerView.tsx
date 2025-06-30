@@ -166,7 +166,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
           />
           <div className="absolute top-[64%] left-1/2 -translate-x-1/2 w-[90%] text-center">
             <p className="font-im-fell text-black text-xl xl:text-2xl font-semibold leading-tight">
-              The Judge is picking a category.<br/>Tell them to hurry up!
+              The Judge is pondering which category of doom to unleash...
             </p>
             
             <div className="flex items-center justify-center space-x-2 mt-3">
@@ -238,7 +238,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg z-50 flex flex-col items-center justify-center text-center p-4"
+              className="absolute inset-0 backdrop-blur-sm rounded-lg z-50 flex flex-col items-center justify-center text-center p-4"
             >
               <Image
                 src="/ui/waiting-v1.png"
@@ -248,9 +248,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 className="object-contain"
                 data-ai-hint="waiting poster"
               />
-              <p className="text-foreground text-xl font-semibold mt-6">Submission Sent!</p>
-              <p className="text-muted-foreground mt-2">Now, we wait for the others... and the Judge's verdict!</p>
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto mt-4" />
+              <p className="font-im-fell text-black text-2xl font-bold mt-6">Submission Sent!</p>
+              <p className="font-im-fell text-black text-lg mt-2">Now, we wait for the others... and the Judge's verdict!</p>
+              <Loader2 className="h-6 w-6 animate-spin text-black/80 mx-auto mt-4" />
             </motion.div>
           )}
 
