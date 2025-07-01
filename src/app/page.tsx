@@ -354,11 +354,10 @@ export default function WelcomePage() {
     );
   }
 
-  // These derived consts can be defined after early returns if they use internalGame which is now guaranteed to be non-null
-  const gameIsActuallyActive = ACTIVE_PLAYING_PHASES.includes(internalGame.gamePhase as GamePhaseClientState);
   const isLobbyPhaseActive = internalGame.gamePhase === 'lobby';
-  const isSpectatorView = gameIsActuallyActive && !thisPlayerObject; 
-  const isActivePlayerOnLobbyPage = gameIsActuallyActive && thisPlayerObject; 
+  const isSpectatorView = !isLobbyPhaseActive && !thisPlayerObject;
+  const isActivePlayerInNonLobby = !isLobbyPhaseActive && thisPlayerObject;
+
 
   if (currentStep === 'welcome') {
     return (
@@ -426,7 +425,7 @@ export default function WelcomePage() {
               { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
             </Button>
           </div>
-        ) : isActivePlayerOnLobbyPage ? (
+        ) : isActivePlayerInNonLobby ? (
           <div className="w-full max-w-md text-center p-4">
             
             <Card className="my-4 border-primary/50 bg-muted/30 shadow-md">
