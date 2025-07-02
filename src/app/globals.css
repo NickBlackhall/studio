@@ -175,7 +175,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 25vh 1rem 2rem; /* Adjusted padding for better placement */
+  padding: 22vh 1rem 2rem; /* Adjusted padding for better placement */
   z-index: 10;
   position: relative;
 }
