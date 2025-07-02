@@ -148,7 +148,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             )}
           </AnimatePresence>
           <div className="text-center py-6">
-            <h2 className="text-2xl font-semibold text-foreground">Players are making terrible choices...</h2>
+            <h2 className="text-2xl font-im-fell text-foreground">Players are making terrible choices...</h2>
             <Loader2 className="h-10 w-10 animate-spin text-accent mx-auto my-4" />
             <p className="text-muted-foreground mt-1 text-lg">
               ({gameState.submissions?.length || 0} / {gameState.players.filter(p => p.id !== judge.id).length} submitted)
@@ -365,5 +365,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
+
+    
 
     
