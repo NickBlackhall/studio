@@ -1,8 +1,90 @@
 
 "use client";
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { PlayerClientState } from '@/lib/types';
+import styles from '@/components/layout/AvatarLoadingOverlay.module.css';
+
+// --- Loading Overlay Component (moved here to avoid circular dependencies) ---
+
+const AvatarLoadingOverlayInternal = () => {
+  const { isGlobalLoading, loadingMessage, playersForLoader } = useLoading();
+  const [animationKey, setAnimationKey] = useState(0);
+
+  const players = playersForLoader || [];
+  const logoPath = "/new-logo.png";
+
+  useEffect(() => {
+    if (isGlobalLoading) {
+      setAnimationKey(prev => prev + 1);
+    }
+  }, [isGlobalLoading, players.length]);
+
+  if (!isGlobalLoading) return null;
+
+  if (players.length === 0) {
+    return <FallbackLoader message={loadingMessage} />;
+  }
+
+  const playerDuration = 1.2;
+  const logoDuration = 2;
+  const totalDuration = (players.length * playerDuration) + logoDuration;
+
+  return (
+    <div className={styles.overlay}>
+      <div className={styles.loader} key={animationKey}>
+        {players.map((player, index) => {
+          const startTime = index * playerDuration;
+          const endTime = startTime + playerDuration;
+          const startPercent = (startTime / totalDuration) * 100;
+          const endPercent = (endTime / totalDuration) * 100;
+
+          return (
+            <div
+              key={`player-${player.id}-${animationKey}`}
+              className={styles.avatarLayer}
+              style={{
+                backgroundImage: `url(${player.avatar})`,
+                animationDuration: `${totalDuration}s`,
+                '--start-percent': `${Math.max(0, startPercent - 0.5)}%`,
+                '--show-start': `${startPercent}%`,
+                '--show-end': `${endPercent}%`,
+                '--end-percent': `${Math.min(100, endPercent + 0.5)}%`,
+              } as React.CSSProperties}
+            />
+          );
+        })}
+        
+        <div
+          className={`${styles.avatarLayer} ${styles.logoLayer}`}
+          style={{
+            backgroundImage: `url(${logoPath})`,
+            animationDuration: `${totalDuration}s`,
+            '--logo-start': `${((players.length * playerDuration) / totalDuration) * 100}%`,
+          } as React.CSSProperties}
+        />
+      </div>
+      
+      <div className={styles.message}>{loadingMessage}</div>
+      
+      {players.length > 0 && (
+        <div className={styles.playerList}>
+          Featuring: {players.map(p => p.name).join(", ")}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FallbackLoader = ({ message }: { message: string }) => (
+  <div className={styles.overlay}>
+    <div className={styles.fallbackSpinner} />
+    <div className={styles.message}>{message}</div>
+  </div>
+);
+
+
+// --- Context Definition & Provider ---
 
 interface LoadingContextType {
   isGlobalLoading: boolean;
@@ -20,16 +102,13 @@ export function LoadingProvider({ children }: { children: ReactNode }) {
   const [playersForLoader, setPlayersForLoader] = useState<PlayerClientState[]>([]);
 
   const showGlobalLoader = useCallback((options?: { message?: string; players?: PlayerClientState[] }) => {
-    console.log("GlobalLoader: Showing with options:", options);
     setLoadingMessage(options?.message || "Loading the terribleness...");
     setPlayersForLoader(options?.players || []);
     setIsGlobalLoading(true);
   }, []);
 
   const hideGlobalLoader = useCallback(() => {
-    console.log("GlobalLoader: Hiding");
     setIsGlobalLoading(false);
-    // Reset after a short delay to allow for fade-out
     setTimeout(() => {
         setLoadingMessage("Loading...");
         setPlayersForLoader([]);
@@ -39,6 +118,7 @@ export function LoadingProvider({ children }: { children: ReactNode }) {
   return (
     <LoadingContext.Provider value={{ isGlobalLoading, showGlobalLoader, hideGlobalLoader, loadingMessage, playersForLoader }}>
       {children}
+      <AvatarLoadingOverlayInternal />
     </LoadingContext.Provider>
   );
 }
