@@ -104,7 +104,7 @@ export default function RecapSequenceDisplay({
                     priority
                     data-ai-hint="scoreboard poster"
                 />
-                <div className="absolute inset-0 pt-[30%] pb-[15%] px-[10%]">
+                <div className="absolute top-[30%] bottom-[15%] left-[10%] right-[10%]">
                     <Scoreboard
                         players={players}
                         currentJudgeId={currentJudgeId}
