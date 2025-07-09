@@ -42,14 +42,14 @@ export default function GlobalLoadingOverlay() {
   return (
     <div
       className={`
-        fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background
+        fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm
         transition-opacity ease-in-out
         ${opacityClass}
       `}
       style={{ transitionDuration: `${FADE_DURATION_MS}ms` }} // Apply duration via style
     >
-      <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
-      <p className="text-xl text-primary font-semibold">Loading the terribleness...</p>
+      <Loader2 className="h-16 w-16 animate-spin text-primary-foreground mb-4" />
+      <p className="text-xl text-primary-foreground font-semibold">Loading the terribleness...</p>
     </div>
   );
 }
