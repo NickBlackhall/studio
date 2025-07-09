@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
@@ -300,13 +301,13 @@ export default function GamePage() {
       }
 
       if (recapStepInternal === 'winner') {
-        console.log("GamePage: recapEffect - Current step 'winner'. Setting 5s timer for 'scoreboard'.");
+        console.log("GamePage: recapEffect - Current step 'winner'. Setting 8s timer for 'scoreboard'.");
         recapVisualStepTimerRef.current = setTimeout(() => {
           if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
             console.log("GamePage: recapEffect - Timer expired for 'winner'. Transitioning to 'scoreboard'.");
             setRecapStepInternal('scoreboard');
           }
-        }, 5000);
+        }, 8000); // 3s for Face 1 + 5s for Face 2
       } else if (recapStepInternal === 'scoreboard') {
         console.log("GamePage: recapEffect - Current step 'scoreboard'. Setting 5s timer for 'getReady'.");
         recapVisualStepTimerRef.current = setTimeout(() => {
@@ -720,3 +721,5 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
+
+    

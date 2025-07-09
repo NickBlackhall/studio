@@ -47,7 +47,7 @@ export default function RecapSequenceDisplay({
     // Schedule the first flip
     timers.push(setTimeout(() => {
       if (isMountedRef.current) setIsFlipped(true);
-    }, 2000)); // 2 seconds after slide-in starts
+    }, 3000)); // 3 seconds after slide-in starts
 
     // TODO: Schedule subsequent flips for scoreboard etc. here
     // timers.push(setTimeout(() => {
@@ -132,3 +132,5 @@ export default function RecapSequenceDisplay({
 
   return null;
 }
+
+    
