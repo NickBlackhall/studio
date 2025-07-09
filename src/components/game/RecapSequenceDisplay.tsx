@@ -132,5 +132,3 @@ export default function RecapSequenceDisplay({
 
   return null;
 }
-
-    
