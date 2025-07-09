@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { PlayerClientState } from '@/lib/types';
 import Scoreboard from './Scoreboard';
 import FlippingWinnerCard from './FlippingWinnerCard';
+import Image from 'next/image';
 
 interface RecapSequenceDisplayProps {
   recapStep: 'winner' | 'scoreboard' | 'getReady' | null;
@@ -88,14 +89,26 @@ export default function RecapSequenceDisplay({
         <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-hidden">
             <motion.div
                 key="scoreboard-step"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
-                className="flex flex-col items-center justify-center text-center w-full max-w-md"
+                className="relative w-full max-w-md"
             >
-                <div className="w-full">
-                    <Scoreboard players={players} currentJudgeId={currentJudgeId} defaultOpen={true} />
+                <Image
+                    src="/backgrounds/scoreboard-poster.png"
+                    alt="Leaderboard"
+                    width={512}
+                    height={768}
+                    className="object-contain"
+                    priority
+                    data-ai-hint="scoreboard poster"
+                />
+                <div className="absolute inset-0 pt-[28%] pb-[15%] px-[10%]">
+                    <Scoreboard
+                        players={players}
+                        currentJudgeId={currentJudgeId}
+                    />
                 </div>
             </motion.div>
         </div>

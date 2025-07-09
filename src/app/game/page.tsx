@@ -654,13 +654,26 @@ export default function GamePage() {
       <PureMorphingModal
         isOpen={isScoreboardOpen}
         onClose={() => setIsScoreboardOpen(false)}
-        variant="scoreboard"
-        className="particle-overlay p-4"
+        variant="image"
+        className="p-0 w-auto h-auto max-w-md bg-transparent"
       >
-        <Scoreboard
-          players={internalGameState.players}
-          currentJudgeId={internalGameState.currentJudgeId}
-        />
+        <div className="relative">
+            <Image
+                src="/backgrounds/scoreboard-poster.png"
+                alt="Leaderboard"
+                width={512}
+                height={768}
+                className="object-contain"
+                priority
+                data-ai-hint="scoreboard poster"
+            />
+            <div className="absolute inset-0 pt-[28%] pb-[15%] px-[10%]">
+                <Scoreboard
+                    players={internalGameState.players}
+                    currentJudgeId={internalGameState.currentJudgeId}
+                />
+            </div>
+        </div>
       </PureMorphingModal>
 
       {/* Menu Modal */}

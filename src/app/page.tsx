@@ -412,9 +412,18 @@ export default function WelcomePage() {
                 <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch.</p>
               </CardContent>
             </Card>
-            <div className="my-6">
-              <h2 className="text-2xl font-semibold text-center mb-3 text-primary">Current Game Standings</h2>
-              <Scoreboard players={internalGame.players} currentJudgeId={internalGame.currentJudgeId} />
+            <div className="my-6 relative w-full max-w-sm mx-auto">
+                <Image
+                    src="/backgrounds/scoreboard-poster.png"
+                    alt="Leaderboard"
+                    width={512}
+                    height={768}
+                    className="object-contain"
+                    data-ai-hint="scoreboard poster"
+                />
+                <div className="absolute inset-0 pt-[28%] pb-[15%] px-[10%]">
+                    <Scoreboard players={internalGame.players} currentJudgeId={internalGame.currentJudgeId} />
+                </div>
             </div>
             <Card className="shadow-md border-muted rounded-lg">
               <CardContent className="p-6">
