@@ -1,4 +1,3 @@
-
 "use client";
 
 import { motion } from 'framer-motion';
@@ -60,8 +59,8 @@ export default function FlippingWinnerCard({ isFlipped, winner, cardText }: Flip
           />
           <div className="absolute inset-0">
             {/* Avatar positioned within its area */}
-            <div className="absolute top-[21%] left-1/2 -translate-x-1/2 w-[40%]">
-              <Avatar className="w-full h-auto aspect-square rounded-full border-4 border-black shadow-lg">
+            <div className="absolute top-[19%] left-1/2 -translate-x-1/2 w-[48%]">
+              <Avatar className="w-full h-auto aspect-square rounded-md">
                 <AvatarImage src={winner.avatar} alt={winner.name} />
                 <AvatarFallback>{winner.name?.substring(0, 2).toUpperCase() || 'P'}</AvatarFallback>
               </Avatar>
