@@ -236,17 +236,17 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-transparent backdrop-blur-sm rounded-lg z-50 flex flex-col items-center justify-center text-center p-4"
+              className="absolute inset-0 bg-transparent backdrop-blur-sm rounded-lg z-50 flex flex-col items-center justify-start text-center p-4 pt-12"
             >
               <Image
                 src="/ui/waiting-v1.png"
                 alt="Waiting for other players"
-                width={300}
-                height={300}
+                width={250}
+                height={250}
                 className="object-contain"
                 data-ai-hint="waiting poster"
               />
-              <p className="font-im-fell text-black text-2xl font-bold mt-6">Submission Sent!</p>
+              <p className="font-im-fell text-black text-2xl font-bold mt-4">Submission Sent!</p>
               <p className="font-im-fell text-black text-lg mt-2">Now, we wait for the others... and the Judge's verdict!</p>
               <Loader2 className="h-6 w-6 animate-spin text-black/80 mx-auto mt-4" />
             </motion.div>
