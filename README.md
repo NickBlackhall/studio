@@ -26,7 +26,7 @@ The project is currently a **fully functional prototype**. The entire real-time 
 
 ## Solved Issues & Recent Updates
 
-This section tracks recent improvements and bug fixes to help collaborators understand the project's trajectory.
+This section tracks recent improvements and bug fixes that have impacted gameplay, UI, and UX.
 
 - **Fixed Spectator Black Screen:** Resolved a critical bug where new users would see a black screen if they tried to join a game that was already in a non-lobby state (e.g., 'game_over'). The UI now correctly shows a "Game in Progress" spectator view.
 - **Corrected TypeScript Error:** Fixed a type error where the `isCustom` property was not correctly defined on the `PlayerHandCard` interface, improving code quality and type safety.
@@ -34,10 +34,24 @@ This section tracks recent improvements and bug fixes to help collaborators unde
 - **UI Polish - Player Setup:** Adjusted the vertical alignment of the "name" input field on the player setup screen for better visual balance.
 - **UI Polish - Font Consistency:** Updated the font on the Judge's waiting screen to match the game's overall `IM Fell` aesthetic.
 
-## Known Issues & Next Steps
+## Roadmap & Next Steps
 
-This is a living project with opportunities for future improvement.
+This is a living document outlining the future direction of the project.
 
-- **Further UI/UX Polish:** While functional, many screens could benefit from further refinement, sound effects, and more dynamic animations to enhance the "party game" feel.
-- **Content Expansion:** The game is driven by its content. Adding more scenarios and response cards is a continuous task to keep the game fresh and replayable.
-- **Error Handling:** Robustness can be improved with more comprehensive error handling and user feedback for edge cases (e.g., a player disconnecting mid-game).
+### Immediate Priorities
+Our current focus is on refining the core experience and preparing the app for a wider audience.
+- **UI/UX Polish:** Finalize styling for key game states, including loading screens and the round/game winner announcement sequences to make them more engaging.
+- **Stability & Testing:** Ensure all existing features work flawlessly across different scenarios and user interactions.
+- **PWA Readiness:** Begin implementing the necessary architecture and features to make the game a fully installable Progressive Web App.
+
+### Upcoming Features
+These are the next major gameplay mechanics and features on the horizon.
+- **"Boondoggles":** Introduce mini-games to break up the main gameplay loop and keep the group engaged in new ways.
+- **Audio Experience:** Add background music to the welcome, setup, and lobby screens. Implement sound effects for key game actions to enhance the user experience.
+
+### Long-Term Vision
+These are larger-scale ideas for the future evolution of the game.
+- **Multiple Game Modes:** Differentiate between "Remote" and "In-Person" play, potentially with different UI/UX considerations.
+- **Custom Rule Sets:** Introduce rule variations like a "Drinking Game Mode" or a "Family Friendly Mode" that filters adult content.
+- **Multi-Room Support:** Build the infrastructure to allow for multiple, separate game instances to run concurrently.
+- **Community Content:** Create forms for users to submit their own scenario and response card ideas, which can then be curated and added to the official game deck.
