@@ -32,7 +32,7 @@ const PureMorphingModal: React.FC<PureMorphingModalProps> = ({
   const variantStyles = {
     default: 'bg-gradient-to-br from-purple-600 to-purple-700',
     winner: 'bg-gradient-to-br from-green-500 to-green-600',
-    scoreboard: 'bg-gradient-to-br from-red-500 to-red-600', 
+    scoreboard: 'bg-red-600', 
     settings: 'bg-gradient-to-br from-purple-600 to-purple-700',
     gameOver: 'bg-gradient-to-br from-gray-800 to-gray-900',
     image: 'bg-transparent',

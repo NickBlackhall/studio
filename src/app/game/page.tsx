@@ -655,14 +655,11 @@ export default function GamePage() {
         isOpen={isScoreboardOpen}
         onClose={() => setIsScoreboardOpen(false)}
         variant="scoreboard"
-        icon="🏆"
-        title="Scoreboard"
-        className="particle-overlay"
+        className="particle-overlay p-4"
       >
         <Scoreboard
           players={internalGameState.players}
           currentJudgeId={internalGameState.currentJudgeId}
-          defaultOpen={true}
         />
       </PureMorphingModal>
 
