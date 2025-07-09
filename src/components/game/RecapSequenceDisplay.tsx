@@ -65,7 +65,7 @@ export default function RecapSequenceDisplay({
   // The 'winner' step now controls the new flipping card animation
   if (recapStep === 'winner') {
     return (
-       <div className="fixed inset-0 z-[60] bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-hidden">
+       <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-hidden">
         <motion.div
           initial={{ x: '-110vw' }}
           animate={{ x: isSlidIn ? 0 : '-110vw' }}
@@ -85,7 +85,7 @@ export default function RecapSequenceDisplay({
   // Scoreboard and GetReady steps remain for now, but will be integrated into the card flip later
   if (recapStep === 'scoreboard') {
      return (
-        <div className="fixed inset-0 z-[60] bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-hidden">
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-hidden">
             <motion.div
                 key="scoreboard-step"
                 initial={{ opacity: 0, y: 20 }}
@@ -104,7 +104,7 @@ export default function RecapSequenceDisplay({
 
   if (recapStep === 'getReady') {
       return (
-        <div className="fixed inset-0 z-[60] bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-hidden">
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-hidden">
             <motion.div
                 key="getReady-step"
                 initial={{ opacity: 0, y: 20 }}
