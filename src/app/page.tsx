@@ -421,7 +421,7 @@ export default function WelcomePage() {
                     className="object-contain"
                     data-ai-hint="scoreboard poster"
                 />
-                <div className="absolute top-[30%] bottom-[15%] left-[10%] right-[10%]">
+                <div className="absolute top-[40%] bottom-[15%] left-[10%] right-[10%]">
                     <Scoreboard players={internalGame.players} currentJudgeId={internalGame.currentJudgeId} />
                 </div>
             </div>
