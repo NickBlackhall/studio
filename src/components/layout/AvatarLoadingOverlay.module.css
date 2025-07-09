@@ -39,11 +39,12 @@
   opacity: 0;
   animation-name: playerSequence;
   animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite; 
+  animation-iteration-count: 1; /* Changed from infinite to 1 */
+  animation-fill-mode: forwards; /* Added to hold final state */
 }
 
 .logoLayer {
-  background-size: 85% !important;
+  background-size: contain !important; /* Changed from 85% to contain */
   animation-name: logoSequence !important;
 }
 
