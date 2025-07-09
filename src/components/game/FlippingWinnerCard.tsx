@@ -79,7 +79,7 @@ export default function FlippingWinnerCard({ isFlipped, winner, cardText }: Flip
             </div>
             
             {/* Response Card positioned at the bottom */}
-            <div className="absolute bottom-[15%] left-1/2 -translate-x-1/2 w-[88%] aspect-[1536/600]">
+            <div className="absolute bottom-[18%] left-1/2 -translate-x-1/2 w-[88%] aspect-[1536/600]">
               <Image
                 src="/ui/mit-card-front.png"
                 alt="Winning response card"
