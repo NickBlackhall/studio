@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Player } from '@/lib/types';
@@ -39,7 +40,7 @@ export default function Scoreboard({ players, currentJudgeId }: ScoreboardProps)
                 className="rounded-md object-contain flex-shrink-0"
                 data-ai-hint="player avatar"
               />
-              <div className="flex items-center gap-2 min-w-0 border-2 border-red-500">
+              <div className="flex items-center gap-2 min-w-0 border-2 border-red-500 mt-1">
                 <span className="font-im-fell text-2xl font-bold truncate">{player.name}</span>
                 {player.id === currentJudgeId && (
                    <Badge className="bg-[#d93736] text-white font-corben text-[10px] border-2 border-black -rotate-6 shadow-md px-1.5 py-0">
