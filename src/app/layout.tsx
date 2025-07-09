@@ -3,7 +3,7 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
-import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
+import AvatarLoadingOverlay from '@/components/layout/AvatarLoadingOverlay';
 
 export const metadata: Metadata = {
   title: 'Make It Terrible',
@@ -39,7 +39,7 @@ export default function RootLayout({
             </main>
           </div>
           <Toaster />
-          <GlobalLoadingOverlay />
+          <AvatarLoadingOverlay />
         </LoadingProvider>
       </body>
     </html>

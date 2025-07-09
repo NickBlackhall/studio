@@ -32,18 +32,6 @@ import { PureMorphingModal } from '@/components/PureMorphingModal';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
 
-
-const loadingMessages = [
-  "Loading your mother's butt...",
-  "Looooong fart noises loading....",
-  "Consulting the humor overlords...",
-  "Should I...? No. That's over the line. Oh, sorry. Loading the game or whatever...",
-  "Thinking of something funny to say since you obviously can't...",
-  "🎶 After these messages....We'll be right back 🎵",
-  "Have you seen the dog avatar? That's Ellie. She's the best"
-];
-
-
 export default function GamePage() {
   const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
   const gameStateRef = useRef<GameClientState | null>(null);
@@ -51,7 +39,6 @@ export default function GamePage() {
   const [thisPlayer, setThisPlayerInternal] = useState<PlayerClientState | null>(null);
   const thisPlayerRef = useRef<PlayerClientState | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
@@ -60,7 +47,6 @@ export default function GamePage() {
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState(loadingMessages[0]);
 
   const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
   const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for visual step duration
@@ -81,8 +67,8 @@ export default function GamePage() {
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     console.log(`GamePage: fetchGameAndPlayer called from ${origin}.`);
-    if (!isLoading && isMountedRef.current) {
-        // setIsLoading(true);
+    if (isMountedRef.current) {
+        showGlobalLoader({ message: 'Syncing with the mothership...' });
     }
     let localGameId: string | null = null;
     try {
@@ -136,17 +122,15 @@ export default function GamePage() {
       if (isMountedRef.current) toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
     } finally {
       if (isMountedRef.current) {
-        setIsLoading(false);
         hideGlobalLoader();
       }
-      console.log(`GamePage: fetchGameAndPlayer (from ${origin}) sequence ended. isLoading: ${false}`);
+      console.log(`GamePage: fetchGameAndPlayer (from ${origin}) sequence ended.`);
     }
-  }, [router, toast, isLoading, setGameState, setThisPlayer, hideGlobalLoader]);
+  }, [router, toast, setGameState, setThisPlayer, hideGlobalLoader, showGlobalLoader]);
 
   useEffect(() => {
     isMountedRef.current = true;
     console.log("GamePage: Mounting. Starting initial data fetch.");
-    setLoadingMessage(loadingMessages[Math.floor(Math.random() * loadingMessages.length)]);
     fetchGameAndPlayer("initial mount");
 
     return () => {
@@ -362,6 +346,7 @@ export default function GamePage() {
   const handleStartGame = async () => {
     if (internalGameState?.gameId && internalGameState.gamePhase === 'lobby' && internalGameState.players.length >= MIN_PLAYERS_TO_START ) {
       startActionTransition(async () => {
+        showGlobalLoader({ message: "Starting game...", players: internalGameState.players });
         console.log("GamePage: Client calling startGame server action.");
         try {
           await startGame(internalGameState.gameId);
@@ -369,6 +354,8 @@ export default function GamePage() {
         } catch (error: any) {
           console.error("GamePage: Error starting game:", error);
           if (isMountedRef.current) toast({title: "Cannot Start", description: error.message || "Failed to start game.", variant: "destructive"});
+        } finally {
+          if (isMountedRef.current) hideGlobalLoader();
         }
       });
     } else {
@@ -379,11 +366,14 @@ export default function GamePage() {
   const handleSelectCategory = async (category: string) => {
     if (internalGameState?.gameId) {
       startActionTransition(async () => {
+        showGlobalLoader({ message: "Unleashing scenario...", players: internalGameState.players });
         try {
           await selectCategory(internalGameState.gameId, category);
         } catch (error: any) {
           console.error("GamePage: Error selecting category:", error);
           if (isMountedRef.current) toast({title: "Category Error", description: error.message || "Failed to select category.", variant: "destructive"});
+        } finally {
+          if (isMountedRef.current) hideGlobalLoader();
         }
       });
     }
@@ -392,11 +382,14 @@ export default function GamePage() {
   const handleSelectWinner = async (winningCardText: string) => {
     if (internalGameState?.gameId) {
       startActionTransition(async () => {
+        showGlobalLoader({ message: "Crowning a winner...", players: internalGameState.players });
         try {
           await selectWinner(winningCardText, internalGameState.gameId);
         } catch (error: any) {
           console.error("GamePage: Error selecting winner:", error);
           if (isMountedRef.current) toast({title: "Winner Selection Error", description: error.message || "Failed to select winner.", variant: "destructive"});
+        } finally {
+          if (isMountedRef.current) hideGlobalLoader();
         }
       });
     }
@@ -404,8 +397,8 @@ export default function GamePage() {
 
   const handleNextRound = async () => {
     let currentActionError: any = null;
-    if (gameStateRef.current?.gameId) { // Use ref here for potentially immediate calls
-      if (isMountedRef.current) setIsLoading(true); 
+    if (gameStateRef.current?.gameId) { 
+      showGlobalLoader({ message: "Starting next round...", players: gameStateRef.current.players });
       try {
         console.log(`GamePage: Calling nextRound server action for game ${gameStateRef.current.gameId}`);
         await nextRound(gameStateRef.current.gameId);
@@ -424,7 +417,7 @@ export default function GamePage() {
             wasRedirect = true;
         }
         if (!wasRedirect && isMountedRef.current) {
-           setIsLoading(false);
+           hideGlobalLoader();
         }
       }
     }
@@ -434,9 +427,7 @@ export default function GamePage() {
     let currentActionError: any = null;
     if (internalGameState?.gameId) {
       console.log("GamePage: Player clicked 'Yes, Play Again!'. Calling resetGameForTesting.");
-      if (isMountedRef.current) {
-        setIsLoading(true);
-      }
+      showGlobalLoader({ message: 'Resetting game for another round of terror...' });
       startActionTransition(async () => {
         try {
           await resetGameForTesting();
@@ -457,7 +448,7 @@ export default function GamePage() {
                 wasRedirect = true;
             }
             if (!wasRedirect && isMountedRef.current) {
-              setIsLoading(false);
+              hideGlobalLoader();
             }
         }
       });
@@ -472,9 +463,7 @@ export default function GamePage() {
   const handleResetGameFromGamePage = async () => {
     console.log("🔴 RESET (GamePage Client): Button clicked - calling resetGameForTesting server action.");
     let currentActionError: any = null;
-    if (isMountedRef.current) {
-        setIsLoading(true);
-    }
+    showGlobalLoader({ message: "Resetting the game..." });
     startActionTransition(async () => {
       try {
         await resetGameForTesting();
@@ -498,21 +487,12 @@ export default function GamePage() {
             wasRedirect = true;
         }
         if (!wasRedirect && isMountedRef.current) {
-           setIsLoading(false);
+           hideGlobalLoader();
         }
       }
     });
   };
 
-
-  if (isLoading && (!internalGameState || (!thisPlayer && internalGameState?.gamePhase !== 'winner_announcement' && internalGameState?.gamePhase !== 'game_over' && internalGameState?.gamePhase !== 'lobby'))) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-        <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
-        <p className="text-2xl text-muted-foreground">{loadingMessage}</p>
-      </div>
-    );
-  }
 
   if (!internalGameState || !internalGameState.gameId) {
     return (
@@ -522,7 +502,7 @@ export default function GamePage() {
         <p className="text-lg text-muted-foreground mb-8">
           Could not load or initialize the game session. Please try again or reset.
         </p>
-        <Link href="/?step=setup" onClick={() => {  }}>
+        <Link href="/?step=setup" onClick={() => { showGlobalLoader({ message: 'Returning to lobby...' }) }}>
           <Button variant="default" size="lg" className="bg-primary text-primary-foreground hover:bg-primary/80 text-lg">
             <Home className="mr-2 h-5 w-5" /> Go to Lobby Setup
           </Button>
@@ -542,7 +522,7 @@ export default function GamePage() {
             <p className="text-lg text-muted-foreground mb-8">
               The game session has been reset or ended.
             </p>
-             <Link href="/?step=setup" className="mt-6" onClick={() => {  }}>
+             <Link href="/?step=setup" className="mt-6" onClick={() => { showGlobalLoader({ message: 'Returning to lobby...' }) }}>
                 <Button variant="default" size="lg">
                     Go to Player Setup & Lobby
                 </Button>
@@ -559,7 +539,7 @@ export default function GamePage() {
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
           <p className="text-xl text-muted-foreground">Identifying player...</p>
           <p className="text-sm mt-2">If this persists, you might not be part of this game or try returning to the lobby.</p>
-           <Link href="/?step=setup" className="mt-4" onClick={() => {  }}>
+           <Link href="/?step=setup" className="mt-4" onClick={() => { showGlobalLoader({ message: 'Returning to lobby...' }) }}>
             <Button variant="outline">Go to Lobby</Button>
           </Link>
         </div>
@@ -592,7 +572,7 @@ export default function GamePage() {
             <div className="text-center py-10">
                 <h2 className="text-2xl font-semibold mb-4">Game is in Lobby</h2>
                 <p className="mb-4">The game has returned to the lobby. Please go to player setup.</p>
-                <Link href="/?step=setup" onClick={() => {  }}>
+                <Link href="/?step=setup" onClick={() => { showGlobalLoader({ message: 'Loading setup...' }) }}>
                     <Button>Go to Lobby Setup</Button>
                 </Link>
             </div>
@@ -600,8 +580,6 @@ export default function GamePage() {
     }
 
     if (recapStepInternal) {
-      // Recap sequence is handled by the <RecapSequenceDisplay /> rendered below this main content div.
-      // We don't render main game content here when recap is active.
       return null; 
     }
 
@@ -619,7 +597,7 @@ export default function GamePage() {
     );
   };
 
-  const showPendingOverlay = isActionPending && !isLoading;
+  const showPendingOverlay = isActionPending;
 
   return (
     <>
@@ -630,14 +608,12 @@ export default function GamePage() {
           lastWinnerCardText={internalGameState.lastWinner.cardText}
           players={internalGameState.players}
           currentJudgeId={internalGameState.currentJudgeId}
-          defaultOpenScoreboard={recapStepInternal === 'scoreboard'}
         />
       )}
       <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 ${recapStepInternal ? 'opacity-20 pointer-events-none' : ''}`}>
         <main className="flex-grow w-full md:w-full lg:w-full relative order-1 md:order-2">
           {showPendingOverlay && (
-              <div className="absolute inset-0 bg-background/70 flex items-center justify-center z-50 rounded-lg">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <div className="absolute inset-0 bg-transparent flex items-center justify-center z-50 rounded-lg">
               </div>
           )}
           {renderGameContent()}
@@ -709,9 +685,9 @@ export default function GamePage() {
               setIsMenuModalOpen(false);
             }}
             className="bg-red-500/80 hover:bg-red-600/80 text-white"
-            disabled={isActionPending || isLoading}
+            disabled={isActionPending}
           >
-            {isActionPending || isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Reset Game (Testing)
           </Button>
         </div>
@@ -731,5 +707,3 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
-
-    

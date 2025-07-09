@@ -1,0 +1,105 @@
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: 'Corben', sans-serif;
+  color: hsl(var(--background));
+}
+
+.loader {
+  width: 150px;
+  height: 150px;
+  position: relative;
+  border-radius: 15px;
+  border: 3px solid hsl(var(--accent));
+  overflow: hidden;
+  box-shadow: 0 8px 35px rgba(0,0,0,0.5);
+  background: #111;
+  margin: 20px 0;
+}
+
+.avatarLayer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  animation-name: playerSequence;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite; 
+}
+
+.logoLayer {
+  background-size: 85% !important;
+  animation-name: logoSequence !important;
+}
+
+.message {
+  font-family: 'IM Fell English SC', serif;
+  color: #e0e0e0;
+  font-style: normal;
+  margin-top: 15px;
+  font-size: 1.5em;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.playerList {
+  color: #a0a0a0;
+  font-size: 0.9em;
+  margin-top: 10px;
+  max-width: 80%;
+  text-align: center;
+}
+
+.fallbackSpinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid hsl(var(--primary) / 0.2);
+  border-top: 5px solid hsl(var(--accent));
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes playerSequence {
+  0%, var(--start-percent) { opacity: 0; }
+  var(--show-start), var(--show-end) { opacity: 1; }
+  var(--end-percent), 100% { opacity: 0; }
+}
+
+@keyframes logoSequence {
+  0%, calc(var(--logo-start) - 0.5%) { opacity: 0; }
+  var(--logo-start), 100% { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .loader {
+    width: 120px;
+    height: 120px;
+  }
+  .message {
+    font-size: 1.2em;
+  }
+  .playerList {
+    font-size: 0.8em;
+    max-width: 90%;
+  }
+}

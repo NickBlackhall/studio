@@ -34,7 +34,6 @@ export default function WelcomePage() {
   const [internalThisPlayerId, setInternalThisPlayerId] = useState<string | null>(null);
   const thisPlayerIdRef = useRef<string | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isProcessingAction, startPlayerActionTransition] = useTransition();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
@@ -81,7 +80,7 @@ export default function WelcomePage() {
     const isInitialOrResetCall = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || (!gameRef.current?.gameId && !gameIdToFetch);
     
     if (isInitialOrResetCall && isMountedRef.current) {
-      // setIsLoading(true); 
+      showGlobalLoader({ message: 'Finding the game...' });
     }
     
     try {
@@ -143,16 +142,14 @@ export default function WelcomePage() {
         }
       }
     } finally {
-      if (isInitialOrResetCall && isMountedRef.current) {
-         setIsLoading(false); 
+      if (isMountedRef.current) {
          hideGlobalLoader(); 
-      } else if (isMountedRef.current) {
-         // Non-initial call completed
       }
     }
-  }, [toast, hideGlobalLoader, parseReadyPlayerOrderStr, setGame, setThisPlayerId]);
+  }, [toast, hideGlobalLoader, showGlobalLoader, parseReadyPlayerOrderStr, setGame, setThisPlayerId]);
 
   const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
+      showGlobalLoader({ message: 'Adding you to the lobby...' });
       const currentGameId = gameRef.current?.gameId;
       if (newPlayer && newPlayer.id && currentGameId && isMountedRef.current) {
           const localStorageKey = `thisPlayerId_game_${currentGameId}`;
@@ -160,12 +157,12 @@ export default function WelcomePage() {
           setThisPlayerId(newPlayer.id);
           await fetchGameData(`handlePlayerAdded after creating player ${newPlayer.id}`, currentGameId);
       }
-  }, [fetchGameData, setThisPlayerId]);
+      hideGlobalLoader();
+  }, [fetchGameData, setThisPlayerId, showGlobalLoader, hideGlobalLoader]);
 
 
   useEffect(() => {
     isMountedRef.current = true;
-    showGlobalLoader(); 
     fetchGameData(`useEffect[] mount or currentStep change to: ${currentStep}`);
     
     return () => {
@@ -185,7 +182,7 @@ export default function WelcomePage() {
         currentStep === 'setup' &&
         localThisPlayerId 
       ) {
-      showGlobalLoader();
+      showGlobalLoader({ message: 'Joining active game...', players: gameForNavCheck.players });
       router.push('/game');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps 
@@ -194,7 +191,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     const currentGameId = internalGame?.gameId;
-    if (!currentGameId || isLoading) {
+    if (!currentGameId) {
       return () => {};
     }
 
@@ -241,7 +238,7 @@ export default function WelcomePage() {
         supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime cleanup): Error removing game channel on WelcomePage:", err));
       }
     };
-  }, [internalGame?.gameId, internalThisPlayerId, currentStep, isLoading, setGame, parseReadyPlayerOrderStr]); 
+  }, [internalGame?.gameId, internalThisPlayerId, currentStep, setGame, parseReadyPlayerOrderStr]); 
 
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
@@ -256,7 +253,7 @@ export default function WelcomePage() {
   }, [internalGame, thisPlayerObject]);
 
   const handleResetGame = async () => {
-    showGlobalLoader(); 
+    showGlobalLoader({ message: 'Resetting the entire game...' }); 
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
@@ -305,7 +302,7 @@ export default function WelcomePage() {
       } catch (error: any) {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            showGlobalLoader(); 
+            showGlobalLoader({ message: 'Starting game...', players: gameRef.current?.players }); 
             return; 
           }
           toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
@@ -317,7 +314,7 @@ export default function WelcomePage() {
   const handleStartGame = async () => {
     const gameToStart = internalGame;
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
-        showGlobalLoader();
+        showGlobalLoader({ message: 'Dealing cards and starting the mayhem...', players: gameToStart.players });
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
@@ -334,20 +331,11 @@ export default function WelcomePage() {
     }
   };
   
-
-  if (isLoading && !internalGame ) { 
-    return (
-      <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        {/* Global loader is active */}
-      </div>
-    );
-  }
-  
   if (!internalGame || !internalGame.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
         <p className="text-xl text-destructive mt-4">Could not initialize game session. Please try refreshing.</p>
-         <Button onClick={() => { showGlobalLoader(); window.location.reload(); }} variant="outline" className="mt-4">
+         <Button onClick={() => { showGlobalLoader({ message: 'Refreshing...' }); window.location.reload(); }} variant="outline" className="mt-4">
           Refresh Page
         </Button>
       </div>
@@ -373,7 +361,7 @@ export default function WelcomePage() {
         <div className="relative z-10 flex flex-grow items-center justify-center">
           <button
             onClick={() => {
-              showGlobalLoader();
+              showGlobalLoader({ message: 'Loading setup...' });
               router.push('/?step=setup');
             }}
             className="group animate-slow-scale-pulse"
@@ -430,8 +418,8 @@ export default function WelcomePage() {
                 <p className="text-muted-foreground">The lobby will re-open once the current game finishes. Hang tight!</p>
               </CardContent>
             </Card>
-            <Button onClick={handleResetGame} variant="destructive" className="mt-6" disabled={isProcessingAction || isLoading}>
-              { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
+            <Button onClick={handleResetGame} variant="destructive" className="mt-6" disabled={isProcessingAction}>
+              { isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
             </Button>
           </div>
         ) : isActivePlayerInNonLobby ? (
@@ -446,7 +434,7 @@ export default function WelcomePage() {
               <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
                 <p>The current game is in the &quot;{internalGame.gamePhase}&quot; phase.</p>
                 <Button
-                  onClick={() => { showGlobalLoader(); router.push('/game'); }}
+                  onClick={() => { showGlobalLoader({ message: 'Rejoining game...', players: internalGame.players }); router.push('/game'); }}
                   variant="default"
                   size="sm"
                   className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
@@ -455,8 +443,8 @@ export default function WelcomePage() {
                 </Button>
               </CardContent>
             </Card>
-            <Button onClick={handleResetGame} variant="destructive" className="mt-6" disabled={isProcessingAction || isLoading}>
-              { (isProcessingAction || isLoading) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
+            <Button onClick={handleResetGame} variant="destructive" className="mt-6" disabled={isProcessingAction}>
+              { isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
             </Button>
           </div>
         ) : isLobbyPhaseActive && thisPlayerObject ? (
@@ -577,8 +565,8 @@ export default function WelcomePage() {
                       </DialogTrigger>
                       <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
                     </Dialog>
-                    <Button onClick={handleResetGame} variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80" disabled={isProcessingAction || isLoading}>
-                      { (isProcessingAction || isLoading) ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />} Reset Lobby
+                    <Button onClick={handleResetGame} variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80" disabled={isProcessingAction}>
+                      { isProcessingAction ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />} Reset Lobby
                     </Button>
                   </div>
                 </div>
@@ -610,7 +598,7 @@ export default function WelcomePage() {
       <div className="relative z-10 flex flex-grow items-center justify-center">
         <button
             onClick={() => {
-              showGlobalLoader();
+              showGlobalLoader({ message: 'Loading setup...' });
               router.push('/?step=setup');
             }}
             className="group animate-slow-scale-pulse"
