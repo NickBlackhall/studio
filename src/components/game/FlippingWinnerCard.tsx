@@ -5,49 +5,81 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { PlayerClientState } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import Scoreboard from './Scoreboard';
 
 interface FlippingWinnerCardProps {
-  isFlipped: boolean;
+  rotation: number;
   winner: PlayerClientState;
   cardText: string;
+  players: PlayerClientState[];
+  currentJudgeId: string | null;
 }
 
-export default function FlippingWinnerCard({ isFlipped, winner, cardText }: FlippingWinnerCardProps) {
-  const rotationY = isFlipped ? 180 : 0;
+export default function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeId }: FlippingWinnerCardProps) {
+  const [frontFaceContent, setFrontFaceContent] = useState<'banner' | 'scoreboard'>('banner');
   
-  const Face = ({ className, children, ...props }: { className?: string, children: React.ReactNode }) => (
+  // Switch the content of the "front" face mid-flip (at 270 degrees)
+  useEffect(() => {
+    if (rotation > 270) {
+      setFrontFaceContent('scoreboard');
+    } else {
+      setFrontFaceContent('banner');
+    }
+  }, [rotation]);
+
+  const Face = ({ className, children, style }: { className?: string, children: React.ReactNode, style?: React.CSSProperties }) => (
     <div
       className={`absolute w-full h-full [backface-visibility:hidden] rounded-2xl overflow-hidden ${className}`}
-      {...props}
+      style={style}
     >
       {children}
     </div>
   );
 
   return (
-    // Set the aspect ratio and perspective for the 3D effect
     <div className="w-full aspect-[1024/1536]" style={{ perspective: '1200px' }}>
       <motion.div
         className="relative w-full h-full"
         style={{ transformStyle: 'preserve-3d' }}
         initial={{ rotateY: 0 }}
-        animate={{ rotateY: rotationY }}
-        transition={{ duration: 0.8, ease: 'easeInOut' }}
+        animate={{ rotateY: rotation }}
+        transition={{ duration: 1.2, ease: 'easeInOut' }}
       >
-        {/* Face 1: The "Round Winner" banner */}
+        {/* Front Face: Switches between banner and scoreboard */}
         <Face className="bg-black">
-          <Image
-            src="/backgrounds/round-winner-poster.png"
-            alt="Round Winner"
-            fill
-            className="object-cover"
-            priority
-            sizes="(max-width: 768px) 100vw, 50vw"
-            data-ai-hint="winner banner"
-          />
+          {frontFaceContent === 'banner' ? (
+            <Image
+              src="/backgrounds/round-winner-poster.png"
+              alt="Round Winner"
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
+              data-ai-hint="winner banner"
+            />
+          ) : (
+            <div className="relative w-full h-full">
+              <Image
+                src="/backgrounds/scoreboard-poster.png"
+                alt="Leaderboard"
+                width={512}
+                height={768}
+                className="object-cover w-full h-full"
+                priority
+                data-ai-hint="scoreboard poster"
+              />
+              <div className="absolute left-[10%] right-[10%] bottom-[15%]" style={{ top: '45%' }}>
+                <Scoreboard
+                  players={players}
+                  currentJudgeId={currentJudgeId}
+                />
+              </div>
+            </div>
+          )}
         </Face>
         
-        {/* Face 2: The winner details */}
+        {/* Back Face: Winner details */}
         <Face className="bg-black" style={{ transform: 'rotateY(180deg)' }}>
           <Image
             src="/backgrounds/winner-details-poster.png"
