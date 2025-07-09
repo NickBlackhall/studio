@@ -667,7 +667,7 @@ export default function GamePage() {
                 priority
                 data-ai-hint="scoreboard poster"
             />
-            <div className="absolute top-[42%] bottom-[15%] left-[10%] right-[10%]">
+            <div className="absolute left-[10%] right-[10%] bottom-[15%]" style={{ top: '45%' }}>
                 <Scoreboard
                     players={internalGameState.players}
                     currentJudgeId={internalGameState.currentJudgeId}
