@@ -91,11 +91,9 @@ export default function WelcomePage() {
         if (typeof fetchedGameState.ready_player_order_str === 'string') {
             fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
         } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
-            console.warn(`Client (fetchGameData): RPO was undefined or not an array from getGame(), defaulting to []. Game ID: ${fetchedGameState.gameId}, Origin: ${origin}`);
             fetchedGameState.ready_player_order = [];
         }
       } else {
-        console.warn(`Client (fetchGameData): fetchedGameState was null. (Origin: ${origin})`);
       }
       
       if (!isMountedRef.current) {
@@ -132,7 +130,6 @@ export default function WelcomePage() {
         }
       }
     } catch (error: any) {
-      console.error(`Client (fetchGameData): Failed to fetch game state (from ${origin}, gameIdToFetch: ${gameIdToFetch || 'N/A'}):`, error);
       if (isMountedRef.current) {
         if (gameIdToFetch) {
             toast({ title: "Game Update Failed", description: `Could not refresh game ${gameIdToFetch}: ${error.message}. State may be temporarily stale.`, variant: "default"});
@@ -243,15 +240,22 @@ export default function WelcomePage() {
 
   const sortedPlayersForDisplay = useMemo(() => {
     if (!internalGame || !internalGame.players) return [];
-    if (!thisPlayerObject) return internalGame.players;
-    
+
     const validPlayers = internalGame.players.filter((p): p is PlayerClientState => 
       typeof p === 'object' && p !== null && 'id' in p && 'name' in p
     );
     
-    const otherPlayers = validPlayers.filter(p => p.id !== thisPlayerObject.id);
-    return [thisPlayerObject, ...otherPlayers];
-  }, [internalGame, thisPlayerObject]);
+    // Always sort the players array to ensure a stable order for React's map key.
+    // The current player is moved to the top, and the rest are sorted by join time (or name as fallback).
+    return [...validPlayers].sort((a, b) => {
+        if (internalThisPlayerId) {
+            if (a.id === internalThisPlayerId) return -1;
+            if (b.id === internalThisPlayerId) return 1;
+        }
+        // Fallback sort for consistent order for all other players
+        return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [internalGame, internalThisPlayerId]);
 
 
   const handleResetGame = async () => {
@@ -294,6 +298,7 @@ export default function WelcomePage() {
     startPlayerActionTransition(async () => {
       try {
         await togglePlayerReadyStatus(player.id, currentGameId);
+        
       } catch (error: any) {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
