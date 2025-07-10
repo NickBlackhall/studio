@@ -57,6 +57,7 @@ export default function WelcomePage() {
   }, []);
 
   const setGame = useCallback((newGameState: GameClientState | null) => {
+    console.log("DEBUG: `setGame` function called. New state incoming.");
     gameRef.current = newGameState; 
     if (isMountedRef.current) {
       if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
@@ -195,10 +196,12 @@ export default function WelcomePage() {
     if (!gameId) return;
 
     const debouncedFetch = async () => {
+      console.log(`DEBUG: (Debounced) Realtime update triggered fetch for game ${gameId}.`);
       if (!isMountedRef.current) return;
       try {
         const fetchedGameState = await getGame(gameId);
         if (isMountedRef.current) {
+          console.log("DEBUG: (Debounced) Successfully fetched new game state. Now setting it.");
           setGame(fetchedGameState);
         }
       } catch (error) {
@@ -206,7 +209,8 @@ export default function WelcomePage() {
       }
     };
 
-    const handleRealtimeUpdate = () => {
+    const handleRealtimeUpdate = (payload: any) => {
+      console.log("DEBUG: Realtime update received from Supabase.", payload);
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = setTimeout(debouncedFetch, 300);
     };
@@ -277,6 +281,7 @@ export default function WelcomePage() {
   };
 
   const handleToggleReady = async (player: PlayerClientState) => {
+    console.log(`DEBUG: 1. Firing handleToggleReady for player ${player.name}`);
     const currentGameId = internalGame?.gameId; 
     const currentThisPlayerId = internalThisPlayerId; 
 
@@ -290,12 +295,15 @@ export default function WelcomePage() {
     }
 
     startPlayerActionTransition(async () => {
+      console.log(`DEBUG: 2. Calling server action 'togglePlayerReadyStatus'`);
       try {
         let updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
         if (isMountedRef.current) {
           if (updatedGameState) {
+            console.log("DEBUG: 3. Server action successful, received updated game state. Setting it now.");
             setGame(updatedGameState); 
           } else {
+            console.log("DEBUG: 3a. Server action returned null. Manually fetching new state as a fallback.");
             await fetchGameData(`handleToggleReady_null_fallback_game_${currentGameId}`, currentGameId);
           }
         }
@@ -499,7 +507,7 @@ export default function WelcomePage() {
                             ) : (
                                 <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>
                             )}
-                            <span className="text-3xl text-black truncate">{player.name}</span>
+                            <h2 className="text-3xl text-black truncate">{player.name}</h2>
                             </div>
                             <div className="flex-shrink-0 ml-2 flex items-center justify-center">
                             {player.id === thisPlayerObject?.id ? (
@@ -617,3 +625,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
