@@ -28,13 +28,15 @@ const AvatarLoadingOverlayInternal = () => {
 
   const playerDuration = 1.2;
   const logoDuration = 2;
+  const totalDuration = (players.length * playerDuration) + logoDuration;
 
   return (
     <div className={styles.overlay}>
       <div className={styles.loader} key={animationKey}>
         {players.map((player, index) => {
           const startTime = index * playerDuration;
-
+          const endTime = startTime + playerDuration;
+          
           return (
             <div
               key={`player-${player.id}-${animationKey}`}
@@ -76,7 +78,6 @@ const FallbackLoader = ({ message }: { message: string }) => (
   </div>
 );
 
-
 // --- Context Definition & Provider ---
 
 interface LoadingContextType {
@@ -109,7 +110,13 @@ export function LoadingProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <LoadingContext.Provider value={{ isGlobalLoading, showGlobalLoader, hideGlobalLoader, loadingMessage, playersForLoader }}>
+    <LoadingContext.Provider value={{ 
+      isGlobalLoading, 
+      showGlobalLoader, 
+      hideGlobalLoader, 
+      loadingMessage, 
+      playersForLoader 
+    }}>
       {children}
       <AvatarLoadingOverlayInternal />
     </LoadingContext.Provider>
