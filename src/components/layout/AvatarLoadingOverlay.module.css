@@ -14,7 +14,7 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   font-family: 'Corben', sans-serif;
-  color: hsl(var(--background));
+  color: white;
 }
 
 .loader {
@@ -22,7 +22,7 @@
   height: 150px;
   position: relative;
   border-radius: 15px;
-  border: 3px solid hsl(var(--accent));
+  border: 3px solid #ffd700;
   overflow: hidden;
   box-shadow: 0 8px 35px rgba(0,0,0,0.5);
   background: #111;
@@ -33,19 +33,19 @@
   position: absolute;
   width: 100%;
   height: 100%;
-  background-size: contain;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   opacity: 0;
-  animation-name: playerSequence;
+  animation-name: fadeInOut;
   animation-timing-function: ease-in-out;
-  animation-iteration-count: 1; /* Changed from infinite to 1 */
-  animation-fill-mode: forwards; /* Added to hold final state */
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
 }
 
 .logoLayer {
-  background-size: contain !important; /* Changed from 85% to contain */
-  animation-name: logoSequence !important;
+  background-size: contain !important;
+  animation-name: fadeIn !important;
 }
 
 .message {
@@ -68,8 +68,8 @@
 .fallbackSpinner {
   width: 60px;
   height: 60px;
-  border: 5px solid hsl(var(--primary) / 0.2);
-  border-top: 5px solid hsl(var(--accent));
+  border: 5px solid rgba(255, 215, 0, 0.2);
+  border-top: 5px solid #ffd700;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 20px;
@@ -80,15 +80,17 @@
   100% { transform: rotate(360deg); }
 }
 
-@keyframes playerSequence {
-  0%, var(--start-percent) { opacity: 0; }
-  var(--show-start), var(--show-end) { opacity: 1; }
-  var(--end-percent), 100% { opacity: 0; }
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
-@keyframes logoSequence {
-  0%, calc(var(--logo-start) - 0.5%) { opacity: 0; }
-  var(--logo-start), 100% { opacity: 1; }
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  100% { opacity: 1; }
 }
 
 @media (max-width: 768px) {

@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import type { PlayerClientState } from '@/lib/types';
 import styles from '@/components/layout/AvatarLoadingOverlay.module.css';
 
-// --- Loading Overlay Component (moved here to avoid circular dependencies) ---
+// --- Loading Overlay Component ---
 
 const AvatarLoadingOverlayInternal = () => {
   const { isGlobalLoading, loadingMessage, playersForLoader } = useLoading();
@@ -15,8 +15,6 @@ const AvatarLoadingOverlayInternal = () => {
   const logoPath = "/ui/new-logo.png";
 
   useEffect(() => {
-    // Only reset the animation when the loading screen is visible AND we have players.
-    // This prevents it from firing incorrectly when players haven't loaded yet.
     if (isGlobalLoading && players.length > 0) {
       setAnimationKey(prev => prev + 1);
     }
@@ -30,16 +28,12 @@ const AvatarLoadingOverlayInternal = () => {
 
   const playerDuration = 1.2;
   const logoDuration = 2;
-  const totalDuration = (players.length * playerDuration) + logoDuration;
 
   return (
     <div className={styles.overlay}>
       <div className={styles.loader} key={animationKey}>
         {players.map((player, index) => {
           const startTime = index * playerDuration;
-          const endTime = startTime + playerDuration;
-          const startPercent = (startTime / totalDuration) * 100;
-          const endPercent = (endTime / totalDuration) * 100;
 
           return (
             <div
@@ -47,12 +41,9 @@ const AvatarLoadingOverlayInternal = () => {
               className={styles.avatarLayer}
               style={{
                 backgroundImage: `url(${player.avatar})`,
-                animationDuration: `${totalDuration}s`,
-                '--start-percent': `${Math.max(0, startPercent - 0.5)}%`,
-                '--show-start': `${startPercent}%`,
-                '--show-end': `${endPercent}%`,
-                '--end-percent': `${Math.min(100, endPercent + 0.5)}%`,
-              } as React.CSSProperties}
+                animationDuration: `${playerDuration}s`,
+                animationDelay: `${startTime}s`,
+              }}
             />
           );
         })}
@@ -61,9 +52,9 @@ const AvatarLoadingOverlayInternal = () => {
           className={`${styles.avatarLayer} ${styles.logoLayer}`}
           style={{
             backgroundImage: `url(${logoPath})`,
-            animationDuration: `${totalDuration}s`,
-            '--logo-start': `${((players.length * playerDuration) / totalDuration) * 100}%`,
-          } as React.CSSProperties}
+            animationDuration: `${logoDuration}s`,
+            animationDelay: `${players.length * playerDuration}s`,
+          }}
         />
       </div>
       
