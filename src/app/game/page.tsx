@@ -52,6 +52,7 @@ export default function GamePage() {
   const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for visual step duration
   const judgeEarlyActionTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for judge's early action
   const [recapTriggeredForRound, setRecapTriggeredForRound] = useState<number | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 
   const setGameState = useCallback((newState: GameClientState | null) => {
@@ -151,8 +152,8 @@ export default function GamePage() {
 
     console.log(`GamePage Realtime: Setting up subscriptions for gameId: ${gameId}, thisPlayerId: ${currentPlayerId || 'N/A'}`);
 
-    const commonPayloadHandler = async (originTable: string, payload: any) => {
-      console.log(`>>> GamePage Realtime (${originTable} sub for game ${gameId}): CHANGE DETECTED!`, payload);
+    const debouncedFetch = async () => {
+      console.log(`>>> GamePage Realtime (debounced for game ${gameId}): Fetching latest state.`);
       if (!isMountedRef.current) return;
 
       const updatedFullGame = await getGame(gameId);
@@ -172,7 +173,7 @@ export default function GamePage() {
         }
 
         setGameState(updatedFullGame);
-        console.log(`GamePage Realtime: Game state updated from ${originTable} event. GameID: ${updatedFullGame.gameId}, Phase: ${updatedFullGame.gamePhase}, Players: ${updatedFullGame.players.length}`);
+        console.log(`GamePage Realtime: Game state updated from debounced fetch. GameID: ${updatedFullGame.gameId}, Phase: ${updatedFullGame.gamePhase}, Players: ${updatedFullGame.players.length}`);
 
         if (currentLocalPlayerId) {
           const latestPlayerDetails = updatedFullGame.players.find(p => p.id === currentLocalPlayerId) || await getCurrentPlayer(currentLocalPlayerId, updatedFullGame.gameId);
@@ -187,13 +188,18 @@ export default function GamePage() {
           }
         }
       } else {
-        console.error(`GamePage Realtime: Failed to fetch updated game state after ${originTable} event for game ${gameId}.`);
+        console.error(`GamePage Realtime: Failed to fetch updated game state after debounced fetch for game ${gameId}.`);
         const currentPhase = gameStateRef.current?.gamePhase;
         if (currentPhase !== 'game_over') {
             if (isMountedRef.current) toast({ title: "Game Update Error", description: "Lost connection to game, redirecting to lobby.", variant: "destructive" });
             router.push('/?step=setup');
         }
       }
+    };
+
+    const commonPayloadHandler = (originTable: string, payload: any) => {
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(debouncedFetch, 300);
     };
 
     const channelsConfig = [
@@ -253,6 +259,7 @@ export default function GamePage() {
 
     return () => {
       console.log(`GamePage Realtime: Cleaning up subscriptions for gameId: ${gameId}, suffix: ${uniqueChannelSuffix}`);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       activeSubscriptions.forEach(sub => supabase.removeChannel(sub).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
     };
   }, [internalGameState?.gameId, setGameState, setThisPlayer, router, toast]);
@@ -497,7 +504,7 @@ export default function GamePage() {
   if (!internalGameState || !internalGameState.gameId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-        <Image src="/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
+        <Image src="/ui/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
         <h1 className="text-4xl font-bold text-destructive mb-4">Critical Game Error!</h1>
         <p className="text-lg text-muted-foreground mb-8">
           Could not load or initialize the game session. Please try again or reset.
@@ -517,7 +524,7 @@ export default function GamePage() {
         console.log("GamePage: Game phase is 'lobby', current UI phase was not game_over/winner. Displaying lobby message.");
         return (
           <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-            <Image src="/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
+            <Image src="/ui/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
             <h1 className="text-4xl font-bold text-primary mb-4">Game Has Returned to Lobby</h1>
             <p className="text-lg text-muted-foreground mb-8">
               The game session has been reset or ended.

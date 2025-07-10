@@ -12,7 +12,7 @@ const AvatarLoadingOverlayInternal = () => {
   const [animationKey, setAnimationKey] = useState(0);
 
   const players = playersForLoader || [];
-  const logoPath = "/new-logo.png";
+  const logoPath = "/ui/new-logo.png";
 
   useEffect(() => {
     if (isGlobalLoading) {
