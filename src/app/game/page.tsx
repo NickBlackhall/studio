@@ -49,9 +49,8 @@ export default function GamePage() {
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
 
-  const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | null>(null);
-  const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for visual step duration
-  const judgeEarlyActionTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for judge's early action
+  const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'loading' | null>(null);
+  const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [recapTriggeredForRound, setRecapTriggeredForRound] = useState<number | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -139,7 +138,6 @@ export default function GamePage() {
     return () => {
         isMountedRef.current = false;
         if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
-        if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -268,10 +266,30 @@ export default function GamePage() {
     }
   }, [internalGameState?.gamePhase, internalGameState?.currentRound, recapTriggeredForRound, recapStepInternal]);
 
+  const handleNextRound = useCallback(async () => {
+    let currentActionError: any = null;
+    const gameId = gameStateRef.current?.gameId;
+    if (gameId) {
+      try {
+        console.log(`GamePage: Calling nextRound server action for game ${gameId}`);
+        await nextRound(gameId);
+      } catch (error: any) {
+        currentActionError = error;
+        console.error("GamePage: Error starting next round:", error);
+        if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+          console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
+          throw error;
+        } else {
+          if (isMountedRef.current) toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
+        }
+      }
+    }
+  }, [toast]);
+
+
   // Effect to MANAGE the recap sequence TIMERS
   useEffect(() => {
       if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
-      if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
   
       if (recapStepInternal === 'winner') {
           recapVisualStepTimerRef.current = setTimeout(() => {
@@ -280,21 +298,21 @@ export default function GamePage() {
               }
           }, 8000); // 8s for winner card (Face 1 + Face 2)
       } else if (recapStepInternal === 'scoreboard') {
-          // The previous round's judge is responsible for starting the next round.
-          if (thisPlayerRef.current?.isJudge) {
-              judgeEarlyActionTimerRef.current = setTimeout(() => {
-                  if (isMountedRef.current && gameStateRef.current?.gameId && gameStateRef.current?.gamePhase === 'winner_announcement') {
-                      handleNextRound();
-                  }
-              }, 5000); // Judge gets 5 seconds to view scoreboard before auto-proceeding.
-          }
+          recapVisualStepTimerRef.current = setTimeout(() => {
+              if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+                // The judge is responsible for starting the next round.
+                if (thisPlayerRef.current?.isJudge) {
+                  handleNextRound();
+                }
+                setRecapStepInternal('loading');
+              }
+          }, 5000); // 5s to view scoreboard before moving to loading animation
       }
       return () => {
           if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
-          if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
       };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recapStepInternal]);
+  }, [recapStepInternal, handleNextRound]);
 
 
   const handleStartGame = async () => {
@@ -343,34 +361,6 @@ export default function GamePage() {
           if (isMountedRef.current) toast({title: "Winner Selection Error", description: error.message || "Failed to select winner.", variant: "destructive"});
         }
       });
-    }
-  };
-
-  const handleNextRound = async () => {
-    let currentActionError: any = null;
-    if (gameStateRef.current?.gameId) { 
-      showGlobalLoader({ message: "Starting next round...", players: gameStateRef.current.players });
-      try {
-        console.log(`GamePage: Calling nextRound server action for game ${gameStateRef.current.gameId}`);
-        await nextRound(gameStateRef.current.gameId);
-      } catch (error: any) {
-        currentActionError = error;
-        console.error("GamePage: Error starting next round:", error);
-        if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
-          return; 
-        } else {
-          if (isMountedRef.current) toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
-        }
-      } finally {
-        let wasRedirect = false;
-        if (currentActionError && typeof currentActionError.digest === 'string' && currentActionError.digest.startsWith('NEXT_REDIRECT')) {
-            wasRedirect = true;
-        }
-        if (!wasRedirect && isMountedRef.current) {
-           hideGlobalLoader();
-        }
-      }
     }
   };
 
@@ -664,3 +654,4 @@ export default function GamePage() {
 export const dynamic = 'force-dynamic';
 
   
+

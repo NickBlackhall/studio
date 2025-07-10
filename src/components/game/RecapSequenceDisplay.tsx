@@ -6,9 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { PlayerClientState } from '@/lib/types';
 import FlippingWinnerCard from './FlippingWinnerCard';
 import Image from 'next/image';
+import AvatarLoadingSequence from './AvatarLoadingSequence';
 
 interface RecapSequenceDisplayProps {
-  recapStep: 'winner' | 'scoreboard' | null;
+  recapStep: 'winner' | 'scoreboard' | 'loading' | null;
   lastWinnerPlayer: PlayerClientState;
   lastWinnerCardText: string;
   players: PlayerClientState[];
@@ -51,6 +52,9 @@ function RecapSequenceDisplay({
   }, [recapStep]);
 
   if (!recapStep) return null;
+  
+  const showCardFlip = recapStep === 'winner' || recapStep === 'scoreboard';
+  const showLoading = recapStep === 'loading';
 
   return (
     <motion.div 
@@ -60,22 +64,40 @@ function RecapSequenceDisplay({
       exit={{ opacity: 0 }}
       transition={{ duration: 2.0, ease: "easeInOut" }}
     >
-      <motion.div
-        key="winner-card"
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.8 }}
-        transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-        className="w-full max-w-sm"
-      >
-        <FlippingWinnerCard
-          rotation={rotation}
-          winner={lastWinnerPlayer}
-          cardText={lastWinnerCardText}
-          players={players}
-          currentJudgeId={currentJudgeId}
-        />
-      </motion.div>
+      <AnimatePresence>
+        {showCardFlip && (
+          <motion.div
+            key="winner-card"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="w-full max-w-sm"
+          >
+            <FlippingWinnerCard
+              rotation={rotation}
+              winner={lastWinnerPlayer}
+              cardText={lastWinnerCardText}
+              players={players}
+              currentJudgeId={currentJudgeId}
+            />
+          </motion.div>
+        )}
+        {showLoading && (
+          <motion.div
+            key="loading-sequence"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+          >
+            <AvatarLoadingSequence 
+              players={players} 
+              message="Preparing the next round of terribleness..." 
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
