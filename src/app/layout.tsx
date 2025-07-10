@@ -1,4 +1,3 @@
-
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from "@/components/ui/toaster";
@@ -31,11 +30,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning={true}>
+    <html lang="en" className={`${imFell.variable} ${corben.variable}`} suppressHydrationWarning={true}>
       <body className={cn(
-          "antialiased flex flex-col min-h-screen",
-          imFell.variable,
-          corben.variable
+          "antialiased flex flex-col min-h-screen font-im-fell",
+          // Ensure font is applied immediately to prevent FOUC
         )} suppressHydrationWarning={true}>
         <LoadingProvider>
           <div className="flex min-h-screen w-full flex-col">

@@ -499,7 +499,7 @@ export default function WelcomePage() {
                             ) : (
                                 <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>
                             )}
-                            <h2 className="text-3xl text-black truncate font-im-fell">{player.name}</h2>
+                            <h2 className="text-3xl text-black truncate">{player.name}</h2>
                             </div>
                             <div className="flex-shrink-0 ml-2 flex items-center justify-center">
                             {player.id === thisPlayerObject?.id ? (
