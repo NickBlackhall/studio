@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import type { PlayerClientState } from '@/lib/types';
 import styles from '@/components/layout/AvatarLoadingOverlay.module.css';
+import Image from 'next/image';
 
 interface AvatarLoadingSequenceProps {
   players: PlayerClientState[];
@@ -13,7 +14,7 @@ interface AvatarLoadingSequenceProps {
 export default function AvatarLoadingSequence({ players, message }: AvatarLoadingSequenceProps) {
   const [animationKey, setAnimationKey] = useState(0);
 
-  const logoPath = "/ui/new-logo.png";
+  const logoPath = "/ui/loading-logo.png";
   
   useEffect(() => {
     setAnimationKey(prev => prev + 1);
@@ -52,11 +53,18 @@ export default function AvatarLoadingSequence({ players, message }: AvatarLoadin
         <div
           className={`${styles.avatarLayer} ${styles.logoLayer}`}
           style={{
-            backgroundImage: `url(${logoPath})`,
             animationDuration: `${logoDuration}s`,
             animationDelay: `${players.length * playerDuration}s`,
           }}
-        />
+        >
+           <Image 
+              src={logoPath}
+              alt="Make it Terrible Logo"
+              fill
+              className="object-contain"
+              data-ai-hint="game logo"
+           />
+        </div>
       </div>
       
       <div className={styles.message}>{message}</div>

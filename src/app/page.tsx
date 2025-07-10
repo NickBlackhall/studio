@@ -37,6 +37,7 @@ export default function WelcomePage() {
   const [isProcessingAction, startPlayerActionTransition] = useTransition();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { showGlobalLoader, hideGlobalLoader } = useLoading();
   
   const currentStepQueryParam = searchParams?.get('step');
@@ -190,41 +191,42 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
-    const currentGameId = internalGame?.gameId;
-    if (!currentGameId) {
-      return () => {};
-    }
+    const gameId = internalGame?.gameId;
+    if (!gameId) return;
 
-    const uniqueChannelSuffix = internalThisPlayerId || Date.now();
-
-    const handleRealtimeUpdate = async (source: string, payload: any) => {
-      const latestGameId = gameRef.current?.gameId;
-      if (isMountedRef.current && latestGameId) {
-        try {
-          const fetchedGameState = await getGame(latestGameId);
-          if (isMountedRef.current && fetchedGameState) {
-            setGame(fetchedGameState);
-          }
-        } catch (error) {
-          console.error(`Error in handleRealtimeUpdate (from ${source}):`, error);
+    const debouncedFetch = async () => {
+      if (!isMountedRef.current) return;
+      try {
+        const fetchedGameState = await getGame(gameId);
+        if (isMountedRef.current) {
+          setGame(fetchedGameState);
         }
+      } catch (error) {
+        console.error(`Error in debouncedFetch (lobby):`, error);
       }
     };
 
-    const playersChannelName = `players-lobby-${currentGameId}-${uniqueChannelSuffix}`;
+    const handleRealtimeUpdate = () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(debouncedFetch, 300);
+    };
+
+    const uniqueChannelSuffix = internalThisPlayerId || Date.now();
+    const playersChannelName = `players-lobby-${gameId}-${uniqueChannelSuffix}`;
+    const gameChannelName = `game-state-lobby-${gameId}-${uniqueChannelSuffix}`;
+
     const playersChannel = supabase
       .channel(playersChannelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${currentGameId}` }, (payload) => handleRealtimeUpdate('players', payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameId}` }, handleRealtimeUpdate)
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || err) {
           console.error(`Client (Realtime) - playersChannel error:`, { status, err: err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error' });
         }
       });
 
-    const gameChannelName = `game-state-lobby-${currentGameId}-${uniqueChannelSuffix}`;
     const gameChannel = supabase
       .channel(gameChannelName)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${currentGameId}` }, (payload) => handleRealtimeUpdate('games', payload))
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, handleRealtimeUpdate)
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || err) {
           console.error(`Client (Realtime) - gameChannel error:`, { status, err: err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error' });
@@ -232,13 +234,11 @@ export default function WelcomePage() {
       });
       
     return () => {
-      const gameIdForCleanup = gameRef.current?.gameId; 
-      if (gameIdForCleanup) {
-        supabase.removeChannel(playersChannel).catch(err => console.error("Client (Realtime cleanup): Error removing players channel on WelcomePage:", err));
-        supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime cleanup): Error removing game channel on WelcomePage:", err));
-      }
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      supabase.removeChannel(playersChannel).catch(err => console.error("Client (Realtime cleanup): Error removing players channel on WelcomePage:", err));
+      supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime cleanup): Error removing game channel on WelcomePage:", err));
     };
-  }, [internalGame?.gameId, internalThisPlayerId, currentStep, setGame, parseReadyPlayerOrderStr]); 
+  }, [internalGame?.gameId, internalThisPlayerId, setGame]); 
 
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;

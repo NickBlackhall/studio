@@ -293,13 +293,13 @@ export default function GamePage() {
 
     if (recapStepInternal === 'winner') {
       recapVisualStepTimerRef.current = setTimeout(() => {
-        if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+        if (isMountedRef.current) {
           setRecapStepInternal('scoreboard');
         }
       }, 6000); // 2s for winner banner + 4s for winner details
     } else if (recapStepInternal === 'scoreboard') {
       recapVisualStepTimerRef.current = setTimeout(() => {
-        if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+        if (isMountedRef.current) {
           setRecapStepInternal('loading');
         }
       }, 4000); // 4s to view scoreboard before moving to loading animation
@@ -438,7 +438,7 @@ export default function GamePage() {
   if (!internalGameState || !internalGameState.gameId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-        <Image src="/ui/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
+        <Image src="/ui/loading-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
         <h1 className="text-4xl font-bold text-destructive mb-4">Critical Game Error!</h1>
         <p className="text-lg text-muted-foreground mb-8">
           Could not load or initialize the game session. Please try again or reset.
@@ -452,13 +452,33 @@ export default function GamePage() {
     );
   }
 
+  // New logic for handling spectators or players joining a game in progress
+  if (!thisPlayer && ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase as GamePhaseClientState)) {
+      return (
+          <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
+              <Image src="/ui/loading-logo.png" alt="Game in Progress" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
+              <h1 className="text-4xl font-bold text-primary mb-4">Game in Progress</h1>
+              <p className="text-lg text-muted-foreground mb-8">
+                  This game has already started. You can watch, but you can't join until it's over.
+              </p>
+              <div className="w-full max-w-sm my-6">
+                <Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} />
+              </div>
+              <Button onClick={handleResetGameFromGamePage} variant="outline" size="lg" disabled={isActionPending}>
+                  {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  Reset Game (For Testing)
+              </Button>
+          </div>
+      );
+  }
+
   if (internalGameState.gamePhase === 'lobby') {
      const currentPhaseFromRef = gameStateRef.current?.gamePhase;
      if (currentPhaseFromRef && currentPhaseFromRef !== 'game_over' && currentPhaseFromRef !== 'winner_announcement') {
         console.log("GamePage: Game phase is 'lobby', current UI phase was not game_over/winner. Displaying lobby message.");
         return (
           <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-            <Image src="/ui/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
+            <Image src="/ui/loading-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
             <h1 className="text-4xl font-bold text-primary mb-4">Game Has Returned to Lobby</h1>
             <p className="text-lg text-muted-foreground mb-8">
               The game session has been reset or ended.
@@ -652,5 +672,6 @@ export default function GamePage() {
 export const dynamic = 'force-dynamic';
 
   
+
 
 
