@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -190,6 +191,7 @@ export default function SwipeableCategorySelector({
                 height={81}
                 className="object-contain drop-shadow-xl"
                 data-ai-hint="unleash button"
+                sizes="50vw"
                 priority
               />
             )}

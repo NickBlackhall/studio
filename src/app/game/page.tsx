@@ -138,6 +138,7 @@ export default function GamePage() {
         isMountedRef.current = false;
         if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
         if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -228,30 +229,10 @@ export default function GamePage() {
             console.log(`GamePage Realtime: Subscribed to ${channelName}`);
           } else if (status === 'CLOSED') {
             console.info(`GamePage Realtime: Channel ${channelName} is now ${status}. This is often due to explicit unsubscription or component unmount.`);
-            if (err) {
-              console.error(`GamePage Realtime: Error details for ${channelName} (status: ${status}):`, {
-                message: err.message,
-                name: err.name,
-                errorObject: { ...err }
-              });
-            }
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error(`GamePage Realtime: Channel status for ${channelName}: ${status}`);
-            if (err) {
-              console.error(`GamePage Realtime: Error details for ${channelName} (status: ${status}):`, {
-                message: err.message,
-                name: err.name,
-                errorObject: { ...err }
-              });
-            } else {
-              console.warn(`GamePage Realtime: ${status} for ${channelName} with no additional error object.`);
-            }
+            console.error(`GamePage Realtime: Channel status for ${channelName}: ${status}`, err ? { message: err.message, name: err.name } : 'No error object.');
           } else if (err) {
-            console.error(`GamePage Realtime: Unexpected error on ${channelName} subscription (status: ${status}):`, {
-                message: err.message,
-                name: err.name,
-                errorObject: { ...err }
-            });
+            console.error(`GamePage Realtime: Unexpected error on ${channelName} subscription (status: ${status}):`, { message: err.message, name: err.name });
           }
         });
       return channel;
@@ -265,89 +246,66 @@ export default function GamePage() {
   }, [internalGameState?.gameId, setGameState, setThisPlayer, router, toast]);
 
 
+  // Effect to START the recap sequence
   useEffect(() => {
-    if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
-    if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
-
     const currentGamePhase = internalGameState?.gamePhase;
     const currentRound = internalGameState?.currentRound;
 
-    if (currentGamePhase !== 'winner_announcement') {
-      if (recapStepInternal !== null) {
-        console.log("GamePage: recapEffect - Game phase NOT winner_announcement. Clearing recapStep and triggeredRound.");
-        setRecapStepInternal(null);
-      }
-      if (recapTriggeredForRound !== null) {
-        setRecapTriggeredForRound(null);
-      }
-      return;
-    }
-
-    if (currentGamePhase === 'winner_announcement' && currentRound !== undefined) {
-      if (recapStepInternal === null && recapTriggeredForRound !== currentRound) {
+    if (currentGamePhase === 'winner_announcement' && currentRound !== undefined && recapTriggeredForRound !== currentRound) {
         console.log(`GamePage: recapEffect - Starting sequence for round ${currentRound}, setting to 'winner'`);
         setRecapStepInternal('winner');
-        setRecapTriggeredForRound(currentRound); // Mark this round as having its recap triggered
-        return; 
-      }
-
-      if (recapStepInternal === 'winner') {
-        console.log("GamePage: recapEffect - Current step 'winner'. Setting 8s timer for 'scoreboard'.");
-        recapVisualStepTimerRef.current = setTimeout(() => {
-          if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
-            console.log("GamePage: recapEffect - Timer expired for 'winner'. Transitioning to 'scoreboard'.");
-            setRecapStepInternal('scoreboard');
-          }
-        }, 8000); // 3s for Face 1 + 5s for Face 2
-      } else if (recapStepInternal === 'scoreboard') {
-        console.log("GamePage: recapEffect - Current step 'scoreboard'. Setting 5s timer for 'getReady'.");
-        recapVisualStepTimerRef.current = setTimeout(() => {
-          if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
-            console.log("GamePage: recapEffect - Timer expired for 'scoreboard'. Transitioning to 'getReady'.");
-            setRecapStepInternal('getReady');
-          }
-        }, 5000);
-      } else if (recapStepInternal === 'getReady') {
-        console.log("GamePage: recapEffect - Current step 'getReady'. Setting visual timer (5s).");
-        
-        // Visual timer for all players
-        recapVisualStepTimerRef.current = setTimeout(() => {
-          if (isMountedRef.current) {
-            console.log("GamePage: recapEffect - 5s VISUAL 'getReady' timer expired.");
-            // If game hasn't moved on, non-judges (or judge if action failed) clear their local view.
-            if (gameStateRef.current?.gamePhase === 'winner_announcement') {
-              console.log("GamePage: recapEffect - Game still in winner_announcement after visual timer. Clearing recapStep locally for this client.");
-              setRecapStepInternal(null);
-            }
-          }
-        }, 5000);
-
-        // Judge's early action timer
-        const currentThisPlayer = thisPlayerRef.current;
-        if (currentThisPlayer?.isJudge) {
-          console.log("GamePage: recapEffect - Judge detected in 'getReady'. Setting 3s timer for early handleNextRound.");
-          judgeEarlyActionTimerRef.current = setTimeout(() => {
-            if (isMountedRef.current && gameStateRef.current?.gameId && gameStateRef.current?.gamePhase === 'winner_announcement') {
-              console.log(`GamePage: recapEffect - 3s JUDGE ACTION timer expired. Judge ${currentThisPlayer.name} calling handleNextRound.`);
-              handleNextRound(); 
-              // Judge does NOT set recapStepInternal to null here. Phase change will handle it.
-            }
-          }, 3000); // Judge acts at 3 seconds
+        setRecapTriggeredForRound(currentRound);
+    } else if (currentGamePhase !== 'winner_announcement') {
+        if (recapStepInternal !== null) {
+            setRecapStepInternal(null);
         }
-      }
+        if (recapTriggeredForRound !== null) {
+            setRecapTriggeredForRound(null);
+        }
     }
+  }, [internalGameState?.gamePhase, internalGameState?.currentRound, recapTriggeredForRound, recapStepInternal]);
 
-    return () => {
+  // Effect to MANAGE the recap sequence TIMERS
+  useEffect(() => {
       if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
       if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
-    };
-  }, [
-    internalGameState?.gamePhase,
-    internalGameState?.currentRound,
-    recapStepInternal,
-    recapTriggeredForRound,
-    // thisPlayer?.isJudge - This player is accessed via ref inside, not a direct dependency for the outer effect trigger.
-  ]);
+  
+      if (recapStepInternal === 'winner') {
+          recapVisualStepTimerRef.current = setTimeout(() => {
+              if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+                  setRecapStepInternal('scoreboard');
+              }
+          }, 8000); // 3s for Face 1 + 5s for Face 2
+      } else if (recapStepInternal === 'scoreboard') {
+          recapVisualStepTimerRef.current = setTimeout(() => {
+              if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+                  setRecapStepInternal('getReady');
+              }
+          }, 5000);
+      } else if (recapStepInternal === 'getReady') {
+          // Visual timer for all players
+          recapVisualStepTimerRef.current = setTimeout(() => {
+              if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+                  setRecapStepInternal(null);
+              }
+          }, 5000);
+  
+          // Judge's early action timer
+          const currentThisPlayer = thisPlayerRef.current;
+          if (currentThisPlayer?.isJudge) {
+              judgeEarlyActionTimerRef.current = setTimeout(() => {
+                  if (isMountedRef.current && gameStateRef.current?.gameId && gameStateRef.current?.gamePhase === 'winner_announcement') {
+                      handleNextRound();
+                  }
+              }, 3000); // Judge acts at 3 seconds
+          }
+      }
+      return () => {
+          if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
+          if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
+      };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recapStepInternal]); // This effect ONLY depends on the step changing.
 
 
   const handleStartGame = async () => {

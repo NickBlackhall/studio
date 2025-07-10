@@ -279,6 +279,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                                   height={45}
                                   className="object-contain drop-shadow-lg transition-transform group-hover:scale-105"
                                   data-ai-hint="crown winner button"
+                                  sizes="30vw"
                                   priority
                                 />
                               )}
@@ -365,7 +366,3 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
-
-    
-
-    

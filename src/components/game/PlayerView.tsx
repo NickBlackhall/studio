@@ -245,6 +245,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 height={250}
                 className="object-contain"
                 data-ai-hint="waiting poster"
+                sizes="50vw"
               />
               <p className="font-im-fell text-black text-2xl font-bold mt-4">Submission Sent!</p>
               <p className="font-im-fell text-black text-lg mt-2">Now, we wait for the others... and the Judge's verdict!</p>
@@ -365,6 +366,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                                     height={45}
                                     className="object-contain drop-shadow-lg"
                                     data-ai-hint="submit button"
+                                    sizes="30vw"
                                     priority
                                   />
                                 )}
@@ -385,6 +387,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                             src="/ui/new-card-badge.png"
                             alt="New Card"
                             fill
+                            sizes="10vw"
                             className="object-contain"
                             data-ai-hint="new card badge"
                           />
