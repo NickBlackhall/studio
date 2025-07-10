@@ -17,10 +17,10 @@ interface RecapSequenceDisplayProps {
 }
 
 const RECAP_STEP_DURATIONS = {
-    winnerBanner: 2000,
+    winnerBanner: 3000, // Increased from 2000
     winnerDetails: 4000,
     scoreboard: 4000,
-    loading: 3000,
+    loading: 5000, // Increased from 3000
 };
 
 function RecapSequenceDisplay({
@@ -89,7 +89,7 @@ function RecapSequenceDisplay({
         if (isMountedRef.current) {
           onNextRound();
         }
-      }, 500);
+      }, RECAP_STEP_DURATIONS.loading); // Use the loading duration here
     }
   }, [rotation, thisPlayerIsJudge, hasStartedNextRound, onNextRound]);
   
