@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { PlayerClientState } from '@/lib/types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import Scoreboard from './Scoreboard';
 
 interface FlippingWinnerCardProps {
@@ -16,7 +16,7 @@ interface FlippingWinnerCardProps {
   currentJudgeId: string | null;
 }
 
-export default function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeId }: FlippingWinnerCardProps) {
+function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeId }: FlippingWinnerCardProps) {
   const [frontFaceContent, setFrontFaceContent] = useState<'banner' | 'scoreboard'>('banner');
   
   // Switch the content of the "front" face mid-flip (at 270 degrees)
@@ -135,3 +135,5 @@ export default function FlippingWinnerCard({ rotation, winner, cardText, players
     </div>
   );
 }
+
+export default memo(FlippingWinnerCard);

@@ -15,7 +15,9 @@ const AvatarLoadingOverlayInternal = () => {
   const logoPath = "/ui/new-logo.png";
 
   useEffect(() => {
-    if (isGlobalLoading) {
+    // Only reset the animation when the loading screen is visible AND we have players.
+    // This prevents it from firing incorrectly when players haven't loaded yet.
+    if (isGlobalLoading && players.length > 0) {
       setAnimationKey(prev => prev + 1);
     }
   }, [isGlobalLoading, players.length]);
