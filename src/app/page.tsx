@@ -217,7 +217,7 @@ export default function WelcomePage() {
 
     const handleRealtimeUpdate = (payload: any) => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = setTimeout(debouncedFetch, 300);
+      debounceTimerRef.current = setTimeout(debouncedFetch, 800);
     };
 
     const uniqueChannelSuffix = internalThisPlayerId || Date.now();
@@ -316,7 +316,7 @@ export default function WelcomePage() {
         }
       } finally {
         if(isMountedRef.current) {
-            setTimeout(() => setIsTogglingReady(false), 500);
+            setTimeout(() => setIsTogglingReady(false), 2500);
         }
       }
     });
@@ -628,3 +628,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+  
