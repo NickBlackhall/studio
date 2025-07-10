@@ -8,7 +8,7 @@
   src: url('/fonts/IMFellEnglishSC-Regular.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block; /* This prevents font swapping */
 }
 
 @font-face {
@@ -125,6 +125,15 @@
   h1, h2, h3, h4, h5, h6,
   .card-title { 
     font-family: 'IM Fell English SC', serif;
+  }
+
+  /* Force consistent font rendering */
+  h1, h2, h3, h4, h5, h6, .text-3xl {
+    font-family: 'IM Fell English SC', serif !important;
+    font-synthesis: none;
+    text-rendering: optimizeSpeed;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
