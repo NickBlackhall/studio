@@ -56,16 +56,24 @@ export default function WelcomePage() {
     }
   }, []);
 
-  const setGame = useCallback((newGameState: GameClientState | null) => {
-    gameRef.current = newGameState; 
-    if (isMountedRef.current) {
-      if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
-        const rpoArray = parseReadyPlayerOrderStr(newGameState);
-        setInternalGame({ ...newGameState, ready_player_order: rpoArray });
-      } else if (newGameState) {
-        setInternalGame({ ...newGameState, ready_player_order: newGameState.ready_player_order || [] });
-      } else {
-        setInternalGame(null);
+  const setGame = useCallback((newGameState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
+    if (typeof newGameState === 'function') {
+      setInternalGame(prevState => {
+        const resultState = newGameState(prevState);
+        gameRef.current = resultState;
+        return resultState;
+      });
+    } else {
+      gameRef.current = newGameState; 
+      if (isMountedRef.current) {
+        if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
+          const rpoArray = parseReadyPlayerOrderStr(newGameState);
+          setInternalGame({ ...newGameState, ready_player_order: rpoArray });
+        } else if (newGameState) {
+          setInternalGame({ ...newGameState, ready_player_order: newGameState.ready_player_order || [] });
+        } else {
+          setInternalGame(null);
+        }
       }
     }
   }, [parseReadyPlayerOrderStr]);
@@ -282,32 +290,35 @@ export default function WelcomePage() {
   };
 
   const handleToggleReady = async (player: PlayerClientState) => {
-    const currentGameId = internalGame?.gameId; 
-    const currentThisPlayerId = internalThisPlayerId; 
-
-    if (!currentGameId || !currentThisPlayerId) {
-        toast({ title: "Error", description: "Cannot change ready status. Game or player not identified.", variant: "destructive" });
-        return;
-    }
-    if (player.id !== currentThisPlayerId) {
-      toast({ title: "Hey!", description: "You can only ready up yourself.", variant: "destructive" });
-      return;
-    }
+    if (!internalGame?.gameId || player.id !== internalThisPlayerId) return;
     
-    startPlayerActionTransition(async () => {
-      try {
-        await togglePlayerReadyStatus(player.id, currentGameId);
-        
-      } catch (error: any) {
-        if (isMountedRef.current) {
-          if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            showGlobalLoader({ message: 'Starting game...', players: gameRef.current?.players }); 
-            return; 
-          }
-          toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
-        }
-      }
+    // 1. Update UI IMMEDIATELY (optimistic)
+    setGame(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        players: prev.players.map(p => 
+          p.id === player.id ? { ...p, isReady: !p.isReady } : p
+        )
+      };
     });
+    
+    // 2. Call server in background (no waiting)
+    try {
+      await togglePlayerReadyStatus(player.id, internalGame.gameId);
+    } catch (error) {
+      // 3. If it fails, revert the UI change
+      toast({ title: "Toggle failed", description: "Sync error. Reverting change.", variant: "destructive" });
+      setGame(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          players: prev.players.map(p => 
+            p.id === player.id ? { ...p, isReady: !p.isReady } : p // Revert the toggle
+          )
+        };
+      });
+    }
   };
 
   const handleStartGame = async () => {
