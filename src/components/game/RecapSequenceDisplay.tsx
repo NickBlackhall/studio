@@ -53,13 +53,19 @@ function RecapSequenceDisplay({
   if (!recapStep) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-hidden">
+    <motion.div 
+      className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 2.0, ease: "easeInOut" }}
+    >
       <motion.div
         key="winner-card"
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.8 }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
+        transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
         className="w-full max-w-sm"
       >
         <FlippingWinnerCard
@@ -70,7 +76,7 @@ function RecapSequenceDisplay({
           currentJudgeId={currentJudgeId}
         />
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 

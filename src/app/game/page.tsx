@@ -336,14 +336,11 @@ export default function GamePage() {
   const handleSelectWinner = async (winningCardText: string) => {
     if (internalGameState?.gameId) {
       startActionTransition(async () => {
-        showGlobalLoader({ message: "Crowning a winner...", players: internalGameState.players });
         try {
           await selectWinner(winningCardText, internalGameState.gameId);
         } catch (error: any) {
           console.error("GamePage: Error selecting winner:", error);
           if (isMountedRef.current) toast({title: "Winner Selection Error", description: error.message || "Failed to select winner.", variant: "destructive"});
-        } finally {
-          if (isMountedRef.current) hideGlobalLoader();
         }
       });
     }
