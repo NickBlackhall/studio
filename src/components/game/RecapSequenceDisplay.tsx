@@ -8,7 +8,6 @@ import FlippingWinnerCard from './FlippingWinnerCard';
 import Image from 'next/image';
 
 interface RecapSequenceDisplayProps {
-  recapStep: 'winner' | 'scoreboard' | 'loading' | null;
   lastWinnerPlayer: PlayerClientState;
   lastWinnerCardText: string;
   players: PlayerClientState[];
@@ -17,8 +16,14 @@ interface RecapSequenceDisplayProps {
   onNextRound: () => void;
 }
 
+const RECAP_STEP_DURATIONS = {
+    winnerBanner: 2000,
+    winnerDetails: 4000,
+    scoreboard: 4000,
+    loading: 3000,
+};
+
 function RecapSequenceDisplay({
-  recapStep,
   lastWinnerPlayer,
   lastWinnerCardText,
   players,
@@ -27,54 +32,72 @@ function RecapSequenceDisplay({
   onNextRound,
 }: RecapSequenceDisplayProps) {
   const [rotation, setRotation] = useState(0);
-  const isMountedRef = useRef(true);
+  const [internalStep, setInternalStep] = useState<'winner' | 'scoreboard' | 'loading' | null>(null);
   const [hasStartedNextRound, setHasStartedNextRound] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
-  // This effect now only responds to the recapStep changing, preventing mid-animation stutters
   useEffect(() => {
     isMountedRef.current = true;
-    let timer: NodeJS.Timeout;
+    
+    // Cleanup function to clear timers on unmount
+    return () => {
+      isMountedRef.current = false;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
-    if (recapStep === 'winner') {
+  // Effect to start and manage the animation sequence
+  useEffect(() => {
+    // Clear any existing timers when the effect re-runs
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    if (internalStep === 'winner') {
       setRotation(0);
-      // Schedule the first flip to winner details
-      timer = setTimeout(() => {
-        if (isMountedRef.current) setRotation(180);
-      }, 2000); // 2 seconds to view winner banner
-    } else if (recapStep === 'scoreboard') {
-      setRotation(180);
-      // Schedule the second flip to the scoreboard
-      timer = setTimeout(() => {
-        if (isMountedRef.current) setRotation(360);
-      }, 100); 
-    } else if (recapStep === 'loading') {
-      setRotation(360);
-      // Schedule the final flip to the loading poster
-      timer = setTimeout(() => {
-        if (isMountedRef.current) setRotation(540);
+      timerRef.current = setTimeout(() => {
+        if (isMountedRef.current) setRotation(180); // Flip to details
+      }, RECAP_STEP_DURATIONS.winnerBanner);
+      
+      timerRef.current = setTimeout(() => {
+        if (isMountedRef.current) setInternalStep('scoreboard');
+      }, RECAP_STEP_DURATIONS.winnerBanner + RECAP_STEP_DURATIONS.winnerDetails);
+    
+    } else if (internalStep === 'scoreboard') {
+      if (rotation !== 180) setRotation(180);
+      timerRef.current = setTimeout(() => {
+        if (isMountedRef.current) setRotation(360); // Flip to scoreboard
       }, 100);
       
+      timerRef.current = setTimeout(() => {
+        if (isMountedRef.current) setInternalStep('loading');
+      }, RECAP_STEP_DURATIONS.scoreboard);
+
+    } else if (internalStep === 'loading') {
+      if (rotation !== 360) setRotation(360);
+      timerRef.current = setTimeout(() => {
+        if (isMountedRef.current) setRotation(540); // Flip to loading
+      }, 100);
+
       // The judge is responsible for kicking off the next round for everyone.
       if (thisPlayerIsJudge && !hasStartedNextRound) {
         setHasStartedNextRound(true);
-        onNextRound();
+        // Add a small delay to ensure the loading screen is visible before the state changes
+        setTimeout(() => {
+          onNextRound();
+        }, 500);
       }
     }
+  }, [internalStep, thisPlayerIsJudge, hasStartedNextRound, onNextRound, rotation]);
 
-    return () => {
-      isMountedRef.current = false;
-      if(timer) clearTimeout(timer);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recapStep]);
-  
+  // Effect to kick off the sequence
   useEffect(() => {
-    if (recapStep !== 'loading') {
-        setHasStartedNextRound(false);
-    }
-  }, [recapStep]);
-
-  if (!recapStep) return null;
+    setHasStartedNextRound(false);
+    setInternalStep('winner');
+  }, [lastWinnerPlayer.id, lastWinnerCardText]); // Re-trigger if winner changes
+  
+  if (!internalStep) return null;
   
   return (
     <motion.div 

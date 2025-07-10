@@ -48,10 +48,6 @@ export default function GamePage() {
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
-
-  const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'loading' | null>(null);
-  const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [recapTriggeredForRound, setRecapTriggeredForRound] = useState<number | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 
@@ -137,7 +133,6 @@ export default function GamePage() {
 
     return () => {
         isMountedRef.current = false;
-        if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,26 +241,6 @@ export default function GamePage() {
   }, [internalGameState?.gameId, setGameState, setThisPlayer, router, toast]);
 
 
-  // Effect to START the recap sequence
-  useEffect(() => {
-    const currentGamePhase = internalGameState?.gamePhase;
-    const currentRound = internalGameState?.currentRound;
-
-    if (currentGamePhase === 'winner_announcement' && currentRound !== undefined && recapTriggeredForRound !== currentRound) {
-        console.log(`GamePage: recapEffect - Starting sequence for round ${currentRound}, setting to 'winner'`);
-        setRecapStepInternal('winner');
-        setRecapTriggeredForRound(currentRound);
-    } else if (currentGamePhase !== 'winner_announcement') {
-        if (recapStepInternal !== null) {
-            console.log(`GamePage: recapEffect - Game phase NOT winner_announcement. Clearing recapStep and triggeredRound.`);
-            setRecapStepInternal(null);
-        }
-        if (recapTriggeredForRound !== null) {
-            setRecapTriggeredForRound(null);
-        }
-    }
-  }, [internalGameState?.gamePhase, internalGameState?.currentRound, recapTriggeredForRound, recapStepInternal]);
-
   const handleNextRound = useCallback(async () => {
     let currentActionError: any = null;
     const gameId = gameStateRef.current?.gameId;
@@ -285,31 +260,6 @@ export default function GamePage() {
       }
     }
   }, [toast]);
-
-
-  // Effect to MANAGE the recap sequence TIMERS
-  useEffect(() => {
-    if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
-
-    if (recapStepInternal === 'winner') {
-      recapVisualStepTimerRef.current = setTimeout(() => {
-        if (isMountedRef.current) {
-          setRecapStepInternal('scoreboard');
-        }
-      }, 6000); // 2s for winner banner + 4s for winner details
-    } else if (recapStepInternal === 'scoreboard') {
-      recapVisualStepTimerRef.current = setTimeout(() => {
-        if (isMountedRef.current) {
-          setRecapStepInternal('loading');
-        }
-      }, 4000); // 4s to view scoreboard before moving to loading animation
-    }
-    return () => {
-      if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recapStepInternal]);
-
 
   const handleStartGame = async () => {
     if (internalGameState?.gameId && internalGameState.gamePhase === 'lobby' && internalGameState.players.length >= MIN_PLAYERS_TO_START ) {
@@ -507,6 +457,8 @@ export default function GamePage() {
      );
   }
 
+  const showRecap = internalGameState.gamePhase === 'winner_announcement' && internalGameState.lastWinner;
+
   const renderGameContent = () => {
     if (!thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over')) {
         if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase)) {
@@ -539,9 +491,9 @@ export default function GamePage() {
             </div>
         );
     }
-
-    if (recapStepInternal) {
-      return null; 
+    
+    if (showRecap) {
+      return null;
     }
 
     if (thisPlayer?.isJudge) {
@@ -562,18 +514,17 @@ export default function GamePage() {
 
   return (
     <>
-      {recapStepInternal && internalGameState && internalGameState.lastWinner && internalGameState.gamePhase === 'winner_announcement' && (
+      {showRecap && (
         <RecapSequenceDisplay
-          recapStep={recapStepInternal}
-          lastWinnerPlayer={internalGameState.lastWinner.player}
-          lastWinnerCardText={internalGameState.lastWinner.cardText}
+          lastWinnerPlayer={internalGameState.lastWinner!.player}
+          lastWinnerCardText={internalGameState.lastWinner!.cardText}
           players={internalGameState.players}
           currentJudgeId={internalGameState.currentJudgeId}
           thisPlayerIsJudge={thisPlayer?.isJudge ?? false}
           onNextRound={handleNextRound}
         />
       )}
-      <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 ${recapStepInternal ? 'opacity-20 pointer-events-none' : ''}`}>
+      <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 ${showRecap ? 'opacity-20 pointer-events-none' : ''}`}>
         <main className="flex-grow w-full md:w-full lg:w-full relative order-1 md:order-2">
           {showPendingOverlay && (
               <div className="absolute inset-0 bg-transparent flex items-center justify-center z-50 rounded-lg">
@@ -672,6 +623,7 @@ export default function GamePage() {
 export const dynamic = 'force-dynamic';
 
   
+
 
 
 
