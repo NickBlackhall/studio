@@ -262,11 +262,16 @@ export default function WelcomePage() {
 
   const sortedPlayersForDisplay = useMemo(() => {
     if (!internalGame || !internalGame.players) return [];
-    if (!thisPlayerObject) return internalGame.players; 
+    if (!thisPlayerObject) return internalGame.players;
     
-    const otherPlayers = internalGame.players.filter(p => p.id !== thisPlayerObject.id);
+    const validPlayers = internalGame.players.filter((p): p is PlayerClientState => 
+      typeof p === 'object' && p !== null && 'id' in p && 'name' in p
+    );
+    
+    const otherPlayers = validPlayers.filter(p => p.id !== thisPlayerObject.id);
     return [thisPlayerObject, ...otherPlayers];
   }, [internalGame, thisPlayerObject]);
+
 
   const handleResetGame = async () => {
     showGlobalLoader({ message: 'Resetting the entire game...' }); 
@@ -309,10 +314,7 @@ export default function WelcomePage() {
     setIsTogglingReady(true);
     startPlayerActionTransition(async () => {
       try {
-        let updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
-        if (isMountedRef.current && updatedGameState) {
-          setGame(updatedGameState);
-        }
+        await togglePlayerReadyStatus(player.id, currentGameId);
       } catch (error: any) {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -635,5 +637,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-  
