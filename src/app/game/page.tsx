@@ -289,30 +289,26 @@ export default function GamePage() {
 
   // Effect to MANAGE the recap sequence TIMERS
   useEffect(() => {
+    if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
+
+    if (recapStepInternal === 'winner') {
+      recapVisualStepTimerRef.current = setTimeout(() => {
+        if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+          setRecapStepInternal('scoreboard');
+        }
+      }, 6000); // 2s for winner banner + 4s for winner details
+    } else if (recapStepInternal === 'scoreboard') {
+      recapVisualStepTimerRef.current = setTimeout(() => {
+        if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
+          setRecapStepInternal('loading');
+        }
+      }, 4000); // 4s to view scoreboard before moving to loading animation
+    }
+    return () => {
       if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
-  
-      if (recapStepInternal === 'winner') {
-          recapVisualStepTimerRef.current = setTimeout(() => {
-              if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
-                  setRecapStepInternal('scoreboard');
-              }
-          }, 8000); // 8s for winner card (Face 1 + Face 2)
-      } else if (recapStepInternal === 'scoreboard') {
-          recapVisualStepTimerRef.current = setTimeout(() => {
-              if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
-                // The judge is responsible for starting the next round.
-                if (thisPlayerRef.current?.isJudge) {
-                  handleNextRound();
-                }
-                setRecapStepInternal('loading');
-              }
-          }, 5000); // 5s to view scoreboard before moving to loading animation
-      }
-      return () => {
-          if (recapVisualStepTimerRef.current) clearTimeout(recapVisualStepTimerRef.current);
-      };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recapStepInternal, handleNextRound]);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recapStepInternal]);
 
 
   const handleStartGame = async () => {
@@ -546,13 +542,15 @@ export default function GamePage() {
 
   return (
     <>
-      {recapStepInternal && internalGameState && internalGameState.lastWinner && (
+      {recapStepInternal && internalGameState && internalGameState.lastWinner && internalGameState.gamePhase === 'winner_announcement' && (
         <RecapSequenceDisplay
           recapStep={recapStepInternal}
           lastWinnerPlayer={internalGameState.lastWinner.player}
           lastWinnerCardText={internalGameState.lastWinner.cardText}
           players={internalGameState.players}
           currentJudgeId={internalGameState.currentJudgeId}
+          thisPlayerIsJudge={thisPlayer?.isJudge ?? false}
+          onNextRound={handleNextRound}
         />
       )}
       <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 ${recapStepInternal ? 'opacity-20 pointer-events-none' : ''}`}>
@@ -654,4 +652,5 @@ export default function GamePage() {
 export const dynamic = 'force-dynamic';
 
   
+
 

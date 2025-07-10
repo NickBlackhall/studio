@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { PlayerClientState } from '@/lib/types';
 import { useState, useEffect, memo } from 'react';
 import Scoreboard from './Scoreboard';
+import AvatarLoadingSequence from './AvatarLoadingSequence';
 
 interface FlippingWinnerCardProps {
   rotation: number;
@@ -18,9 +19,17 @@ interface FlippingWinnerCardProps {
 
 function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeId }: FlippingWinnerCardProps) {
   const [frontFaceContent, setFrontFaceContent] = useState<'banner' | 'scoreboard'>('banner');
-  
-  // Switch the content of the "front" face mid-flip (at 270 degrees)
+  const [backFaceContent, setBackFaceContent] = useState<'details' | 'loading'>('details');
+
   useEffect(() => {
+    // Switch the content of the "back" face after it has flipped past the winner details
+    if (rotation > 450) { // 450 is 270 + 180, halfway through the final flip
+      setBackFaceContent('loading');
+    } else {
+      setBackFaceContent('details');
+    }
+
+    // Switch the content of the "front" face after it has flipped past the banner
     if (rotation > 270) {
       setFrontFaceContent('scoreboard');
     } else {
@@ -79,56 +88,81 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
           )}
         </Face>
         
-        {/* Back Face: Winner details */}
+        {/* Back Face: Switches between winner details and loading sequence */}
         <Face className="bg-black" style={{ transform: 'rotateY(180deg)' }}>
-          <Image
-            src="/backgrounds/winner-details-poster.png"
-            alt="Winner Details"
-            fill
-            className="object-cover"
-            priority
-            sizes="(max-width: 768px) 100vw, 50vw"
-            data-ai-hint="winner details poster"
-          />
+          {backFaceContent === 'details' ? (
+            <Image
+              src="/backgrounds/winner-details-poster.png"
+              alt="Winner Details"
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
+              data-ai-hint="winner details poster"
+            />
+          ) : (
+            <Image
+              src="/backgrounds/get-ready-poster.png"
+              alt="Get Ready for the next round"
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
+              data-ai-hint="get ready poster"
+            />
+          )}
+
+          {/* Content for Back Face */}
           <div className="absolute inset-0">
-            {/* Avatar positioned within its area */}
-            <div className="absolute top-[14%] left-1/2 -translate-x-1/2 w-[48%]">
-              <Avatar className="w-full h-auto aspect-square rounded-md">
-                <AvatarImage src={winner.avatar} alt={winner.name} />
-                <AvatarFallback>{winner.name?.substring(0, 2).toUpperCase() || 'P'}</AvatarFallback>
-              </Avatar>
-            </div>
-            
-            {/* Player Name positioned within its area */}
-            <div className="absolute top-[46%] left-1/2 -translate-x-1/2 w-[80%] text-center">
-              <p 
-                className="font-im-fell text-black font-bold leading-none drop-shadow"
-                // Responsive font size using clamp
-                style={{ fontSize: 'clamp(1.5rem, 8vw, 2.5rem)' }}
-              >
-                {winner.name}
-              </p>
-            </div>
-            
-            {/* Response Card positioned at the bottom */}
-            <div className="absolute bottom-[18%] left-1/2 -translate-x-1/2 w-[88%] aspect-[1536/600]">
-              <Image
-                src="/ui/mit-card-front.png"
-                alt="Winning response card"
-                fill
-                className="object-contain"
-                sizes="(max-width: 768px) 80vw, 30vw"
-                data-ai-hint="card front"
-              />
-              <div className="absolute inset-0 flex items-center justify-center p-[8%]">
-                <p 
-                  className="font-im-fell text-black text-center leading-tight"
-                  style={{ fontSize: 'clamp(0.75rem, 3.5vw, 1.25rem)' }}
-                >
-                  {cardText}
-                </p>
-              </div>
-            </div>
+              {backFaceContent === 'details' ? (
+                <>
+                  {/* Avatar positioned within its area */}
+                  <div className="absolute top-[14%] left-1/2 -translate-x-1/2 w-[48%]">
+                    <Avatar className="w-full h-auto aspect-square rounded-md">
+                      <AvatarImage src={winner.avatar} alt={winner.name} />
+                      <AvatarFallback>{winner.name?.substring(0, 2).toUpperCase() || 'P'}</AvatarFallback>
+                    </Avatar>
+                  </div>
+                  
+                  {/* Player Name positioned within its area */}
+                  <div className="absolute top-[46%] left-1/2 -translate-x-1/2 w-[80%] text-center">
+                    <p 
+                      className="font-im-fell text-black font-bold leading-none drop-shadow"
+                      // Responsive font size using clamp
+                      style={{ fontSize: 'clamp(1.5rem, 8vw, 2.5rem)' }}
+                    >
+                      {winner.name}
+                    </p>
+                  </div>
+                  
+                  {/* Response Card positioned at the bottom */}
+                  <div className="absolute bottom-[18%] left-1/2 -translate-x-1/2 w-[88%] aspect-[1536/600]">
+                    <Image
+                      src="/ui/mit-card-front.png"
+                      alt="Winning response card"
+                      fill
+                      className="object-contain"
+                      sizes="(max-width: 768px) 80vw, 30vw"
+                      data-ai-hint="card front"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center p-[8%]">
+                      <p 
+                        className="font-im-fell text-black text-center leading-tight"
+                        style={{ fontSize: 'clamp(0.75rem, 3.5vw, 1.25rem)' }}
+                      >
+                        {cardText}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center" style={{ top: '45%', transform: 'translateY(-50%)' }}>
+                    <AvatarLoadingSequence 
+                        players={players} 
+                        message=""
+                    />
+                </div>
+              )}
           </div>
         </Face>
       </motion.div>
