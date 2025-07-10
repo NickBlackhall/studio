@@ -1,45 +1,80 @@
 
 "use client";
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { PlayerClientState } from '@/lib/types';
 import styles from '@/components/layout/AvatarLoadingOverlay.module.css';
+import { Button } from '@/components/ui/button';
+import { SkipForward } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Loading Overlay Component ---
 
 const AvatarLoadingOverlayInternal = () => {
-  const { isGlobalLoading, loadingMessage, playersForLoader } = useLoading();
-  const [animationKey, setAnimationKey] = useState(0);
+  const { 
+    isGlobalLoading, 
+    isWorkComplete, 
+    loadingMessage, 
+    playersForLoader,
+    finishLoading, // Get the function to actually hide the loader
+  } = useLoading();
+  
+  const [showSkip, setShowSkip] = useState(false);
+  const minWaitTimer = useRef<NodeJS.Timeout>();
+  const fullDurationTimer = useRef<NodeJS.Timeout>();
 
   const players = playersForLoader || [];
   const logoPath = "/ui/new-logo.png";
+  
+  const playerDuration = 1.2;
+  const logoDuration = 2;
+  const totalDuration = (players.length * playerDuration) + logoDuration;
+  const MINIMUM_WAIT_MS = 5000;
 
   useEffect(() => {
-    if (isGlobalLoading && players.length > 0) {
-      setAnimationKey(prev => prev + 1);
+    if (isGlobalLoading) {
+      setShowSkip(false); // Reset skip button visibility on new load
+      
+      // Timer for minimum duration
+      minWaitTimer.current = setTimeout(() => {
+        setShowSkip(true); // Allow skip button to appear after 5s
+      }, MINIMUM_WAIT_MS);
+
+      // Timer for the full animation sequence
+      fullDurationTimer.current = setTimeout(() => {
+        finishLoading();
+      }, totalDuration * 1000);
+
     }
-  }, [isGlobalLoading, players.length]);
 
-  if (!isGlobalLoading) return null;
+    // Cleanup timers on unmount or when loading is finished
+    return () => {
+      clearTimeout(minWaitTimer.current);
+      clearTimeout(fullDurationTimer.current);
+    };
+  }, [isGlobalLoading, totalDuration, finishLoading]);
 
+  // If not loading, render nothing
+  if (!isGlobalLoading) {
+    return null;
+  }
+  
+  // If there are no players, use the simple fallback loader
   if (players.length === 0) {
     return <FallbackLoader message={loadingMessage} />;
   }
 
-  const playerDuration = 1.2;
-  const logoDuration = 2;
-  const totalDuration = (players.length * playerDuration) + logoDuration;
+  // Determine if the skip button should be rendered and clickable
+  const canSkip = showSkip && isWorkComplete;
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.loader} key={animationKey}>
+      <div className={styles.loader}>
         {players.map((player, index) => {
           const startTime = index * playerDuration;
-          const endTime = startTime + playerDuration;
-          
           return (
             <div
-              key={`player-${player.id}-${animationKey}`}
+              key={`player-${player.id}`}
               className={styles.avatarLayer}
               style={{
                 backgroundImage: `url(${player.avatar})`,
@@ -49,7 +84,6 @@ const AvatarLoadingOverlayInternal = () => {
             />
           );
         })}
-        
         <div
           className={`${styles.avatarLayer} ${styles.logoLayer}`}
           style={{
@@ -67,6 +101,27 @@ const AvatarLoadingOverlayInternal = () => {
           Featuring: {players.map(p => p.name).join(", ")}
         </div>
       )}
+
+      <AnimatePresence>
+        {canSkip && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="absolute bottom-10"
+          >
+            <Button
+              onClick={finishLoading}
+              variant="outline"
+              className="bg-white/10 text-white backdrop-blur-sm hover:bg-white/20"
+            >
+              <SkipForward className="mr-2 h-4 w-4" />
+              Skip
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -82,38 +137,52 @@ const FallbackLoader = ({ message }: { message: string }) => (
 
 interface LoadingContextType {
   isGlobalLoading: boolean;
+  isWorkComplete: boolean;
   loadingMessage: string;
   playersForLoader: PlayerClientState[];
   showGlobalLoader: (options?: { message?: string; players?: PlayerClientState[] }) => void;
-  hideGlobalLoader: () => void;
+  hideGlobalLoader: () => void; // This will now mean "work is complete"
+  finishLoading: () => void; // This will actually hide the overlay
 }
 
 const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
 
 export function LoadingProvider({ children }: { children: ReactNode }) {
   const [isGlobalLoading, setIsGlobalLoading] = useState(false);
+  const [isWorkComplete, setIsWorkComplete] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
   const [playersForLoader, setPlayersForLoader] = useState<PlayerClientState[]>([]);
 
   const showGlobalLoader = useCallback((options?: { message?: string; players?: PlayerClientState[] }) => {
     setLoadingMessage(options?.message || "Loading the terribleness...");
     setPlayersForLoader(options?.players || []);
-    setIsGlobalLoading(true);
+    setIsWorkComplete(false); // Reset work status
+    setIsGlobalLoading(true); // Show the loader
   }, []);
 
   const hideGlobalLoader = useCallback(() => {
+    // This function is now just a signal that the async operation is done.
+    setIsWorkComplete(true);
+  }, []);
+  
+  const finishLoading = useCallback(() => {
+    // This is the function that actually turns off the loader display
     setIsGlobalLoading(false);
+    // Reset state for next time
     setTimeout(() => {
         setLoadingMessage("Loading...");
         setPlayersForLoader([]);
-    }, 500);
+        setIsWorkComplete(false);
+    }, 500); // Delay to allow fade-out
   }, []);
 
   return (
     <LoadingContext.Provider value={{ 
       isGlobalLoading, 
+      isWorkComplete,
       showGlobalLoader, 
-      hideGlobalLoader, 
+      hideGlobalLoader,
+      finishLoading,
       loadingMessage, 
       playersForLoader 
     }}>
