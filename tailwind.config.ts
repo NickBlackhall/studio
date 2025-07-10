@@ -11,8 +11,8 @@ export default {
   theme: {
   	extend: {
       fontFamily: {
-        'im-fell': ['var(--font-im-fell)', 'serif'],
-        'corben': ['var(--font-corben)', 'cursive'],
+        'im-fell': ['"IM Fell English SC"', 'serif'],
+        'corben': ['"Corben"', 'cursive'],
       },
   		colors: {
   			background: 'hsl(var(--background))',
@@ -52,7 +52,7 @@ export default {
   				'1': 'hsl(var(--chart-1))',
   				'2': 'hsl(var(--chart-2))',
   				'3': 'hsl(var(--chart-3))',
-  				'4': 'hsl(var(--chart-4))',
+  				'4': 'font-im-fell',
   				'5': 'hsl(var(--chart-5))'
   			},
   			sidebar: {

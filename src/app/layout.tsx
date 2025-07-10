@@ -2,8 +2,8 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
-import { imFell, corben } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
+import FontDebugger from '@/components/layout/FontDebugger';
 
 export const metadata: Metadata = {
   title: 'Make It Terrible',
@@ -30,10 +30,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${imFell.variable} ${corben.variable}`} suppressHydrationWarning={true}>
+    <html lang="en" suppressHydrationWarning={true}>
       <body className={cn(
-          "antialiased flex flex-col min-h-screen font-im-fell",
-          // Ensure font is applied immediately to prevent FOUC
+          "antialiased flex flex-col min-h-screen",
         )} suppressHydrationWarning={true}>
         <LoadingProvider>
           <div className="flex min-h-screen w-full flex-col">
@@ -43,6 +42,7 @@ export default function RootLayout({
           </div>
           <Toaster />
         </LoadingProvider>
+        <FontDebugger />
       </body>
     </html>
   );
