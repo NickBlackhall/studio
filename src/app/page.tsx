@@ -59,6 +59,7 @@ export default function WelcomePage() {
   }, []);
 
   const setGame = useCallback((newGameState: GameClientState | null) => {
+    console.log("DEBUG: `setGame` function called. New state incoming.");
     gameRef.current = newGameState; 
     if (isMountedRef.current) {
       if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
@@ -195,10 +196,11 @@ export default function WelcomePage() {
   useEffect(() => {
     const gameId = internalGame?.gameId;
     if (!gameId) return;
-
+  
     // Simple fetch function without internal debouncing
     const fetchGameState = async () => {
       if (isTogglingReady) {
+        console.log("DEBUG: Skipping realtime fetch - ready toggle in progress");
         return;
       }
       
@@ -207,54 +209,60 @@ export default function WelcomePage() {
       try {
         const fetchedGameState = await getGame(gameId);
         if (isMountedRef.current) {
+          console.log("DEBUG: Realtime fetch completed, setting game state");
           setGame(fetchedGameState);
         }
       } catch (error) {
         console.error(`Error in fetchGameState (lobby):`, error);
       }
     };
-
+  
     // Handle realtime updates with proper debouncing
     const handleRealtimeUpdate = (payload: any) => {
+      console.log("DEBUG: Realtime update received:", payload.eventType, "for table:", payload.table);
+      
+      // If we're in the middle of toggling ready, ignore ALL updates for longer
+      if (isTogglingReady) {
+        console.log("DEBUG: Ignoring realtime update - toggle in progress");
+        return;
+      }
+      
       // Clear any existing timeout
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
       
+      // Use longer debounce during ready operations
+      const debounceDelay = 1200; // Increased from 800ms
+      
       // Set new timeout - this is the actual debouncing
       debounceTimerRef.current = setTimeout(() => {
-        fetchGameState(); // Call the simple fetch function
-      }, 800);
+        console.log("DEBUG: Debounced fetch executing after", debounceDelay, "ms");
+        fetchGameState();
+      }, debounceDelay);
     };
-
+  
+    // Rest of your subscription code stays the same...
     const uniqueChannelSuffix = internalThisPlayerId || Date.now();
     const playersChannelName = `players-lobby-${gameId}-${uniqueChannelSuffix}`;
     const gameChannelName = `game-state-lobby-${gameId}-${uniqueChannelSuffix}`;
-
+  
     const playersChannel = supabase
       .channel(playersChannelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameId}` }, handleRealtimeUpdate)
-      .subscribe((status, err) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || err) {
-          console.error(`Client (Realtime) - playersChannel error:`, { status, err: err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error' });
-        }
-      });
-
+      .subscribe();
+  
     const gameChannel = supabase
       .channel(gameChannelName)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, handleRealtimeUpdate)
-      .subscribe((status, err) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || err) {
-          console.error(`Client (Realtime) - gameChannel error:`, { status, err: err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'undefined error' });
-        }
-      });
-      
+      .subscribe();
+        
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      supabase.removeChannel(playersChannel).catch(err => console.error("Client (Realtime cleanup): Error removing players channel on WelcomePage:", err));
-      supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime cleanup): Error removing game channel on WelcomePage:", err));
+      supabase.removeChannel(playersChannel);
+      supabase.removeChannel(gameChannel);
     };
-  }, [internalGame?.gameId, internalThisPlayerId, setGame, isTogglingReady]); 
+  }, [internalGame?.gameId, internalThisPlayerId, setGame, isTogglingReady]);
 
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
@@ -314,7 +322,15 @@ export default function WelcomePage() {
     setIsTogglingReady(true);
     startPlayerActionTransition(async () => {
       try {
+        console.log("DEBUG: 1. Firing handleToggleReady for player", player.name);
+        console.log("DEBUG: 2. Calling server action 'togglePlayerReadyStatus'");
         await togglePlayerReadyStatus(player.id, currentGameId);
+        
+        // Let realtime handle the update
+        // if (isMountedRef.current && updatedGameState) {
+        //   console.log("DEBUG: 3. Server action successful, received updated game state. Setting it now.");
+        //   setGame(updatedGameState);
+        // }
       } catch (error: any) {
         if (isMountedRef.current) {
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -325,7 +341,7 @@ export default function WelcomePage() {
         }
       } finally {
         if(isMountedRef.current) {
-            setTimeout(() => setIsTogglingReady(false), 2500);
+            setTimeout(() => setIsTogglingReady(false), 3500);
         }
       }
     });
@@ -637,3 +653,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
