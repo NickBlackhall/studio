@@ -159,7 +159,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
                 <div className="absolute inset-0 flex flex-col items-center" style={{ top: '55%', transform: 'translateY(-50%)' }}>
                     <AvatarLoadingSequence 
                         players={players} 
-                        message=""
+                        message="The next round will start soon!"
                     />
                 </div>
               )}
