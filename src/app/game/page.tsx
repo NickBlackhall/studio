@@ -49,7 +49,7 @@ export default function GamePage() {
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
 
-  const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | 'getReady' | null>(null);
+  const [recapStepInternal, setRecapStepInternal] = useState<'winner' | 'scoreboard' | null>(null);
   const recapVisualStepTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for visual step duration
   const judgeEarlyActionTimerRef = useRef<NodeJS.Timeout | null>(null); // Timer for judge's early action
   const [recapTriggeredForRound, setRecapTriggeredForRound] = useState<number | null>(null);
@@ -69,7 +69,7 @@ export default function GamePage() {
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     console.log(`GamePage: fetchGameAndPlayer called from ${origin}.`);
-    if (isMountedRef.current) {
+    if (isMountedRef.current && isInitialLoading) {
         showGlobalLoader({ message: 'Syncing with the mothership...' });
     }
     let localGameId: string | null = null;
@@ -129,7 +129,7 @@ export default function GamePage() {
       }
       console.log(`GamePage: fetchGameAndPlayer (from ${origin}) sequence ended.`);
     }
-  }, [router, toast, setGameState, setThisPlayer, hideGlobalLoader, showGlobalLoader]);
+  }, [router, toast, setGameState, setThisPlayer, hideGlobalLoader, showGlobalLoader, isInitialLoading]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -259,6 +259,7 @@ export default function GamePage() {
         setRecapTriggeredForRound(currentRound);
     } else if (currentGamePhase !== 'winner_announcement') {
         if (recapStepInternal !== null) {
+            console.log(`GamePage: recapEffect - Game phase NOT winner_announcement. Clearing recapStep and triggeredRound.`);
             setRecapStepInternal(null);
         }
         if (recapTriggeredForRound !== null) {
@@ -277,29 +278,15 @@ export default function GamePage() {
               if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
                   setRecapStepInternal('scoreboard');
               }
-          }, 8000); // 3s for Face 1 + 5s for Face 2
+          }, 8000); // 8s for winner card (Face 1 + Face 2)
       } else if (recapStepInternal === 'scoreboard') {
-          recapVisualStepTimerRef.current = setTimeout(() => {
-              if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
-                  setRecapStepInternal('getReady');
-              }
-          }, 5000);
-      } else if (recapStepInternal === 'getReady') {
-          // Visual timer for all players
-          recapVisualStepTimerRef.current = setTimeout(() => {
-              if (isMountedRef.current && gameStateRef.current?.gamePhase === 'winner_announcement') {
-                  setRecapStepInternal(null);
-              }
-          }, 5000);
-  
-          // Judge's early action timer
-          const currentThisPlayer = thisPlayerRef.current;
-          if (currentThisPlayer?.isJudge) {
+          // The previous round's judge is responsible for starting the next round.
+          if (thisPlayerRef.current?.isJudge) {
               judgeEarlyActionTimerRef.current = setTimeout(() => {
                   if (isMountedRef.current && gameStateRef.current?.gameId && gameStateRef.current?.gamePhase === 'winner_announcement') {
                       handleNextRound();
                   }
-              }, 3000); // Judge acts at 3 seconds
+              }, 5000); // Judge gets 5 seconds to view scoreboard before auto-proceeding.
           }
       }
       return () => {
@@ -307,7 +294,7 @@ export default function GamePage() {
           if (judgeEarlyActionTimerRef.current) clearTimeout(judgeEarlyActionTimerRef.current);
       };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recapStepInternal]); // This effect ONLY depends on the step changing.
+  }, [recapStepInternal]);
 
 
   const handleStartGame = async () => {
