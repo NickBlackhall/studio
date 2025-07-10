@@ -5,10 +5,11 @@ import { useState, useEffect } from 'react';
 import type { PlayerClientState } from '@/lib/types';
 import styles from '@/components/layout/AvatarLoadingOverlay.module.css';
 import Image from 'next/image';
+import type { ReactNode } from 'react';
 
 interface AvatarLoadingSequenceProps {
   players: PlayerClientState[];
-  message: string;
+  message: ReactNode;
 }
 
 export default function AvatarLoadingSequence({ players, message }: AvatarLoadingSequenceProps) {
@@ -69,13 +70,6 @@ export default function AvatarLoadingSequence({ players, message }: AvatarLoadin
       
       {message && <div className={styles.message}>{message}</div>}
       
-      {players.length > 0 && (
-        <div className="text-center mt-4">
-            <p className="text-sm text-gray-400">
-                Featuring: {players.map(p => p.name).join(', ')}
-            </p>
-        </div>
-      )}
     </div>
   );
 }
