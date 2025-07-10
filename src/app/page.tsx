@@ -239,23 +239,22 @@ export default function WelcomePage() {
   }, [internalThisPlayerId, internalGame?.players]);
 
   const sortedPlayersForDisplay = useMemo(() => {
-    if (!internalGame || !internalGame.players) return [];
-
+    if (!internalGame?.players) return [];
+  
     const validPlayers = internalGame.players.filter((p): p is PlayerClientState => 
       typeof p === 'object' && p !== null && 'id' in p && 'name' in p
     );
     
-    // Always sort the players array to ensure a stable order for React's map key.
-    // The current player is moved to the top, and the rest are sorted by join time (or name as fallback).
+    const currentPlayerId = internalThisPlayerId;
+    
     return [...validPlayers].sort((a, b) => {
-        if (internalThisPlayerId) {
-            if (a.id === internalThisPlayerId) return -1;
-            if (b.id === internalThisPlayerId) return 1;
-        }
-        // Fallback sort for consistent order for all other players
-        return (a.name || '').localeCompare(b.name || '');
+      if (currentPlayerId) {
+        if (a.id === currentPlayerId) return -1;
+        if (b.id === currentPlayerId) return 1;
+      }
+      return (a.name || '').localeCompare(b.name || '');
     });
-  }, [internalGame, internalThisPlayerId]);
+  }, [internalGame?.players, internalThisPlayerId]);
 
 
   const handleResetGame = async () => {
