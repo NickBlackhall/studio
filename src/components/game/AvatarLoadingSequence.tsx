@@ -14,7 +14,7 @@ interface AvatarLoadingSequenceProps {
 export default function AvatarLoadingSequence({ players, message }: AvatarLoadingSequenceProps) {
   const [animationKey, setAnimationKey] = useState(0);
 
-  const logoPath = "/ui/loading-logo.png";
+  const logoPath = "/ui/new-logo.png";
   
   useEffect(() => {
     setAnimationKey(prev => prev + 1);
