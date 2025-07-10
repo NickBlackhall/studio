@@ -1,7 +1,7 @@
 
 "use client";
 import type { ReactNode } from 'react';
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { PlayerClientState } from '@/lib/types';
 import styles from '@/components/layout/AvatarLoadingOverlay.module.css';
 import { Loader2 } from 'lucide-react';
