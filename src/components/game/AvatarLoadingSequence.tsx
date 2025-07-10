@@ -67,11 +67,13 @@ export default function AvatarLoadingSequence({ players, message }: AvatarLoadin
         </div>
       </div>
       
-      <div className={styles.message}>{message}</div>
+      {message && <div className={styles.message}>{message}</div>}
       
       {players.length > 0 && (
-        <div className={styles.playerList}>
-          Featuring: {players.map(p => p.name).join(", ")}
+        <div className="text-center mt-4">
+            <p className="text-sm text-gray-400">
+                Featuring: {players.map(p => p.name).join(', ')}
+            </p>
         </div>
       )}
     </div>
