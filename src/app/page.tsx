@@ -332,7 +332,6 @@ export default function WelcomePage() {
                         return; 
                     }
                     toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
-                    hideGlobalLoader();
                 }
             }
         });
@@ -625,3 +624,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
