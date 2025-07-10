@@ -291,6 +291,7 @@ export default function WelcomePage() {
   const handleToggleReady = async (player: PlayerClientState) => {
     if (!internalGame?.gameId || player.id !== internalThisPlayerId) return;
     
+    // 1. Update UI IMMEDIATELY (optimistic)
     setInternalGame(prev => {
       if (!prev) return prev;
       return {
@@ -301,10 +302,12 @@ export default function WelcomePage() {
       };
     });
     
+    // 2. Call server in background (no waiting)
     try {
       await togglePlayerReadyStatus(player.id, internalGame.gameId);
     } catch (error) {
-      setGame(prev => {
+      // 3. If it fails, revert the UI change
+      setInternalGame(prev => {
         if (!prev) return prev;
         return {
           ...prev,
@@ -320,7 +323,6 @@ export default function WelcomePage() {
   const handleStartGame = async () => {
     const gameToStart = internalGame;
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
-        showGlobalLoader({ message: 'Dealing cards and starting the mayhem...', players: gameToStart.players });
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
@@ -440,7 +442,7 @@ export default function WelcomePage() {
               <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
                 <p>The current game is in the &quot;{internalGame.gamePhase}&quot; phase.</p>
                 <Button
-                  onClick={() => { showGlobalLoader({ message: 'Rejoining game...', players: internalGame.players }); router.push('/game'); }}
+                  onClick={() => router.push('/game')}
                   variant="default"
                   size="sm"
                   className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
