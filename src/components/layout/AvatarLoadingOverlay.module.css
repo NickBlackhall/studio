@@ -18,8 +18,8 @@
 }
 
 .loader {
-  width: 180px;
-  height: 180px;
+  width: 220px;
+  height: 220px;
   position: relative;
   /* The border, background, and shadow have been removed as requested */
   margin: 20px 0;
