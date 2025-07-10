@@ -52,13 +52,6 @@
   margin-top: 15px;
   font-size: 1.5em;
   text-shadow: 0 1px 3px rgba(255,255,255,0.2);
-}
-
-.playerList {
-  color: #a0a0a0;
-  font-size: 0.9em;
-  margin-top: 10px;
-  max-width: 80%;
   text-align: center;
 }
 
@@ -97,9 +90,5 @@
   }
   .message {
     font-size: 1.2em;
-  }
-  .playerList {
-    font-size: 0.8em;
-    max-width: 90%;
   }
 }
