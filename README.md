@@ -28,13 +28,13 @@ The project is currently a **fully functional prototype**. The entire real-time 
 
 This section tracks recent improvements and bug fixes that have impacted gameplay, UI, and UX.
 
+- **Fixed Font Flickering in Lobby:** Resolved a persistent "Flash of Unstyled Content" (FOUC) where player names in the lobby would flicker between the default system font and the game's stylized `IM Fell` font during state updates (e.g., when a player toggled their ready status). The fix involved changing the player name element from a generic `<span>` to a semantic `<h2>` tag, ensuring the correct base styles are applied immediately on render.
 - **Fixed Real-Time Instability & Flickering:** Resolved a major bug where multiple, rapid database updates from Supabase would trigger excessive re-renders, causing visual flickering and instability. Implemented a debouncing mechanism to intelligently bundle these updates into a single, smooth refresh, dramatically improving UI stability and performance during gameplay. Also fixed a broken image path for the loading screen logo.
 - **Fixed Spectator Black Screen:** Resolved a critical bug where new users would see a black screen if they tried to join a game that was already in a non-lobby state (e.g., 'game_over'). The UI now correctly shows a "Game in Progress" spectator view.
 - **Corrected TypeScript Error:** Fixed a type error where the `isCustom` property was not correctly defined on the `PlayerHandCard` interface, improving code quality and type safety.
 - **UI Polish - Player Submission:** When a player submits their card, the UI now correctly hides the card stack and displays a clean "Submission Sent" graphic, preventing player confusion.
 - **UI Polish - Player Setup:** Adjusted the vertical alignment of the "name" input field on the player setup screen for better visual balance.
 - **UI Polish - Font Consistency:** Updated the font on the Judge's waiting screen to match the game's overall `IM Fell` aesthetic.
-- **UI Polish - Font Flickering in Lobby:** Resolved a persistent "Flash of Unstyled Content" (FOUC) where player names in the lobby would flicker between the default system font and the game's stylized `IM Fell` font during state updates (e.g., when a player toggled their ready status). The fix involved changing the player name element from a generic `<span>` to a semantic `<h2>` tag, ensuring the correct base styles are applied immediately on render.
 
 ## Roadmap & Next Steps
 
