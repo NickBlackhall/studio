@@ -3,6 +3,8 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
+import { imFell, corben } from '@/lib/fonts';
+import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
   title: 'Make It Terrible',
@@ -30,16 +32,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning={true}>
-      <head>
-        <link
-          rel="preload"
-          href="/fonts/IMFellEnglishSC-Regular.ttf"
-          as="font"
-          type="font/ttf"
-          crossOrigin="anonymous"
-        />
-      </head>
-      <body className={`antialiased flex flex-col min-h-screen`} suppressHydrationWarning={true}>
+      <body className={cn(
+          "antialiased flex flex-col min-h-screen",
+          imFell.variable,
+          corben.variable
+        )} suppressHydrationWarning={true}>
         <LoadingProvider>
           <div className="flex min-h-screen w-full flex-col">
             <main className="flex-grow flex flex-col">

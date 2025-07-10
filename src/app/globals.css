@@ -1,20 +1,4 @@
 
-@font-face {
-  font-family: 'IM Fell English SC';
-  src: url('/fonts/IMFellEnglishSC-Regular.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Corben';
-  src: url('/fonts/Corben-Regular.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -123,7 +107,7 @@
 
   h1, h2, h3, h4, h5, h6,
   .card-title { 
-    font-family: 'IM Fell English SC', serif;
+    font-family: var(--font-im-fell), serif;
   }
 }
 
@@ -194,14 +178,14 @@
   color: #000;
   background: transparent;
   outline: none;
-  font-family: 'IM Fell English SC', serif;
+  font-family: var(--font-im-fell), serif;
   letter-spacing: 0.5px;
   border: none;
 }
 
 .name-input::placeholder {
   color: rgba(0, 0, 0, 0.7);
-  font-family: 'IM Fell English SC', serif;
+  font-family: var(--font-im-fell), serif;
   font-size: 2rem;
 }
 
