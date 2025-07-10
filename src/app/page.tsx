@@ -188,11 +188,10 @@ export default function WelcomePage() {
         currentStep === 'setup' &&
         localThisPlayerId 
       ) {
-      showGlobalLoader({ message: 'Joining active game...', players: gameForNavCheck.players });
       router.push('/game');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [internalGame, internalThisPlayerId, currentStep, router, showGlobalLoader]);
+  }, [internalGame, internalThisPlayerId, currentStep, router]);
 
 
   useEffect(() => {
@@ -292,8 +291,7 @@ export default function WelcomePage() {
   const handleToggleReady = async (player: PlayerClientState) => {
     if (!internalGame?.gameId || player.id !== internalThisPlayerId) return;
     
-    // 1. Update UI IMMEDIATELY (optimistic)
-    setGame(prev => {
+    setInternalGame(prev => {
       if (!prev) return prev;
       return {
         ...prev,
@@ -303,21 +301,19 @@ export default function WelcomePage() {
       };
     });
     
-    // 2. Call server in background (no waiting)
     try {
       await togglePlayerReadyStatus(player.id, internalGame.gameId);
     } catch (error) {
-      // 3. If it fails, revert the UI change
-      toast({ title: "Toggle failed", description: "Sync error. Reverting change.", variant: "destructive" });
       setGame(prev => {
         if (!prev) return prev;
         return {
           ...prev,
           players: prev.players.map(p => 
-            p.id === player.id ? { ...p, isReady: !p.isReady } : p // Revert the toggle
+            p.id === player.id ? { ...p, isReady: !p.isReady } : p
           )
         };
       });
+      toast({ title: "Toggle failed", description: "Please try again" });
     }
   };
 
