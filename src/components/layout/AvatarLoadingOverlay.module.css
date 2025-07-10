@@ -21,11 +21,7 @@
   width: 150px;
   height: 150px;
   position: relative;
-  border-radius: 15px;
-  border: 3px solid #ffd700;
-  overflow: hidden;
-  box-shadow: 0 8px 35px rgba(0,0,0,0.5);
-  background: #111;
+  /* The border, background, and shadow have been removed as requested */
   margin: 20px 0;
 }
 
