@@ -196,28 +196,35 @@ export default function WelcomePage() {
     const gameId = internalGame?.gameId;
     if (!gameId) return;
 
-    const debouncedFetch = async () => {
+    // Simple fetch function without internal debouncing
+    const fetchGameState = async () => {
       if (isTogglingReady) {
-        console.log("DEBUG: Skipping realtime fetch - ready toggle in progress");
         return;
       }
       
-      console.log(`DEBUG: (Debounced) Realtime update triggered fetch for game ${gameId}.`);
       if (!isMountedRef.current) return;
+      
       try {
         const fetchedGameState = await getGame(gameId);
         if (isMountedRef.current) {
-          console.log("DEBUG: (Debounced) Successfully fetched new game state. Now setting it.");
           setGame(fetchedGameState);
         }
       } catch (error) {
-        console.error(`Error in debouncedFetch (lobby):`, error);
+        console.error(`Error in fetchGameState (lobby):`, error);
       }
     };
 
+    // Handle realtime updates with proper debouncing
     const handleRealtimeUpdate = (payload: any) => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = setTimeout(debouncedFetch, 800);
+      // Clear any existing timeout
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      // Set new timeout - this is the actual debouncing
+      debounceTimerRef.current = setTimeout(() => {
+        fetchGameState(); // Call the simple fetch function
+      }, 800);
     };
 
     const uniqueChannelSuffix = internalThisPlayerId || Date.now();
