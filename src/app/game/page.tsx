@@ -39,6 +39,7 @@ export default function GamePage() {
   const [thisPlayer, setThisPlayerInternal] = useState<PlayerClientState | null>(null);
   const thisPlayerRef = useRef<PlayerClientState | null>(null);
 
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
@@ -124,6 +125,7 @@ export default function GamePage() {
     } finally {
       if (isMountedRef.current) {
         hideGlobalLoader();
+        setIsInitialLoading(false);
       }
       console.log(`GamePage: fetchGameAndPlayer (from ${origin}) sequence ended.`);
     }
@@ -459,6 +461,10 @@ export default function GamePage() {
   };
 
 
+  if (isInitialLoading) {
+    return null; // Render nothing on initial load, global loader will take over.
+  }
+
   if (!internalGameState || !internalGameState.gameId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
@@ -672,3 +678,5 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
+
+  
