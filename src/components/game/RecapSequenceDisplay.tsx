@@ -32,7 +32,6 @@ function RecapSequenceDisplay({
   onNextRound,
 }: RecapSequenceDisplayProps) {
   const [rotation, setRotation] = useState(0);
-  const [internalStep, setInternalStep] = useState<'winner' | 'scoreboard' | 'loading' | null>(null);
   const [hasStartedNextRound, setHasStartedNextRound] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
@@ -49,55 +48,50 @@ function RecapSequenceDisplay({
     };
   }, []);
 
-  // Effect to start and manage the animation sequence
+  // Effect to kick off the sequence. Re-runs if the winner changes.
   useEffect(() => {
-    // Clear any existing timers when the effect re-runs
+    // Reset state for the new round winner
+    setHasStartedNextRound(false);
+    setRotation(0);
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    if (internalStep === 'winner') {
-      setRotation(0);
-      timerRef.current = setTimeout(() => {
-        if (isMountedRef.current) setRotation(180); // Flip to details
-      }, RECAP_STEP_DURATIONS.winnerBanner);
-      
-      timerRef.current = setTimeout(() => {
-        if (isMountedRef.current) setInternalStep('scoreboard');
-      }, RECAP_STEP_DURATIONS.winnerBanner + RECAP_STEP_DURATIONS.winnerDetails);
-    
-    } else if (internalStep === 'scoreboard') {
-      if (rotation !== 180) setRotation(180);
-      timerRef.current = setTimeout(() => {
-        if (isMountedRef.current) setRotation(360); // Flip to scoreboard
-      }, 100);
-      
-      timerRef.current = setTimeout(() => {
-        if (isMountedRef.current) setInternalStep('loading');
-      }, RECAP_STEP_DURATIONS.scoreboard);
-
-    } else if (internalStep === 'loading') {
-      if (rotation !== 360) setRotation(360);
-      timerRef.current = setTimeout(() => {
-        if (isMountedRef.current) setRotation(540); // Flip to loading
-      }, 100);
-
-      // The judge is responsible for kicking off the next round for everyone.
-      if (thisPlayerIsJudge && !hasStartedNextRound) {
-        setHasStartedNextRound(true);
-        // Add a small delay to ensure the loading screen is visible before the state changes
-        setTimeout(() => {
-          onNextRound();
-        }, 500);
+    // Sequence starts here
+    // 1. Show banner, then flip to details
+    timerRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setRotation(180);
       }
-    }
-  }, [internalStep, thisPlayerIsJudge, hasStartedNextRound, onNextRound, rotation]);
+    }, RECAP_STEP_DURATIONS.winnerBanner);
 
-  // Effect to kick off the sequence
-  useEffect(() => {
-    setHasStartedNextRound(false);
-    setInternalStep('winner');
+    // 2. Show details, then flip to scoreboard
+    timerRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setRotation(360);
+      }
+    }, RECAP_STEP_DURATIONS.winnerBanner + RECAP_STEP_DURATIONS.winnerDetails);
+
+    // 3. Show scoreboard, then flip to loading
+    timerRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setRotation(540);
+      }
+    }, RECAP_STEP_DURATIONS.winnerBanner + RECAP_STEP_DURATIONS.winnerDetails + RECAP_STEP_DURATIONS.scoreboard);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastWinnerPlayer.id, lastWinnerCardText]); // Re-trigger if winner changes
-  
-  if (!internalStep) return null;
+
+  // Effect to trigger next round once the loading animation is visible
+  useEffect(() => {
+    if (rotation === 540 && thisPlayerIsJudge && !hasStartedNextRound) {
+      setHasStartedNextRound(true);
+      // Add a small delay to ensure the loading screen is visible before the state changes
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          onNextRound();
+        }
+      }, 500);
+    }
+  }, [rotation, thisPlayerIsJudge, hasStartedNextRound, onNextRound]);
   
   return (
     <motion.div 
