@@ -179,19 +179,21 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
-    const gameForNavCheck = internalGame; 
-    const localThisPlayerId = internalThisPlayerId; 
+    const gameForNavCheck = internalGame;
+    const localThisPlayerId = internalThisPlayerId;
 
-    if (isMountedRef.current && gameForNavCheck && gameForNavCheck.gameId &&
-        gameForNavCheck.gamePhase !== 'lobby' && 
-        ACTIVE_PLAYING_PHASES.includes(gameForNavCheck.gamePhase as GamePhaseClientState) && 
-        currentStep === 'setup' &&
-        localThisPlayerId 
-      ) {
+    if (
+      isMountedRef.current &&
+      gameForNavCheck &&
+      gameForNavCheck.gameId &&
+      gameForNavCheck.gamePhase !== 'lobby' &&
+      ACTIVE_PLAYING_PHASES.includes(gameForNavCheck.gamePhase as GamePhaseClientState) &&
+      currentStep === 'setup' &&
+      localThisPlayerId
+    ) {
       router.push('/game');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [internalGame, internalThisPlayerId, currentStep, router]);
+  }, [internalGame?.gamePhase, internalThisPlayerId, currentStep, router, internalGame]);
 
 
   useEffect(() => {
@@ -203,6 +205,18 @@ export default function WelcomePage() {
       try {
         const fetchedGameState = await getGame(gameId);
         if (isMountedRef.current) {
+          // *** NEW LOGIC START ***
+          const previousPhase = gameRef.current?.gamePhase;
+          if (
+            previousPhase === 'lobby' &&
+            fetchedGameState?.gamePhase &&
+            fetchedGameState.gamePhase !== 'lobby'
+          ) {
+            router.push('/game');
+            // By returning here, we prevent the component from re-rendering with the "Game in Progress" card
+            return;
+          }
+          // *** NEW LOGIC END ***
           setGame(fetchedGameState);
         }
       } catch (error) {
@@ -217,7 +231,7 @@ export default function WelcomePage() {
       
       debounceTimerRef.current = setTimeout(() => {
         fetchGameState();
-      }, 1200); 
+      }, 300); // Reduced delay for faster response
     };
   
     const uniqueChannelSuffix = internalThisPlayerId || Date.now();
@@ -239,7 +253,7 @@ export default function WelcomePage() {
       supabase.removeChannel(playersChannel);
       supabase.removeChannel(gameChannel);
     };
-  }, [internalGame?.gameId, internalThisPlayerId, setGame]);
+  }, [internalGame?.gameId, internalThisPlayerId, setGame, router]);
 
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
@@ -321,11 +335,12 @@ export default function WelcomePage() {
   };
 
   const handleStartGame = async () => {
-    const gameToStart = internalGame;
+    const gameToStart = gameRef.current;
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
+                // No loader here. The realtime update + redirect will handle the transition.
             } catch (error: any) {
                 if (isMountedRef.current) {
                     if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
