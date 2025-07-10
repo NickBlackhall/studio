@@ -33,6 +33,8 @@ export default function WelcomePage() {
 
   const [internalThisPlayerId, setInternalThisPlayerId] = useState<string | null>(null);
   const thisPlayerIdRef = useRef<string | null>(null);
+  
+  const [isTogglingReady, setIsTogglingReady] = useState(false);
 
   const [isProcessingAction, startPlayerActionTransition] = useTransition();
   const { toast } = useToast();
@@ -57,7 +59,6 @@ export default function WelcomePage() {
   }, []);
 
   const setGame = useCallback((newGameState: GameClientState | null) => {
-    console.log("DEBUG: `setGame` function called. New state incoming.");
     gameRef.current = newGameState; 
     if (isMountedRef.current) {
       if (newGameState && typeof newGameState.ready_player_order_str === 'string') {
@@ -196,6 +197,11 @@ export default function WelcomePage() {
     if (!gameId) return;
 
     const debouncedFetch = async () => {
+      if (isTogglingReady) {
+        console.log("DEBUG: Skipping realtime fetch - ready toggle in progress");
+        return;
+      }
+      
       console.log(`DEBUG: (Debounced) Realtime update triggered fetch for game ${gameId}.`);
       if (!isMountedRef.current) return;
       try {
@@ -210,7 +216,6 @@ export default function WelcomePage() {
     };
 
     const handleRealtimeUpdate = (payload: any) => {
-      console.log("DEBUG: Realtime update received from Supabase.", payload);
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = setTimeout(debouncedFetch, 300);
     };
@@ -242,7 +247,7 @@ export default function WelcomePage() {
       supabase.removeChannel(playersChannel).catch(err => console.error("Client (Realtime cleanup): Error removing players channel on WelcomePage:", err));
       supabase.removeChannel(gameChannel).catch(err => console.error("Client (Realtime cleanup): Error removing game channel on WelcomePage:", err));
     };
-  }, [internalGame?.gameId, internalThisPlayerId, setGame]); 
+  }, [internalGame?.gameId, internalThisPlayerId, setGame, isTogglingReady]); 
 
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
@@ -281,7 +286,6 @@ export default function WelcomePage() {
   };
 
   const handleToggleReady = async (player: PlayerClientState) => {
-    console.log(`DEBUG: 1. Firing handleToggleReady for player ${player.name}`);
     const currentGameId = internalGame?.gameId; 
     const currentThisPlayerId = internalThisPlayerId; 
 
@@ -293,19 +297,14 @@ export default function WelcomePage() {
       toast({ title: "Hey!", description: "You can only ready up yourself.", variant: "destructive" });
       return;
     }
+    if (isTogglingReady) return;
 
+    setIsTogglingReady(true);
     startPlayerActionTransition(async () => {
-      console.log(`DEBUG: 2. Calling server action 'togglePlayerReadyStatus'`);
       try {
         let updatedGameState = await togglePlayerReadyStatus(player.id, currentGameId);
-        if (isMountedRef.current) {
-          if (updatedGameState) {
-            console.log("DEBUG: 3. Server action successful, received updated game state. Setting it now.");
-            setGame(updatedGameState); 
-          } else {
-            console.log("DEBUG: 3a. Server action returned null. Manually fetching new state as a fallback.");
-            await fetchGameData(`handleToggleReady_null_fallback_game_${currentGameId}`, currentGameId);
-          }
+        if (isMountedRef.current && updatedGameState) {
+          setGame(updatedGameState);
         }
       } catch (error: any) {
         if (isMountedRef.current) {
@@ -314,6 +313,10 @@ export default function WelcomePage() {
             return; 
           }
           toast({ title: "Ready Status Error", description: error.message || String(error), variant: "destructive"});
+        }
+      } finally {
+        if(isMountedRef.current) {
+            setTimeout(() => setIsTogglingReady(false), 500);
         }
       }
     });
@@ -514,7 +517,7 @@ export default function WelcomePage() {
                                 <ReadyToggle
                                 isReady={player.isReady}
                                 onToggle={() => handleToggleReady(player)}
-                                disabled={isProcessingAction}
+                                disabled={isProcessingAction || isTogglingReady}
                                 />
                             ) : (
                                 player.isReady ? (
@@ -625,5 +628,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
