@@ -359,8 +359,9 @@ export default function WelcomePage() {
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
         startPlayerActionTransition(async () => {
             try {
+                // We no longer call showGlobalLoader here.
+                // The TransitionOverlay will be triggered by the state change from the server.
                 await startGameAction(gameToStart.gameId);
-                // No loader here. The transition overlay will be triggered by the state change.
             } catch (error: any) {
                 if (isMountedRef.current) {
                     if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -403,7 +404,6 @@ export default function WelcomePage() {
         <div className="relative z-10 flex flex-grow items-center justify-center">
           <button
             onClick={() => {
-              showGlobalLoader({ message: 'Loading setup...' });
               router.push('/?step=setup');
             }}
             className="group animate-slow-scale-pulse"
@@ -652,7 +652,6 @@ export default function WelcomePage() {
       <div className="relative z-10 flex flex-grow items-center justify-center">
         <button
             onClick={() => {
-              showGlobalLoader({ message: 'Loading setup...' });
               router.push('/?step=setup');
             }}
             className="group animate-slow-scale-pulse"
@@ -675,5 +674,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    

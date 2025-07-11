@@ -64,9 +64,6 @@ export default function GamePage() {
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     console.log(`GamePage: fetchGameAndPlayer called from ${origin}.`);
-    if (isMountedRef.current && isInitialLoading) {
-        showGlobalLoader({ message: 'Syncing with the mothership...' });
-    }
     let localGameId: string | null = null;
     try {
       const initialGameState = await getGame();
@@ -119,12 +116,11 @@ export default function GamePage() {
       if (isMountedRef.current) toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
     } finally {
       if (isMountedRef.current) {
-        hideGlobalLoader();
         setIsInitialLoading(false);
       }
       console.log(`GamePage: fetchGameAndPlayer (from ${origin}) sequence ended.`);
     }
-  }, [router, toast, setGameState, setThisPlayer, hideGlobalLoader, showGlobalLoader, isInitialLoading]);
+  }, [router, toast, setGameState, setThisPlayer]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -382,7 +378,12 @@ export default function GamePage() {
 
 
   if (isInitialLoading) {
-    return null; // Render nothing on initial load, global loader will take over.
+    return (
+       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm">
+         <Loader2 className="h-12 w-12 animate-spin text-primary-foreground mb-4" />
+         <p className="text-lg text-primary-foreground font-semibold">Loading Game...</p>
+       </div>
+    );
   }
 
   if (!internalGameState || !internalGameState.gameId) {
@@ -393,7 +394,7 @@ export default function GamePage() {
         <p className="text-lg text-muted-foreground mb-8">
           Could not load or initialize the game session. Please try again or reset.
         </p>
-        <Link href="/?step=setup" onClick={() => { showGlobalLoader({ message: 'Returning to lobby...' }) }}>
+        <Link href="/?step=setup">
           <Button variant="default" size="lg" className="bg-primary text-primary-foreground hover:bg-primary/80 text-lg">
             <Home className="mr-2 h-5 w-5" /> Go to Lobby Setup
           </Button>
@@ -433,7 +434,7 @@ export default function GamePage() {
             <p className="text-lg text-muted-foreground mb-8">
               The game session has been reset or ended.
             </p>
-             <Link href="/?step=setup" className="mt-6" onClick={() => { showGlobalLoader({ message: 'Returning to lobby...' }) }}>
+             <Link href="/?step=setup" className="mt-6">
                 <Button variant="default" size="lg">
                     Go to Player Setup & Lobby
                 </Button>
@@ -450,7 +451,7 @@ export default function GamePage() {
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
           <p className="text-xl text-muted-foreground">Identifying player...</p>
           <p className="text-sm mt-2">If this persists, you might not be part of this game or try returning to the lobby.</p>
-           <Link href="/?step=setup" className="mt-4" onClick={() => { showGlobalLoader({ message: 'Returning to lobby...' }) }}>
+           <Link href="/?step=setup" className="mt-4">
             <Button variant="outline">Go to Lobby</Button>
           </Link>
         </div>
@@ -485,7 +486,7 @@ export default function GamePage() {
             <div className="text-center py-10">
                 <h2 className="text-2xl font-semibold mb-4">Game is in Lobby</h2>
                 <p className="mb-4">The game has returned to the lobby. Please go to player setup.</p>
-                <Link href="/?step=setup" onClick={() => { showGlobalLoader({ message: 'Loading setup...' }) }}>
+                <Link href="/?step=setup">
                     <Button>Go to Lobby Setup</Button>
                 </Link>
             </div>
