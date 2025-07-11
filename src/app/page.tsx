@@ -184,8 +184,16 @@ export default function WelcomePage() {
   useEffect(() => {
     gameRef.current = internalGame;
     const gameForNavCheck = internalGame;
-    const localThisPlayerId = internalThisPlayerId;
+    const localThisPlayerId = thisPlayerIdRef.current;
   
+    console.log('Navigation check:', {
+      mounted: isMountedRef.current,
+      gameId: gameForNavCheck?.gameId,
+      transitionState: gameForNavCheck?.transitionState,
+      gamePhase: gameForNavCheck?.gamePhase,
+      playerId: localThisPlayerId
+    });
+
     if (
       isMountedRef.current &&
       gameForNavCheck &&
@@ -196,7 +204,7 @@ export default function WelcomePage() {
     ) {
       router.push('/game');
     }
-  }, [internalGame, internalThisPlayerId, router]);
+  }, [internalGame, router]);
 
 
   useEffect(() => {
