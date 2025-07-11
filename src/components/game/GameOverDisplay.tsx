@@ -116,10 +116,10 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                             disabled={isYesPending || isNoPending}
                             className="absolute cursor-pointer"
                             style={{
-                                top: '57%',
-                                left: '19.5%',
-                                width: '25%',
-                                height: '12.5%',
+                                top: '41%',
+                                left: '10.5%',
+                                width: '38%',
+                                height: '16.5%',
                             }}
                             aria-label="No, I'm done"
                         />
@@ -128,10 +128,10 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                             disabled={isYesPending || isNoPending}
                             className="absolute cursor-pointer"
                             style={{
-                                top: '56%',
-                                right: '15.5%',
-                                width: '25%',
-                                height: '12.5%',
+                                top: '41%',
+                                right: '10.5%',
+                                width: '38%',
+                                height: '16.5%',
                             }}
                             aria-label="Yes, play again"
                         />
