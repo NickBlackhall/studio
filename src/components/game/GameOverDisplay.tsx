@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useTransition } from 'react';
@@ -115,11 +116,10 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                             disabled={isYesPending || isNoPending}
                             className="absolute cursor-pointer"
                             style={{
-                                top: '41%',
-                                left: '10.5%',
-                                width: '38%',
-                                height: '16.5%',
-                                border: '2px solid red'
+                                top: '57%',
+                                left: '15.5%',
+                                width: '29%',
+                                height: '13%'
                             }}
                             aria-label="No, I'm done"
                         />
@@ -128,11 +128,10 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                             disabled={isYesPending || isNoPending}
                             className="absolute cursor-pointer"
                             style={{
-                                top: '41%',
-                                right: '10.5%',
-                                width: '38%',
-                                height: '16.5%',
-                                border: '2px solid red'
+                                top: '56%',
+                                right: '12.5%',
+                                width: '29%',
+                                height: '13%'
                             }}
                             aria-label="Yes, play again"
                         />
