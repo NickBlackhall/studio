@@ -9,13 +9,13 @@ import { memo } from 'react';
 import Scoreboard from './Scoreboard';
 import AvatarLoadingSequence from './AvatarLoadingSequence';
 
-// A single face of the card. Its content is static, and its position is determined by the rotationY prop.
-const Face = ({ children, rotationY = 0, zIndex = 0 }: { children: React.ReactNode, rotationY?: number, zIndex?: number }) => (
+// A single face of the card. Its position is determined by the rotationY prop.
+// It is absolutely positioned to stack within the parent container.
+const Face = ({ children, rotationY = 0 }: { children: React.ReactNode, rotationY?: number }) => (
   <div
     className="absolute w-full h-full [backface-visibility:hidden] rounded-2xl overflow-hidden bg-black"
     style={{ 
       transform: `rotateY(${rotationY}deg)`,
-      zIndex: zIndex,
     }}
   >
     {children}
@@ -39,8 +39,8 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
         animate={{ rotateY: rotation }}
         transition={{ duration: 1.2, ease: 'easeInOut' }}
       >
-        {/* Face 1: Round Winner Banner (Visible from 0 to 179 degrees) */}
-        <Face rotationY={0} zIndex={4}>
+        {/* Face 1: Round Winner Banner (Visible from 0 to <180 degrees) */}
+        <Face rotationY={0}>
           <Image
             src="/backgrounds/round-winner-poster.png"
             alt="Round Winner"
@@ -52,8 +52,8 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
           />
         </Face>
         
-        {/* Face 2: Winner Details (Visible from 180 to 359 degrees) */}
-        <Face rotationY={180} zIndex={3}>
+        {/* Face 2: Winner Details (Visible from 180 to <360 degrees) */}
+        <Face rotationY={180}>
           <Image
             src="/backgrounds/winner-details-poster.png"
             alt="Winner Details"
@@ -99,8 +99,8 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
           </div>
         </Face>
         
-        {/* Face 3: Scoreboard (Visible from 360 to 539 degrees) */}
-        <Face rotationY={360} zIndex={2}>
+        {/* Face 3: Scoreboard (Visible from 360 to <540 degrees) */}
+        <Face rotationY={360}>
           <div className="relative w-full h-full">
             <Image
               src="/backgrounds/scoreboard-poster.png"
@@ -120,7 +120,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
         </Face>
         
         {/* Face 4: Get Ready / Loading (Visible from 540 degrees onwards) */}
-        <Face rotationY={540} zIndex={1}>
+        <Face rotationY={540}>
           <Image
             src="/backgrounds/get-ready-poster.png"
             alt="Get Ready for the next round"
