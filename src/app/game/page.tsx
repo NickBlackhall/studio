@@ -63,43 +63,38 @@ export default function GamePage() {
 
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
-    let localGameId: string | null = null;
     try {
       const initialGameState = await getGame();
       if (!isMountedRef.current) return;
-
-      setGameState(initialGameState);
-
-      if (initialGameState && initialGameState.gameId) {
-        localGameId = initialGameState.gameId;
-        const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${localGameId}`);
-
-        if (playerIdFromStorage) {
-          const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
-          if (playerInGameList) {
-            setThisPlayer({ ...playerInGameList, hand: playerInGameList.hand || [] });
-          } else {
-            const playerDetail = await getCurrentPlayer(playerIdFromStorage, localGameId);
-            if (!isMountedRef.current) return;
-            setThisPlayer(playerDetail ? { ...playerDetail, hand: playerDetail.hand || [] } : null);
-            if (!playerDetail) {
-                localStorage.removeItem(`thisPlayerId_game_${localGameId}`);
-                 router.push('/?step=setup');
-                 return;
-            }
-          }
-        } else {
-          setThisPlayer(null);
-          router.push('/?step=setup');
-          return;
-        }
-      } else if (initialGameState && initialGameState.gamePhase === 'lobby' && initialGameState.players.length === 0) {
-        router.push('/?step=setup');
-        return;
-      } else if (!initialGameState || !initialGameState.gameId) {
+  
+      if (!initialGameState || !initialGameState.gameId) {
         if (isMountedRef.current) toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
         router.push('/?step=setup');
         return;
+      }
+      
+      setGameState(initialGameState);
+      
+      const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
+      
+      if (!playerIdFromStorage) {
+        if (ACTIVE_PLAYING_PHASES.includes(initialGameState.gamePhase as GamePhaseClientState)) {
+          // If we are in an active game phase but have no player ID, we are a spectator.
+          setThisPlayer(null);
+        } else {
+          // Otherwise, something is wrong, go back to setup.
+          router.push('/?step=setup');
+        }
+        return;
+      }
+  
+      const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
+      if (playerInGameList) {
+        setThisPlayer(playerInGameList);
+      } else {
+        // This can happen if player was removed or it's a stale ID.
+        localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
+        router.push('/?step=setup');
       }
     } catch (error) {
       console.error(`GamePage: Error in fetchGameAndPlayer (from ${origin}):`, error);
@@ -110,6 +105,7 @@ export default function GamePage() {
       }
     }
   }, [router, toast, setGameState, setThisPlayer]);
+  
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -267,22 +263,18 @@ export default function GamePage() {
   };
 
   const handlePlayAgainYes = async () => {
-    let currentActionError: any = null;
     if (internalGameState?.gameId) {
-      startActionTransition(async () => {
-        try {
-          await resetGameForTesting();
-        } catch (error: any) {
-          currentActionError = error;
-          if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            return;
-          } else {
-            if (isMountedRef.current) {
-              toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
-            }
+      try {
+        await resetGameForTesting();
+      } catch (error: any) {
+        if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+          // Let the redirect happen
+        } else {
+          if (isMountedRef.current) {
+            toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
           }
         }
-      });
+      }
     }
   };
 
