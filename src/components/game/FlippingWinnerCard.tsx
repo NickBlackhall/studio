@@ -17,27 +17,6 @@ interface FlippingWinnerCardProps {
 }
 
 function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeId }: FlippingWinnerCardProps) {
-  const [frontFaceContent, setFrontFaceContent] = useState<'banner' | 'scoreboard'>('banner');
-  const [backFaceContent, setBackFaceContent] = useState<'details' | 'loading'>('details');
-
-  useEffect(() => {
-    // Preemptively set the content for the upcoming flip.
-    // If the card is about to flip from 0 to 180 (to show details), do nothing yet.
-    // If it's about to flip from 180 to 360 (to show scoreboard), set the front face.
-    if (rotation >= 180) {
-      setFrontFaceContent('scoreboard');
-    } else {
-      setFrontFaceContent('banner');
-    }
-
-    // If it's about to flip from 360 to 540 (to show loading), set the back face.
-    if (rotation >= 360) {
-      setBackFaceContent('loading');
-    } else {
-      setBackFaceContent('details');
-    }
-  }, [rotation]);
-
   const Face = ({ className, children, style }: { className?: string, children: React.ReactNode, style?: React.CSSProperties }) => (
     <div
       className={`absolute w-full h-full [backface-visibility:hidden] rounded-2xl overflow-hidden ${className}`}
@@ -58,7 +37,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
       >
         {/* Front Face: Switches between banner and scoreboard */}
         <Face className="bg-black">
-          {frontFaceContent === 'banner' ? (
+          {rotation < 180 ? (
             <Image
               src="/backgrounds/round-winner-poster.png"
               alt="Round Winner"
@@ -91,7 +70,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
         
         {/* Back Face: Switches between winner details and loading sequence */}
         <Face className="bg-black" style={{ transform: 'rotateY(180deg)' }}>
-          {backFaceContent === 'details' ? (
+          {rotation < 360 ? (
             <Image
               src="/backgrounds/winner-details-poster.png"
               alt="Winner Details"
@@ -115,7 +94,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
 
           {/* Content for Back Face */}
           <div className="absolute inset-0">
-              {backFaceContent === 'details' ? (
+              {rotation < 360 ? (
                 <>
                   {/* Avatar positioned within its area */}
                   <div className="absolute top-[14%] left-1/2 -translate-x-1/2 w-[48%]">
