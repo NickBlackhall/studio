@@ -9,6 +9,19 @@ import { memo } from 'react';
 import Scoreboard from './Scoreboard';
 import AvatarLoadingSequence from './AvatarLoadingSequence';
 
+// A single face of the card. Its content is static, and its position is determined by the rotationY prop.
+const Face = ({ children, rotationY = 0, zIndex = 0 }: { children: React.ReactNode, rotationY?: number, zIndex?: number }) => (
+  <div
+    className="absolute w-full h-full [backface-visibility:hidden] rounded-2xl overflow-hidden bg-black"
+    style={{ 
+      transform: `rotateY(${rotationY}deg)`,
+      zIndex: zIndex,
+    }}
+  >
+    {children}
+  </div>
+);
+
 interface FlippingWinnerCardProps {
   rotation: number;
   winner: PlayerClientState;
@@ -16,15 +29,6 @@ interface FlippingWinnerCardProps {
   players: PlayerClientState[];
   currentJudgeId: string | null;
 }
-
-const Face = ({ children, rotationY = 0 }: { children: React.ReactNode, rotationY?: number }) => (
-  <div
-    className="absolute w-full h-full [backface-visibility:hidden] rounded-2xl overflow-hidden bg-black"
-    style={{ transform: `rotateY(${rotationY}deg)` }}
-  >
-    {children}
-  </div>
-);
 
 function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeId }: FlippingWinnerCardProps) {
   return (
@@ -35,8 +39,8 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
         animate={{ rotateY: rotation }}
         transition={{ duration: 1.2, ease: 'easeInOut' }}
       >
-        {/* Face 1: Round Winner Banner (0 degrees) */}
-        <Face rotationY={0}>
+        {/* Face 1: Round Winner Banner (Visible from 0 to 179 degrees) */}
+        <Face rotationY={0} zIndex={4}>
           <Image
             src="/backgrounds/round-winner-poster.png"
             alt="Round Winner"
@@ -48,8 +52,8 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
           />
         </Face>
         
-        {/* Face 2: Winner Details (180 degrees) */}
-        <Face rotationY={180}>
+        {/* Face 2: Winner Details (Visible from 180 to 359 degrees) */}
+        <Face rotationY={180} zIndex={3}>
           <Image
             src="/backgrounds/winner-details-poster.png"
             alt="Winner Details"
@@ -60,15 +64,12 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
             data-ai-hint="winner details poster"
           />
           <div className="absolute inset-0">
-            {/* Avatar positioned within its area */}
             <div className="absolute top-[14%] left-1/2 -translate-x-1/2 w-[48%]">
               <Avatar className="w-full h-auto aspect-square rounded-md">
                 <AvatarImage src={winner.avatar} alt={winner.name} />
                 <AvatarFallback>{winner.name?.substring(0, 2).toUpperCase() || 'P'}</AvatarFallback>
               </Avatar>
             </div>
-            
-            {/* Player Name positioned within its area */}
             <div className="absolute top-[46%] left-1/2 -translate-x-1/2 w-[80%] text-center">
               <p 
                 className="font-im-fell text-black font-bold leading-none drop-shadow"
@@ -77,8 +78,6 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
                 {winner.name}
               </p>
             </div>
-            
-            {/* Response Card positioned at the bottom */}
             <div className="absolute bottom-[18%] left-1/2 -translate-x-1/2 w-[88%] aspect-[1536/600]">
               <Image
                 src="/ui/mit-card-front.png"
@@ -100,8 +99,8 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
           </div>
         </Face>
         
-        {/* Face 3: Scoreboard (360 degrees) */}
-        <Face rotationY={360}>
+        {/* Face 3: Scoreboard (Visible from 360 to 539 degrees) */}
+        <Face rotationY={360} zIndex={2}>
           <div className="relative w-full h-full">
             <Image
               src="/backgrounds/scoreboard-poster.png"
@@ -120,8 +119,8 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
           </div>
         </Face>
         
-        {/* Face 4: Get Ready / Loading (540 degrees) */}
-        <Face rotationY={540}>
+        {/* Face 4: Get Ready / Loading (Visible from 540 degrees onwards) */}
+        <Face rotationY={540} zIndex={1}>
           <Image
             src="/backgrounds/get-ready-poster.png"
             alt="Get Ready for the next round"
