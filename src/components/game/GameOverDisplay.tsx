@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useTransition } from 'react';
@@ -120,6 +119,7 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                                 left: '10.5%',
                                 width: '38%',
                                 height: '16.5%',
+                                border: '2px solid red'
                             }}
                             aria-label="No, I'm done"
                         />
@@ -132,6 +132,7 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                                 right: '10.5%',
                                 width: '38%',
                                 height: '16.5%',
+                                border: '2px solid red'
                             }}
                             aria-label="Yes, play again"
                         />
