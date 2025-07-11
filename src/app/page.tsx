@@ -181,26 +181,10 @@ export default function WelcomePage() {
   }, [currentStep]);
 
 
-  // New dedicated effect for navigation with debugging
+  // New dedicated effect for navigation
   useEffect(() => {
     const game = internalGame;
     const playerId = internalThisPlayerId;
-
-    console.log('🔍 Navigation check:', {
-      mounted: isMountedRef.current,
-      gameId: game?.gameId,
-      transitionState: game?.transitionState,
-      gamePhase: game?.gamePhase,
-      playerId: playerId,
-      shouldNavigate: !!(
-        isMountedRef.current &&
-        game &&
-        game.gameId &&
-        game.transitionState === 'idle' &&
-        game.gamePhase !== 'lobby' &&
-        playerId
-      )
-    });
 
     if (
       isMountedRef.current &&
@@ -210,7 +194,6 @@ export default function WelcomePage() {
       game.gamePhase !== 'lobby' &&
       playerId
     ) {
-      console.log('✅ NAVIGATING TO /game');
       router.push('/game');
     }
   }, [internalGame, internalThisPlayerId, router]);
@@ -364,269 +347,162 @@ export default function WelcomePage() {
     );
   }
 
-  const isLobbyPhaseActive = internalGame.gamePhase === 'lobby';
-  const isSpectatorView = !isLobbyPhaseActive && !thisPlayerObject;
-  const isActivePlayerInNonLobby = !isLobbyPhaseActive && thisPlayerObject;
-
-
-  if (currentStep === 'welcome') {
-    return (
-      <div className="relative flex-grow flex flex-col bg-black">
-        <Image
-          src="/backgrounds/mobile-background.jpg"
-          alt="Make It Terrible game poster background"
-          fill
-          className="poster-image"
-          priority
-          data-ai-hint="game poster"
-        />
-        <div className="relative z-10 flex flex-grow items-center justify-center">
-          <button
-            onClick={() => {
-              router.push('/?step=setup');
-            }}
-            className="group animate-slow-scale-pulse"
-          >
-            <Image
-              src="/ui/enter-the-chaos-button.png"
-              alt="Enter the Chaos"
-              width={252}
-              height={95}
-              className="object-contain drop-shadow-xl"
-              data-ai-hint="chaos button"
-              priority
-            />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (currentStep === 'setup') {
-    if (isLobbyPhaseActive && !thisPlayerObject) {
+  const renderContent = () => {
+    if (currentStep === 'welcome') {
       return (
-        <>
-          <PWAGameLayout gameId={internalGame.gameId} onPlayerAdded={handlePlayerAdded} />
-          <TransitionOverlay 
-            transitionState={internalGame.transitionState}
-            message={internalGame.transitionMessage}
+        <div className="relative flex-grow flex flex-col bg-black">
+          <Image
+            src="/backgrounds/mobile-background.jpg"
+            alt="Make It Terrible game poster background"
+            fill
+            className="poster-image"
+            priority
+            data-ai-hint="game poster"
           />
-        </>
+          <div className="relative z-10 flex flex-grow items-center justify-center">
+            <button
+              onClick={() => router.push('/?step=setup')}
+              className="group animate-slow-scale-pulse"
+            >
+              <Image
+                src="/ui/enter-the-chaos-button.png"
+                alt="Enter the Chaos"
+                width={252}
+                height={95}
+                className="object-contain drop-shadow-xl"
+                data-ai-hint="chaos button"
+                priority
+              />
+            </button>
+          </div>
+        </div>
       );
     }
-
-    const mainContent = (
-      <div className="w-full h-full flex flex-col items-center justify-center">
-        {isSpectatorView ? (
-          <div className="w-full max-w-md space-y-6 text-center p-4">
-            
-            <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
-              <CardHeader className="p-4">
-                <Lock className="h-8 w-8 mx-auto text-destructive mb-2" />
-                <CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0 text-sm">
-                <p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch.</p>
-              </CardContent>
-            </Card>
-            <div className="my-6 relative w-full max-w-sm mx-auto">
-                <Image
-                    src="/backgrounds/scoreboard-poster.png"
-                    alt="Leaderboard"
-                    width={512}
-                    height={768}
-                    className="object-contain"
-                    data-ai-hint="scoreboard poster"
-                />
-                <div className="absolute left-[10%] right-[10%] bottom-[15%]" style={{ top: '45%' }}>
-                    <Scoreboard players={internalGame.players} currentJudgeId={internalGame.currentJudgeId} />
+  
+    if (currentStep === 'setup') {
+      if (internalGame.gamePhase === 'lobby') {
+        if (!thisPlayerObject) {
+          // No player ID for this browser, show setup
+          return <PWAGameLayout gameId={internalGame.gameId} onPlayerAdded={handlePlayerAdded} />;
+        }
+  
+        // Player exists, show lobby
+        const hostPlayerId = internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
+        const enoughPlayers = internalGame.players.length >= MIN_PLAYERS_TO_START;
+        const allPlayersReady = enoughPlayers && internalGame.players.every(p => p.isReady);
+        const showStartGameButton = thisPlayerIdRef.current === hostPlayerId && enoughPlayers && allPlayersReady;
+  
+        let lobbyMessage = "";
+        if (!enoughPlayers) {
+          lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players. Waiting for ${MIN_PLAYERS_TO_START - (internalGame.players?.length || 0)} more...`;
+        } else if (!allPlayersReady) {
+          const unreadyCount = internalGame.players.filter(p => !p.isReady).length;
+          lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to ready up.`;
+        } else if (!showStartGameButton) {
+          const hostPlayerForMsg = hostPlayerId && internalGame.players.find(p => p.id === hostPlayerId);
+          const hostNameForMessage = hostPlayerForMsg?.name || 'The host';
+          lobbyMessage = `Waiting for ${hostNameForMessage} to start the game.`;
+        }
+  
+        return (
+          <div className="w-full h-screen">
+            <div className="relative w-full h-full">
+              <Image
+                src="/backgrounds/lobby-poster.jpg"
+                alt="Lobby poster background"
+                fill
+                className="poster-image"
+                data-ai-hint="lobby poster"
+              />
+              <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col">
+                <div className="overflow-y-auto space-y-2">
+                  {sortedPlayersForDisplay.map((player) => (
+                    <div key={player.id} className="flex items-center justify-between p-3">
+                      <div className="flex items-center min-w-0">
+                        {player.avatar.startsWith('/') ? (
+                          <Image src={player.avatar} alt={`${player.name}'s avatar`} width={56} height={56} className="mr-3 rounded-sm object-cover flex-shrink-0" data-ai-hint="player avatar" />
+                        ) : (
+                          <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>
+                        )}
+                        <h2 className="text-3xl text-black truncate">{player.name}</h2>
+                      </div>
+                      <div className="flex-shrink-0 ml-2 flex items-center justify-center">
+                        {player.id === thisPlayerObject?.id ? (
+                          <ReadyToggle isReady={player.isReady} onToggle={() => handleToggleReady(player)} disabled={isProcessingAction} />
+                        ) : (
+                          player.isReady ? <CheckSquare className="h-12 w-20 text-green-700" /> : <XSquare className="h-12 w-20 text-red-700" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-            </div>
-            <Card className="shadow-md border-muted rounded-lg">
-              <CardContent className="p-6">
-                <p className="text-muted-foreground">The lobby will re-open once the current game finishes. Hang tight!</p>
-              </CardContent>
-            </Card>
-            <Button onClick={handleResetGame} variant="destructive" className="mt-6" disabled={isProcessingAction}>
-              { isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
-            </Button>
-          </div>
-        ) : isActivePlayerInNonLobby ? (
-          (() => {
-            const hostPlayerId = internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
-            const enoughPlayers = internalGame.players.length >= MIN_PLAYERS_TO_START;
-            const allPlayersReady = enoughPlayers && internalGame.players.every(p => p.isReady);
-            const showStartGameButton = internalThisPlayerId === hostPlayerId && enoughPlayers && allPlayersReady;
-            let lobbyMessage = "";
-            if (!enoughPlayers) {
-              lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players. Waiting for ${MIN_PLAYERS_TO_START - (internalGame.players?.length || 0)} more...`;
-            } else if (!allPlayersReady) {
-              const unreadyCount = internalGame.players.filter(p => !p.isReady).length;
-              lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to ready up.`;
-            } else {
-              const hostPlayerForMsg = hostPlayerId && internalGame.players.find(p => p.id === hostPlayerId);
-              const hostNameForMessage = hostPlayerForMsg?.name || 'The host';
-              lobbyMessage = `Waiting for ${hostNameForMessage} to start the game.`;
-            }
-            if (allPlayersReady && hostPlayerId === thisPlayerIdRef.current) {
-              lobbyMessage = "";
-            }
-            return (
-              <div className="w-full h-screen">
-                <div className="relative w-full h-full">
-                  <Image
-                    src="/backgrounds/lobby-poster.jpg"
-                    alt="Lobby poster background"
-                    fill
-                    className="poster-image"
-                    data-ai-hint="lobby poster"
-                  />
-                  <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col">
-                    <div className="overflow-y-auto space-y-2">
-                        {sortedPlayersForDisplay.map((player) => (
-                        <div
-                            key={player.id}
-                            className={cn(
-                            "flex items-center justify-between p-3"
-                            )}
-                        >
-                            <div className="flex items-center min-w-0">
-                            {player.avatar.startsWith('/') ? (
-                                <Image
-                                src={player.avatar}
-                                alt={`${player.name}'s avatar`}
-                                width={56}
-                                height={56}
-                                className="mr-3 rounded-sm object-cover flex-shrink-0"
-                                data-ai-hint="player avatar"
-                                />
-                            ) : (
-                                <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>
-                            )}
-                            <h2 className="text-3xl text-black truncate">{player.name}</h2>
-                            </div>
-                            <div className="flex-shrink-0 ml-2 flex items-center justify-center">
-                            {player.id === thisPlayerObject?.id ? (
-                                <ReadyToggle
-                                isReady={player.isReady}
-                                onToggle={() => handleToggleReady(player)}
-                                disabled={isProcessingAction}
-                                />
-                            ) : (
-                                player.isReady ? (
-                                <CheckSquare className="h-12 w-20 text-green-700" />
-                                ) : (
-                                <XSquare className="h-12 w-20 text-red-700" />
-                                )
-                            )}
-                            </div>
-                        </div>
-                        ))}
-                    </div>
-                    <div className="flex-shrink-0 text-center px-4 pt-4 space-y-2">
-                      <p className="bg-transparent font-semibold text-black">
-                        {lobbyMessage}
-                      </p>
-                       {showStartGameButton ? (
-                         <button
-                          onClick={handleStartGame}
-                          disabled={isProcessingAction}
-                          className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70"
-                        >
-                          {isProcessingAction ? (
-                            <div className="h-[71.52px] flex items-center justify-center">
-                              <Loader2 className="h-8 w-8 animate-spin text-black" />
-                            </div>
-                          ) : (
-                            <Image
-                              src="/ui/start-game-button.png"
-                              alt="Start the Mayhem"
-                              width={189.84 * 1.2 * 1.2}
-                              height={71.52 * 1.2 * 1.2}
-                              className="object-contain drop-shadow-xl"
-                              data-ai-hint="start button"
-                              priority
-                            />
-                          )}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="absolute bottom-[2%] left-0 right-0 flex items-center justify-center gap-4">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <button className="bg-transparent border-none p-0">
-                          <Image
-                            src="/ui/how-to-play-button.png"
-                            alt="How to Play"
-                            width={118}
-                            height={44}
-                            className="object-contain"
-                            data-ai-hint="how to play button"
-                            priority
-                          />
-                        </button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
-                    </Dialog>
-                    <Button onClick={handleResetGame} variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80" disabled={isProcessingAction}>
-                      { isProcessingAction ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />} Reset Lobby
-                    </Button>
-                  </div>
+                <div className="flex-shrink-0 text-center px-4 pt-4 space-y-2">
+                  <p className="bg-transparent font-semibold text-black">{lobbyMessage}</p>
+                  {showStartGameButton && (
+                    <button onClick={handleStartGame} disabled={isProcessingAction} className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70">
+                      {isProcessingAction ? (
+                        <div className="h-[71.52px] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-black" /></div>
+                      ) : (
+                        <Image src="/ui/start-game-button.png" alt="Start the Mayhem" width={189.84 * 1.2 * 1.2} height={71.52 * 1.2 * 1.2} className="object-contain drop-shadow-xl" data-ai-hint="start button" priority />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
-            );
-          })()
-        ) : null}
-      </div>
-    );
-    
+              <div className="absolute bottom-[2%] left-0 right-0 flex items-center justify-center gap-4">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="bg-transparent border-none p-0"><Image src="/ui/how-to-play-button.png" alt="How to Play" width={118} height={44} className="object-contain" data-ai-hint="how to play button" priority /></button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent>
+                </Dialog>
+                <Button onClick={handleResetGame} variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80" disabled={isProcessingAction}>
+                  {isProcessingAction ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />} Reset Lobby
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      } else {
+        // Game is in progress, show spectator view
+        return (
+          <div className="w-full h-full flex flex-col items-center justify-center">
+            <div className="w-full max-w-md space-y-6 text-center p-4">
+              <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
+                <CardHeader className="p-4"><Lock className="h-8 w-8 mx-auto text-destructive mb-2" /><CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle></CardHeader>
+                <CardContent className="p-4 pt-0 text-sm"><p>Sorry, you&apos;ll have to wait until the next game to join. But you can still watch.</p></CardContent>
+              </Card>
+              <div className="my-6 relative w-full max-w-sm mx-auto">
+                <Image src="/backgrounds/scoreboard-poster.png" alt="Leaderboard" width={512} height={768} className="object-contain" data-ai-hint="scoreboard poster" />
+                <div className="absolute left-[10%] right-[10%] bottom-[15%]" style={{ top: '45%' }}>
+                  <Scoreboard players={internalGame.players} currentJudgeId={internalGame.currentJudgeId} />
+                </div>
+              </div>
+              <Card className="shadow-md border-muted rounded-lg"><CardContent className="p-6"><p className="text-muted-foreground">The lobby will re-open once the current game finishes. Hang tight!</p></CardContent></Card>
+              <Button onClick={handleResetGame} variant="destructive" className="mt-6" disabled={isProcessingAction}>
+                {isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
+              </Button>
+            </div>
+          </div>
+        );
+      }
+    }
+  
+    // Fallback if no other condition is met (should not happen in normal flow)
     return (
-      <div className={cn("min-h-screen flex flex-col items-center justify-center bg-black")}>
-        {mainContent}
-         <TransitionOverlay 
-            transitionState={internalGame.transitionState}
-            message={internalGame.transitionMessage}
-          />
+      <div className="relative flex-grow flex flex-col bg-black">
+        <Image src="/backgrounds/mobile-background.jpg" alt="Make It Terrible game poster background" fill className="poster-image" priority data-ai-hint="game poster" />
       </div>
     );
-  }
-
-  // Fallback for initial "welcome" step (before ?step=setup)
+  };
+  
   return (
-    <div className="relative flex-grow flex flex-col bg-black">
-      <Image
-        src="/backgrounds/mobile-background.jpg"
-        alt="Make It Terrible game poster background"
-        fill
-        className="poster-image"
-        priority
-        data-ai-hint="game poster"
+    <div className={cn("min-h-screen flex flex-col items-center justify-center bg-black")}>
+      {renderContent()}
+      <TransitionOverlay 
+        transitionState={internalGame.transitionState}
+        message={internalGame.transitionMessage}
       />
-      <div className="relative z-10 flex flex-grow items-center justify-center">
-        <button
-            onClick={() => {
-              router.push('/?step=setup');
-            }}
-            className="group animate-slow-scale-pulse"
-        >
-          <Image
-            src="/ui/enter-the-chaos-button.png"
-            alt="Enter the Chaos"
-            width={252}
-            height={95}
-            className="object-contain drop-shadow-xl"
-            data-ai-hint="chaos button"
-            priority
-          />
-        </button>
-      </div>
-       <TransitionOverlay 
-          transitionState={internalGame.transitionState}
-          message={internalGame.transitionMessage}
-        />
     </div>
   );
 }
-
-    
