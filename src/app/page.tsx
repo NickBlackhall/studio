@@ -182,6 +182,8 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
+    const previousTransitionState = gameRef.current?.transitionState;
+    gameRef.current = internalGame;
     const gameForNavCheck = internalGame;
     const localThisPlayerId = internalThisPlayerId;
 
@@ -189,15 +191,14 @@ export default function WelcomePage() {
       isMountedRef.current &&
       gameForNavCheck &&
       gameForNavCheck.gameId &&
-      gameForNavCheck.gamePhase !== 'lobby' &&
+      previousTransitionState === 'starting_game' &&
       gameForNavCheck.transitionState === 'idle' &&
-      ACTIVE_PLAYING_PHASES.includes(gameForNavCheck.gamePhase as GamePhaseClientState) &&
-      currentStep === 'setup' &&
+      gameForNavCheck.gamePhase !== 'lobby' &&
       localThisPlayerId
     ) {
       router.push('/game');
     }
-  }, [internalGame?.gamePhase, internalGame?.transitionState, internalThisPlayerId, currentStep, router, internalGame]);
+  }, [internalGame, internalThisPlayerId, router]);
 
 
   useEffect(() => {
