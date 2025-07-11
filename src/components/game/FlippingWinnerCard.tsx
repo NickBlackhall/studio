@@ -1,4 +1,3 @@
-
 "use client";
 
 import { motion } from 'framer-motion';
@@ -22,18 +21,20 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
   const [backFaceContent, setBackFaceContent] = useState<'details' | 'loading'>('details');
 
   useEffect(() => {
-    // Switch the content of the "back" face after it has flipped past the winner details
-    if (rotation > 450) { // 450 is 270 + 180, halfway through the final flip
-      setBackFaceContent('loading');
-    } else {
-      setBackFaceContent('details');
-    }
-
-    // Switch the content of the "front" face after it has flipped past the banner
-    if (rotation > 270) {
+    // Preemptively set the content for the upcoming flip.
+    // If the card is about to flip from 0 to 180 (to show details), do nothing yet.
+    // If it's about to flip from 180 to 360 (to show scoreboard), set the front face.
+    if (rotation >= 180) {
       setFrontFaceContent('scoreboard');
     } else {
       setFrontFaceContent('banner');
+    }
+
+    // If it's about to flip from 360 to 540 (to show loading), set the back face.
+    if (rotation >= 360) {
+      setBackFaceContent('loading');
+    } else {
+      setBackFaceContent('details');
     }
   }, [rotation]);
 
