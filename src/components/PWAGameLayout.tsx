@@ -68,7 +68,6 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
       <button
         type="button"
         onClick={() => {
-          showGlobalLoader();
           router.push('/');
         }}
         className="absolute top-[12vh] left-1/2 -translate-x-1/2 w-[60vw] max-w-[250px] h-[8vh] z-20"
