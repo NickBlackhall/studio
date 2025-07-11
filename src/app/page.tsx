@@ -55,7 +55,6 @@ export default function WelcomePage() {
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const { showGlobalLoader, hideGlobalLoader } = useLoading();
   
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
@@ -103,12 +102,6 @@ export default function WelcomePage() {
   }, []);
 
   const fetchGameData = useCallback(async (origin: string = "unknown", gameIdToFetch?: string) => {
-    const isInitialOrResetCall = origin === "initial mount" || origin.includes("reset") || origin.includes("useEffect[] mount") || (!gameRef.current?.gameId && !gameIdToFetch);
-    
-    if (isInitialOrResetCall && isMountedRef.current) {
-      showGlobalLoader({ message: 'Finding the game...' });
-    }
-    
     try {
       let fetchedGameState = await getGame(gameIdToFetch); 
       
@@ -118,7 +111,6 @@ export default function WelcomePage() {
         } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
             fetchedGameState.ready_player_order = [];
         }
-      } else {
       }
       
       if (!isMountedRef.current) {
@@ -149,7 +141,7 @@ export default function WelcomePage() {
         }
       } else { 
         setThisPlayerId(null);
-        if (isInitialOrResetCall && isMountedRef.current) {
+        if (isMountedRef.current) {
             setGame(null); 
             toast({ title: "Game Session Error", description: "Could not initialize or find the game session. Please try refreshing or resetting.", variant: "destructive"});
         }
@@ -164,15 +156,10 @@ export default function WelcomePage() {
             toast({ title: "Load Error", description: `Could not fetch game state: ${error.message || String(error)}`, variant: "destructive"});
         }
       }
-    } finally {
-      if (isMountedRef.current) {
-         hideGlobalLoader(); 
-      }
     }
-  }, [toast, hideGlobalLoader, showGlobalLoader, parseReadyPlayerOrderStr, setGame, setThisPlayerId]);
+  }, [toast, parseReadyPlayerOrderStr, setGame, setThisPlayerId]);
 
   const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
-      showGlobalLoader({ message: 'Adding you to the lobby...' });
       const currentGameId = gameRef.current?.gameId;
       if (newPlayer && newPlayer.id && currentGameId && isMountedRef.current) {
           const localStorageKey = `thisPlayerId_game_${currentGameId}`;
@@ -180,8 +167,7 @@ export default function WelcomePage() {
           setThisPlayerId(newPlayer.id);
           await fetchGameData(`handlePlayerAdded after creating player ${newPlayer.id}`, currentGameId);
       }
-      hideGlobalLoader();
-  }, [fetchGameData, setThisPlayerId, showGlobalLoader, hideGlobalLoader]);
+  }, [fetchGameData, setThisPlayerId]);
 
 
   useEffect(() => {
@@ -204,7 +190,7 @@ export default function WelcomePage() {
       gameForNavCheck &&
       gameForNavCheck.gameId &&
       gameForNavCheck.gamePhase !== 'lobby' &&
-      gameForNavCheck.transitionState === 'idle' && // NEW: Wait for transition to complete
+      gameForNavCheck.transitionState === 'idle' &&
       ACTIVE_PLAYING_PHASES.includes(gameForNavCheck.gamePhase as GamePhaseClientState) &&
       currentStep === 'setup' &&
       localThisPlayerId
@@ -223,8 +209,6 @@ export default function WelcomePage() {
       try {
         const fetchedGameState = await getGame(gameId);
         if (isMountedRef.current) {
-          // *** NEW LOGIC START ***
-          const previousPhase = gameRef.current?.gamePhase;
           const previousTransitionState = gameRef.current?.transitionState;
 
           if (
@@ -233,10 +217,8 @@ export default function WelcomePage() {
             fetchedGameState?.gamePhase !== 'lobby'
           ) {
             router.push('/game');
-            // By returning here, we prevent the component from re-rendering with the "Game in Progress" card
             return;
           }
-          // *** NEW LOGIC END ***
           setGame(fetchedGameState);
         }
       } catch (error) {
@@ -251,7 +233,7 @@ export default function WelcomePage() {
       
       debounceTimerRef.current = setTimeout(() => {
         fetchGameState();
-      }, 300); // Reduced delay for faster response
+      }, 300);
     };
   
     const uniqueChannelSuffix = internalThisPlayerId || Date.now();
@@ -299,7 +281,6 @@ export default function WelcomePage() {
 
 
   const handleResetGame = async () => {
-    showGlobalLoader({ message: 'Resetting the entire game...' }); 
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
@@ -315,9 +296,6 @@ export default function WelcomePage() {
           description: `Could not reset the game. ${error.message || String(error)}`,
           variant: "destructive",
         });
-        if (isMountedRef.current) {
-           hideGlobalLoader(); 
-        }
       }
     });
   };
@@ -325,7 +303,6 @@ export default function WelcomePage() {
   const handleToggleReady = async (player: PlayerClientState) => {
     if (!internalGame?.gameId || player.id !== internalThisPlayerId) return;
     
-    // 1. Update UI IMMEDIATELY (optimistic)
     setInternalGame(prev => {
       if (!prev) return prev;
       return {
@@ -336,11 +313,9 @@ export default function WelcomePage() {
       };
     });
     
-    // 2. Call server in background (no waiting)
     try {
       await togglePlayerReadyStatus(player.id, internalGame.gameId);
     } catch (error) {
-      // 3. If it fails, revert the UI change
       setInternalGame(prev => {
         if (!prev) return prev;
         return {
@@ -359,8 +334,6 @@ export default function WelcomePage() {
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
         startPlayerActionTransition(async () => {
             try {
-                // We no longer call showGlobalLoader here.
-                // The TransitionOverlay will be triggered by the state change from the server.
                 await startGameAction(gameToStart.gameId);
             } catch (error: any) {
                 if (isMountedRef.current) {
@@ -378,7 +351,7 @@ export default function WelcomePage() {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
         <p className="text-xl text-destructive mt-4">Could not initialize game session. Please try refreshing.</p>
-         <Button onClick={() => { showGlobalLoader({ message: 'Refreshing...' }); window.location.reload(); }} variant="outline" className="mt-4">
+         <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
           Refresh Page
         </Button>
       </div>
@@ -674,3 +647,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    

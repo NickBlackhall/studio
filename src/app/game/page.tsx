@@ -63,50 +63,40 @@ export default function GamePage() {
 
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
-    console.log(`GamePage: fetchGameAndPlayer called from ${origin}.`);
     let localGameId: string | null = null;
     try {
       const initialGameState = await getGame();
       if (!isMountedRef.current) return;
 
       setGameState(initialGameState);
-      console.log(`GamePage: Initial gameState fetched (from ${origin}):`, initialGameState ? `ID: ${initialGameState.gameId}, Phase: ${initialGameState.gamePhase}, Players: ${initialGameState.players.length}` : "null");
 
       if (initialGameState && initialGameState.gameId) {
         localGameId = initialGameState.gameId;
         const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${localGameId}`);
-        console.log(`GamePage: For gameId ${localGameId}, player ID from storage: ${playerIdFromStorage}`);
 
         if (playerIdFromStorage) {
           const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
           if (playerInGameList) {
-            console.log(`GamePage: Player ${playerIdFromStorage} found in initial game state players list.`);
             setThisPlayer({ ...playerInGameList, hand: playerInGameList.hand || [] });
           } else {
-            console.warn(`GamePage: Player ${playerIdFromStorage} NOT in initial game state for game ${localGameId}. Fetching directly.`);
             const playerDetail = await getCurrentPlayer(playerIdFromStorage, localGameId);
             if (!isMountedRef.current) return;
             setThisPlayer(playerDetail ? { ...playerDetail, hand: playerDetail.hand || [] } : null);
             if (!playerDetail) {
-                console.warn(`GamePage: Player ${playerIdFromStorage} could not be fetched for game ${localGameId}. Clearing localStorage.`);
                 localStorage.removeItem(`thisPlayerId_game_${localGameId}`);
                  router.push('/?step=setup');
                  return;
             }
-            console.log(`GamePage: Fetched thisPlayer details directly (from ${origin}):`, playerDetail ? playerDetail.id : "null", `Hand: ${playerDetail?.hand?.length}`);
           }
         } else {
-          console.warn(`GamePage: No player ID found in localStorage for game ${localGameId}. Redirecting to setup.`);
           setThisPlayer(null);
           router.push('/?step=setup');
           return;
         }
       } else if (initialGameState && initialGameState.gamePhase === 'lobby' && initialGameState.players.length === 0) {
-        console.log("GamePage: Lobby is empty or no gameId after fetch, redirecting to setup.");
         router.push('/?step=setup');
         return;
       } else if (!initialGameState || !initialGameState.gameId) {
-        console.error("GamePage: Critical error - no gameId found after fetch. Redirecting to setup.");
         if (isMountedRef.current) toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
         router.push('/?step=setup');
         return;
@@ -118,13 +108,11 @@ export default function GamePage() {
       if (isMountedRef.current) {
         setIsInitialLoading(false);
       }
-      console.log(`GamePage: fetchGameAndPlayer (from ${origin}) sequence ended.`);
     }
   }, [router, toast, setGameState, setThisPlayer]);
 
   useEffect(() => {
     isMountedRef.current = true;
-    console.log("GamePage: Mounting. Starting initial data fetch.");
     fetchGameAndPlayer("initial mount");
 
     return () => {
@@ -136,16 +124,12 @@ export default function GamePage() {
 
   useEffect(() => {
     if (!internalGameState || !internalGameState.gameId ) {
-      console.log(`GamePage Realtime: Skipping subscription setup (no game/gameId). Current gameState ID: ${internalGameState?.gameId}`);
       return;
     }
     const gameId = internalGameState.gameId;
     const currentPlayerId = thisPlayerRef.current?.id;
 
-    console.log(`GamePage Realtime: Setting up subscriptions for gameId: ${gameId}, thisPlayerId: ${currentPlayerId || 'N/A'}`);
-
     const debouncedFetch = async () => {
-      console.log(`>>> GamePage Realtime (debounced for game ${gameId}): Fetching latest state.`);
       if (!isMountedRef.current) return;
 
       const updatedFullGame = await getGame(gameId);
@@ -155,32 +139,26 @@ export default function GamePage() {
         const currentLocalPlayerId = thisPlayerRef.current?.id;
 
         if (gameStateRef.current?.gamePhase === 'game_over' && updatedFullGame.gamePhase === 'lobby') {
-          console.log(`GamePage Realtime: Currently on game_over screen (ref gameId: ${gameStateRef.current?.gameId}). Received update that game ${updatedFullGame.gameId} is now 'lobby'. Suppressing full gameState update to allow user interaction with GameOverDisplay.`);
           if (currentLocalPlayerId) {
             const latestPlayerDetails = updatedFullGame.players.find(p => p.id === currentLocalPlayerId) || await getCurrentPlayer(currentLocalPlayerId, updatedFullGame.gameId);
             if (isMountedRef.current) setThisPlayer(latestPlayerDetails ? { ...latestPlayerDetails, hand: latestPlayerDetails.hand || [] } : null);
-            console.log(`GamePage Realtime (game_over stickiness): Refreshed thisPlayer details. ID: ${latestPlayerDetails?.id}, Hand: ${latestPlayerDetails?.hand?.length}`);
           }
           return;
         }
 
         setGameState(updatedFullGame);
-        console.log(`GamePage Realtime: Game state updated from debounced fetch. GameID: ${updatedFullGame.gameId}, Phase: ${updatedFullGame.gamePhase}, Players: ${updatedFullGame.players.length}`);
 
         if (currentLocalPlayerId) {
           const latestPlayerDetails = updatedFullGame.players.find(p => p.id === currentLocalPlayerId) || await getCurrentPlayer(currentLocalPlayerId, updatedFullGame.gameId);
            if (isMountedRef.current) setThisPlayer(latestPlayerDetails ? { ...latestPlayerDetails, hand: latestPlayerDetails.hand || [] } : null);
-          console.log(`GamePage Realtime: Refreshed thisPlayer details. ID: ${latestPlayerDetails?.id}, Hand: ${latestPlayerDetails?.hand?.length}`);
         } else {
           const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${gameId}`);
           if (playerIdFromStorage) {
             const playerDetail = await getCurrentPlayer(playerIdFromStorage, gameId);
              if (isMountedRef.current) setThisPlayer(playerDetail ? { ...playerDetail, hand: playerDetail.hand || [] } : null);
-            console.log(`GamePage Realtime: Re-identified thisPlayer after game update. ID: ${playerDetail?.id}, Hand: ${playerDetail?.hand?.length}`);
           }
         }
       } else {
-        console.error(`GamePage Realtime: Failed to fetch updated game state after debounced fetch for game ${gameId}.`);
         const currentPhase = gameStateRef.current?.gamePhase;
         if (currentPhase !== 'game_over') {
             if (isMountedRef.current) toast({ title: "Game Update Error", description: "Lost connection to game, redirecting to lobby.", variant: "destructive" });
@@ -217,20 +195,15 @@ export default function GamePage() {
         )
         .subscribe((status, err) => {
           if (status === 'SUBSCRIBED') {
-            console.log(`GamePage Realtime: Subscribed to ${channelName}`);
           } else if (status === 'CLOSED') {
-            console.info(`GamePage Realtime: Channel ${channelName} is now ${status}. This is often due to explicit unsubscription or component unmount.`);
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error(`GamePage Realtime: Channel status for ${channelName}: ${status}`, err ? { message: err.message, name: err.name } : 'No error object.');
           } else if (err) {
-            console.error(`GamePage Realtime: Unexpected error on ${channelName} subscription (status: ${status}):`, { message: err.message, name: err.name });
           }
         });
       return channel;
     });
 
     return () => {
-      console.log(`GamePage Realtime: Cleaning up subscriptions for gameId: ${gameId}, suffix: ${uniqueChannelSuffix}`);
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       activeSubscriptions.forEach(sub => supabase.removeChannel(sub).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
     };
@@ -242,13 +215,10 @@ export default function GamePage() {
     const gameId = gameStateRef.current?.gameId;
     if (gameId) {
       try {
-        console.log(`GamePage: Calling nextRound server action for game ${gameId}`);
         await nextRound(gameId);
       } catch (error: any) {
         currentActionError = error;
-        console.error("GamePage: Error starting next round:", error);
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          console.log("GamePage (handleNextRound): Caught NEXT_REDIRECT. Allowing Next.js to handle navigation.");
           throw error;
         } else {
           if (isMountedRef.current) toast({title: "Next Round Error", description: error.message || "Failed to start next round.", variant: "destructive"});
@@ -260,16 +230,11 @@ export default function GamePage() {
   const handleStartGame = async () => {
     if (internalGameState?.gameId && internalGameState.gamePhase === 'lobby' && internalGameState.players.length >= MIN_PLAYERS_TO_START ) {
       startActionTransition(async () => {
-        showGlobalLoader({ message: "Starting game...", players: internalGameState.players });
-        console.log("GamePage: Client calling startGame server action.");
         try {
           await startGame(internalGameState.gameId);
           if (isMountedRef.current) toast({ title: "Game Starting!", description: "The judge is being assigned and cards dealt." });
         } catch (error: any) {
-          console.error("GamePage: Error starting game:", error);
           if (isMountedRef.current) toast({title: "Cannot Start", description: error.message || "Failed to start game.", variant: "destructive"});
-        } finally {
-          if (isMountedRef.current) hideGlobalLoader();
         }
       });
     } else {
@@ -280,14 +245,10 @@ export default function GamePage() {
   const handleSelectCategory = async (category: string) => {
     if (internalGameState?.gameId) {
       startActionTransition(async () => {
-        showGlobalLoader({ message: "Unleashing scenario...", players: internalGameState.players });
         try {
           await selectCategory(internalGameState.gameId, category);
         } catch (error: any) {
-          console.error("GamePage: Error selecting category:", error);
           if (isMountedRef.current) toast({title: "Category Error", description: error.message || "Failed to select category.", variant: "destructive"});
-        } finally {
-          if (isMountedRef.current) hideGlobalLoader();
         }
       });
     }
@@ -299,7 +260,6 @@ export default function GamePage() {
         try {
           await selectWinner(winningCardText, internalGameState.gameId);
         } catch (error: any) {
-          console.error("GamePage: Error selecting winner:", error);
           if (isMountedRef.current) toast({title: "Winner Selection Error", description: error.message || "Failed to select winner.", variant: "destructive"});
         }
       });
@@ -309,53 +269,36 @@ export default function GamePage() {
   const handlePlayAgainYes = async () => {
     let currentActionError: any = null;
     if (internalGameState?.gameId) {
-      console.log("GamePage: Player clicked 'Yes, Play Again!'. Calling resetGameForTesting.");
-      showGlobalLoader({ message: 'Resetting game for another round of terror...' });
       startActionTransition(async () => {
         try {
           await resetGameForTesting();
         } catch (error: any) {
           currentActionError = error;
           if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            console.log("GamePage (handlePlayAgainYes): Caught NEXT_REDIRECT during reset. Allowing Next.js to handle navigation.");
             return;
           } else {
-            console.error("GamePage: Error on 'Play Again Yes':", error);
             if (isMountedRef.current) {
               toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
             }
           }
-        } finally {
-           let wasRedirect = false;
-            if (currentActionError && typeof currentActionError.digest === 'string' && currentActionError.digest.startsWith('NEXT_REDIRECT')) {
-                wasRedirect = true;
-            }
-            if (!wasRedirect && isMountedRef.current) {
-              hideGlobalLoader();
-            }
         }
       });
     }
   };
 
   const handlePlayAgainNo = () => {
-    console.log("GamePage: Player clicked 'No, I'm Done'. Navigating to home.");
     router.push('/');
   };
 
   const handleResetGameFromGamePage = async () => {
-    console.log("🔴 RESET (GamePage Client): Button clicked - calling resetGameForTesting server action.");
     let currentActionError: any = null;
-    showGlobalLoader({ message: "Resetting the game..." });
     startActionTransition(async () => {
       try {
         await resetGameForTesting();
       } catch (error: any) {
         currentActionError = error;
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          console.log("🔴 RESET (GamePage Client): Caught NEXT_REDIRECT during reset. Allowing Next.js to handle navigation.");
         } else {
-          console.error("🔴 RESET (GamePage Client): Error calling resetGameForTesting server action:", error);
           if (isMountedRef.current) {
             toast({
               title: "Reset Failed",
@@ -363,14 +306,6 @@ export default function GamePage() {
               variant: "destructive",
             });
           }
-        }
-      } finally {
-        let wasRedirect = false;
-        if (currentActionError && typeof currentActionError.digest === 'string' && currentActionError.digest.startsWith('NEXT_REDIRECT')) {
-            wasRedirect = true;
-        }
-        if (!wasRedirect && isMountedRef.current) {
-           hideGlobalLoader();
         }
       }
     });
@@ -403,7 +338,6 @@ export default function GamePage() {
     );
   }
 
-  // New logic for handling spectators or players joining a game in progress
   if (!thisPlayer && ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase as GamePhaseClientState)) {
       return (
           <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
@@ -426,7 +360,6 @@ export default function GamePage() {
   if (internalGameState.gamePhase === 'lobby') {
      const currentPhaseFromRef = gameStateRef.current?.gamePhase;
      if (currentPhaseFromRef && currentPhaseFromRef !== 'game_over' && currentPhaseFromRef !== 'winner_announcement') {
-        console.log("GamePage: Game phase is 'lobby', current UI phase was not game_over/winner. Displaying lobby message.");
         return (
           <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
             <Image src="/ui/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
@@ -445,7 +378,6 @@ export default function GamePage() {
   }
 
   if (!thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over')) {
-     console.warn("GamePage: thisPlayer object is null, but game is active and not in winner/game_over phase. Game state:", JSON.stringify(internalGameState, null, 2));
      return (
         <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
@@ -463,7 +395,6 @@ export default function GamePage() {
   const renderGameContent = () => {
     if (!thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over')) {
         if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase)) {
-             console.error("GamePage: renderGameContent - thisPlayer is null during active game phase:", internalGameState.gamePhase);
             return (
                 <Card className="text-center">
                     <CardHeader><CardTitle className="text-destructive">Player Identification Error</CardTitle></CardHeader>
@@ -622,3 +553,5 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
+
+    
