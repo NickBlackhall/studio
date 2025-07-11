@@ -17,6 +17,25 @@ interface FlippingWinnerCardProps {
 }
 
 function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeId }: FlippingWinnerCardProps) {
+  const [frontFaceContent, setFrontFaceContent] = useState<'banner' | 'scoreboard'>('banner');
+  const [backFaceContent, setBackFaceContent] = useState<'details' | 'loading'>('details');
+
+  useEffect(() => {
+    // This effect determines what content should be shown on each face
+    // based on the card's rotation.
+    if (rotation >= 180) {
+      setFrontFaceContent('scoreboard');
+    } else {
+      setFrontFaceContent('banner');
+    }
+
+    if (rotation >= 360) {
+      setBackFaceContent('loading');
+    } else {
+      setBackFaceContent('details');
+    }
+  }, [rotation]);
+
   const Face = ({ className, children, style }: { className?: string, children: React.ReactNode, style?: React.CSSProperties }) => (
     <div
       className={`absolute w-full h-full [backface-visibility:hidden] rounded-2xl overflow-hidden ${className}`}
@@ -37,7 +56,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
       >
         {/* Front Face: Switches between banner and scoreboard */}
         <Face className="bg-black">
-          {rotation < 180 ? (
+          {frontFaceContent === 'banner' ? (
             <Image
               src="/backgrounds/round-winner-poster.png"
               alt="Round Winner"
@@ -70,7 +89,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
         
         {/* Back Face: Switches between winner details and loading sequence */}
         <Face className="bg-black" style={{ transform: 'rotateY(180deg)' }}>
-          {rotation < 360 ? (
+          {backFaceContent === 'details' ? (
             <Image
               src="/backgrounds/winner-details-poster.png"
               alt="Winner Details"
@@ -94,7 +113,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
 
           {/* Content for Back Face */}
           <div className="absolute inset-0">
-              {rotation < 360 ? (
+              {backFaceContent === 'details' ? (
                 <>
                   {/* Avatar positioned within its area */}
                   <div className="absolute top-[14%] left-1/2 -translate-x-1/2 w-[48%]">
