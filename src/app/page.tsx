@@ -183,28 +183,24 @@ export default function WelcomePage() {
 
   useEffect(() => {
     gameRef.current = internalGame;
-    const gameForNavCheck = internalGame;
-    const localThisPlayerId = thisPlayerIdRef.current;
-  
-    console.log('Navigation check:', {
-      mounted: isMountedRef.current,
-      gameId: gameForNavCheck?.gameId,
-      transitionState: gameForNavCheck?.transitionState,
-      gamePhase: gameForNavCheck?.gamePhase,
-      playerId: localThisPlayerId
-    });
+  }, [internalGame]);
+
+  // New dedicated effect for navigation
+  useEffect(() => {
+    const game = internalGame;
+    const playerId = internalThisPlayerId;
 
     if (
       isMountedRef.current &&
-      gameForNavCheck &&
-      gameForNavCheck.gameId &&
-      gameForNavCheck.transitionState === 'idle' &&
-      gameForNavCheck.gamePhase !== 'lobby' &&
-      localThisPlayerId
+      game &&
+      game.gameId &&
+      game.transitionState === 'idle' &&
+      game.gamePhase !== 'lobby' &&
+      playerId
     ) {
       router.push('/game');
     }
-  }, [internalGame, router]);
+  }, [internalGame, internalThisPlayerId, router]);
 
 
   useEffect(() => {
