@@ -19,7 +19,7 @@ import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
 import PlayerView from '@/components/game/PlayerView';
-import WinnerDisplay from '@/components/game/WinnerDisplay';
+import GameOverDisplay from '@/components/game/GameOverDisplay';
 import RecapSequenceDisplay from '@/components/game/RecapSequenceDisplay';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -159,7 +159,7 @@ export default function GamePage() {
         const currentLocalPlayerId = thisPlayerRef.current?.id;
 
         if (gameStateRef.current?.gamePhase === 'game_over' && updatedFullGame.gamePhase === 'lobby') {
-          console.log(`GamePage Realtime: Currently on game_over screen (ref gameId: ${gameStateRef.current?.gameId}). Received update that game ${updatedFullGame.gameId} is now 'lobby'. Suppressing full gameState update to allow user interaction with WinnerDisplay.`);
+          console.log(`GamePage Realtime: Currently on game_over screen (ref gameId: ${gameStateRef.current?.gameId}). Received update that game ${updatedFullGame.gameId} is now 'lobby'. Suppressing full gameState update to allow user interaction with GameOverDisplay.`);
           if (currentLocalPlayerId) {
             const latestPlayerDetails = updatedFullGame.players.find(p => p.id === currentLocalPlayerId) || await getCurrentPlayer(currentLocalPlayerId, updatedFullGame.gameId);
             if (isMountedRef.current) setThisPlayer(latestPlayerDetails ? { ...latestPlayerDetails, hand: latestPlayerDetails.hand || [] } : null);
@@ -473,7 +473,7 @@ export default function GamePage() {
     }
 
     if (internalGameState.gamePhase === 'game_over') {
-      return <WinnerDisplay
+      return <GameOverDisplay
                 gameState={internalGameState}
                 onPlayAgainYes={handlePlayAgainYes}
                 onPlayAgainNo={handlePlayAgainNo}
@@ -621,11 +621,3 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
-
-  
-
-
-
-
-
-
