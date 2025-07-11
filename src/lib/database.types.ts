@@ -25,6 +25,8 @@ export type Database = {
           overall_winner_player_id: string | null // uuid, FK to players.id
           used_scenarios: string[] | null // uuid[]
           used_responses: string[] | null // uuid[]
+          transition_state: string // text, e.g., 'idle', 'starting_game'
+          transition_message: string | null // text
         }
         Insert: {
           id?: string // uuid, defaults to gen_random_uuid()
@@ -40,6 +42,8 @@ export type Database = {
           overall_winner_player_id?: string | null // uuid
           used_scenarios?: string[] | null // uuid[], defaults to {}
           used_responses?: string[] | null // uuid[], defaults to {}
+          transition_state?: string // text, defaults to 'idle'
+          transition_message?: string | null // text
         }
         Update: {
           id?: string
@@ -55,6 +59,8 @@ export type Database = {
           overall_winner_player_id?: string | null
           used_scenarios?: string[] | null
           used_responses?: string[] | null
+          transition_state?: string
+          transition_message?: string | null
         }
         Relationships: []
       }
@@ -330,3 +336,5 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
     ? Database["public"]["Enums"][PublicEnumNameOrOptions]
     : never
+
+    

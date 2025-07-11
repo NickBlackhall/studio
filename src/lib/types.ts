@@ -2,6 +2,8 @@
 // We will rely on database.types.ts for the core database object.
 // These types can be specific to application logic or client-side state if needed.
 
+export type TransitionState = 'idle' | 'starting_game' | 'transitioning';
+
 export interface PlayerHandCard { // Explicit type for cards in a player's hand
   id: string;
   text: string;
@@ -65,6 +67,10 @@ export interface GameClientState {
   // Fields to temporarily hold custom card info for judge approval
   pendingCustomCardAuthorId?: string | null;
   pendingCustomCardText?: string | null;
+
+  // Transition State Machine fields
+  transitionState: TransitionState;
+  transitionMessage?: string | null;
 }
 
 
@@ -87,5 +93,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+
+    
 
     

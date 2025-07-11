@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
-import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
+import type { GameClientState, PlayerClientState, GamePhaseClientState, TransitionState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,23 @@ import type { Tables } from '@/lib/database.types';
 
 
 export const dynamic = 'force-dynamic';
+
+function TransitionOverlay({ transitionState, message }: {
+  transitionState: TransitionState;
+  message?: string | null;
+}) {
+  if (transitionState === 'idle') return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-[100]">
+      <div className="bg-white p-8 rounded-2xl text-center shadow-2xl flex flex-col items-center gap-4 text-black">
+        <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full" />
+        <p className="font-semibold text-xl">{message || 'Loading...'}</p>
+      </div>
+    </div>
+  );
+}
+
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -187,13 +204,14 @@ export default function WelcomePage() {
       gameForNavCheck &&
       gameForNavCheck.gameId &&
       gameForNavCheck.gamePhase !== 'lobby' &&
+      gameForNavCheck.transitionState === 'idle' && // NEW: Wait for transition to complete
       ACTIVE_PLAYING_PHASES.includes(gameForNavCheck.gamePhase as GamePhaseClientState) &&
       currentStep === 'setup' &&
       localThisPlayerId
     ) {
       router.push('/game');
     }
-  }, [internalGame?.gamePhase, internalThisPlayerId, currentStep, router, internalGame]);
+  }, [internalGame?.gamePhase, internalGame?.transitionState, internalThisPlayerId, currentStep, router, internalGame]);
 
 
   useEffect(() => {
@@ -207,10 +225,12 @@ export default function WelcomePage() {
         if (isMountedRef.current) {
           // *** NEW LOGIC START ***
           const previousPhase = gameRef.current?.gamePhase;
+          const previousTransitionState = gameRef.current?.transitionState;
+
           if (
-            previousPhase === 'lobby' &&
-            fetchedGameState?.gamePhase &&
-            fetchedGameState.gamePhase !== 'lobby'
+            previousTransitionState === 'starting_game' &&
+            fetchedGameState?.transitionState === 'idle' &&
+            fetchedGameState?.gamePhase !== 'lobby'
           ) {
             router.push('/game');
             // By returning here, we prevent the component from re-rendering with the "Game in Progress" card
@@ -340,7 +360,7 @@ export default function WelcomePage() {
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
-                // No loader here. The realtime update + redirect will handle the transition.
+                // No loader here. The transition overlay will be triggered by the state change.
             } catch (error: any) {
                 if (isMountedRef.current) {
                     if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -405,7 +425,15 @@ export default function WelcomePage() {
 
   if (currentStep === 'setup') {
     if (isLobbyPhaseActive && !thisPlayerObject) {
-      return <PWAGameLayout gameId={internalGame.gameId} onPlayerAdded={handlePlayerAdded} />;
+      return (
+        <>
+          <PWAGameLayout gameId={internalGame.gameId} onPlayerAdded={handlePlayerAdded} />
+          <TransitionOverlay 
+            transitionState={internalGame.transitionState}
+            message={internalGame.transitionMessage}
+          />
+        </>
+      );
     }
 
     const mainContent = (
@@ -602,6 +630,10 @@ export default function WelcomePage() {
     return (
       <div className={cn("min-h-screen flex flex-col items-center justify-center bg-black")}>
         {mainContent}
+         <TransitionOverlay 
+            transitionState={internalGame.transitionState}
+            message={internalGame.transitionMessage}
+          />
       </div>
     );
   }
@@ -636,6 +668,12 @@ export default function WelcomePage() {
           />
         </button>
       </div>
+       <TransitionOverlay 
+          transitionState={internalGame.transitionState}
+          message={internalGame.transitionMessage}
+        />
     </div>
   );
 }
+
+    

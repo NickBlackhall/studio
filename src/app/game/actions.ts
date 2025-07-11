@@ -58,6 +58,8 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
     used_scenarios: [],
     used_responses: [],
     updated_at: new Date().toISOString(),
+    transition_state: 'idle',
+    transition_message: null,
   };
   const { data: newGame, error: createError } = await supabase
     .from('games')
@@ -239,6 +241,8 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     winningPlayerId: gameRow.overall_winner_player_id,
     ready_player_order: [], // This will be parsed by client from _str
     ready_player_order_str: JSON.stringify(dbReadyPlayerOrder),
+    transitionState: gameRow.transition_state as GameClientState['transitionState'],
+    transitionMessage: gameRow.transition_message,
   };
 
   // Final defensive check for ready_player_order_str to ensure it's a stringified array
@@ -418,6 +422,8 @@ export async function resetGameForTesting() {
       used_scenarios: [],
       used_responses: [],
       updated_at: new Date().toISOString(),
+      transition_state: 'idle',
+      transition_message: null,
     };
     // console.log(`🔴 RESET (Server): Attempting to update game ${gameId} to lobby phase with data:`, JSON.stringify(updateData, null, 2));
 
@@ -514,6 +520,15 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
 }
 
 export async function startGame(gameId: string): Promise<GameClientState | null> {
+  // 1. Immediately set transition state
+  await supabase
+    .from('games')
+    .update({ 
+      transition_state: 'starting_game',
+      transition_message: 'Preparing game...' 
+    })
+    .eq('id', gameId);
+
   // console.log(`🔴 START (Server): startGame action called for game ${gameId}`);
 
   const { data: game, error: gameFetchError } = await supabase
@@ -560,7 +575,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
         throw new Error("Critical error: Host player in ready order not found in game players.");
     }
 
-
+    await supabase.from('games').update({ transition_message: 'Dealing cards...' }).eq('id', gameId);
     let accumulatedUsedResponsesForThisGameStart = game.used_responses || [];
     const playerHandInserts: TablesInsert<'player_hands'>[] = [];
 
@@ -592,12 +607,17 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
       }
     }
 
+    await supabase.from('games').update({ transition_message: 'Selecting first judge...' }).eq('id', gameId);
+    // Logic for selecting judge is already done above, this message is just for show.
+
     const gameUpdates: TablesUpdate<'games'> = {
       game_phase: 'category_selection',
       current_judge_id: actualFirstJudgeId, 
       current_round: 1,
       updated_at: new Date().toISOString(),
-      used_responses: accumulatedUsedResponsesForThisGameStart, 
+      used_responses: accumulatedUsedResponsesForThisGameStart,
+      transition_state: 'idle',
+      transition_message: null,
     };
 
     const { error: updateError } = await supabase
@@ -1331,5 +1351,4 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
 
     
 
-
-
+    
