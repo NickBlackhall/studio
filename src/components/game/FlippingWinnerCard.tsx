@@ -27,7 +27,6 @@ const Face = ({ children, rotationY = 0 }: { children: React.ReactNode, rotation
 );
 
 function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeId }: FlippingWinnerCardProps) {
-
   return (
     <div className="w-full aspect-[1024/1536]" style={{ perspective: '2000px' }}>
       <motion.div
