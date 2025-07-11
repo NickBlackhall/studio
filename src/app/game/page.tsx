@@ -93,7 +93,7 @@ export default function GamePage() {
       
       setGameState(initialGameState);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(`GamePage: Error in fetchGameAndPlayer (from ${origin}):`, error);
       toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
     } finally {
@@ -204,13 +204,11 @@ export default function GamePage() {
 
 
   const handleNextRound = useCallback(async () => {
-    let currentActionError: any = null;
     const gameId = gameStateRef.current?.gameId;
     if (gameId) {
       try {
         await nextRound(gameId);
       } catch (error: any) {
-        currentActionError = error;
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           throw error;
         } else {
@@ -240,7 +238,7 @@ export default function GamePage() {
       startActionTransition(async () => {
         try {
           await selectCategory(internalGameState.gameId, category);
-        } catch (error: any) => {
+        } catch (error: any) {
           if (isMountedRef.current) toast({title: "Category Error", description: error.message || "Failed to select category.", variant: "destructive"});
         }
       });
@@ -252,7 +250,7 @@ export default function GamePage() {
       startActionTransition(async () => {
         try {
           await selectWinner(winningCardText, internalGameState.gameId);
-        } catch (error: any) => {
+        } catch (error: any) {
           if (isMountedRef.current) toast({title: "Winner Selection Error", description: error.message || "Failed to select winner.", variant: "destructive"});
         }
       });
@@ -280,12 +278,10 @@ export default function GamePage() {
   };
 
   const handleResetGameFromGamePage = async () => {
-    let currentActionError: any = null;
     startActionTransition(async () => {
       try {
         await resetGameForTesting();
       } catch (error: any) {
-        currentActionError = error;
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
         } else {
           if (isMountedRef.current) {
