@@ -66,39 +66,36 @@ export default function GamePage() {
     try {
       const initialGameState = await getGame();
       if (!isMountedRef.current) return;
-  
+
       if (!initialGameState || !initialGameState.gameId) {
-        if (isMountedRef.current) toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
+        toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
         router.push('/?step=setup');
         return;
       }
-      
-      setGameState(initialGameState);
-      
+
       const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
       
       if (!playerIdFromStorage) {
         if (ACTIVE_PLAYING_PHASES.includes(initialGameState.gamePhase as GamePhaseClientState)) {
-          // If we are in an active game phase but have no player ID, we are a spectator.
-          setThisPlayer(null);
+          setThisPlayer(null); // Set as spectator
         } else {
-          // Otherwise, something is wrong, go back to setup.
           router.push('/?step=setup');
         }
-        return;
-      }
-  
-      const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
-      if (playerInGameList) {
-        setThisPlayer(playerInGameList);
       } else {
-        // This can happen if player was removed or it's a stale ID.
-        localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
-        router.push('/?step=setup');
+        const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
+        if (playerInGameList) {
+          setThisPlayer(playerInGameList);
+        } else {
+          localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
+          router.push('/?step=setup'); // Player ID exists but isn't in game, so redirect
+        }
       }
+      
+      setGameState(initialGameState);
+
     } catch (error) {
       console.error(`GamePage: Error in fetchGameAndPlayer (from ${origin}):`, error);
-      if (isMountedRef.current) toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
+      toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
     } finally {
       if (isMountedRef.current) {
         setIsInitialLoading(false);
@@ -243,7 +240,7 @@ export default function GamePage() {
       startActionTransition(async () => {
         try {
           await selectCategory(internalGameState.gameId, category);
-        } catch (error: any) {
+        } catch (error: any) => {
           if (isMountedRef.current) toast({title: "Category Error", description: error.message || "Failed to select category.", variant: "destructive"});
         }
       });
@@ -255,7 +252,7 @@ export default function GamePage() {
       startActionTransition(async () => {
         try {
           await selectWinner(winningCardText, internalGameState.gameId);
-        } catch (error: any) {
+        } catch (error: any) => {
           if (isMountedRef.current) toast({title: "Winner Selection Error", description: error.message || "Failed to select winner.", variant: "destructive"});
         }
       });
@@ -545,6 +542,3 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
-
-    
-    
