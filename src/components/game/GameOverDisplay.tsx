@@ -112,16 +112,28 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                     />
                     <div className="absolute inset-0">
                         <button
-                            onClick={() => startYesTransition(onPlayAgainYes)}
-                            disabled={isYesPending || isNoPending}
-                            className="absolute top-[41%] left-[10.5%] w-[38%] h-[16.5%] cursor-pointer"
-                            aria-label="Yes, play again"
-                        />
-                        <button
                             onClick={() => startNoTransition(onPlayAgainNo)}
                             disabled={isYesPending || isNoPending}
-                            className="absolute top-[41%] right-[10.5%] w-[38%] h-[16.5%] cursor-pointer"
+                            className="absolute cursor-pointer border-2 border-red-500"
+                            style={{
+                                top: '41%',
+                                left: '10.5%',
+                                width: '38%',
+                                height: '16.5%',
+                            }}
                             aria-label="No, I'm done"
+                        />
+                        <button
+                            onClick={() => startYesTransition(onPlayAgainYes)}
+                            disabled={isYesPending || isNoPending}
+                            className="absolute cursor-pointer border-2 border-red-500"
+                            style={{
+                                top: '41%',
+                                right: '10.5%',
+                                width: '38%',
+                                height: '16.5%',
+                            }}
+                            aria-label="Yes, play again"
                         />
                     </div>
                 </Face>
