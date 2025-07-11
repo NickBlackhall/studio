@@ -77,7 +77,7 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                     />
                     <div className="absolute inset-0">
                         {/* Winner Avatar */}
-                        <div className="absolute top-[16.5%] left-1/2 -translate-x-1/2 w-[68%]">
+                        <div className="absolute top-[32%] left-1/2 -translate-x-1/2 w-[41%]">
                             <Image
                                 src={winnerAvatarPath}
                                 alt={`Winner: ${overallWinner.name}`}
@@ -89,10 +89,10 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                             />
                         </div>
                         {/* Winner Name */}
-                        <div className="absolute top-[65%] left-1/2 -translate-x-1/2 w-[80%] text-center">
+                        <div className="absolute top-[79%] left-1/2 -translate-x-1/2 w-[80%] text-center">
                             <p
                                 className="font-im-fell text-black font-bold drop-shadow-lg"
-                                style={{ fontSize: 'clamp(2rem, 10vw, 4rem)' }}
+                                style={{ fontSize: 'clamp(2rem, 10vw, 3rem)' }}
                             >
                                 {overallWinner.name}
                             </p>
