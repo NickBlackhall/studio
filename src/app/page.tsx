@@ -182,7 +182,6 @@ export default function WelcomePage() {
 
 
   useEffect(() => {
-    const previousTransitionState = gameRef.current?.transitionState;
     gameRef.current = internalGame;
     const gameForNavCheck = internalGame;
     const localThisPlayerId = internalThisPlayerId;
@@ -191,7 +190,6 @@ export default function WelcomePage() {
       isMountedRef.current &&
       gameForNavCheck &&
       gameForNavCheck.gameId &&
-      previousTransitionState === 'starting_game' &&
       gameForNavCheck.transitionState === 'idle' &&
       gameForNavCheck.gamePhase !== 'lobby' &&
       localThisPlayerId
@@ -210,16 +208,6 @@ export default function WelcomePage() {
       try {
         const fetchedGameState = await getGame(gameId);
         if (isMountedRef.current) {
-          const previousTransitionState = gameRef.current?.transitionState;
-
-          if (
-            previousTransitionState === 'starting_game' &&
-            fetchedGameState?.transitionState === 'idle' &&
-            fetchedGameState?.gamePhase !== 'lobby'
-          ) {
-            router.push('/game');
-            return;
-          }
           setGame(fetchedGameState);
         }
       } catch (error) {
@@ -648,5 +636,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
