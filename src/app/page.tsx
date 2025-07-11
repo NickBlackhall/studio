@@ -181,14 +181,26 @@ export default function WelcomePage() {
   }, [currentStep]);
 
 
-  useEffect(() => {
-    gameRef.current = internalGame;
-  }, [internalGame]);
-
-  // New dedicated effect for navigation
+  // New dedicated effect for navigation with debugging
   useEffect(() => {
     const game = internalGame;
     const playerId = internalThisPlayerId;
+
+    console.log('🔍 Navigation check:', {
+      mounted: isMountedRef.current,
+      gameId: game?.gameId,
+      transitionState: game?.transitionState,
+      gamePhase: game?.gamePhase,
+      playerId: playerId,
+      shouldNavigate: !!(
+        isMountedRef.current &&
+        game &&
+        game.gameId &&
+        game.transitionState === 'idle' &&
+        game.gamePhase !== 'lobby' &&
+        playerId
+      )
+    });
 
     if (
       isMountedRef.current &&
@@ -198,6 +210,7 @@ export default function WelcomePage() {
       game.gamePhase !== 'lobby' &&
       playerId
     ) {
+      console.log('✅ NAVIGATING TO /game');
       router.push('/game');
     }
   }, [internalGame, internalThisPlayerId, router]);
@@ -439,31 +452,6 @@ export default function WelcomePage() {
             </Button>
           </div>
         ) : isActivePlayerInNonLobby ? (
-          <div className="w-full max-w-md text-center p-4">
-            
-            <Card className="my-4 border-primary/50 bg-muted/30 shadow-md">
-              <CardHeader className="p-4">
-                <CardTitle className="text-lg flex items-center justify-center font-semibold text-foreground">
-                  <Info className="mr-2 h-5 w-5 text-primary" /> Game in Progress!
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0 text-sm text-muted-foreground">
-                <p>The current game is in the &quot;{internalGame.gamePhase}&quot; phase.</p>
-                <Button
-                  onClick={() => router.push('/game')}
-                  variant="default"
-                  size="sm"
-                  className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
-                >
-                  Rejoin Current Game <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-            <Button onClick={handleResetGame} variant="destructive" className="mt-6" disabled={isProcessingAction}>
-              { isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
-            </Button>
-          </div>
-        ) : isLobbyPhaseActive && thisPlayerObject ? (
           (() => {
             const hostPlayerId = internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
             const enoughPlayers = internalGame.players.length >= MIN_PLAYERS_TO_START;
@@ -641,3 +629,4 @@ export default function WelcomePage() {
   );
 }
 
+    
