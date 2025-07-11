@@ -185,7 +185,7 @@ export default function WelcomePage() {
     gameRef.current = internalGame;
     const gameForNavCheck = internalGame;
     const localThisPlayerId = internalThisPlayerId;
-
+  
     if (
       isMountedRef.current &&
       gameForNavCheck &&
