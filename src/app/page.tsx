@@ -497,7 +497,7 @@ export default function WelcomePage() {
   };
   
   return (
-    <div className={cn("min-h-screen flex flex-col items-center justify-center bg-black")}>
+    <div className={cn("min-h-screen flex flex-col justify-center bg-black")}>
       {renderContent()}
       <TransitionOverlay 
         transitionState={internalGame.transitionState}
@@ -506,5 +506,7 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
 
     
