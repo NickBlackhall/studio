@@ -94,7 +94,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
                 <div className="absolute inset-0 flex items-center justify-center p-[8%]">
                   <p 
                     className="font-im-fell text-black text-center leading-tight"
-                    style={{ fontSize: 'clamp(0.75rem, 3.5vw, 1.25rem)' }}
+                    style={{ fontSize: 'clamp(1rem, 4vw, 1.5rem)' }}
                   >
                     {cardText}
                   </p>
