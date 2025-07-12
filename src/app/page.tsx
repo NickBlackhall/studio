@@ -338,12 +338,8 @@ export default function WelcomePage() {
   };
 
   if (!internalGame || !internalGame.gameId) {
-     return (
-      <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-        <p className="text-lg">Initializing game session...</p>
-      </div>
-    );
+    // Don't show loading here - let TransitionOverlay handle it if active
+    return null;
   }
 
   const renderContent = () => {
@@ -462,7 +458,8 @@ export default function WelcomePage() {
             </div>
           </div>
         );
-      } else {
+      } else if (!localStorage.getItem(`thisPlayerId_game_${internalGame.gameId}`)) {
+        // Only show spectator screen for completely new users (no stored player ID)
         // Game is in progress, show spectator view
         return (
           <div className="w-full h-full flex flex-col justify-center items-center">
