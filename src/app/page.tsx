@@ -104,8 +104,10 @@ export default function WelcomePage() {
   }, []);
 
   const fetchGameData = useCallback(async (origin: string = "unknown", gameIdToFetch?: string) => {
+    let fetchedGameState: GameClientState | null = null;
+    let playerIdFromStorage: string | null = null;
     try {
-      let fetchedGameState = await getGame(gameIdToFetch); 
+      fetchedGameState = await getGame(gameIdToFetch); 
       
       if (fetchedGameState) {
         if (typeof fetchedGameState.ready_player_order_str === 'string') {
@@ -123,12 +125,12 @@ export default function WelcomePage() {
 
       if (fetchedGameState && fetchedGameState.gameId) {
         const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
+        playerIdFromStorage = localStorage.getItem(localStorageKey);
         
         if (fetchedGameState.players.length === 0 && (origin.includes("reset") || origin.includes("handleResetGame"))) {
           localStorage.removeItem(localStorageKey);
           setThisPlayerId(null);
         } else {
-          const playerIdFromStorage = localStorage.getItem(localStorageKey);
           if (playerIdFromStorage) {
             const playerInGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
             if (playerInGame) {
@@ -160,7 +162,16 @@ export default function WelcomePage() {
       }
     } finally {
         if (isMountedRef.current) {
-            setIsInitializing(false);
+            // Only stop initializing if we're staying on this page
+            // If we have a player and non-lobby game, let navigation happen first
+            const shouldNavigate = fetchedGameState && 
+                                  fetchedGameState.gamePhase !== 'lobby' && 
+                                  fetchedGameState.transitionState === 'idle' &&
+                                  playerIdFromStorage;
+            
+            if (!shouldNavigate) {
+                setIsInitializing(false);
+            }
         }
     }
   }, [toast, parseReadyPlayerOrderStr, setGame, setThisPlayerId]);
@@ -203,6 +214,12 @@ export default function WelcomePage() {
       !isInitializing
     ) {
       router.push('/game');
+      // Don't stop initializing here - let the navigation complete
+    } else if (
+      // Stop initializing if we're definitely staying
+      game && game.gamePhase === 'lobby'
+    ) {
+      setIsInitializing(false);
     }
   }, [internalGame, internalThisPlayerId, router, isInitializing]);
 
@@ -523,10 +540,12 @@ export default function WelcomePage() {
       <div className="flex-grow flex flex-col justify-center">
         {renderContent()}
       </div>
-      <TransitionOverlay 
-        transitionState={internalGame.transitionState}
-        message={internalGame.transitionMessage}
-      />
+      {internalGame && internalGame.transitionState && (
+        <TransitionOverlay 
+          transitionState={internalGame.transitionState}
+          message={internalGame.transitionMessage}
+        />
+      )}
     </div>
   );
 }
@@ -534,4 +553,5 @@ export default function WelcomePage() {
     
 
     
+
 
