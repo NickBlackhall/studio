@@ -50,7 +50,7 @@ export default function GamePage() {
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const { playTrack, stop: stopMusic, state: audioState, toggleMute } = useAudio();
+  const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
 
 
   const setGameState = useCallback((newState: GameClientState | null) => {
@@ -119,9 +119,9 @@ export default function GamePage() {
 
   useEffect(() => {
     if (internalGameState) {
-      if (internalGameState.gamePhase === 'game_over' || internalGameState.gamePhase === 'winner_announcement') {
+      if (internalGameState.gamePhase === 'game_over') {
         playTrack('lobby-music');
-      } else if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase)) {
+      } else if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase) || internalGameState.gamePhase === 'winner_announcement') {
         playTrack('game-music');
       } else {
         playTrack('lobby-music'); // Fallback for lobby state
@@ -565,3 +565,5 @@ export default function GamePage() {
   );
 }
 export const dynamic = 'force-dynamic';
+
+    
