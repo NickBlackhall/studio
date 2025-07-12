@@ -56,6 +56,8 @@ export default function WelcomePage() {
   const isMountedRef = useRef(true);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   
+  const [isInitializing, setIsInitializing] = useState(true);
+
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
 
@@ -156,6 +158,10 @@ export default function WelcomePage() {
             toast({ title: "Load Error", description: `Could not fetch game state: ${error.message || String(error)}`, variant: "destructive"});
         }
       }
+    } finally {
+        if (isMountedRef.current) {
+            setIsInitializing(false);
+        }
     }
   }, [toast, parseReadyPlayerOrderStr, setGame, setThisPlayerId]);
 
@@ -172,6 +178,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     isMountedRef.current = true;
+    setIsInitializing(true);
     fetchGameData(`useEffect[] mount or currentStep change to: ${currentStep}`);
     
     return () => {
@@ -192,11 +199,12 @@ export default function WelcomePage() {
       game.gameId &&
       game.transitionState === 'idle' &&
       game.gamePhase !== 'lobby' &&
-      playerId
+      playerId &&
+      !isInitializing
     ) {
       router.push('/game');
     }
-  }, [internalGame, internalThisPlayerId, router]);
+  }, [internalGame, internalThisPlayerId, router, isInitializing]);
 
 
   useEffect(() => {
@@ -336,6 +344,17 @@ export default function WelcomePage() {
     }
   };
   
+  if (isInitializing) {
+     return (
+      <div className="w-full h-screen flex flex-col items-center justify-center bg-black">
+        <div className="text-center text-white">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading game...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!internalGame || !internalGame.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
@@ -463,10 +482,10 @@ export default function WelcomePage() {
             </div>
           </div>
         );
-      } else {
+      } else if (!isInitializing) {
         // Game is in progress, show spectator view
         return (
-          <div className="w-full h-full flex flex-col items-center justify-center">
+          <div className="w-full h-full flex flex-col justify-center">
             <div className="w-full max-w-md space-y-6 text-center p-4">
               <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
                 <CardHeader className="p-4"><Lock className="h-8 w-8 mx-auto text-destructive mb-2" /><CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle></CardHeader>
