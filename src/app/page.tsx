@@ -181,6 +181,11 @@ export default function WelcomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep]);
 
+  useEffect(() => {
+    if (internalGame?.transitionState !== 'idle' && internalThisPlayerId) {
+      router.prefetch('/game');
+    }
+  }, [internalGame?.transitionState, internalThisPlayerId, router]);
 
   // New dedicated effect for navigation
   useEffect(() => {
