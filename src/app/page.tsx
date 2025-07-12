@@ -11,7 +11,7 @@ import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
@@ -19,6 +19,7 @@ import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
 import PWAGameLayout from '@/components/PWAGameLayout';
 import type { Tables } from '@/lib/database.types';
+
 
 
 export const dynamic = 'force-dynamic';
@@ -400,10 +401,49 @@ export default function WelcomePage() {
           lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to ready up.`;
         } else if (!showStartGameButton) {
           const hostPlayerForMsg = hostPlayerId && internalGame.players.find(p => p.id === hostPlayerId);
-          const hostNameForMessage = hostPlayerForMsg?.name || 'The host';
+          const hostNameForMessage = (hostPlayerForMsg as any)?.name || 'The host';
           lobbyMessage = `Waiting for ${hostNameForMessage} to start the game.`;
         }
-  
+        const PlayerRow = React.memo(function PlayerRow({ 
+          player 
+        }: { 
+          player: PlayerClientState 
+        }) {
+          return (
+            <div className="flex items-center justify-between p-3">
+              <div className="flex items-center min-w-0">
+                {player.avatar?.startsWith('/') ? (
+                  <Image
+                    src={player.avatar}
+                    alt={`${(player.name as string) || "Player"}'s avatar`}
+                    width={56}
+                    height={56}
+                    className="mr-3 rounded-sm object-cover flex-shrink-0"
+                    data-ai-hint="player avatar"
+                  />
+                ) : (
+                  <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>
+                )}
+                <h2 className="text-3xl text-black truncate">{(player.name as string) || 'Player'}</h2>
+              </div>
+              <div className="flex-shrink-0 ml-2 flex items-center justify-center">
+                {player.id === thisPlayerObject?.id ? (
+                  <ReadyToggle
+                    isReady={player.isReady}
+                    onToggle={() => handleToggleReady(player)}
+                    disabled={isProcessingAction}
+                  />
+                ) : (
+                  player.isReady ? (
+                    <CheckSquare className="h-12 w-20 text-green-700" />
+                  ) : (
+                    <XSquare className="h-12 w-20 text-red-700" />
+                  )
+                )}
+              </div>
+            </div>
+          );
+        });
         return (
           <div className="w-full h-screen">
             <div className="relative w-full h-full">
@@ -416,24 +456,8 @@ export default function WelcomePage() {
               />
               <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col">
                 <div className="overflow-y-auto space-y-2">
-                  {sortedPlayersForDisplay.map((player) => (
-                    <div key={player.id} className="flex items-center justify-between p-3">
-                      <div className="flex items-center min-w-0">
-                        {player.avatar.startsWith('/') ? (
-                          <Image src={player.avatar} alt={`${player.name}'s avatar`} width={56} height={56} className="mr-3 rounded-sm object-cover flex-shrink-0" data-ai-hint="player avatar" />
-                        ) : (
-                          <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>
-                        )}
-                        <h2 className="text-3xl text-black truncate">{player.name}</h2>
-                      </div>
-                      <div className="flex-shrink-0 ml-2 flex items-center justify-center">
-                        {player.id === thisPlayerObject?.id ? (
-                          <ReadyToggle isReady={player.isReady} onToggle={() => handleToggleReady(player)} disabled={isProcessingAction} />
-                        ) : (
-                          player.isReady ? <CheckSquare className="h-12 w-20 text-green-700" /> : <XSquare className="h-12 w-20 text-red-700" />
-                        )}
-                      </div>
-                    </div>
+                {sortedPlayersForDisplay.map((player) => (
+                    <PlayerRow key={player.id} player={player} />
                   ))}
                 </div>
                 <div className="flex-shrink-0 text-center px-4 pt-4 space-y-2">
