@@ -21,8 +21,8 @@ interface AudioContextType {
 
 // Define the available music tracks
 export const AUDIO_TRACKS: { [key: string]: string } = {
-  'lobby-music': '/sound/music/welcome-lobby-track.mp3',
-  'game-music': '/sound/music/in-game-track.mp3',
+  'lobby-music': '/Sound/music/welcome-lobby-track.mp3',
+  'game-music': '/Sound/music/in-game-track.mp3',
 };
 
 // Create the context with a default value
