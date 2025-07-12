@@ -316,7 +316,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                                 value={customCardText}
                                 onChange={(e) => setCustomCardText(e.target.value)}
                                 placeholder="Make it uniquely terrible..."
-                                className="absolute top-[18%] left-[50%] -translate-x-1/2 w-[85%] h-[40%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-normal p-2"
+                                className="absolute top-[18%] left-[50%] -translate-x-1/2 w-[85%] h-[40%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-none p-2"
                                 onClick={(e) => e.stopPropagation()}
                                 maxLength={100}
                               />
@@ -346,7 +346,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                             data-ai-hint="card front"
                           />
                           <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
-                            <span className="font-im-fell text-black text-2xl leading-normal px-4">{card.text}</span>
+                            <span className="font-im-fell text-black text-2xl leading-none px-4">{card.text}</span>
                             {isThisCardSelected && (
                               <button
                                 type="button"
