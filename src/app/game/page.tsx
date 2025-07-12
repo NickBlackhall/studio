@@ -31,6 +31,7 @@ import { useLoading } from '@/contexts/LoadingContext';
 import { PureMorphingModal } from '@/components/PureMorphingModal';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
+import { useAudio } from '@/contexts/AudioContext';
 
 export default function GamePage() {
   const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
@@ -49,6 +50,7 @@ export default function GamePage() {
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const { playTrack, stop: stopMusic } = useAudio();
 
 
   const setGameState = useCallback((newState: GameClientState | null) => {
@@ -114,6 +116,23 @@ export default function GamePage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (internalGameState) {
+      if (internalGameState.gamePhase === 'game_over' || internalGameState.gamePhase === 'winner_announcement') {
+        playTrack('lobby-music');
+      } else if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase)) {
+        playTrack('game-music');
+      } else {
+        playTrack('lobby-music'); // Fallback for lobby state
+      }
+    }
+    
+    // On unmount, stop music
+    return () => {
+        stopMusic();
+    }
+  }, [internalGameState?.gamePhase, playTrack, stopMusic]);
 
   useEffect(() => {
     if (!internalGameState || !internalGameState.gameId ) {

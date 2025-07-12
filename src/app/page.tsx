@@ -19,7 +19,7 @@ import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
 import PWAGameLayout from '@/components/PWAGameLayout';
 import type { Tables } from '@/lib/database.types';
-
+import { useAudio } from '@/contexts/AudioContext';
 
 
 export const dynamic = 'force-dynamic';
@@ -55,6 +55,7 @@ export default function WelcomePage() {
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const { playTrack } = useAudio();
   
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
@@ -181,6 +182,13 @@ export default function WelcomePage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep]);
+
+  useEffect(() => {
+    // Play lobby music when on the welcome or setup pages
+    if (currentStep === 'welcome' || currentStep === 'setup') {
+      playTrack('lobby-music');
+    }
+  }, [currentStep, playTrack]);
 
   useEffect(() => {
     if (internalGame?.transitionState !== 'idle' && internalThisPlayerId) {

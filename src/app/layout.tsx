@@ -4,6 +4,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { LoadingProvider } from '@/contexts/LoadingContext';
 import { cn } from '@/lib/utils';
 import FontDebugger from '@/components/layout/FontDebugger';
+import { AudioProvider } from '@/contexts/AudioContext';
+import MusicPlayer from '@/components/layout/MusicPlayer';
+
 
 export const metadata: Metadata = {
   title: 'Make It Terrible',
@@ -34,14 +37,17 @@ export default function RootLayout({
       <body className={cn(
           "antialiased flex flex-col min-h-screen",
         )} suppressHydrationWarning={true}>
-        <LoadingProvider>
-          <div className="flex min-h-screen w-full flex-col">
-            <main className="flex-grow flex flex-col">
-              {children}
-            </main>
-          </div>
-          <Toaster />
-        </LoadingProvider>
+        <AudioProvider>
+          <LoadingProvider>
+            <div className="flex min-h-screen w-full flex-col">
+              <main className="flex-grow flex flex-col">
+                {children}
+              </main>
+            </div>
+            <Toaster />
+          </LoadingProvider>
+          <MusicPlayer />
+        </AudioProvider>
         <FontDebugger />
       </body>
     </html>
