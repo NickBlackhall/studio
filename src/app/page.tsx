@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { useLoading } from '@/contexts/LoadingContext';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
@@ -341,10 +340,8 @@ export default function WelcomePage() {
   if (!internalGame || !internalGame.gameId) {
      return (
       <div className="flex flex-col items-center justify-center min-h-full py-12 text-foreground">
-        <p className="text-xl text-destructive mt-4">Could not initialize game session. Please try refreshing.</p>
-         <Button onClick={() => window.location.reload()} variant="outline" className="mt-4">
-          Refresh Page
-        </Button>
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+        <p className="text-lg">Initializing game session...</p>
       </div>
     );
   }
@@ -489,16 +486,7 @@ export default function WelcomePage() {
         );
       }
     }
-  
-    // Fallback if no other condition is met
-    return (
-      <div className="w-full h-screen flex flex-col items-center justify-center bg-black">
-        <div className="text-center text-white">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
+    return null;
   };
   
   return (
