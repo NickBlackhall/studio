@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
@@ -20,8 +21,8 @@ interface AudioContextType {
 
 // Define the available music tracks
 export const AUDIO_TRACKS: { [key: string]: string } = {
-  'lobby-music': '/music/welcome-lobby-track.mp3',
-  'game-music': '/music/in-game-track.mp3',
+  'lobby-music': '/sound/music/welcome-lobby-track.mp3',
+  'game-music': '/sound/music/in-game-track.mp3',
 };
 
 // Create the context with a default value
