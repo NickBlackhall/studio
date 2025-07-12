@@ -346,7 +346,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                             data-ai-hint="card front"
                           />
                           <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
-                            <span className="font-im-fell text-black text-2xl leading-tight px-4">{card.text}</span>
+                            <span className="font-im-fell text-black text-2xl leading-normal px-4">{card.text}</span>
                             {isThisCardSelected && (
                               <button
                                 type="button"
