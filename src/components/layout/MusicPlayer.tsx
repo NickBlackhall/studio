@@ -9,17 +9,13 @@ export default function MusicPlayer() {
   const { currentTrack, isPlaying, isMuted, volume } = state;
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-    }
-  }, [volume]);
-
-  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (isPlaying && currentTrack && !isMuted) {
-      const trackUrl = AUDIO_TRACKS[currentTrack];
+      const trackUrl = AUDIO_TRACKS[currentTrack as keyof typeof AUDIO_TRACKS];
+      
+      // Only change src if it's different to prevent re-buffering
       if (audio.src !== window.location.origin + trackUrl) {
         audio.src = trackUrl;
       }
@@ -36,6 +32,12 @@ export default function MusicPlayer() {
       audio.pause();
     }
   }, [currentTrack, isPlaying, isMuted]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
 
   return <audio ref={audioRef} loop style={{ display: 'none' }} />;
 }

@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 // Define the shape of the audio state and the context
 interface AudioState {
@@ -37,8 +37,8 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     volume: 0.3,
   });
   
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const isInteractedRef = useRef(false);
+  // This ref helps us wait for the first user interaction before playing audio.
+  const isInteractedRef = React.useRef(false);
 
   const handleUserInteraction = useCallback(() => {
     isInteractedRef.current = true;
@@ -53,12 +53,13 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     // Load preferences from localStorage on mount
     const savedMuted = localStorage.getItem('audioMuted');
     const savedVolume = localStorage.getItem('audioVolume');
-    if (savedMuted !== null) {
-      setState(prevState => ({ ...prevState, isMuted: savedMuted === 'true' }));
-    }
-    if (savedVolume !== null) {
-      setState(prevState => ({ ...prevState, volume: parseFloat(savedVolume) }));
-    }
+    
+    // Using a function with setState to avoid stale state issues
+    setState(prevState => ({
+      ...prevState,
+      isMuted: savedMuted !== null ? savedMuted === 'true' : prevState.isMuted,
+      volume: savedVolume !== null ? parseFloat(savedVolume) : prevState.volume
+    }));
     
     return () => {
       window.removeEventListener('click', handleUserInteraction);
@@ -77,7 +78,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const stop = useCallback(() => {
-    setState(prevState => ({ ...prevState, isPlaying: false, currentTrack: null }));
+    setState(prevState => ({ ...prevState, isPlaying: false }));
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -90,10 +91,8 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
   const setVolume = useCallback((volume: number) => {
     const newVolume = Math.max(0, Math.min(1, volume));
-    setState(prevState => {
-      localStorage.setItem('audioVolume', String(newVolume));
-      return { ...prevState, volume: newVolume };
-    });
+    localStorage.setItem('audioVolume', String(newVolume));
+    setState(prevState => ({ ...prevState, volume: newVolume }));
   }, []);
 
   return (

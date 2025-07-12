@@ -24,7 +24,7 @@ import RecapSequenceDisplay from '@/components/game/RecapSequenceDisplay';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, Play, Loader2, RefreshCw, HelpCircle } from 'lucide-react';
+import { Home, Play, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { useLoading } from '@/contexts/LoadingContext';
@@ -50,7 +50,7 @@ export default function GamePage() {
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const { playTrack, stop: stopMusic } = useAudio();
+  const { playTrack, stop: stopMusic, state: audioState, toggleMute } = useAudio();
 
 
   const setGameState = useCallback((newState: GameClientState | null) => {
@@ -514,6 +514,14 @@ export default function GamePage() {
           Options and actions for the game.
         </div>
         <div className="flex flex-col gap-3">
+          <Button
+            variant="outline"
+            onClick={toggleMute}
+            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+          >
+            {audioState.isMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
+            {audioState.isMuted ? 'Unmute Audio' : 'Mute Audio'}
+          </Button>
           <Button 
             variant="outline" 
             onClick={() => {
