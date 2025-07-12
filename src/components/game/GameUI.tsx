@@ -4,6 +4,7 @@
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
+import { useAudio } from '@/contexts/AudioContext';
 
 interface GameUIProps {
   gameState: GameClientState | null;
@@ -13,9 +14,21 @@ interface GameUIProps {
 }
 
 export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuClick }: GameUIProps) {
+  const { playSfx } = useAudio();
+
   if (!gameState || !thisPlayer) {
     return null;
   }
+
+  const handleScoresClick = () => {
+    playSfx('button-click');
+    onScoresClick();
+  };
+
+  const handleMenuClick = () => {
+    playSfx('button-click');
+    onMenuClick();
+  };
 
   const roundNumber = gameState.currentRound;
   const playerName = thisPlayer.name;
@@ -97,7 +110,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
 
           {/* Scores Button */}
           <button
-            onClick={onScoresClick}
+            onClick={handleScoresClick}
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
             style={{
               top: '37%',
@@ -142,7 +155,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
 
           {/* Menu Button */}
           <button
-            onClick={onMenuClick}
+            onClick={handleMenuClick}
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
             style={{
               top: '45%',
