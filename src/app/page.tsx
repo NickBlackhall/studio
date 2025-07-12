@@ -482,10 +482,10 @@ export default function WelcomePage() {
             </div>
           </div>
         );
-      } else if (!isInitializing) {
+      } else {
         // Game is in progress, show spectator view
         return (
-          <div className="w-full h-full flex flex-col justify-center">
+          <div className="w-full h-full flex flex-col justify-center items-center">
             <div className="w-full max-w-md space-y-6 text-center p-4">
               <Card className="my-4 shadow-md border-2 border-destructive rounded-lg">
                 <CardHeader className="p-4"><Lock className="h-8 w-8 mx-auto text-destructive mb-2" /><CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle></CardHeader>
@@ -509,15 +509,20 @@ export default function WelcomePage() {
   
     // Fallback if no other condition is met (should not happen in normal flow)
     return (
-      <div className="relative flex-grow flex flex-col bg-black">
-        <Image src="/backgrounds/mobile-background.jpg" alt="Make It Terrible game poster background" fill className="poster-image" priority data-ai-hint="game poster" />
+      <div className="w-full h-screen flex flex-col items-center justify-center bg-black">
+        <div className="text-center text-white">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading...</p>
+        </div>
       </div>
     );
   };
   
   return (
-    <div className={cn("min-h-screen flex flex-col justify-center bg-black")}>
-      {renderContent()}
+    <div className={cn("min-h-screen flex flex-col bg-black")}>
+      <div className="flex-grow flex flex-col justify-center">
+        {renderContent()}
+      </div>
       <TransitionOverlay 
         transitionState={internalGame.transitionState}
         message={internalGame.transitionMessage}
@@ -529,3 +534,4 @@ export default function WelcomePage() {
     
 
     
+
