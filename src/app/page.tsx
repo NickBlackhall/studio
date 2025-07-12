@@ -56,8 +56,6 @@ export default function WelcomePage() {
   const isMountedRef = useRef(true);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  const [isInitializing, setIsInitializing] = useState(true);
-
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
 
@@ -160,19 +158,6 @@ export default function WelcomePage() {
             toast({ title: "Load Error", description: `Could not fetch game state: ${error.message || String(error)}`, variant: "destructive"});
         }
       }
-    } finally {
-        if (isMountedRef.current) {
-            // Only stop initializing if we're staying on this page
-            // If we have a player and non-lobby game, let navigation happen first
-            const shouldNavigate = fetchedGameState && 
-                                  fetchedGameState.gamePhase !== 'lobby' && 
-                                  fetchedGameState.transitionState === 'idle' &&
-                                  playerIdFromStorage;
-            
-            if (!shouldNavigate) {
-                setIsInitializing(false);
-            }
-        }
     }
   }, [toast, parseReadyPlayerOrderStr, setGame, setThisPlayerId]);
 
@@ -189,7 +174,6 @@ export default function WelcomePage() {
 
   useEffect(() => {
     isMountedRef.current = true;
-    setIsInitializing(true);
     fetchGameData(`useEffect[] mount or currentStep change to: ${currentStep}`);
     
     return () => {
@@ -210,18 +194,11 @@ export default function WelcomePage() {
       game.gameId &&
       game.transitionState === 'idle' &&
       game.gamePhase !== 'lobby' &&
-      playerId &&
-      !isInitializing
+      playerId
     ) {
       router.push('/game');
-      // Don't stop initializing here - let the navigation complete
-    } else if (
-      // Stop initializing if we're definitely staying
-      game && game.gamePhase === 'lobby'
-    ) {
-      setIsInitializing(false);
-    }
-  }, [internalGame, internalThisPlayerId, router, isInitializing]);
+    
+  }}, [internalGame, internalThisPlayerId, router]);
 
 
   useEffect(() => {
@@ -360,17 +337,6 @@ export default function WelcomePage() {
         });
     }
   };
-  
-  if (isInitializing) {
-     return (
-      <div className="w-full h-screen flex flex-col items-center justify-center bg-black">
-        <div className="text-center text-white">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading game...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (!internalGame || !internalGame.gameId) {
      return (
@@ -524,7 +490,7 @@ export default function WelcomePage() {
       }
     }
   
-    // Fallback if no other condition is met (should not happen in normal flow)
+    // Fallback if no other condition is met
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center bg-black">
         <div className="text-center text-white">
@@ -549,9 +515,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
-
-    
-
-
