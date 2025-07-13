@@ -18,44 +18,40 @@ A key feature is that if a custom-written card wins a round, the Judge has the o
 
 ## Development Status
 
-The project is currently a **fully functional prototype**. The entire real-time game loop is implemented and operational.
+The project is currently a **fully functional and polished prototype**. The entire real-time game loop is implemented and operational.
 
-- **Backend & State Management:** The game uses **Supabase** for its backend, with database tables for games, players, cards, and submissions. Real-time updates are handled via Supabase subscriptions.
+- **Backend & State Management:** The game uses **Supabase** for its backend, with database tables for games, players, cards, and submissions. Real-time updates are handled via Supabase subscriptions, providing a seamless multiplayer experience.
 - **Frontend:** The application is built with **Next.js** and **React**.
-- **UI & Styling:** The UI is built with **ShadCN UI components**, styled with **Tailwind CSS**, and includes animations from **Framer Motion**.
+- **UI & Styling:** The UI is built with **ShadCN UI components**, styled with **Tailwind CSS**, and includes animations from **Framer Motion**. The game features a mobile-first, PWA-style layout with custom poster graphics for all major screens (Welcome, Player Setup, Lobby, Game Over, etc.) to create an immersive, app-like experience.
 
 ## Solved Issues & Recent Updates
 
 This section tracks recent improvements and bug fixes that have impacted gameplay, UI, and UX.
 
-- **Fixed Critical Navigation and Loading Bugs:** Addressed a series of complex, interconnected bugs related to the lobby-to-game transition.
-  - **Initial Problem:** A conflict between two different loading overlay systems (`useLoading` context and a new `TransitionOverlay` component) caused the app to crash when starting a game.
-  - **Investigation:** Debugging revealed a deeper race condition in the lobby page (`src/app/page.tsx`). When the game state changed from `lobby` to `category_selection`, the page would re-render and show a "Game in Progress" view *before* the navigation logic could redirect the user to the `/game` page. This resulted in players being stuck in the lobby.
-  - **The Fix:** The solution involved a multi-step refactor. First, the old `useLoading` context calls were removed from the transition flow. Second, the navigation logic in the lobby was isolated into its own dedicated `useEffect` hook, making it more reliable and preventing the race condition. Finally, a subsequent bug was fixed on the game page (`src/app/game/page.tsx`) to ensure it correctly identified the player upon arrival, preventing an immediate redirect back to the lobby.
-- **Implemented Transition State Machine:** Addressed a core architectural issue where game state transitions (e.g., from lobby to game) were fragile, leading to UI flickering, awkward pauses, and potential race conditions. The fix involved implementing a state machine directly in the database with `transition_state` and `transition_message` columns. Now, the server explicitly communicates when it's busy, and the client displays a dedicated loading overlay, resulting in a smoother, more reliable, and professional user experience.
-- **Improved UI Responsiveness for Ready Toggle:** Fixed a noticeable delay when players toggled their ready status in the lobby. Implemented an "optimistic update" approach, where the UI updates instantly upon the user's click, while the actual state change is processed in the background. This provides immediate visual feedback and a much smoother user experience.
-- **Fixed Font Flickering in Lobby:** Resolved a persistent "Flash of Unstyled Content" (FOUC) where player names in the lobby would flicker between the default system font and the game's stylized `IM Fell` font during state updates (e.g., when a player toggled their ready status). The fix involved changing the player name element from a generic `<span>` to a semantic `<h2>` tag, ensuring the correct base styles are applied immediately on render.
-- **Fixed Real-Time Instability & Flickering:** Resolved a major bug where multiple, rapid database updates from Supabase would trigger excessive re-renders, causing visual flickering and instability. Implemented a debouncing mechanism to intelligently bundle these updates into a single, smooth refresh, dramatically improving UI stability and performance during gameplay. Also fixed a broken image path for the loading screen logo.
-- **Fixed Spectator Black Screen:** Resolved a critical bug where new users would see a black screen if they tried to join a game that was already in a non-lobby state (e.g., 'game_over'). The UI now correctly shows a "Game in Progress" spectator view.
-- **Corrected TypeScript Error:** Fixed a type error where the `isCustom` property was not correctly defined on the `PlayerHandCard` interface, improving code quality and type safety.
-- **UI Polish - Player Submission:** When a player submits their card, the UI now correctly hides the card stack and displays a clean "Submission Sent" graphic, preventing player confusion.
-- **UI Polish - Player Setup:** Adjusted the vertical alignment of the "name" input field on the player setup screen for better visual balance.
-- **UI Polish - Font Consistency:** Updated the font on the Judge's waiting screen to match the game's overall `IM Fell` aesthetic.
+- **Enhanced Audio Experience:** Implemented a comprehensive audio system using a React Context.
+  - Background music now plays and transitions appropriately between the lobby and in-game states.
+  - Sound effects (SFX) have been added for key UI interactions, such as button clicks in the main game menu, providing satisfying auditory feedback.
+  - The system includes volume controls and mute functionality, with user preferences saved to `localStorage`.
+- **Fixed Font Flickering in Lobby:** Resolved a persistent "Flash of Unstyled Content" (FOUC) where player names in the lobby would flicker between the default system font and the game's stylized `IM Fell` font during state updates. The fix involved ensuring the correct base styles are applied immediately on render.
+- **Fixed Critical Navigation and Loading Bugs:** Addressed a series of complex, interconnected bugs related to the lobby-to-game transition. This involved refactoring the navigation logic into its own dedicated `useEffect` hook, making it more reliable and preventing race conditions that caused players to get stuck in the lobby.
+- **Implemented Transition State Machine:** Addressed a core architectural issue where game state transitions were fragile. The fix involved implementing a state machine directly in the database, resulting in a smoother, more reliable, and professional user experience with a dedicated loading overlay.
+- **Improved UI Responsiveness for Ready Toggle:** Fixed a noticeable delay when players toggled their ready status in the lobby by implementing an "optimistic update" approach.
+- **Fixed Real-Time Instability & Flickering:** Resolved a major bug where multiple, rapid database updates would trigger excessive re-renders. Implemented a debouncing mechanism to intelligently bundle these updates into a single, smooth refresh, dramatically improving UI stability.
+- **Fixed Spectator Black Screen:** Resolved a critical bug where new users would see a black screen if they tried to join a game that was already in progress.
 
 ## Roadmap & Next Steps
 
 This is a living document outlining the future direction of the project.
 
 ### Immediate Priorities
-Our current focus is on refining the core experience and preparing the app for a wider audience.
-- **UI/UX Polish:** Finalize styling for key game states, including loading screens and the round/game winner announcement sequences to make them more engaging.
-- **Stability & Testing:** Ensure all existing features work flawlessly across different scenarios and user interactions.
-- **PWA Readiness:** Begin implementing the necessary architecture and features to make the game a fully installable Progressive Web App.
+Our current focus is on adding new gameplay variations and refining the experience based on playtesting.
+- **"Boondoggles":** Introduce random, surprise mini-game rounds to break up the main gameplay loop. This will involve physical challenges, word games, and other impromptu activities where the Judge awards a point to the best performer.
+- **Stability & Testing:** Continue to ensure all existing features work flawlessly across different scenarios and user interactions.
 
 ### Upcoming Features
 These are the next major gameplay mechanics and features on the horizon.
-- **"Boondoggles":** Introduce mini-games to break up the main gameplay loop and keep the group engaged in new ways.
-- **Audio Experience:** Add background music to the welcome, setup, and lobby screens. Implement sound effects for key game actions to enhance the user experience.
+- **AI-Powered Content:** Integrate Genkit to dynamically generate Boondoggle challenges or even create unique scenario and response cards on the fly, adding endless variety to the game.
+- **PWA Readiness:** Finalize the necessary architecture and features to make the game a fully installable Progressive Web App.
 
 ### Long-Term Vision
 These are larger-scale ideas for the future evolution of the game.
