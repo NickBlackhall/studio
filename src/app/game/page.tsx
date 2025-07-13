@@ -272,7 +272,6 @@ export default function GamePage() {
         await resetGameForTesting();
       } catch (error: any) {
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          throw error;
         } else {
           if (isMountedRef.current) {
             toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
@@ -567,5 +566,3 @@ export default function GamePage() {
 }
 
 export const dynamic = 'force-dynamic';
-
-    
