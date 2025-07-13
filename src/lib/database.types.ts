@@ -62,7 +62,36 @@ export type Database = {
           transition_state?: string
           transition_message?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "games_current_judge_id_fkey"
+            columns: ["current_judge_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_current_scenario_id_fkey"
+            columns: ["current_scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_last_round_winner_player_id_fkey"
+            columns: ["last_round_winner_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_overall_winner_player_id_fkey"
+            columns: ["overall_winner_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       players: {
         Row: {
@@ -98,7 +127,15 @@ export type Database = {
           score?: number
           is_ready?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "players_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       scenarios: {
         Row: {
@@ -181,7 +218,29 @@ export type Database = {
           response_card_id?: string
           is_new?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "player_hands_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_hands_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_hands_response_card_id_fkey"
+            columns: ["response_card_id"]
+            isOneToOne: false
+            referencedRelation: "response_cards"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       responses: { // Player submissions
         Row: {
@@ -211,7 +270,29 @@ export type Database = {
           game_id?: string
           round_number?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "responses_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "responses_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "responses_response_card_id_fkey"
+            columns: ["response_card_id"]
+            isOneToOne: false
+            referencedRelation: "response_cards"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       winners: { // Historical round winners
         Row: {
@@ -238,7 +319,29 @@ export type Database = {
           winner_player_id?: string
           winning_response_card_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "winners_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "winners_winner_player_id_fkey"
+            columns: ["winner_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "winners_winning_response_card_id_fkey"
+            columns: ["winning_response_card_id"]
+            isOneToOne: false
+            referencedRelation: "response_cards"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {
