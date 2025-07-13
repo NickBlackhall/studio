@@ -118,7 +118,9 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   }
 
   const playerIds = playersData.map(p => p.id);
-  let allHandsData: { player_id: string, response_card_id: string, is_new: boolean, response_cards: { id: string, text: string | null } | null }[] = [];
+  type HandData = Tables<'player_hands'> & { response_cards: Tables<'response_cards'> | null };
+  let allHandsData: HandData[] = [];
+
   if (playerIds.length > 0) {
     const { data: fetchedHandsData, error: handsError } = await supabase
       .from('player_hands')
@@ -189,7 +191,8 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
       };
     }
   }
-
+  
+  type SubmissionData = Tables<'responses'> & { response_cards: Tables<'response_cards'> | null };
   let submissions: GameClientState['submissions'] = [];
   if ((gameRow.game_phase === 'judging' || gameRow.game_phase === 'player_submission' || gameRow.game_phase === 'judge_approval_pending') && gameRow.current_round > 0) {
     const { data: submissionData, error: submissionError } = await supabase
@@ -201,7 +204,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     if (submissionError) {
       // console.error('DEBUG: getGame - Error fetching submissions:', JSON.stringify(submissionError, null, 2));
     } else if (submissionData) {
-      submissions = submissionData.map((s: any) => {
+      submissions = (submissionData as SubmissionData[]).map((s) => {
         const cardText = s.submitted_text || s.response_cards?.text || 'Error: Card text not found';
         const cardId = s.response_card_id || (s.submitted_text ? `custom-${s.player_id}-${gameRow.current_round}` : `error-${s.player_id}`);
 
@@ -760,6 +763,8 @@ export async function submitResponse(playerId: string, responseCardText: string,
   let responseCardIdToStore: string | null = null;
   let submittedTextToStore: string | null = null;
   let cardToRemoveFromHandId: string | null = null;
+  
+  type HandCardWithRelation = Tables<'player_hands'> & { response_cards: { text: string | null } | null };
 
   if (isCustomSubmission) {
     // console.log(`🔴 SUBMIT (Server): Handling custom submission for player ${playerId}. Text: "${responseCardText}"`);
@@ -767,7 +772,7 @@ export async function submitResponse(playerId: string, responseCardText: string,
   } else {
     const { data: handCardEntry, error: handQueryError } = await supabase
       .from('player_hands')
-      .select('*, response_cards!inner(*)')
+      .select('*, response_cards!inner(text)')
       .eq('player_id', playerId)
       .eq('game_id', gameId) 
       .eq('response_cards.text', responseCardText) 
@@ -909,7 +914,9 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
     throw new Error(`Failed to fetch game for winner selection: ${gameError?.message || 'Game not found'}`);
   }
 
-  let winningSubmissionData: { player_id: string; response_card_id: string | null; submitted_text: string | null; response_cards: { text: string | null } | null } | null = null;
+  type SubmissionWithCard = Tables<'responses'> & { response_cards: { text: string | null } | null };
+
+  let winningSubmissionData: SubmissionWithCard | null = null;
   let isCustomWinningCard = false;
 
   const { data: customSubmission, error: customSubmissionError } = await supabase
@@ -918,20 +925,20 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
     .eq('game_id', gameId)
     .eq('round_number', game.current_round)
     .eq('submitted_text', winningCardText) 
-    .single(); 
+    .maybeSingle(); 
 
-  if (customSubmission && !customSubmissionError && customSubmission.submitted_text) { 
+  if (customSubmission && !customSubmissionError) { 
     winningSubmissionData = customSubmission as any;
     isCustomWinningCard = true;
     // console.log(`🔴 WINNER (Server): Matched winning card as custom submission. Player: ${winningSubmissionData.player_id}`);
   } else {
     const { data: preDealtSubmission, error: preDealtSubmissionError } = await supabase
       .from('responses')
-      .select('*, response_cards!inner(*)')
+      .select('*, response_cards!inner(text)')
       .eq('game_id', gameId)
       .eq('round_number', game.current_round)
       .eq('response_cards.text', winningCardText) 
-      .single(); 
+      .maybeSingle(); 
 
     if (preDealtSubmission && !preDealtSubmissionError) {
       winningSubmissionData = preDealtSubmission as any;
@@ -1353,3 +1360,6 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
 
     
 
+
+
+    
