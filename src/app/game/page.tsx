@@ -27,11 +27,11 @@ import Link from 'next/link';
 import { Home, Play, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
-import { useLoading } from '@/contexts/LoadingContext';
 import { PureMorphingModal } from '@/components/PureMorphingModal';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
 import { useAudio } from '@/contexts/AudioContext';
+import TransitionOverlay from '@/components/ui/TransitionOverlay';
 
 export default function GamePage() {
   const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
@@ -40,18 +40,15 @@ export default function GamePage() {
   const [thisPlayer, setThisPlayerInternal] = useState<PlayerClientState | null>(null);
   const thisPlayerRef = useRef<PlayerClientState | null>(null);
 
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
-  const { showGlobalLoader, hideGlobalLoader } = useLoading();
   const isMountedRef = useRef(true);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
-
 
   const setGameState = useCallback((newState: GameClientState | null) => {
     gameStateRef.current = newState;
@@ -62,7 +59,6 @@ export default function GamePage() {
     thisPlayerRef.current = newPlayerState;
     if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
   }, []);
-
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     try {
@@ -98,14 +94,9 @@ export default function GamePage() {
     } catch (error: any) {
       console.error(`GamePage: Error in fetchGameAndPlayer (from ${origin}):`, error);
       toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
-    } finally {
-      if (isMountedRef.current) {
-        setIsInitialLoading(false);
-      }
     }
   }, [router, toast, setGameState, setThisPlayer]);
   
-
   useEffect(() => {
     isMountedRef.current = true;
     fetchGameAndPlayer("initial mount");
@@ -221,7 +212,6 @@ export default function GamePage() {
     };
   }, [internalGameState?.gameId, setGameState, setThisPlayer, router, toast]);
 
-
   const handleNextRound = useCallback(async () => {
     const gameId = gameStateRef.current?.gameId;
     if (gameId) {
@@ -282,7 +272,7 @@ export default function GamePage() {
         await resetGameForTesting();
       } catch (error: any) {
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          // Let the redirect happen
+          throw error;
         } else {
           if (isMountedRef.current) {
             toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
@@ -315,13 +305,21 @@ export default function GamePage() {
     });
   };
 
-
-  if (isInitialLoading) {
+  // Show transition overlay if game is busy
+  if (internalGameState && internalGameState.transitionState !== 'idle') {
+    // DEBUG: Log what's happening during the transition
+    console.log('🔴 TRANSITION DEBUG:', {
+      transitionState: internalGameState.transitionState,
+      transitionMessage: internalGameState.transitionMessage,
+      gamePhase: internalGameState.gamePhase,
+      timestamp: new Date().toISOString()
+    });
+    
     return (
-       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm">
-         <Loader2 className="h-12 w-12 animate-spin text-primary-foreground mb-4" />
-         <p className="text-lg text-primary-foreground font-semibold">Loading Game...</p>
-       </div>
+      <TransitionOverlay 
+        transitionState={internalGameState.transitionState}
+        message={internalGameState.transitionMessage}
+      />
     );
   }
 
@@ -446,7 +444,7 @@ export default function GamePage() {
     );
   };
 
-  const showPendingOverlay = isActionPending;
+  const isGameBusy = internalGameState?.transitionState !== 'idle';
 
   return (
     <>
@@ -462,10 +460,6 @@ export default function GamePage() {
       )}
       <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 ${showRecap ? 'opacity-20 pointer-events-none' : ''}`}>
         <main className="flex-grow w-full md:w-full lg:w-full relative order-1 md:order-2">
-          {showPendingOverlay && (
-              <div className="absolute inset-0 bg-transparent flex items-center justify-center z-50 rounded-lg">
-              </div>
-          )}
           {renderGameContent()}
         </main>
       </div>
@@ -518,6 +512,7 @@ export default function GamePage() {
             variant="outline"
             onClick={toggleMute}
             className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            disabled={isGameBusy}
           >
             {audioState.isMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
             {audioState.isMuted ? 'Unmute Audio' : 'Mute Audio'}
@@ -543,9 +538,9 @@ export default function GamePage() {
               setIsMenuModalOpen(false);
             }}
             className="bg-red-500/80 hover:bg-red-600/80 text-white"
-            disabled={isActionPending}
+            disabled={isGameBusy}
           >
-            {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            {isGameBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Reset Game (Testing)
           </Button>
         </div>
@@ -561,9 +556,16 @@ export default function GamePage() {
       >
         <HowToPlayModalContent />
       </PureMorphingModal>
+
+      {/* Add the working TransitionOverlay */}
+      <TransitionOverlay 
+        transitionState={internalGameState?.transitionState || 'idle'}
+        message={internalGameState?.transitionMessage}
+      />
     </>
   );
 }
+
 export const dynamic = 'force-dynamic';
 
     
