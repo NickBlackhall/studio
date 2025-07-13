@@ -108,7 +108,6 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
 
   const playerIds = playersData.map(p => p.id);
   
-  // Define a specific type for the hand data with the nested response card
   type HandDataWithCard = Tables<'player_hands'> & {
     response_cards: Pick<Tables<'response_cards'>, 'id' | 'text'> | null;
   };
@@ -136,12 +135,12 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
           return {
             id: h.response_cards.id,
             text: h.response_cards.text,
-            isNew: h.is_new ?? false,
+            isNew: h.is_new ?? false, // Ensure isNew is always boolean
           };
         }
         return null;
       })
-      .filter((card): card is PlayerHandCard => card !== null && typeof card.isNew === 'boolean');
+      .filter((card): card is PlayerHandCard => card !== null); // Correctly filter out nulls
       
     return {
       id: p.id,
@@ -694,7 +693,6 @@ export async function submitResponse(playerId: string, responseCardText: string,
   if (isCustomSubmission) {
     submittedTextToStore = responseCardText;
   } else {
-    // Define the type for the query result with a specific nested selection
     type HandCardWithText = Pick<Tables<'player_hands'>, 'response_card_id'> & { 
         response_cards: { text: string } | null 
     };
@@ -1171,7 +1169,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
         }
         return null;
       })
-      .filter((card): card is PlayerHandCard => card !== null && typeof card.isNew === 'boolean');
+      .filter((card): card is PlayerHandCard => card !== null);
   }
 
   return {
