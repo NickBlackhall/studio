@@ -74,7 +74,7 @@ export default function GamePage() {
       const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
       
       if (!playerIdFromStorage) {
-        if (ACTIVE_PLAYING_PHASES.includes(initialGameState.gamePhase as GamePhaseClientState)) {
+        if (ACTIVE_PLAYING_PHASES.includes(initialGameState.gamePhase as GamePhaseClientState) || initialGameState.gamePhase === 'game_over') {
           setThisPlayer(null); // Set as spectator
         } else {
           router.push('/?step=setup');
@@ -82,7 +82,8 @@ export default function GamePage() {
       } else {
         const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
         if (playerInGameList) {
-          setThisPlayer(playerInGameList);
+          const playerDetails = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
+          setThisPlayer(playerDetails || null);
         } else {
           localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
           router.push('/?step=setup'); // Player ID exists but isn't in game, so redirect
@@ -140,26 +141,19 @@ export default function GamePage() {
 
       if (updatedFullGame) {
         const currentLocalPlayerId = thisPlayerRef.current?.id;
-
+        
+        // This is a special case to handle the transition from game_over back to a fresh lobby
         if (gameStateRef.current?.gamePhase === 'game_over' && updatedFullGame.gamePhase === 'lobby') {
-          if (currentLocalPlayerId) {
-            const latestPlayerDetails = updatedFullGame.players.find(p => p.id === currentLocalPlayerId) || await getCurrentPlayer(currentLocalPlayerId, updatedFullGame.gameId);
-            if (isMountedRef.current) setThisPlayer(latestPlayerDetails ? { ...latestPlayerDetails, hand: latestPlayerDetails.hand || [] } : null);
-          }
+          toast({ title: "Game Reset", description: "Returning to lobby setup." });
+          router.push('/?step=setup');
           return;
         }
 
         setGameState(updatedFullGame);
 
         if (currentLocalPlayerId) {
-          const latestPlayerDetails = updatedFullGame.players.find(p => p.id === currentLocalPlayerId) || await getCurrentPlayer(currentLocalPlayerId, updatedFullGame.gameId);
-           if (isMountedRef.current) setThisPlayer(latestPlayerDetails ? { ...latestPlayerDetails, hand: latestPlayerDetails.hand || [] } : null);
-        } else {
-          const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${gameId}`);
-          if (playerIdFromStorage) {
-            const playerDetail = await getCurrentPlayer(playerIdFromStorage, gameId);
-             if (isMountedRef.current) setThisPlayer(playerDetail ? { ...playerDetail, hand: playerDetail.hand || [] } : null);
-          }
+          const latestPlayerDetails = await getCurrentPlayer(currentLocalPlayerId, updatedFullGame.gameId);
+           if (isMountedRef.current) setThisPlayer(latestPlayerDetails || null);
         }
       } else {
         const currentPhase = gameStateRef.current?.gamePhase;
@@ -272,6 +266,7 @@ export default function GamePage() {
         await resetGameForTesting();
       } catch (error: any) {
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+            // Let Next.js handle the redirect
         } else {
           if (isMountedRef.current) {
             toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
@@ -291,6 +286,7 @@ export default function GamePage() {
         await resetGameForTesting();
       } catch (error: any) {
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+            // Let Next.js handle the redirect
         } else {
           if (isMountedRef.current) {
             toast({
@@ -304,16 +300,18 @@ export default function GamePage() {
     });
   };
 
-  // Show transition overlay if game is busy
-  if (internalGameState && internalGameState.transitionState !== 'idle') {
-    // DEBUG: Log what's happening during the transition
-    console.log('🔴 TRANSITION DEBUG:', {
-      transitionState: internalGameState.transitionState,
-      transitionMessage: internalGameState.transitionMessage,
-      gamePhase: internalGameState.gamePhase,
-      timestamp: new Date().toISOString()
-    });
-    
+  // Initial loading state before any game state is fetched
+  if (!internalGameState) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
+        <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
+        <p className="text-xl text-muted-foreground">Loading Game Session...</p>
+      </div>
+    );
+  }
+  
+  // Handle transition overlay separately, this takes precedence
+  if (internalGameState.transitionState !== 'idle') {
     return (
       <TransitionOverlay 
         transitionState={internalGameState.transitionState}
@@ -322,7 +320,8 @@ export default function GamePage() {
     );
   }
 
-  if (!internalGameState || !internalGameState.gameId) {
+  // Handle critical error where gameId is missing after load
+  if (!internalGameState.gameId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Image src="/ui/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
@@ -339,7 +338,8 @@ export default function GamePage() {
     );
   }
 
-  if (!thisPlayer && ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase as GamePhaseClientState)) {
+  // Handle spectator mode for games in progress or over
+  if (!thisPlayer && (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase) || internalGameState.gamePhase === 'game_over')) {
       return (
           <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
               <Image src="/ui/new-logo.png" alt="Game in Progress" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
@@ -358,32 +358,31 @@ export default function GamePage() {
       );
   }
 
+  // Handle case where game is in lobby but user is on this page (e.g., via back button)
   if (internalGameState.gamePhase === 'lobby') {
-     const currentPhaseFromRef = gameStateRef.current?.gamePhase;
-     if (currentPhaseFromRef && currentPhaseFromRef !== 'game_over' && currentPhaseFromRef !== 'winner_announcement') {
-        return (
-          <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-            <Image src="/ui/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
-            <h1 className="text-4xl font-bold text-primary mb-4">Game Has Returned to Lobby</h1>
-            <p className="text-lg text-muted-foreground mb-8">
-              The game session has been reset or ended.
-            </p>
-             <Link href="/?step=setup" className="mt-6">
-                <Button variant="default" size="lg">
-                    Go to Player Setup & Lobby
-                </Button>
-            </Link>
-          </div>
-        );
-     }
+     return (
+       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
+         <Image src="/ui/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
+         <h1 className="text-4xl font-bold text-primary mb-4">Game Has Returned to Lobby</h1>
+         <p className="text-lg text-muted-foreground mb-8">
+           The game session has been reset or ended. Please return to setup.
+         </p>
+          <Link href="/?step=setup" className="mt-6">
+             <Button variant="default" size="lg">
+                 Go to Player Setup & Lobby
+             </Button>
+         </Link>
+       </div>
+     );
   }
 
-  if (!thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over')) {
+  // Handle case where we have a game state, but are still identifying the local player
+  if (!thisPlayer && internalGameState.gamePhase !== 'game_over' && internalGameState.gamePhase !== 'winner_announcement') {
      return (
         <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
           <p className="text-xl text-muted-foreground">Identifying player...</p>
-          <p className="text-sm mt-2">If this persists, you might not be part of this game or try returning to the lobby.</p>
+          <p className="text-sm mt-2">If this persists, please return to the lobby.</p>
            <Link href="/?step=setup" className="mt-4">
             <Button variant="outline">Go to Lobby</Button>
           </Link>
@@ -394,17 +393,6 @@ export default function GamePage() {
   const showRecap = internalGameState.gamePhase === 'winner_announcement' && internalGameState.lastWinner;
 
   const renderGameContent = () => {
-    if (!thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over')) {
-        if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase)) {
-            return (
-                <Card className="text-center">
-                    <CardHeader><CardTitle className="text-destructive">Player Identification Error</CardTitle></CardHeader>
-                    <CardContent><p>Could not identify your player profile for this active game. Please try returning to the lobby.</p></CardContent>
-                </Card>
-            );
-        }
-    }
-
     if (internalGameState.gamePhase === 'game_over') {
       return <GameOverDisplay
                 gameState={internalGameState}
@@ -412,19 +400,9 @@ export default function GamePage() {
                 onPlayAgainNo={handlePlayAgainNo}
               />;
     }
-
-    if (internalGameState.gamePhase === 'lobby') { 
-        return (
-            <div className="text-center py-10">
-                <h2 className="text-2xl font-semibold mb-4">Game is in Lobby</h2>
-                <p className="mb-4">The game has returned to the lobby. Please go to player setup.</p>
-                <Link href="/?step=setup">
-                    <Button>Go to Lobby Setup</Button>
-                </Link>
-            </div>
-        );
-    }
     
+    // The recap sequence is now handled as an overlay, so we don't need a specific render path here.
+    // Let the main view render underneath but be obscured.
     if (showRecap) {
       return null;
     }
@@ -435,15 +413,18 @@ export default function GamePage() {
     if (thisPlayer && !thisPlayer.isJudge) {
       return <PlayerView gameState={internalGameState} player={thisPlayer} />;
     }
+    
+    // Fallback for any other state
     return (
         <Card className="text-center">
             <CardHeader><CardTitle>Waiting for Game State</CardTitle></CardHeader>
-            <CardContent><p>The game is in phase: {internalGameState.gamePhase}. Your role is being determined or an issue occurred.</p></CardContent>
+            <CardContent>
+              <Loader2 className="h-8 w-8 animate-spin mx-auto my-4 text-primary" />
+              <p>The game is in phase: {internalGameState.gamePhase}. Your role is being determined.</p>
+            </CardContent>
         </Card>
     );
   };
-
-  const isGameBusy = internalGameState?.transitionState !== 'idle';
 
   return (
     <>
@@ -511,7 +492,6 @@ export default function GamePage() {
             variant="outline"
             onClick={toggleMute}
             className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-            disabled={isGameBusy}
           >
             {audioState.isMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
             {audioState.isMuted ? 'Unmute Audio' : 'Mute Audio'}
@@ -537,9 +517,9 @@ export default function GamePage() {
               setIsMenuModalOpen(false);
             }}
             className="bg-red-500/80 hover:bg-red-600/80 text-white"
-            disabled={isGameBusy}
+            disabled={isActionPending}
           >
-            {isGameBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Reset Game (Testing)
           </Button>
         </div>
@@ -556,11 +536,6 @@ export default function GamePage() {
         <HowToPlayModalContent />
       </PureMorphingModal>
 
-      {/* Add the working TransitionOverlay */}
-      <TransitionOverlay 
-        transitionState={internalGameState?.transitionState || 'idle'}
-        message={internalGameState?.transitionMessage}
-      />
     </>
   );
 }
