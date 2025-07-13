@@ -58,4 +58,4 @@ These are larger-scale ideas for the future evolution of the game.
 - **Multiple Game Modes:** Differentiate between "Remote" and "In-Person" play, potentially with different UI/UX considerations.
 - **Custom Rule Sets:** Introduce rule variations like a "Drinking Game Mode" or a "Family Friendly Mode" that filters adult content.
 - **Multi-Room Support:** Build the infrastructure to allow for multiple, separate game instances to run concurrently.
-- **Community Content:** Create forms for users to submit their own scenario and response card ideas, which can then be curated and added to the official game deck.
+- **Community Content:** Create forms for users to submit their own a nd response card ideas, which can then be curated and added to the official game deck.
