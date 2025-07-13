@@ -1161,7 +1161,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
           return {
             id: h.response_cards.id,
             text: h.response_cards.text,
-            isNew: h.is_new ?? false,
+            isNew: h.is_new,
           };
         }
         return null;
@@ -1249,3 +1249,5 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
 
   return getGame(gameId); 
 }
+
+    
