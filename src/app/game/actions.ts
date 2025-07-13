@@ -129,7 +129,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   }
 
   const players: PlayerClientState[] = playersData.map(p => {
-    const playerHandCards: PlayerHandCard[] = allHandsData
+    const playerHandCards = allHandsData
       .filter(h => h.player_id === p.id)
       .map(h => {
         if (h.response_cards?.text && h.response_cards?.id) {
@@ -141,7 +141,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
         }
         return null;
       })
-      .filter((card): card is PlayerHandCard => card !== null);
+      .filter((card): card is PlayerHandCard => card !== null && typeof card.isNew === 'boolean');
       
     return {
       id: p.id,
@@ -1171,7 +1171,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
         }
         return null;
       })
-      .filter((card): card is PlayerHandCard => card !== null);
+      .filter((card): card is PlayerHandCard => card !== null && typeof card.isNew === 'boolean');
   }
 
   return {
