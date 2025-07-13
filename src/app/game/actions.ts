@@ -1,4 +1,3 @@
-
 "use server";
 
 import { revalidatePath } from 'next/cache';
@@ -131,13 +130,11 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   const players: PlayerClientState[] = playersData.map(p => {
     const playerHandCards: PlayerHandCard[] = allHandsData
       .filter(h => h.player_id === p.id && h.response_cards?.text && h.response_cards?.id)
-      .map(h => {
-        return {
-          id: h.response_cards!.id as string,
-          text: h.response_cards!.text as string,
-          isNew: h.is_new ?? false,
-        };
-      });
+      .map(h => ({
+        id: h.response_cards!.id as string,
+        text: h.response_cards!.text as string,
+        isNew: h.is_new ?? false,
+      }));
     return {
       id: p.id,
       name: p.name,
@@ -1161,7 +1158,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
           return {
             id: h.response_cards.id,
             text: h.response_cards.text,
-            isNew: h.is_new,
+            isNew: h.is_new ?? false,
           };
         }
         return null;
@@ -1249,5 +1246,3 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
 
   return getGame(gameId); 
 }
-
-    
