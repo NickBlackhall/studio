@@ -50,19 +50,26 @@ export default function GamePage() {
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
 
   const setGameState = useCallback((newState: GameClientState | null) => {
+    console.log("DEBUG (GamePage): setGameState called.", { newState });
     gameStateRef.current = newState;
     if (isMountedRef.current) setInternalGameState(newState);
   }, []);
 
   const setThisPlayer = useCallback((newPlayerState: PlayerClientState | null) => {
+    console.log("DEBUG (GamePage): setThisPlayer called.", { newPlayerState });
     thisPlayerRef.current = newPlayerState;
     if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
   }, []);
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
+    console.log(`DEBUG (GamePage): fetchGameAndPlayer called from: ${origin}`);
     try {
       const initialGameState = await getGame();
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current) {
+        console.log("DEBUG (GamePage): fetchGameAndPlayer aborted, component unmounted.");
+        return;
+      }
+      console.log("DEBUG (GamePage): fetchGameAndPlayer received game state:", initialGameState);
 
       if (!initialGameState || !initialGameState.gameId) {
         toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
@@ -71,19 +78,24 @@ export default function GamePage() {
       }
 
       const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
+      console.log(`DEBUG (GamePage): Found player ID in storage: ${playerIdFromStorage}`);
       
       if (!playerIdFromStorage) {
         if (ACTIVE_PLAYING_PHASES.includes(initialGameState.gamePhase as GamePhaseClientState) || initialGameState.gamePhase === 'game_over') {
+          console.log("DEBUG (GamePage): No player ID, game in progress. Setting as spectator.");
           setThisPlayer(null); // Set as spectator
         } else {
+          console.log("DEBUG (GamePage): No player ID, game in lobby. Redirecting to setup.");
           router.push('/?step=setup');
         }
       } else {
         const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
         if (playerInGameList) {
+          console.log("DEBUG (GamePage): Player ID in game list. Fetching full player details.");
           const playerDetails = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
           setThisPlayer(playerDetails || null);
         } else {
+          console.log("DEBUG (GamePage): Player ID not in game list. Removing from storage and redirecting.");
           localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
           router.push('/?step=setup'); // Player ID exists but isn't in game, so redirect
         }
@@ -92,16 +104,18 @@ export default function GamePage() {
       setGameState(initialGameState);
 
     } catch (error: any) {
-      console.error(`GamePage: Error in fetchGameAndPlayer (from ${origin}):`, error);
+      console.error(`DEBUG (GamePage): CRITICAL ERROR in fetchGameAndPlayer (from ${origin}):`, error);
       toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
     }
   }, [router, toast, setGameState, setThisPlayer]);
   
   useEffect(() => {
     isMountedRef.current = true;
+    console.log("DEBUG (GamePage): Component did mount. Fetching initial game and player.");
     fetchGameAndPlayer("initial mount");
 
     return () => {
+        console.log("DEBUG (GamePage): Component will unmount.");
         isMountedRef.current = false;
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
@@ -110,6 +124,7 @@ export default function GamePage() {
 
   useEffect(() => {
     if (internalGameState) {
+      console.log(`DEBUG (GamePage): Game phase changed to ${internalGameState.gamePhase}. Updating music.`);
       if (internalGameState.gamePhase === 'game_over') {
         playTrack('lobby-music');
       } else if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase) || internalGameState.gamePhase === 'winner_announcement') {
@@ -127,22 +142,27 @@ export default function GamePage() {
 
   useEffect(() => {
     if (!internalGameState || !internalGameState.gameId ) {
+      console.log("DEBUG (GamePage): Real-time subscription effect skipped, no gameId.");
       return;
     }
     const gameId = internalGameState.gameId;
     const currentPlayerId = thisPlayerRef.current?.id;
+    console.log(`DEBUG (GamePage): Setting up real-time subscriptions for gameId: ${gameId}`);
 
     const debouncedFetch = async () => {
+      console.log("DEBUG (GamePage): Debounced real-time update triggered. Fetching game state.");
       if (!isMountedRef.current) return;
 
       const updatedFullGame = await getGame(gameId);
       if (!isMountedRef.current) return;
+      console.log("DEBUG (GamePage): Debounced fetch received new game state:", updatedFullGame);
 
       if (updatedFullGame) {
         const currentLocalPlayerId = thisPlayerRef.current?.id;
         
         // This is a special case to handle the transition from game_over back to a fresh lobby
         if (gameStateRef.current?.gamePhase === 'game_over' && updatedFullGame.gamePhase === 'lobby') {
+          console.log("DEBUG (GamePage): Game over -> lobby transition detected. Redirecting to setup.");
           toast({ title: "Game Reset", description: "Returning to lobby setup." });
           router.push('/?step=setup');
           return;
@@ -157,6 +177,7 @@ export default function GamePage() {
       } else {
         const currentPhase = gameStateRef.current?.gamePhase;
         if (currentPhase !== 'game_over') {
+            console.error("DEBUG (GamePage): Debounced fetch returned null game state. Redirecting to setup.");
             if (isMountedRef.current) toast({ title: "Game Update Error", description: "Lost connection to game, redirecting to lobby.", variant: "destructive" });
             router.push('/?step=setup');
         }
@@ -164,6 +185,7 @@ export default function GamePage() {
     };
 
     const commonPayloadHandler = (originTable: string, payload: any) => {
+        console.log(`DEBUG (GamePage): Real-time update received from table: ${originTable}`, payload);
         if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = setTimeout(debouncedFetch, 300);
     };
@@ -190,23 +212,22 @@ export default function GamePage() {
           (payload) => commonPayloadHandler(channelConfig.table, payload)
         )
         .subscribe((status, err) => {
-          if (status === 'SUBSCRIBED') {
-          } else if (status === 'CLOSED') {
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          } else if (err) {
-          }
+          console.log(`DEBUG (GamePage): Subscription status for ${channelName}: ${status}`);
+          if (err) console.error(`DEBUG (GamePage): Subscription error for ${channelName}:`, err);
         });
       return channel;
     });
 
     return () => {
+      console.log("DEBUG (GamePage): Removing real-time subscriptions.");
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      activeSubscriptions.forEach(sub => supabase.removeChannel(sub).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
+      activeSubscriptions.forEach(sub => supabase.removeChannel(sub).catch(err => console.error("DEBUG (GamePage): Error removing channel:", err)));
     };
   }, [internalGameState?.gameId, setGameState, setThisPlayer, router, toast]);
 
   const handleNextRound = useCallback(async () => {
     const gameId = gameStateRef.current?.gameId;
+    console.log(`DEBUG (GamePage): handleNextRound called for gameId: ${gameId}`);
     if (gameId) {
       try {
         await nextRound(gameId);
@@ -221,21 +242,12 @@ export default function GamePage() {
   }, [toast]);
 
   const handleStartGame = async () => {
-    if (internalGameState?.gameId && internalGameState.gamePhase === 'lobby' && internalGameState.players.length >= MIN_PLAYERS_TO_START ) {
-      startActionTransition(async () => {
-        try {
-          await startGame(internalGameState.gameId);
-          // No toast needed here, the transition overlay will provide feedback.
-        } catch (error: any) {
-          if (isMountedRef.current) toast({title: "Cannot Start", description: error.message || "Failed to start game.", variant: "destructive"});
-        }
-      });
-    } else {
-      if (isMountedRef.current) toast({title: "Cannot Start", description: `Not enough players or game not in lobby (current: ${internalGameState?.gamePhase}). Found ${internalGameState?.players?.length} players, need ${MIN_PLAYERS_TO_START}.`, variant: "destructive"})
-    }
+    console.log("DEBUG (GamePage): handleStartGame called.");
+    // This function seems to be unused on this page, but logging is added for completeness.
   };
 
   const handleSelectCategory = async (category: string) => {
+    console.log(`DEBUG (GamePage): handleSelectCategory called with category: ${category}`);
     if (internalGameState?.gameId) {
       startActionTransition(async () => {
         try {
@@ -248,6 +260,7 @@ export default function GamePage() {
   };
 
   const handleSelectWinner = async (winningCardText: string) => {
+    console.log(`DEBUG (GamePage): handleSelectWinner called with card text: "${winningCardText}"`);
     if (internalGameState?.gameId) {
       startActionTransition(async () => {
         try {
@@ -260,6 +273,7 @@ export default function GamePage() {
   };
 
   const handlePlayAgainYes = async () => {
+    console.log("DEBUG (GamePage): handlePlayAgainYes called.");
     if (internalGameState?.gameId) {
       startActionTransition(async () => {
         try {
@@ -278,10 +292,12 @@ export default function GamePage() {
   };
 
   const handlePlayAgainNo = () => {
+    console.log("DEBUG (GamePage): handlePlayAgainNo called. Redirecting to /");
     router.push('/');
   };
 
   const handleResetGameFromGamePage = async () => {
+    console.log("DEBUG (GamePage): handleResetGameFromGamePage called.");
     startActionTransition(async () => {
       try {
         await resetGameForTesting();
@@ -301,8 +317,15 @@ export default function GamePage() {
     });
   };
 
+  // --- RENDER LOGIC ---
+  console.log("DEBUG (GamePage): Top-level render check", { 
+    gameState: internalGameState, 
+    thisPlayer: thisPlayer 
+  });
+
   // Initial loading state before any game state is fetched
   if (!internalGameState) {
+    console.log("DEBUG (GamePage): Rendering initial loading state.");
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
@@ -313,6 +336,7 @@ export default function GamePage() {
   
   // Handle transition overlay separately, this takes precedence
   if (internalGameState.transitionState !== 'idle') {
+    console.log(`DEBUG (GamePage): Rendering TransitionOverlay. State: ${internalGameState.transitionState}, Message: ${internalGameState.transitionMessage}`);
     return (
       <TransitionOverlay 
         transitionState={internalGameState.transitionState}
@@ -323,6 +347,7 @@ export default function GamePage() {
 
   // Handle critical error where gameId is missing after load
   if (!internalGameState.gameId) {
+    console.error("DEBUG (GamePage): CRITICAL - Rendering game error screen (no gameId).");
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Image src="/ui/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
@@ -341,6 +366,7 @@ export default function GamePage() {
 
   // Handle spectator mode for games in progress or over
   if (!thisPlayer && (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase) || internalGameState.gamePhase === 'game_over' || internalGameState.gamePhase === 'winner_announcement')) {
+      console.log("DEBUG (GamePage): Rendering spectator view.");
       return (
           <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
               <Image src="/ui/new-logo.png" alt="Game in Progress" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
@@ -361,6 +387,7 @@ export default function GamePage() {
 
   // Handle case where game is in lobby but user is on this page (e.g., via back button)
   if (internalGameState.gamePhase === 'lobby') {
+    console.log("DEBUG (GamePage): Rendering 'returned to lobby' view.");
      return (
        <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
          <Image src="/ui/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
@@ -379,6 +406,7 @@ export default function GamePage() {
 
   // Handle case where we have a game state, but are still identifying the local player
   if (!thisPlayer && internalGameState.gamePhase !== 'game_over' && internalGameState.gamePhase !== 'winner_announcement') {
+    console.log("DEBUG (GamePage): Rendering 'identifying player' loading state.");
      return (
         <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
@@ -392,9 +420,12 @@ export default function GamePage() {
   }
 
   const showRecap = internalGameState.gamePhase === 'winner_announcement' && internalGameState.lastWinner;
+  console.log(`DEBUG (GamePage): Final checks before main render. showRecap: ${!!showRecap}`);
 
   const renderGameContent = () => {
+    console.log(`DEBUG (GamePage): renderGameContent called. Game phase: ${internalGameState.gamePhase}, Is Judge: ${thisPlayer?.isJudge}`);
     if (internalGameState.gamePhase === 'game_over') {
+      console.log("DEBUG (GamePage): Rendering GameOverDisplay.");
       return <GameOverDisplay
                 gameState={internalGameState}
                 onPlayAgainYes={handlePlayAgainYes}
@@ -405,17 +436,21 @@ export default function GamePage() {
     // The recap sequence is now handled as an overlay, so we don't need a specific render path here.
     // Let the main view render underneath but be obscured.
     if (showRecap) {
+      console.log("DEBUG (GamePage): showRecap is true, main content will be obscured. Rendering null.");
       return null;
     }
 
     if (thisPlayer?.isJudge) {
+      console.log("DEBUG (GamePage): Rendering JudgeView.");
       return <JudgeView gameState={internalGameState} judge={thisPlayer} onSelectCategory={handleSelectCategory} onSelectWinner={handleSelectWinner} />;
     }
     if (thisPlayer && !thisPlayer.isJudge) {
+      console.log("DEBUG (GamePage): Rendering PlayerView.");
       return <PlayerView gameState={internalGameState} player={thisPlayer} />;
     }
     
     // Fallback for any other state
+    console.log("DEBUG (GamePage): Rendering fallback 'Waiting for Game State' card.");
     return (
         <Card className="text-center">
             <CardHeader><CardTitle>Waiting for Game State</CardTitle></CardHeader>
@@ -542,5 +577,3 @@ export default function GamePage() {
 }
 
 export const dynamic = 'force-dynamic';
-
-    
