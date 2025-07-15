@@ -338,7 +338,7 @@ export default function GamePage() {
   }
 
   // Handle spectator mode for games in progress or over
-  if (!thisPlayer && (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase) || internalGameState.gamePhase === 'game_over')) {
+  if (!thisPlayer && (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase) || internalGameState.gamePhase === 'game_over' || internalGameState.gamePhase === 'winner_announcement')) {
       return (
           <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
               <Image src="/ui/new-logo.png" alt="Game in Progress" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
