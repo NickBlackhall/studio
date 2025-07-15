@@ -63,10 +63,14 @@ export default function GamePage() {
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     console.log(`DEBUG (GamePage): fetchGameAndPlayer called from: ${origin}`);
+    console.time('fetchGameAndPlayer');
     try {
       const initialGameState = await getGame();
+      console.timeLog('fetchGameAndPlayer', 'getGame complete');
+
       if (!isMountedRef.current) {
         console.log("DEBUG (GamePage): fetchGameAndPlayer aborted, component unmounted.");
+        console.timeEnd('fetchGameAndPlayer');
         return;
       }
       console.log("DEBUG (GamePage): fetchGameAndPlayer received game state:", initialGameState);
@@ -74,6 +78,7 @@ export default function GamePage() {
       if (!initialGameState || !initialGameState.gameId) {
         toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
         router.push('/?step=setup');
+        console.timeEnd('fetchGameAndPlayer');
         return;
       }
 
@@ -93,6 +98,7 @@ export default function GamePage() {
         if (playerInGameList) {
           console.log("DEBUG (GamePage): Player ID in game list. Fetching full player details.");
           const playerDetails = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
+          console.timeLog('fetchGameAndPlayer', 'getCurrentPlayer complete');
           setThisPlayer(playerDetails || null);
         } else {
           console.log("DEBUG (GamePage): Player ID not in game list. Removing from storage and redirecting.");
@@ -106,6 +112,8 @@ export default function GamePage() {
     } catch (error: any) {
       console.error(`DEBUG (GamePage): CRITICAL ERROR in fetchGameAndPlayer (from ${origin}):`, error);
       toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
+    } finally {
+        console.timeEnd('fetchGameAndPlayer');
     }
   }, [router, toast, setGameState, setThisPlayer]);
   
