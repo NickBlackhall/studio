@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from 'next/image';
@@ -20,26 +19,10 @@ import ReadyToggle from '@/components/game/ReadyToggle';
 import PWAGameLayout from '@/components/PWAGameLayout';
 import type { Tables } from '@/lib/database.types';
 import { useAudio } from '@/contexts/AudioContext';
+import TransitionOverlay from '@/components/ui/TransitionOverlay';
 
 
 export const dynamic = 'force-dynamic';
-
-function TransitionOverlay({ transitionState, message }: {
-  transitionState: TransitionState;
-  message?: string | null;
-}) {
-  if (transitionState === 'idle') return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-[100]">
-      <div className="bg-white p-8 rounded-2xl text-center shadow-2xl flex flex-col items-center gap-4 text-black">
-        <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full" />
-        <p className="font-semibold text-xl">{message || 'Loading...'}</p>
-      </div>
-    </div>
-  );
-}
-
 
 export default function WelcomePage() {
   const router = useRouter();
@@ -351,12 +334,16 @@ export default function WelcomePage() {
     }
   };
 
-  if (!internalGame || !internalGame.gameId) {
-    // Don't show loading here - let TransitionOverlay handle it if active
-    return null;
-  }
-
   const renderContent = () => {
+    // Show a loading screen if the game state hasn't been fetched yet.
+    if (!internalGame || !internalGame.gameId) {
+      return (
+        <div className="flex-grow flex items-center justify-center bg-black">
+          <Loader2 className="h-12 w-12 animate-spin text-white" />
+        </div>
+      );
+    }
+
     if (currentStep === 'welcome') {
       return (
         <div className="relative flex-grow flex flex-col bg-black">
@@ -528,7 +515,7 @@ export default function WelcomePage() {
       <div className="flex-grow flex flex-col justify-center">
         {renderContent()}
       </div>
-      {internalGame && internalGame.transitionState && (
+      {internalGame && internalGame.transitionState !== 'idle' && (
         <TransitionOverlay 
           transitionState={internalGame.transitionState}
           message={internalGame.transitionMessage}
