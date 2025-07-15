@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useTransition, useCallback, useRef } from 'react';
@@ -540,3 +541,5 @@ export default function GamePage() {
 }
 
 export const dynamic = 'force-dynamic';
+
+    
