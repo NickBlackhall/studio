@@ -8,7 +8,6 @@ import {
   getGame,
   startGame,
   selectCategory,
-  submitResponse,
   selectWinner,
   nextRound,
   getCurrentPlayer,
@@ -226,7 +225,7 @@ export default function GamePage() {
       startActionTransition(async () => {
         try {
           await startGame(internalGameState.gameId);
-          if (isMountedRef.current) toast({ title: "Game Starting!", description: "The judge is being assigned and cards dealt." });
+          // No toast needed here, the transition overlay will provide feedback.
         } catch (error: any) {
           if (isMountedRef.current) toast({title: "Cannot Start", description: error.message || "Failed to start game.", variant: "destructive"});
         }
@@ -262,17 +261,19 @@ export default function GamePage() {
 
   const handlePlayAgainYes = async () => {
     if (internalGameState?.gameId) {
-      try {
-        await resetGameForTesting();
-      } catch (error: any) {
-        if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-            // Let Next.js handle the redirect
-        } else {
-          if (isMountedRef.current) {
-            toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
+      startActionTransition(async () => {
+        try {
+          await resetGameForTesting();
+        } catch (error: any) {
+          if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+              // Let Next.js handle the redirect
+          } else {
+            if (isMountedRef.current) {
+              toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
+            }
           }
         }
-      }
+      });
     }
   };
 
@@ -541,5 +542,3 @@ export default function GamePage() {
 }
 
 export const dynamic = 'force-dynamic';
-
-    

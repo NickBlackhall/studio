@@ -8,7 +8,6 @@ import { AVATARS } from '@/lib/data';
 import { addPlayer as addPlayerAction } from '@/app/game/actions';
 import type { Tables } from '@/lib/database.types';
 import { useRouter } from 'next/navigation';
-import { useLoading } from '@/contexts/LoadingContext';
 
 interface PWAGameLayoutProps {
   gameId: string;
@@ -21,7 +20,6 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
   const [isProcessing, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
-  const { showGlobalLoader } = useLoading();
 
   const handleAvatarChange = (direction: number) => {
     const newIndex = (avatarIndex + direction + AVATARS.length) % AVATARS.length;
