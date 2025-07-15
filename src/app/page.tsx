@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter } from 'next/navigation';
 import React, { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { useLoading } from '@/contexts/LoadingContext';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
@@ -21,29 +22,12 @@ import PWAGameLayout from '@/components/PWAGameLayout';
 import type { Tables } from '@/lib/database.types';
 import { useAudio } from '@/contexts/AudioContext';
 
-
 export const dynamic = 'force-dynamic';
-
-function TransitionOverlay({ transitionState, message }: {
-  transitionState: TransitionState;
-  message?: string | null;
-}) {
-  if (transitionState === 'idle') return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-md flex items-center justify-center z-[100]">
-      <div className="bg-white p-8 rounded-2xl text-center shadow-2xl flex flex-col items-center gap-4 text-black">
-        <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full" />
-        <p className="font-semibold text-xl">{message || 'Starting Game...'}</p>
-      </div>
-    </div>
-  );
-}
-
 
 export default function WelcomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showLoader, hideLoader } = useLoading();
   
   const [internalGame, setInternalGame] = useState<GameClientState | null>(null);
   const gameRef = useRef<GameClientState | null>(null);
@@ -340,10 +324,15 @@ export default function WelcomePage() {
   const handleStartGame = async () => {
     const gameToStart = gameRef.current;
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
+        showLoader('starting_game', { 
+          message: 'Starting the game...', 
+          players: gameToStart.players 
+        });
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
             } catch (error: any) {
+                hideLoader();
                 if (isMountedRef.current) {
                     if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
                         return; 
@@ -532,12 +521,6 @@ export default function WelcomePage() {
       <div className="flex-grow flex flex-col justify-center">
         {renderContent()}
       </div>
-      {internalGame && internalGame.transitionState && (
-        <TransitionOverlay 
-          transitionState={internalGame.transitionState}
-          message={internalGame.transitionMessage}
-        />
-      )}
     </div>
   );
 }

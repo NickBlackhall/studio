@@ -1,26 +1,44 @@
-
 "use client";
+
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { PlayerClientState } from '@/lib/types';
-import styles from '@/components/layout/AvatarLoadingOverlay.module.css';
 import { Loader2 } from 'lucide-react';
+import AvatarLoadingSequence from '@/components/game/AvatarLoadingSequence';
 
-// --- Loading Overlay Component (Simplified Fallback) ---
-// The main avatar animation is now in its own component.
-// This global loader is for simple, quick actions.
+// Loading states enum for better type safety
+export type LoadingState = 
+  | 'idle'
+  | 'initializing'
+  | 'starting_game'
+  | 'transitioning'
+  | 'loading_game_data'
+  | 'navigation';
 
-const GlobalLoadingFallback = () => {
-  const { isGlobalLoading, loadingMessage } = useLoading();
+interface LoadingContextType {
+  loadingState: LoadingState;
+  loadingMessage: string;
+  playersForLoader: PlayerClientState[];
+  showLoader: (state: LoadingState, options?: { message?: string; players?: PlayerClientState[] }) => void;
+  hideLoader: () => void;
+  isLoading: boolean;
+}
+
+const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
+
+// Unified Loading Overlay Component
+const UnifiedLoadingOverlay = () => {
+  const { loadingState, loadingMessage, playersForLoader, isLoading } = useLoading();
   const [shouldRender, setShouldRender] = useState(false);
   const [opacityClass, setOpacityClass] = useState('opacity-0');
+  
   const FADE_DURATION_MS = 300;
 
   useEffect(() => {
     let fadeInTimer: NodeJS.Timeout;
     let fadeOutTimer: NodeJS.Timeout;
 
-    if (isGlobalLoading) {
+    if (isLoading) {
       setShouldRender(true);
       fadeInTimer = setTimeout(() => setOpacityClass('opacity-100'), 50);
     } else {
@@ -32,67 +50,107 @@ const GlobalLoadingFallback = () => {
       clearTimeout(fadeInTimer);
       clearTimeout(fadeOutTimer);
     };
-  }, [isGlobalLoading]);
-  
-  if (!shouldRender) {
-    return null;
-  }
+  }, [isLoading]);
+
+  if (!shouldRender) return null;
+
+  // Different loading experiences based on state
+  const renderLoadingContent = () => {
+    switch (loadingState) {
+      case 'starting_game':
+        if (playersForLoader.length > 0) {
+          return (
+            <AvatarLoadingSequence 
+              players={playersForLoader} 
+              message={<>Starting the game...<br />Dealing cards and assigning roles!</>}
+            />
+          );
+        }
+        return (
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-16 w-16 animate-spin text-white mb-6" />
+            <p className="text-2xl text-white font-semibold text-center">{loadingMessage}</p>
+          </div>
+        );
+
+      case 'transitioning':
+        return (
+          <div className="flex flex-col items-center">
+            <div className="animate-spin h-12 w-12 border-4 border-white border-t-transparent rounded-full mb-4" />
+            <p className="text-xl text-white font-semibold">{loadingMessage}</p>
+          </div>
+        );
+
+      case 'loading_game_data':
+      case 'initializing':
+      case 'navigation':
+      default:
+        return (
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-12 w-12 animate-spin text-white mb-4" />
+            <p className="text-lg text-white font-semibold">{loadingMessage}</p>
+          </div>
+        );
+    }
+  };
 
   return (
-     <div 
-        className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm transition-opacity ease-in-out ${opacityClass}`}
-        style={{ transitionDuration: `${FADE_DURATION_MS}ms` }}
+    <div 
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/95 backdrop-blur-sm transition-opacity ease-in-out ${opacityClass}`}
+      style={{ transitionDuration: `${FADE_DURATION_MS}ms` }}
     >
-      <Loader2 className="h-12 w-12 animate-spin text-primary-foreground mb-4" />
-      <p className="text-lg text-primary-foreground font-semibold">{loadingMessage}</p>
+      {renderLoadingContent()}
     </div>
   );
 };
 
-
-// --- Context Definition & Provider ---
-
-interface LoadingContextType {
-  isGlobalLoading: boolean;
-  loadingMessage: string;
-  playersForLoader: PlayerClientState[]; // Kept for potential future use, but not used by the simple loader
-  showGlobalLoader: (options?: { message?: string; players?: PlayerClientState[] }) => void;
-  hideGlobalLoader: () => void;
-}
-
-const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
-
 export function LoadingProvider({ children }: { children: ReactNode }) {
-  const [isGlobalLoading, setIsGlobalLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState<LoadingState>('idle');
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
   const [playersForLoader, setPlayersForLoader] = useState<PlayerClientState[]>([]);
 
-  const showGlobalLoader = useCallback((options?: { message?: string; players?: PlayerClientState[] }) => {
-    setLoadingMessage(options?.message || "Loading...");
+  const showLoader = useCallback((state: LoadingState, options?: { message?: string; players?: PlayerClientState[] }) => {
+    setLoadingState(state);
+    setLoadingMessage(options?.message || getDefaultMessage(state));
     setPlayersForLoader(options?.players || []);
-    setIsGlobalLoading(true);
   }, []);
 
-  const hideGlobalLoader = useCallback(() => {
-    setIsGlobalLoading(false);
-    setTimeout(() => { // Delay reset to allow fade out
-        setLoadingMessage("Loading...");
-        setPlayersForLoader([]);
-    }, 500);
+  const hideLoader = useCallback(() => {
+    setLoadingState('idle');
+    // Small delay to allow fade out
+    setTimeout(() => {
+      setLoadingMessage("Loading...");
+      setPlayersForLoader([]);
+    }, 400);
   }, []);
+
+  const isLoading = loadingState !== 'idle';
 
   return (
     <LoadingContext.Provider value={{ 
-      isGlobalLoading, 
-      showGlobalLoader, 
-      hideGlobalLoader, 
+      loadingState,
       loadingMessage, 
-      playersForLoader 
+      playersForLoader,
+      showLoader,
+      hideLoader,
+      isLoading
     }}>
       {children}
-      <GlobalLoadingFallback />
+      <UnifiedLoadingOverlay />
     </LoadingContext.Provider>
   );
+}
+
+// Helper function for default messages
+function getDefaultMessage(state: LoadingState): string {
+  switch (state) {
+    case 'initializing': return 'Initializing game...';
+    case 'starting_game': return 'Starting the game...';
+    case 'transitioning': return 'Loading...';
+    case 'loading_game_data': return 'Loading game data...';
+    case 'navigation': return 'Navigating...';
+    default: return 'Loading...';
+  }
 }
 
 export function useLoading() {
