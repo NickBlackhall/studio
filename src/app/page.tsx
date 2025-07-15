@@ -31,10 +31,10 @@ function TransitionOverlay({ transitionState, message }: {
   if (transitionState === 'idle') return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-[100]">
+    <div className="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-md flex items-center justify-center z-[100]">
       <div className="bg-white p-8 rounded-2xl text-center shadow-2xl flex flex-col items-center gap-4 text-black">
         <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full" />
-        <p className="font-semibold text-xl">{message || 'Loading...'}</p>
+        <p className="font-semibold text-xl">{message || 'Starting Game...'}</p>
       </div>
     </div>
   );
@@ -192,7 +192,8 @@ export default function WelcomePage() {
 
   useEffect(() => {
     if (internalGame?.transitionState !== 'idle' && internalThisPlayerId) {
-      router.prefetch('/game');
+      // Remove prefetch to reduce loading time
+      // router.prefetch('/game');
     }
   }, [internalGame?.transitionState, internalThisPlayerId, router]);
 
@@ -209,7 +210,10 @@ export default function WelcomePage() {
       game.gamePhase !== 'lobby' &&
       playerId
     ) {
+      // Add a small delay to ensure smooth transition
+      setTimeout(() => {
       router.push('/game');
+      }, 100);
     
   }}, [internalGame, internalThisPlayerId, router]);
 

@@ -44,7 +44,6 @@ export default function GamePage() {
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
-  const { showGlobalLoader, hideGlobalLoader } = useLoading();
   const isMountedRef = useRef(true);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
@@ -317,8 +316,14 @@ export default function GamePage() {
 
 
   if (isInitialLoading) {
+    // Don't show loading screen if we're in a transition state
+    // Let the TransitionOverlay handle it
+    if (internalGameState?.transitionState !== 'idle') {
+      return null;
+    }
+    
     return (
-       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm">
+       <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm">
          <Loader2 className="h-12 w-12 animate-spin text-primary-foreground mb-4" />
          <p className="text-lg text-primary-foreground font-semibold">Loading Game...</p>
        </div>
