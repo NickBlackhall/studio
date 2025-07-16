@@ -10,19 +10,14 @@ import { getGame } from '@/app/game/actions';
 interface UseTargetedGameSubscriptionProps {
   gameId: string | null;
   setGameState: React.Dispatch<React.SetStateAction<GameClientState | null>>;
+  isMountedRef: React.RefObject<boolean>;
 }
 
 export function useTargetedGameSubscription({
   gameId,
   setGameState,
+  isMountedRef,
 }: UseTargetedGameSubscriptionProps) {
-  const isMountedRef = useRef(true);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => { isMountedRef.current = false; };
-  }, []);
-
   const debouncedRefetch = useCallback(
     debounce(async (gId: string) => {
       if (!isMountedRef.current || !gId) return;
@@ -32,7 +27,7 @@ export function useTargetedGameSubscription({
         setGameState(updatedGameState);
       }
     }, 300), 
-    [setGameState] // setGameState is stable
+    [setGameState, isMountedRef]
   );
 
   useEffect(() => {
@@ -48,7 +43,7 @@ export function useTargetedGameSubscription({
       .channel(`game-updates-${gameId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, handleChanges)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameId}` }, handleChanges)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'responses', filter: `game_id=eq.${gameId}`}, handleChanges)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'responses', filter: `game_id=eq.${gameId}` }, handleChanges)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'player_hands', filter: `game_id=eq.${gameId}` }, handleChanges)
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
