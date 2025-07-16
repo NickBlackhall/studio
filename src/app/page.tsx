@@ -223,12 +223,12 @@ export default function WelcomePage() {
     const playersChannel = supabase
       .channel(playersChannelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameId}` }, handleRealtimeUpdate)
-      .subscribe((status) => { if (status !== 'SUBSCRIBED') console.log(`Players channel status: ${status}`)});
+      .subscribe((status) => { if (status !== 'SUBSCRIBED') {}});
   
     const gameChannel = supabase
       .channel(gameChannelName)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, handleRealtimeUpdate)
-      .subscribe((status) => { if (status !== 'SUBSCRIBED') console.log(`Game channel status: ${status}`)});
+      .subscribe((status) => { if (status !== 'SUBSCRIBED') {}});
         
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
