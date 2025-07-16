@@ -306,35 +306,17 @@ export default function WelcomePage() {
   };
 
   const handleStartGame = async () => {
-    console.log('DEBUG (Lobby): handleStartGame triggered.');
-    
     const gameToStart = gameRef.current;
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
-      console.log('DEBUG (Lobby): Conditions met, calling startGameAction for game:', gameToStart.gameId);
-      
       startPlayerActionTransition(async () => {
         try {
-          const result = await startGameAction(gameToStart.gameId);
-          console.log('DEBUG (Lobby): startGameAction completed successfully.');
-          console.log('DEBUG (Lobby): Result:', result);
-          
-          // IMMEDIATE NAVIGATION - don't wait for real-time updates
-          if (result && result.gamePhase && result.gamePhase !== 'lobby') {
-            console.log('DEBUG (Lobby): Navigating immediately to game page');
-            router.push('/game');
-            return; // Exit early to avoid real-time conflicts
-          }
-          
-          // Fallback check in case navigation fails
-          setTimeout(() => {
-            console.log('DEBUG (Lobby): Current game state after 1 second:', gameRef.current);
-          }, 1000);
-          
+          await startGameAction(gameToStart.gameId);
+          // Navigation is now handled by the useGameNavigation hook.
+          // This prevents a race condition.
         } catch (error: any) {
-          console.error('DEBUG (Lobby): Error in startGameAction:', error);
           if (isMountedRef.current) {
             if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-              console.log("DEBUG (Lobby): startGameAction resulted in a redirect.");
+              // This is an expected redirect, let Next.js handle it.
               return;
             }
             toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
@@ -342,7 +324,7 @@ export default function WelcomePage() {
         }
       });
     } else {
-        console.warn("DEBUG (Lobby): handleStartGame called, but conditions not met.", {
+        console.warn("Lobby: handleStartGame called, but conditions not met.", {
             gameId: gameToStart?.gameId,
             gamePhase: gameToStart?.gamePhase
         });
