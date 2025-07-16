@@ -28,12 +28,12 @@ The project is currently a **fully functional and polished prototype**. The enti
 
 This section tracks recent improvements and bug fixes that have impacted gameplay, UI, and UX.
 
+- **Fixed Critical Navigation and Loading Bugs:** Addressed a series of complex, interconnected bugs related to the lobby-to-game transition. This involved refactoring the navigation logic into its own dedicated `useGameNavigation` hook, making it more reliable and preventing race conditions that caused players to get stuck in the lobby or experience a black screen.
 - **Enhanced Audio Experience:** Implemented a comprehensive audio system using a React Context.
   - Background music now plays and transitions appropriately between the lobby and in-game states.
   - Sound effects (SFX) have been added for key UI interactions, such as button clicks in the main game menu, providing satisfying auditory feedback.
   - The system includes volume controls and mute functionality, with user preferences saved to `localStorage`.
 - **Fixed Font Flickering in Lobby:** Resolved a persistent "Flash of Unstyled Content" (FOUC) where player names in the lobby would flicker between the default system font and the game's stylized `IM Fell` font during state updates. The fix involved ensuring the correct base styles are applied immediately on render.
-- **Fixed Critical Navigation and Loading Bugs:** Addressed a series of complex, interconnected bugs related to the lobby-to-game transition. This involved refactoring the navigation logic into its own dedicated `useEffect` hook, making it more reliable and preventing race conditions that caused players to get stuck in the lobby.
 - **Implemented Transition State Machine:** Addressed a core architectural issue where game state transitions were fragile. The fix involved implementing a state machine directly in the database, resulting in a smoother, more reliable, and professional user experience with a dedicated loading overlay.
 - **Improved UI Responsiveness for Ready Toggle:** Fixed a noticeable delay when players toggled their ready status in the lobby by implementing an "optimistic update" approach.
 - **Fixed Real-Time Instability & Flickering:** Resolved a major bug where multiple, rapid database updates would trigger excessive re-renders. Implemented a debouncing mechanism to intelligently bundle these updates into a single, smooth refresh, dramatically improving UI stability.
