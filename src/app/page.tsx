@@ -23,6 +23,7 @@ import { useLoading } from '@/contexts/LoadingContext';
 import { useGameNavigation } from '@/hooks/useGameNavigation';
 import { useTargetedGameSubscription } from '@/hooks/useTargetedGameSubscription';
 import { getGame } from '@/app/game/actions';
+import { debounce } from 'lodash';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,8 @@ export default function WelcomePage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  const { internalGameState, setInternalGameState, thisPlayer, setThisPlayer, thisPlayerId, setThisPlayerId } = useTargetedGameSubscription();
+  const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
+  const [thisPlayerId, setThisPlayerId] = useState<string | null>(null);
 
   const gameRef = useRef<GameClientState | null>(null);
   
@@ -44,8 +46,12 @@ export default function WelcomePage() {
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
   
-  // Centralized navigation hook
   useGameNavigation({ gameState: internalGameState, thisPlayerId, currentPath: pathname });
+
+  useTargetedGameSubscription({
+    gameId: internalGameState?.gameId || null,
+    setGameState: setInternalGameState,
+  });
 
   useEffect(() => {
     gameRef.current = internalGameState;
@@ -89,7 +95,7 @@ export default function WelcomePage() {
         toast({ title: "Load Error", description: `Could not fetch game state: ${error.message || String(error)}`, variant: "destructive"});
       }
     }
-  }, [setInternalGameState, setThisPlayerId, toast]);
+  }, [toast]);
 
   const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
       const currentGameId = gameRef.current?.gameId;
@@ -97,12 +103,10 @@ export default function WelcomePage() {
           const localStorageKey = `thisPlayerId_game_${currentGameId}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
           setThisPlayerId(newPlayer.id);
-          // Refetch everything to ensure player hand is populated.
           const fullGameState = await getGame(currentGameId);
           setInternalGameState(fullGameState);
       }
-  }, [setInternalGameState, setThisPlayerId]);
-
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -119,7 +123,6 @@ export default function WelcomePage() {
     }
   }, [currentStep, playTrack]);
 
-  // Handle transition states from database
   useEffect(() => {
     const game = internalGameState;
     if (!game) return;
@@ -159,7 +162,6 @@ export default function WelcomePage() {
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
-        // The useGameNavigation hook will handle redirection.
       } catch (error: any) {
         if (!isMountedRef.current) return; 
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) return; 
@@ -175,7 +177,6 @@ export default function WelcomePage() {
   const handleToggleReady = async (player: PlayerClientState) => {
     if (!internalGameState?.gameId || player.id !== thisPlayerId) return;
     
-    // Optimistic Update
     setInternalGameState(prev => {
       if (!prev) return prev;
       return {
@@ -187,10 +188,8 @@ export default function WelcomePage() {
     });
     
     try {
-      // Sync with server in background
       await togglePlayerReadyStatus(player.id, internalGameState.gameId);
     } catch (error) {
-      // Revert on error
       setInternalGameState(prev => {
         if (!prev) return prev;
         return {
@@ -210,7 +209,6 @@ export default function WelcomePage() {
       startPlayerActionTransition(async () => {
         try {
           await startGameAction(gameToStart.gameId);
-          // Navigation is handled by useGameNavigation hook now.
         } catch (error: any) {
           if (isMountedRef.current) {
             toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
@@ -224,7 +222,6 @@ export default function WelcomePage() {
         });
     }
   };
-
 
   const renderContent = () => {
     if (!internalGameState || !internalGameState.gameId) {
@@ -406,5 +403,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    

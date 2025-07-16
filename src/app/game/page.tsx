@@ -9,7 +9,7 @@ import {
   nextRound,
   resetGameForTesting
 } from '@/app/game/actions';
-import type { PlayerClientState, GamePhaseClientState } from '@/lib/types';
+import type { PlayerClientState, GamePhaseClientState, GameClientState } from '@/lib/types';
 import { ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
@@ -29,11 +29,15 @@ import { useAudio } from '@/contexts/AudioContext';
 import { useLoading } from '@/contexts/LoadingContext';
 import { useTargetedGameSubscription } from '@/hooks/useTargetedGameSubscription';
 import { useGameNavigation } from '@/hooks/useGameNavigation';
-import { getGame } from '@/app/game/actions';
+import { getGame, getCurrentPlayer } from '@/app/game/actions';
+import { debounce } from 'lodash';
+
 
 export default function GamePage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const { internalGameState, setInternalGameState, thisPlayer, setThisPlayer, thisPlayerId, setThisPlayerId } = useTargetedGameSubscription();
+  const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
+  const [thisPlayer, setThisPlayer] = useState<PlayerClientState | null>(null);
+  const [thisPlayerId, setThisPlayerId] = useState<string | null>(null);
   
   const gameStateRef = useRef(internalGameState);
   
@@ -49,10 +53,28 @@ export default function GamePage() {
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
   
   useGameNavigation({ gameState: internalGameState, thisPlayerId, currentPath: '/game' });
+  
+  useTargetedGameSubscription({
+    gameId: internalGameState?.gameId || null,
+    setGameState: setInternalGameState,
+  });
 
   useEffect(() => {
     gameStateRef.current = internalGameState;
   }, [internalGameState]);
+  
+  // Effect to derive thisPlayer from the main game state
+  useEffect(() => {
+    if (thisPlayerId && internalGameState?.players) {
+      const playerDetails = internalGameState.players.find(p => p.id === thisPlayerId);
+      if (playerDetails) {
+        setThisPlayer(playerDetails);
+      }
+    } else {
+      setThisPlayer(null);
+    }
+  }, [thisPlayerId, internalGameState?.players]);
+
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -86,7 +108,7 @@ export default function GamePage() {
         setIsInitialLoading(false);
       }
     }
-  }, [router, toast, setInternalGameState, setThisPlayer, setThisPlayerId]);
+  }, [router, toast]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -454,5 +476,3 @@ export default function GamePage() {
 }
 
 export const dynamic = 'force-dynamic';
-
-    
