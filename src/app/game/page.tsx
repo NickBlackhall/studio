@@ -104,10 +104,8 @@ export default function GamePage() {
 
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
-    console.time('fetchGameAndPlayer');
     try {
       const initialGameState = await getGame();
-      console.timeLog('fetchGameAndPlayer', 'getGame complete');
       if (!isMountedRef.current) return;
 
       if (!initialGameState || !initialGameState.gameId) {
@@ -126,7 +124,6 @@ export default function GamePage() {
         }
       } else {
         const playerDetails = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
-        console.timeLog('fetchGameAndPlayer', 'getCurrentPlayer complete');
         if (playerDetails) {
             setThisPlayer(playerDetails);
         } else {
@@ -144,7 +141,6 @@ export default function GamePage() {
       if (isMountedRef.current) {
         setIsInitialLoading(false);
       }
-      console.timeEnd('fetchGameAndPlayer');
     }
   }, [router, toast, setGameState, setThisPlayer]);
   
@@ -191,127 +187,62 @@ export default function GamePage() {
     }
   }, [internalGameState?.gamePhase, playTrack, stopMusic]);
 
-  // Real-time subscriptions - OPTIMIZED VERSION
+  // Real-time subscriptions - More reliable refetch-on-trigger model
   useEffect(() => {
-    if (!internalGameState || !internalGameState.gameId || !isMountedRef.current) {
-      return;
+    if (!internalGameState?.gameId || !isMountedRef.current) {
+        return;
     }
     const gameId = internalGameState.gameId;
-    
-    // Lightweight update function - only update what changed
-    const handleGameUpdate = (payload: any) => {
-      if (!isMountedRef.current) return;
-      
-      // Update game state directly from payload instead of refetching
-      if (payload.table === 'games' && payload.new) {
-        setGameState(prev => prev ? { ...prev, ...payload.new } : null);
-      }
-    };
 
-    const handlePlayerUpdate = (payload: any) => {
-      if (!isMountedRef.current) return;
-      
-      // Update specific player instead of refetching all
-      if (payload.table === 'players') {
-        setGameState(prev => {
-          if (!prev) return null;
-          
-          if (payload.eventType === 'INSERT' && payload.new) {
-            // Add new player
-            return {
-              ...prev,
-              players: [...prev.players, payload.new]
-            };
-          } else if (payload.eventType === 'UPDATE' && payload.new) {
-            // Update existing player
-            return {
-              ...prev,
-              players: prev.players.map(p => 
-                p.id === payload.new.id ? { ...p, ...payload.new } : p
-              )
-            };
-          } else if (payload.eventType === 'DELETE' && payload.old) {
-            // Remove player
-            return {
-              ...prev,
-              players: prev.players.filter(p => p.id !== payload.old.id)
-            };
-          }
-          return prev;
+    // This debounced function will be our single point of truth for refreshing state.
+    const debouncedRefetch = debounce(async () => {
+        if (!isMountedRef.current) return;
+        try {
+            const updatedGame = await getGame(gameId);
+            if (updatedGame && isMountedRef.current) {
+                setGameState(updatedGame);
+                const currentPlayerId = thisPlayerRef.current?.id;
+                if (currentPlayerId) {
+                    const playerDetail = updatedGame.players.find(p => p.id === currentPlayerId);
+                    setThisPlayer(playerDetail || null);
+                }
+            }
+        } catch (error) {
+            console.error('Error in debounced refetch:', error);
+        }
+    }, 500); // 500ms debounce window
+
+    const channel = supabase
+        .channel(`game-updates-${gameId}`)
+        .on('postgres_changes', 
+            { event: '*', schema: 'public' }, 
+            (payload) => {
+                // Any change to any table simply triggers a refetch.
+                debouncedRefetch();
+            }
+        )
+        .subscribe((status, err) => {
+            if (status === 'SUBSCRIBED') {
+                console.log(`✅ Subscribed to all game updates for game ${gameId}`);
+                // Initial fetch succeeded, but we might have missed an update.
+                // A quick refetch on subscribe ensures consistency.
+                debouncedRefetch();
+            }
+            if (status === 'CHANNEL_ERROR') {
+                console.error('❌ Real-time subscription error:', err);
+                toast({
+                    title: "Connection Issue",
+                    description: "Having trouble with real-time updates. The game may feel slow.",
+                    variant: "destructive"
+                });
+            }
         });
 
-        // Update thisPlayer if it's the current player
-        const currentPlayerId = thisPlayerRef.current?.id;
-        if (payload.new && payload.new.id === currentPlayerId) {
-          setThisPlayer(prev => prev ? { ...prev, ...payload.new } : null);
-        }
-      }
-    };
-
-    // Debounced fallback for complex updates only
-    const debouncedFullRefetch = debounce(async () => {
-      if (!isMountedRef.current) return;
-      try {
-        const updatedGame = await getGame(gameId);
-        if (updatedGame && isMountedRef.current) {
-          setGameState(updatedGame);
-          const currentPlayerId = thisPlayerRef.current?.id;
-          if (currentPlayerId) {
-            const playerDetail = updatedGame.players.find(p => p.id === currentPlayerId);
-            setThisPlayer(playerDetail || null);
-          }
-        }
-      } catch (error) {
-        console.error('Error in fallback refetch:', error);
-      }
-    }, 1000); // Only refetch if no updates for 1 second
-
-    // SINGLE consolidated channel instead of 4 separate ones
-    const gameChannel = supabase
-      .channel(`game-all-${gameId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'games',
-        filter: `id=eq.${gameId}`
-      }, handleGameUpdate)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'players',
-        filter: `game_id=eq.${gameId}`
-      }, handlePlayerUpdate)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'responses',
-        filter: `game_id=eq.${gameId}`
-      }, () => {
-        // For submissions, we still need a light refetch since the logic is complex
-        debouncedFullRefetch();
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'player_hands',
-        filter: `game_id=eq.${gameId}`
-      }, () => {
-        // Hands change often, refetch is safer for now
-        debouncedFullRefetch();
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Real-time subscriptions active');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Real-time subscription error');
-        }
-      });
-
     return () => {
-      debouncedFullRefetch.cancel();
-      supabase.removeChannel(gameChannel);
+        debouncedRefetch.cancel();
+        supabase.removeChannel(channel);
     };
-  }, [internalGameState?.gameId, setGameState, setThisPlayer]);
+  }, [internalGameState?.gameId, setGameState, setThisPlayer, toast]);
 
 
   const handleNextRound = useCallback(async () => {

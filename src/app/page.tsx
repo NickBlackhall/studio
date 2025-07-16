@@ -243,7 +243,7 @@ export default function WelcomePage() {
               name: payload.new.name,
               avatar: payload.new.avatar || '',
               score: payload.new.score || 0,
-              isJudge: payload.new.id === prev.current_judge_id,
+              isJudge: payload.new.id === prev.currentJudgeId,
               hand: [],
               isReady: payload.new.is_ready || false
             };
