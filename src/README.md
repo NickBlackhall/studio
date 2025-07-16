@@ -28,6 +28,7 @@ The project is currently a **fully functional and polished prototype**. The enti
 
 This section tracks recent improvements and bug fixes that have impacted gameplay, UI, and UX.
 
+- **Implemented "Boondoggles" (Surprise Mini-Games):** Successfully integrated a major new gameplay feature. When a Judge selects a category, there is now a random chance for a "Boondoggle" round to occur. Instead of submitting cards, players perform a unique challenge (e.g., a physical task or word game), and the Judge awards a point directly to the best performer. This feature leverages the existing scenario architecture for a clean and efficient integration.
 - **Fixed Card Drawing Randomness:** Solved a critical gameplay flaw where players were repeatedly dealt cards from the same small pool of ~60 cards. The logic was updated to fetch a much larger, more random batch of cards from the database and shuffle them server-side, ensuring true variety and significantly improving replayability.
 - **Fixed Critical Navigation and Loading Bugs:** Addressed a series of complex, interconnected bugs related to the lobby-to-game transition. This involved refactoring the navigation logic into its own dedicated `useGameNavigation` hook, making it more reliable and preventing race conditions that caused players to get stuck in the lobby or experience a black screen.
 - **Enhanced Audio Experience:** Implemented a comprehensive audio system using a React Context.
@@ -46,7 +47,6 @@ This is a living document outlining the future direction of the project.
 
 ### Immediate Priorities
 Our current focus is on adding new gameplay variations and refining the experience based on playtesting.
-- **"Boondoggles":** Introduce random, surprise mini-game rounds to break up the main gameplay loop. This will involve physical challenges, word games, and other impromptu activities where the Judge awards a point to the best performer.
 - **Stability & Testing:** Continue to ensure all existing features work flawlessly across different scenarios and user interactions.
 
 ### Upcoming Features

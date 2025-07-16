@@ -28,6 +28,7 @@ The project is currently a **fully functional prototype**. The entire real-time 
 
 This section tracks recent improvements and bug fixes that have impacted gameplay, UI, and UX.
 
+- **Implemented "Boondoggles" (Surprise Mini-Games):** Successfully integrated a major new gameplay feature. When a Judge selects a category, there is now a random chance for a "Boondoggle" round to occur. Instead of submitting cards, players perform a unique challenge (e.g., a physical task or word game), and the Judge awards a point directly to the best performer. This feature leverages the existing scenario architecture for a clean and efficient integration.
 - **Fixed Card Drawing Randomness:** Solved a critical gameplay flaw where players were repeatedly dealt cards from the same small pool of ~60 cards. The logic was updated to fetch a much larger, more random batch of cards from the database and shuffle them server-side, ensuring true variety and significantly improving replayability.
 - **Implemented Transition State Machine:** Addressed a core architectural issue where game state transitions (e.g., from lobby to game) were fragile, leading to UI flickering, awkward pauses, and potential race conditions. The fix involved implementing a state machine directly in the database with `transition_state` and `transition_message` columns. Now, the server explicitly communicates when it's busy, and the client displays a dedicated loading overlay, resulting in a smoother, more reliable, and professional user experience.
 - **Improved UI Responsiveness for Ready Toggle:** Fixed a noticeable delay when players toggled their ready status in the lobby. Implemented an "optimistic update" approach, where the UI updates instantly upon the user's click, while the actual state change is processed in the background. This provides immediate visual feedback and a much smoother user experience.
@@ -51,7 +52,6 @@ Our current focus is on refining the core experience and preparing the app for a
 
 ### Upcoming Features
 These are the next major gameplay mechanics and features on the horizon.
-- **"Boondoggles":** Introduce mini-games to break up the main gameplay loop and keep the group engaged in new ways.
 - **Audio Experience:** Add background music to the welcome, setup, and lobby screens. Implement sound effects for key game actions to enhance the user experience.
 
 ### Long-Term Vision
