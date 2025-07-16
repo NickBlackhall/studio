@@ -189,13 +189,14 @@ export default function WelcomePage() {
       isMountedRef.current &&
       game &&
       game.gameId &&
-      game.transitionState === 'idle' &&
-      game.gamePhase !== 'lobby' &&
+      game.transitionState === 'idle' && // Only navigate when server is NOT busy
+      game.gamePhase !== 'lobby' && // And the game has actually started
       playerId
     ) {
+      // The game has started, let's go!
       router.push('/game');
-    
-  }}, [internalGame, internalThisPlayerId, router]);
+    }
+  }, [internalGame, internalThisPlayerId, router]);
 
 
   useEffect(() => {
@@ -344,6 +345,16 @@ export default function WelcomePage() {
         <div className="flex-grow flex items-center justify-center bg-black">
           <Loader2 className="h-12 w-12 animate-spin text-white" />
         </div>
+      );
+    }
+    
+    // NEW: If the server is busy, show the transition overlay IN THE LOBBY
+    if (internalGame.transitionState !== 'idle') {
+      return (
+        <TransitionOverlay
+          transitionState={internalGame.transitionState}
+          message={internalGame.transitionMessage}
+        />
       );
     }
 
@@ -518,12 +529,6 @@ export default function WelcomePage() {
       <div className="flex-grow flex flex-col justify-center">
         {renderContent()}
       </div>
-      {internalGame && internalGame.transitionState !== 'idle' && (
-        <TransitionOverlay 
-          transitionState={internalGame.transitionState}
-          message={internalGame.transitionMessage}
-        />
-      )}
     </div>
   );
 }

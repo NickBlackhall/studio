@@ -10,7 +10,8 @@ import {
   selectCategory,
   selectWinner,
   nextRound,
-  resetGameForTesting
+  resetGameForTesting,
+  getCurrentPlayer
 } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { ACTIVE_PLAYING_PHASES } from '@/lib/types';
@@ -60,41 +61,41 @@ export default function GamePage() {
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     try {
+      console.time('fetchGameAndPlayer');
       const initialGameState = await getGame();
+      console.timeLog('fetchGameAndPlayer', 'getGame complete');
 
       if (!isMountedRef.current) {
         return;
       }
-
+      
       if (!initialGameState || !initialGameState.gameId) {
         toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
         router.push('/?step=setup');
         return;
       }
-
-      const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
       
-      if (!playerIdFromStorage) {
-        if (ACTIVE_PLAYING_PHASES.includes(initialGameState.gamePhase as GamePhaseClientState) || initialGameState.gamePhase === 'game_over') {
-          setThisPlayer(null); // Set as spectator
+      const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
+      let playerDetails = null;
+
+      if (playerIdFromStorage) {
+        if (initialGameState.players.some(p => p.id === playerIdFromStorage)) {
+            playerDetails = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
+            console.timeLog('fetchGameAndPlayer', 'getCurrentPlayer complete');
         } else {
-          router.push('/?step=setup');
-        }
-      } else {
-        const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
-        if (playerInGameList) {
-          setThisPlayer(playerInGameList);
-        } else {
-          localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
-          router.push('/?step=setup');
+             localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
+             router.push('/?step=setup');
         }
       }
-      
-      setGameState(initialGameState);
 
+      setThisPlayer(playerDetails);
+      setGameState(initialGameState);
+      
     } catch (error: any) {
       console.error(`CRITICAL ERROR in fetchGameAndPlayer (from ${origin}):`, error);
       toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
+    } finally {
+      console.timeEnd('fetchGameAndPlayer');
     }
   }, [router, toast, setGameState, setThisPlayer]);
   
