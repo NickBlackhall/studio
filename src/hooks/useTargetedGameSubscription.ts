@@ -9,9 +9,10 @@ import { getCurrentPlayer, getGame } from '@/app/game/actions';
 import type { Tables } from '@/lib/database.types';
 
 
-export function useTargetedGameSubscription(thisPlayerId: string | null) {
+export function useTargetedGameSubscription() {
   const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
   const [thisPlayer, setThisPlayer] = useState<PlayerClientState | null>(null);
+  const [thisPlayerId, setThisPlayerId] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   const gameId = internalGameState?.gameId;
@@ -22,23 +23,20 @@ export function useTargetedGameSubscription(thisPlayerId: string | null) {
       isMountedRef.current = false;
     };
   }, []);
-
+  
   const handleGameUpdate = useCallback(async (payload: RealtimePostgresChangesPayload<Tables<'games'>>) => {
     if (!isMountedRef.current) return;
     const updatedGame = payload.new as Tables<'games'>;
-
     const fullGameState = await getGame(updatedGame.id);
     if(isMountedRef.current) setInternalGameState(fullGameState);
-
   }, []);
 
-  const handlePlayersUpdate = useCallback((payload: RealtimePostgresChangesPayload<Tables<'players'>>) => {
+  const handlePlayersUpdate = useCallback(async (payload: RealtimePostgresChangesPayload<Tables<'players'>>) => {
     if (!isMountedRef.current) return;
     const updatedPlayer = payload.new as Tables<'players'>;
     
     setInternalGameState(prev => {
         if (!prev) return prev;
-
         const playerExists = prev.players.some(p => p.id === updatedPlayer.id);
         let newPlayersList;
 
@@ -104,6 +102,23 @@ export function useTargetedGameSubscription(thisPlayerId: string | null) {
       }
     }
   }, [thisPlayerId, gameId]);
+  
+  useEffect(() => {
+    if (thisPlayerId && gameId) {
+        const fetchCurrentPlayer = async () => {
+            const playerDetails = await getCurrentPlayer(thisPlayerId, gameId);
+            if (isMountedRef.current) {
+                setThisPlayer(playerDetails || null);
+            }
+        };
+        fetchCurrentPlayer();
+    } else {
+        if (isMountedRef.current) {
+            setThisPlayer(null);
+        }
+    }
+  }, [thisPlayerId, gameId, internalGameState?.players, internalGameState?.currentJudgeId]);
+
 
   useEffect(() => {
     if (!gameId) return;
@@ -132,7 +147,9 @@ export function useTargetedGameSubscription(thisPlayerId: string | null) {
     internalGameState,
     setInternalGameState,
     thisPlayer,
-    setThisPlayer
+    setThisPlayer,
+    thisPlayerId,
+    setThisPlayerId,
   }
 }
 

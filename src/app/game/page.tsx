@@ -7,7 +7,6 @@ import {
   selectCategory,
   selectWinner,
   nextRound,
-  getCurrentPlayer,
   resetGameForTesting
 } from '@/app/game/actions';
 import type { PlayerClientState, GamePhaseClientState } from '@/lib/types';
@@ -29,15 +28,15 @@ import GameUI from '@/components/game/GameUI';
 import { useAudio } from '@/contexts/AudioContext';
 import { useLoading } from '@/contexts/LoadingContext';
 import { useTargetedGameSubscription } from '@/hooks/useTargetedGameSubscription';
+import { useGameNavigation } from '@/hooks/useGameNavigation';
 import { getGame } from '@/app/game/actions';
 
 export default function GamePage() {
-  const [thisPlayerId, setThisPlayerId] = useState<string | null>(null);
-  const { internalGameState, setInternalGameState, thisPlayer, setThisPlayer } = useTargetedGameSubscription(thisPlayerId);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const { internalGameState, setInternalGameState, thisPlayer, setThisPlayer, thisPlayerId, setThisPlayerId } = useTargetedGameSubscription();
   
   const gameStateRef = useRef(internalGameState);
   
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
@@ -48,12 +47,14 @@ export default function GamePage() {
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
+  
+  useGameNavigation({ gameState: internalGameState, thisPlayerId, currentPath: '/game' });
 
   useEffect(() => {
     gameStateRef.current = internalGameState;
   }, [internalGameState]);
 
-  const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
+  const fetchInitialData = useCallback(async () => {
     try {
       const initialGameState = await getGame();
       if (!isMountedRef.current) return;
@@ -63,7 +64,7 @@ export default function GamePage() {
         router.push('/?step=setup');
         return;
       }
-
+      
       setInternalGameState(initialGameState);
 
       const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
@@ -76,35 +77,25 @@ export default function GamePage() {
         }
       } else {
         setThisPlayerId(playerIdFromStorage);
-        const playerDetails = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
-        if (playerDetails) {
-            setThisPlayer(playerDetails);
-        } else {
-          localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
-          router.push('/?step=setup'); // Player ID exists but isn't in game, so redirect
-        }
       }
-      
-
     } catch (error: any) {
-      console.error(`GamePage: Error in fetchGameAndPlayer (from ${origin}):`, error);
+      console.error(`GamePage: Error in fetchInitialData:`, error);
       toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
     } finally {
       if (isMountedRef.current) {
         setIsInitialLoading(false);
       }
     }
-  }, [router, toast, setInternalGameState, setThisPlayer]);
-  
+  }, [router, toast, setInternalGameState, setThisPlayer, setThisPlayerId]);
 
   useEffect(() => {
     isMountedRef.current = true;
-    fetchGameAndPlayer("initial mount");
+    fetchInitialData();
     
     return () => {
       isMountedRef.current = false;
     };
-  }, [fetchGameAndPlayer]);
+  }, [fetchInitialData]);
 
   // Handle transition states from database
   useEffect(() => {

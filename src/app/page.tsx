@@ -4,11 +4,10 @@
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { getGame, addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
+import { addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
 import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
 import type { GameClientState, PlayerClientState, GamePhaseClientState, TransitionState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
-import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import React, { useState, useEffect, useCallback, useTransition, useRef, useMemo } from 'react';
@@ -20,10 +19,10 @@ import ReadyToggle from '@/components/game/ReadyToggle';
 import PWAGameLayout from '@/components/PWAGameLayout';
 import type { Tables } from '@/lib/database.types';
 import { useAudio } from '@/contexts/AudioContext';
-import TransitionOverlay from '@/components/ui/TransitionOverlay';
 import { useLoading } from '@/contexts/LoadingContext';
 import { useGameNavigation } from '@/hooks/useGameNavigation';
 import { useTargetedGameSubscription } from '@/hooks/useTargetedGameSubscription';
+import { getGame } from '@/app/game/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +31,7 @@ export default function WelcomePage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  const [internalThisPlayerId, setInternalThisPlayerId] = useState<string | null>(null);
-  const { internalGameState, setInternalGameState, thisPlayer, setThisPlayer } = useTargetedGameSubscription(internalThisPlayerId);
+  const { internalGameState, setInternalGameState, thisPlayer, setThisPlayer, thisPlayerId, setThisPlayerId } = useTargetedGameSubscription();
 
   const gameRef = useRef<GameClientState | null>(null);
   
@@ -47,19 +45,17 @@ export default function WelcomePage() {
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
   
   // Centralized navigation hook
-  useGameNavigation({ gameState: internalGameState, thisPlayerId: internalThisPlayerId, currentPath: pathname });
+  useGameNavigation({ gameState: internalGameState, thisPlayerId, currentPath: pathname });
 
   useEffect(() => {
     gameRef.current = internalGameState;
   }, [internalGameState]);
 
-
-  const fetchGameData = useCallback(async (origin: string = "unknown", gameIdToFetch?: string) => {
+  const fetchInitialData = useCallback(async () => {
     let fetchedGameState: GameClientState | null = null;
     let playerIdFromStorage: string | null = null;
     try {
-      fetchedGameState = await getGame(gameIdToFetch); 
-      
+      fetchedGameState = await getGame(); 
       if (!isMountedRef.current) return;
 
       setInternalGameState(fetchedGameState); 
@@ -68,24 +64,19 @@ export default function WelcomePage() {
         const localStorageKey = `thisPlayerId_game_${fetchedGameState.gameId}`;
         playerIdFromStorage = localStorage.getItem(localStorageKey);
         
-        if (fetchedGameState.players.length === 0 && (origin.includes("reset") || origin.includes("handleResetGame"))) {
-          localStorage.removeItem(localStorageKey);
-          setInternalThisPlayerId(null);
-        } else {
-          if (playerIdFromStorage) {
-            const playerInGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
+        if (playerIdFromStorage) {
+            const playerInGame = fetchedGameState.players.some(p => p.id === playerIdFromStorage);
             if (playerInGame) {
-              setInternalThisPlayerId(playerIdFromStorage);
+              setThisPlayerId(playerIdFromStorage);
             } else {
               localStorage.removeItem(localStorageKey);
-              setInternalThisPlayerId(null);
+              setThisPlayerId(null);
             }
-          } else {
-            setInternalThisPlayerId(null); 
-          }
+        } else {
+          setThisPlayerId(null); 
         }
       } else { 
-        setInternalThisPlayerId(null);
+        setThisPlayerId(null);
         if (isMountedRef.current) {
             setInternalGameState(null); 
             toast({ title: "Game Session Error", description: "Could not initialize or find the game session. Please try refreshing or resetting.", variant: "destructive"});
@@ -93,37 +84,34 @@ export default function WelcomePage() {
       }
     } catch (error: any) {
       if (isMountedRef.current) {
-        if (gameIdToFetch) {
-            toast({ title: "Game Update Failed", description: `Could not refresh game ${gameIdToFetch}: ${error.message}. State may be temporarily stale.`, variant: "default"});
-        } else {
-            setInternalGameState(null);
-            setInternalThisPlayerId(null);
-            toast({ title: "Load Error", description: `Could not fetch game state: ${error.message || String(error)}`, variant: "destructive"});
-        }
+        setInternalGameState(null);
+        setThisPlayerId(null);
+        toast({ title: "Load Error", description: `Could not fetch game state: ${error.message || String(error)}`, variant: "destructive"});
       }
     }
-  }, [toast, setInternalGameState]);
+  }, [setInternalGameState, setThisPlayerId, toast]);
 
   const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
       const currentGameId = gameRef.current?.gameId;
       if (newPlayer && newPlayer.id && currentGameId && isMountedRef.current) {
           const localStorageKey = `thisPlayerId_game_${currentGameId}`;
           localStorage.setItem(localStorageKey, newPlayer.id);
-          setInternalThisPlayerId(newPlayer.id);
-          await fetchGameData(`handlePlayerAdded after creating player ${newPlayer.id}`, currentGameId);
+          setThisPlayerId(newPlayer.id);
+          // Refetch everything to ensure player hand is populated.
+          const fullGameState = await getGame(currentGameId);
+          setInternalGameState(fullGameState);
       }
-  }, [fetchGameData]);
+  }, [setInternalGameState, setThisPlayerId]);
 
 
   useEffect(() => {
     isMountedRef.current = true;
-    fetchGameData(`useEffect[] mount or currentStep change to: ${currentStep}`);
+    fetchInitialData();
     
     return () => {
       isMountedRef.current = false;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep]);
+  }, [fetchInitialData]);
 
   useEffect(() => {
     if (currentStep === 'welcome' || currentStep === 'setup') {
@@ -147,8 +135,8 @@ export default function WelcomePage() {
   }, [internalGameState?.transitionState, internalGameState?.gamePhase, internalGameState?.transitionMessage, internalGameState?.players, showLoader, hideLoader, isLoading]);
 
   const thisPlayerObject = useMemo(() => {
-    return internalThisPlayerId && internalGameState?.players ? internalGameState.players.find(p => p.id === internalThisPlayerId) : null;
-  }, [internalThisPlayerId, internalGameState?.players]);
+    return thisPlayerId && internalGameState?.players ? internalGameState.players.find(p => p.id === thisPlayerId) : null;
+  }, [thisPlayerId, internalGameState?.players]);
 
   const sortedPlayersForDisplay = useMemo(() => {
     if (!internalGameState?.players) return [];
@@ -157,22 +145,21 @@ export default function WelcomePage() {
       typeof p === 'object' && p !== null && 'id' in p && 'name' in p
     );
     
-    const currentPlayerId = internalThisPlayerId;
-    
     return [...validPlayers].sort((a, b) => {
-      if (currentPlayerId) {
-        if (a.id === currentPlayerId) return -1;
-        if (b.id === currentPlayerId) return 1;
+      if (thisPlayerId) {
+        if (a.id === thisPlayerId) return -1;
+        if (b.id === thisPlayerId) return 1;
       }
       return (a.name || '').localeCompare(b.name || '');
     });
-  }, [internalGameState?.players, internalThisPlayerId]);
+  }, [internalGameState?.players, thisPlayerId]);
 
 
   const handleResetGame = async () => {
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
+        // The useGameNavigation hook will handle redirection.
       } catch (error: any) {
         if (!isMountedRef.current) return; 
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) return; 
@@ -186,7 +173,7 @@ export default function WelcomePage() {
   };
 
   const handleToggleReady = async (player: PlayerClientState) => {
-    if (!internalGameState?.gameId || player.id !== internalThisPlayerId) return;
+    if (!internalGameState?.gameId || player.id !== thisPlayerId) return;
     
     // Optimistic Update
     setInternalGameState(prev => {
@@ -223,6 +210,7 @@ export default function WelcomePage() {
       startPlayerActionTransition(async () => {
         try {
           await startGameAction(gameToStart.gameId);
+          // Navigation is handled by useGameNavigation hook now.
         } catch (error: any) {
           if (isMountedRef.current) {
             toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
@@ -287,7 +275,7 @@ export default function WelcomePage() {
         const hostPlayerId = internalGameState.ready_player_order.length > 0 ? internalGameState.ready_player_order[0] : null;
         const enoughPlayers = internalGameState.players.length >= MIN_PLAYERS_TO_START;
         const allPlayersReady = enoughPlayers && internalGameState.players.every(p => p.isReady);
-        const showStartGameButton = internalThisPlayerId === hostPlayerId && enoughPlayers && allPlayersReady;
+        const showStartGameButton = thisPlayerId === hostPlayerId && enoughPlayers && allPlayersReady;
   
         let lobbyMessage = "";
         if (!enoughPlayers) {
