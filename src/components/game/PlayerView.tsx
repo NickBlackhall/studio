@@ -320,19 +320,33 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                                 onClick={(e) => e.stopPropagation()}
                                 maxLength={100}
                               />
-                              <button
-                                type="button"
-                                className="absolute bottom-[16%] left-1/2 -translate-x-1/2 w-[45%] h-[20%] bg-transparent group"
-                                onClick={handleSubmit}
-                                disabled={isPending}
-                                aria-label="Submit custom card"
-                              >
-                                {isPending && (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Loader2 className="h-6 w-6 animate-spin text-black" />
-                                  </div>
-                                )}
-                              </button>
+                               {customCardText.trim().length > 0 && selectedCardId === CUSTOM_CARD_ID && (
+                                <div className="absolute bottom-[16%] left-1/2 -translate-x-1/2 w-[45%] h-[20%]">
+                                    <button
+                                        type="button"
+                                        className="w-full h-full bg-transparent group"
+                                        onClick={handleSubmit}
+                                        disabled={isPending}
+                                        aria-label="Submit custom card"
+                                    >
+                                        {isPending ? (
+                                        <div className="w-full h-full flex items-center justify-center">
+                                            <Loader2 className="h-6 w-6 animate-spin text-black" />
+                                        </div>
+                                        ) : (
+                                        <Image
+                                            src="/ui/submit-card-button.png"
+                                            alt="Submit Card"
+                                            fill
+                                            className="object-contain drop-shadow-lg transition-transform group-hover:scale-105"
+                                            data-ai-hint="submit button"
+                                            sizes="30vw"
+                                            priority
+                                        />
+                                        )}
+                                    </button>
+                                </div>
+                               )}
                             </div>
                           </div>
                         </>
@@ -416,3 +430,4 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
+
