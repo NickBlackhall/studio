@@ -445,8 +445,8 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
   }
 
   const { data: availableCards, error: fetchError } = await query
-    .order('random' as any) // Let PostgreSQL handle the randomization
-    .limit(count); // Only get exactly what we need
+    .order('random', { postgres_function: 'random' }) // Correct way to order by a PostgreSQL function
+    .limit(count);
 
   if (fetchError) {
     console.error(`🔴 CARDS (Server): Error fetching available response cards for game ${gameId}:`, JSON.stringify(fetchError, null, 2));
@@ -1270,3 +1270,6 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
 
     
 
+
+
+    
