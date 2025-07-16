@@ -35,6 +35,25 @@ import { useLoading } from '@/contexts/LoadingContext';
 import TransitionOverlay from '@/components/ui/TransitionOverlay';
 
 
+// Helper debounce function
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): T & { cancel: () => void } {
+  let timeout: NodeJS.Timeout | null = null;
+  
+  const debounced = ((...args: any[]) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  }) as T & { cancel: () => void };
+  
+  debounced.cancel = () => {
+    if (timeout) clearTimeout(timeout);
+  };
+  
+  return debounced;
+}
+
 export default function GamePage() {
   const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
   const gameStateRef = useRef<GameClientState | null>(null);
@@ -57,20 +76,38 @@ export default function GamePage() {
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
 
 
-  const setGameState = useCallback((newState: GameClientState | null) => {
-    gameStateRef.current = newState;
-    if (isMountedRef.current) setInternalGameState(newState);
+  const setGameState = useCallback((newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
+    if (typeof newState === 'function') {
+        setInternalGameState(prevState => {
+            const result = newState(prevState);
+            gameStateRef.current = result;
+            return result;
+        });
+    } else {
+        gameStateRef.current = newState;
+        if (isMountedRef.current) setInternalGameState(newState);
+    }
   }, []);
 
-  const setThisPlayer = useCallback((newPlayerState: PlayerClientState | null) => {
-    thisPlayerRef.current = newPlayerState;
-    if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
+  const setThisPlayer = useCallback((newPlayerState: PlayerClientState | null | ((prevState: PlayerClientState | null) => PlayerClientState | null)) => {
+    if (typeof newPlayerState === 'function') {
+      setThisPlayerInternal(prevState => {
+          const result = newPlayerState(prevState);
+          thisPlayerRef.current = result;
+          return result;
+      });
+    } else {
+      thisPlayerRef.current = newPlayerState;
+      if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
+    }
   }, []);
 
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
+    console.time('fetchGameAndPlayer');
     try {
       const initialGameState = await getGame();
+      console.timeLog('fetchGameAndPlayer', 'getGame complete');
       if (!isMountedRef.current) return;
 
       if (!initialGameState || !initialGameState.gameId) {
@@ -88,9 +125,10 @@ export default function GamePage() {
           router.push('/?step=setup');
         }
       } else {
-        const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
-        if (playerInGameList) {
-          setThisPlayer(playerInGameList);
+        const playerDetails = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
+        console.timeLog('fetchGameAndPlayer', 'getCurrentPlayer complete');
+        if (playerDetails) {
+            setThisPlayer(playerDetails);
         } else {
           localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
           router.push('/?step=setup'); // Player ID exists but isn't in game, so redirect
@@ -106,6 +144,7 @@ export default function GamePage() {
       if (isMountedRef.current) {
         setIsInitialLoading(false);
       }
+      console.timeEnd('fetchGameAndPlayer');
     }
   }, [router, toast, setGameState, setThisPlayer]);
   
@@ -152,75 +191,127 @@ export default function GamePage() {
     }
   }, [internalGameState?.gamePhase, playTrack, stopMusic]);
 
-  // Real-time subscriptions
+  // Real-time subscriptions - OPTIMIZED VERSION
   useEffect(() => {
     if (!internalGameState || !internalGameState.gameId || !isMountedRef.current) {
       return;
     }
     const gameId = internalGameState.gameId;
     
-    const debouncedFetch = async () => {
+    // Lightweight update function - only update what changed
+    const handleGameUpdate = (payload: any) => {
       if (!isMountedRef.current) return;
+      
+      // Update game state directly from payload instead of refetching
+      if (payload.table === 'games' && payload.new) {
+        setGameState(prev => prev ? { ...prev, ...payload.new } : null);
+      }
+    };
 
-      const updatedFullGame = await getGame(gameId);
+    const handlePlayerUpdate = (payload: any) => {
       if (!isMountedRef.current) return;
-
-      if (updatedFullGame) {
-          setGameState(updatedFullGame);
-          const currentLocalPlayerId = thisPlayerRef.current?.id;
-          if (currentLocalPlayerId) {
-            const playerDetail = updatedFullGame.players.find(p => p.id === currentLocalPlayerId);
-            setThisPlayer(playerDetail || null);
+      
+      // Update specific player instead of refetching all
+      if (payload.table === 'players') {
+        setGameState(prev => {
+          if (!prev) return null;
+          
+          if (payload.eventType === 'INSERT' && payload.new) {
+            // Add new player
+            return {
+              ...prev,
+              players: [...prev.players, payload.new]
+            };
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            // Update existing player
+            return {
+              ...prev,
+              players: prev.players.map(p => 
+                p.id === payload.new.id ? { ...p, ...payload.new } : p
+              )
+            };
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            // Remove player
+            return {
+              ...prev,
+              players: prev.players.filter(p => p.id !== payload.old.id)
+            };
           }
-      } else {
-        if (isMountedRef.current) {
-            toast({ title: "Game Update Error", description: "Lost connection to game, redirecting to lobby.", variant: "destructive" });
-            router.push('/?step=setup');
+          return prev;
+        });
+
+        // Update thisPlayer if it's the current player
+        const currentPlayerId = thisPlayerRef.current?.id;
+        if (payload.new && payload.new.id === currentPlayerId) {
+          setThisPlayer(prev => prev ? { ...prev, ...payload.new } : null);
         }
       }
     };
-    
-    const handleRealtimeUpdate = (payload: any) => {
-        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = setTimeout(debouncedFetch, 300);
-    };
-    
-    const channelsConfig = [
-      { name: 'game-updates', table: 'games', filter: `id=eq.${gameId}`, event: 'UPDATE' },
-      { name: 'players-updates', table: 'players', filter: `game_id=eq.${gameId}`, event: '*' },
-      { name: 'player-hands-updates', table: 'player_hands', filter: `game_id=eq.${gameId}`, event: '*' },
-      { name: 'submissions-updates', table: 'responses', filter: `game_id=eq.${gameId}`, event: '*' }
-    ];
 
-    const uniqueChannelSuffix = thisPlayerRef.current?.id || Date.now();
-
-    const activeSubscriptions = channelsConfig.map(channelConfig => {
-      const channelName = `${channelConfig.name}-${gameId}-${uniqueChannelSuffix}`;
-      const channel = supabase
-        .channel(channelName)
-        .on('postgres_changes', {
-            event: channelConfig.event as any,
-            schema: 'public',
-            table: channelConfig.table,
-            filter: channelConfig.filter
-          },
-          handleRealtimeUpdate
-        )
-        .subscribe((status, err) => {
-          if (status === 'SUBSCRIBED') {
-          } else if (status === 'CLOSED') {
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          } else if (err) {
+    // Debounced fallback for complex updates only
+    const debouncedFullRefetch = debounce(async () => {
+      if (!isMountedRef.current) return;
+      try {
+        const updatedGame = await getGame(gameId);
+        if (updatedGame && isMountedRef.current) {
+          setGameState(updatedGame);
+          const currentPlayerId = thisPlayerRef.current?.id;
+          if (currentPlayerId) {
+            const playerDetail = updatedGame.players.find(p => p.id === currentPlayerId);
+            setThisPlayer(playerDetail || null);
           }
-        });
-      return channel;
-    });
+        }
+      } catch (error) {
+        console.error('Error in fallback refetch:', error);
+      }
+    }, 1000); // Only refetch if no updates for 1 second
+
+    // SINGLE consolidated channel instead of 4 separate ones
+    const gameChannel = supabase
+      .channel(`game-all-${gameId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'games',
+        filter: `id=eq.${gameId}`
+      }, handleGameUpdate)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'players',
+        filter: `game_id=eq.${gameId}`
+      }, handlePlayerUpdate)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'responses',
+        filter: `game_id=eq.${gameId}`
+      }, () => {
+        // For submissions, we still need a light refetch since the logic is complex
+        debouncedFullRefetch();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'player_hands',
+        filter: `game_id=eq.${gameId}`
+      }, () => {
+        // Hands change often, refetch is safer for now
+        debouncedFullRefetch();
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Real-time subscriptions active');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Real-time subscription error');
+        }
+      });
 
     return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      activeSubscriptions.forEach(sub => supabase.removeChannel(sub).catch(err => console.error("GamePage Realtime: Error removing channel:", err)));
+      debouncedFullRefetch.cancel();
+      supabase.removeChannel(gameChannel);
     };
-  }, [internalGameState?.gameId, setGameState, setThisPlayer, router, toast]);
+  }, [internalGameState?.gameId, setGameState, setThisPlayer]);
 
 
   const handleNextRound = useCallback(async () => {
