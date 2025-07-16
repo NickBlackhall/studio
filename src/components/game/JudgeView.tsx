@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useState, useTransition, useEffect, useRef } from 'react';
-import { Gavel, Send, CheckCircle, Loader2, Crown, PlusCircle, XCircle, SkipForward, Award } from 'lucide-react';
+import { Gavel, Send, CheckCircle, Loader2, Crown, PlusCircle, XCircle, SkipForward, Award, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ import { handleJudgeApprovalForCustomCard, selectWinner as selectWinnerAction, n
 import Image from 'next/image';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import SwipeableCategorySelector from './SwipeableCategorySelector';
+import { PureMorphingModal } from '../PureMorphingModal';
 
 interface JudgeViewProps {
   gameState: GameClientState;
@@ -22,6 +23,23 @@ interface JudgeViewProps {
   onSelectWinner: (cardText: string, boondoggleWinnerId?: string) => Promise<void>;
 }
 
+const BoondoggleRulesContent = () => (
+    <div className="space-y-4 text-left text-white/90">
+      <div>
+        <h4 className="font-bold text-lg text-yellow-300">🏃 Physical Challenges</h4>
+        <p className="text-sm">Players perform the challenge described. Award the point to whoever does it best, fastest, or most creatively!</p>
+      </div>
+      <div>
+        <h4 className="font-bold text-lg text-yellow-300">👥 Famous Duos</h4>
+        <p className="text-sm">Players take turns naming famous pairs (e.g., Batman & Robin) going around the circle. When someone can't think of one, they're out. Last person standing wins!</p>
+      </div>
+      <div>
+        <h4 className="font-bold text-lg text-yellow-300">😱 What's Worse</h4>
+        <p className="text-sm">Players call out scenarios that are worse than the one described. Award the point to the funniest, most creative, or most convincingly terrible answer!</p>
+      </div>
+    </div>
+);
+
 export default function JudgeView({ gameState, judge, onSelectCategory, onSelectWinner }: JudgeViewProps) {
   const [selectedWinningCard, setSelectedWinningCard] = useState<string>('');
   const [pendingWinnerCard, setPendingWinnerCard] = useState<string>('');
@@ -29,6 +47,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [isPendingApproval, startTransitionApproval] = useTransition();
   const [isPendingBoondoggle, startTransitionBoondoggle] = useTransition();
   const [isPendingSkip, startTransitionSkip] = useTransition();
+  const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
 
   const { toast } = useToast();
   
@@ -348,7 +367,10 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                     ))}
                 </CardContent>
             </Card>
-            <div className="text-center">
+            <div className="text-center mt-2 flex justify-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsRulesModalOpen(true)}>
+                    <HelpCircle className="mr-2 h-4 w-4" /> Rules
+                </Button>
                 <Button variant="outline" size="sm" onClick={handleSkipBoondoggle} disabled={isPendingSkip}>
                     {isPendingSkip ? <Loader2 className="animate-spin" /> : <SkipForward />}
                     Skip Boondoggle
@@ -424,6 +446,16 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PureMorphingModal
+        isOpen={isRulesModalOpen}
+        onClose={() => setIsRulesModalOpen(false)}
+        variant="settings"
+        icon="❓"
+        title="Boondoggle Rules"
+      >
+        <BoondoggleRulesContent />
+      </PureMorphingModal>
     </div>
   );
 }
