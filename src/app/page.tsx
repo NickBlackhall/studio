@@ -22,6 +22,7 @@ import type { Tables } from '@/lib/database.types';
 import { useAudio } from '@/contexts/AudioContext';
 import TransitionOverlay from '@/components/ui/TransitionOverlay';
 import { useLoading } from '@/contexts/LoadingContext';
+import { useGameNavigation } from '@/hooks/useGameNavigation';
 
 
 // Helper debounce function
@@ -65,14 +66,10 @@ export default function WelcomePage() {
   
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
+  
+  // Use the centralized navigation hook
+  useGameNavigation({ gameState: internalGame, thisPlayerId: internalThisPlayerId, currentPath: pathname });
 
-  const parseReadyPlayerOrderStr = useCallback((gameState: GameClientState | null): string[] => {
-    if (!gameState || !gameState.ready_player_order) {
-      return [];
-    }
-    // ready_player_order should be an array directly from the server now
-    return Array.isArray(gameState.ready_player_order) ? gameState.ready_player_order : [];
-  }, []);
 
   const setGame = useCallback((newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
     if (typeof newState === 'function') {
@@ -84,16 +81,10 @@ export default function WelcomePage() {
     } else {
       gameRef.current = newState; 
       if (isMountedRef.current) {
-        if (newState) {
-          const rpoArray = parseReadyPlayerOrderStr(newState);
-          const finalState = { ...newState, ready_player_order: rpoArray };
-          setInternalGame(finalState);
-        } else {
-          setInternalGame(null);
-        }
+        setInternalGame(newState);
       }
     }
-  }, [parseReadyPlayerOrderStr]);
+  }, []);
 
   const setThisPlayerId = useCallback((newPlayerId: string | null) => {
     thisPlayerIdRef.current = newPlayerId;
@@ -107,11 +98,6 @@ export default function WelcomePage() {
     let playerIdFromStorage: string | null = null;
     try {
       fetchedGameState = await getGame(gameIdToFetch); 
-      
-      if (fetchedGameState) {
-        // Ensure ready_player_order is an array
-        fetchedGameState.ready_player_order = Array.isArray(fetchedGameState.ready_player_order) ? fetchedGameState.ready_player_order : [];
-      }
       
       if (!isMountedRef.current) return;
 
@@ -200,140 +186,55 @@ export default function WelcomePage() {
   }, [internalGame?.transitionState, internalGame?.gamePhase, internalGame?.transitionMessage, internalGame?.players, showLoader, hideLoader, isLoading]);
 
 
-  // New dedicated effect for navigation
-  useEffect(() => {
-    const game = internalGame;
-    const playerId = internalThisPlayerId;
-
-    if (
-      isMountedRef.current &&
-      game &&
-      game.gameId &&
-      game.transitionState === 'idle' &&
-      game.gamePhase !== 'lobby' &&
-      playerId &&
-      pathname !== '/game'
-    ) {
-      const timeoutId = setTimeout(() => {
-        if(isMountedRef.current) {
-          router.push('/game');
-        }
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [internalGame, internalThisPlayerId, router, pathname]);
-
-  // Real-time subscriptions - OPTIMIZED VERSION
+  // Real-time subscriptions - OPTIMIZED LOBBY VERSION
   useEffect(() => {
     const gameId = internalGame?.gameId;
-    if (!gameId) return;
+    if (!gameId || !isMountedRef.current) return;
   
-    // Lightweight handlers for lobby updates
-    const handleLobbyPlayerUpdate = (payload: any) => {
-      if (!isMountedRef.current) return;
-      
-      if (payload.table === 'players') {
-        setInternalGame(prev => {
-          if (!prev) return null;
-          
-          if (payload.eventType === 'INSERT' && payload.new) {
-            // Add new player
-            const newPlayer: PlayerClientState = {
-              id: payload.new.id,
-              name: payload.new.name,
-              avatar: payload.new.avatar || '',
-              score: payload.new.score || 0,
-              isJudge: payload.new.id === prev.currentJudgeId,
-              hand: [],
-              isReady: payload.new.is_ready || false
-            };
-            return {
-              ...prev,
-              players: [...prev.players, newPlayer]
-            };
-          } else if (payload.eventType === 'UPDATE' && payload.new) {
-            // Update existing player
-            return {
-              ...prev,
-              players: prev.players.map(p => 
-                p.id === payload.new.id 
-                  ? { ...p, isReady: payload.new.is_ready || false, score: payload.new.score || 0, name: payload.new.name || p.name }
-                  : p
-              )
-            };
-          } else if (payload.eventType === 'DELETE' && payload.old) {
-            // Remove player
-            return {
-              ...prev,
-              players: prev.players.filter(p => p.id !== payload.old.id)
-            };
-          }
-          return prev;
-        });
-      }
-    };
-  
-    const handleLobbyGameUpdate = (payload: any) => {
-      if (!isMountedRef.current) return;
-      
-      if (payload.table === 'games' && payload.new) {
-        setInternalGame(prev => {
-          if (!prev) return null;
-          
-          let readyPlayerOrder = payload.new.ready_player_order || prev.ready_player_order || [];
-          
-          return {
-            ...prev,
-            ...payload.new,
-            ready_player_order: Array.isArray(readyPlayerOrder) ? readyPlayerOrder : [],
-          };
-        });
-      }
-    };
-  
-    // Fallback for complex updates (much less frequent now)
-    const debouncedLobbyRefetch = debounce(async () => {
-      if (!isMountedRef.current) return;
-      try {
-        const fetchedGameState = await getGame(gameId);
-        if (isMountedRef.current && fetchedGameState) {
-          setGame(fetchedGameState);
+    // This debounced function will be our single point of truth for refreshing state.
+    const debouncedRefetch = debounce(async () => {
+        if (!isMountedRef.current) return;
+        try {
+            const updatedGame = await getGame(gameId);
+            if (updatedGame && isMountedRef.current) {
+                setGame(updatedGame);
+            }
+        } catch (error) {
+            console.error('Error in debounced lobby refetch:', error);
         }
-      } catch (error) {
-        console.error('Error in lobby fallback refetch:', error);
-      }
-    }, 1500); // Longer debounce for lobby
-  
-    // Single consolidated lobby channel
-    const lobbyChannel = supabase
-      .channel(`lobby-all-${gameId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'players',
-        filter: `game_id=eq.${gameId}`
-      }, handleLobbyPlayerUpdate)
-      .on('postgres_changes', {
-        event: '*', // CORRECTED: Listen to all events
-        schema: 'public',
-        table: 'games',
-        filter: `id=eq.${gameId}`
-      }, handleLobbyGameUpdate)
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Lobby real-time subscriptions active');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Lobby subscription error');
-          // Fallback to polling if real-time fails
-          debouncedLobbyRefetch();
-        }
-      });
-  
+    }, 500); // 500ms debounce window
+
+    const channel = supabase
+        .channel(`lobby-updates-${gameId}`)
+        .on('postgres_changes', 
+            { event: '*', schema: 'public' }, 
+            (payload) => {
+                // Any change to any table simply triggers a refetch.
+                debouncedRefetch();
+            }
+        )
+        .subscribe((status, err) => {
+            if (status === 'SUBSCRIBED') {
+                console.log(`✅ Subscribed to all lobby updates for game ${gameId}`);
+                // Initial fetch succeeded, but we might have missed an update.
+                // A quick refetch on subscribe ensures consistency.
+                debouncedRefetch();
+            }
+            if (status === 'CHANNEL_ERROR') {
+                console.error('❌ Lobby subscription error:', err);
+                toast({
+                    title: "Connection Issue",
+                    description: "Having trouble with real-time updates. The lobby may feel slow.",
+                    variant: "destructive"
+                });
+            }
+        });
+
     return () => {
-      debouncedLobbyRefetch.cancel();
-      supabase.removeChannel(lobbyChannel);
+        debouncedRefetch.cancel();
+        supabase.removeChannel(channel);
     };
-  }, [internalGame?.gameId, setGame]);
+  }, [internalGame?.gameId, setGame, toast]);
 
 
   const thisPlayerObject = useMemo(() => {

@@ -72,7 +72,6 @@ export default function GamePage() {
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
 
 
@@ -151,7 +150,6 @@ export default function GamePage() {
     
     return () => {
       isMountedRef.current = false;
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   }, [fetchGameAndPlayer]);
 
@@ -189,10 +187,10 @@ export default function GamePage() {
 
   // Real-time subscriptions - More reliable refetch-on-trigger model
   useEffect(() => {
-    if (!internalGameState?.gameId || !isMountedRef.current) {
+    const gameId = internalGameState?.gameId;
+    if (!gameId || !isMountedRef.current) {
         return;
     }
-    const gameId = internalGameState.gameId;
 
     // This debounced function will be our single point of truth for refreshing state.
     const debouncedRefetch = debounce(async () => {
