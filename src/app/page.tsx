@@ -415,9 +415,16 @@ export default function WelcomePage() {
         try {
           const result = await startGameAction(gameToStart.gameId);
           console.log('DEBUG (Lobby): startGameAction completed successfully.');
-          console.log('DEBUG (Lobby): Result:', result); // ADDED THIS
+          console.log('DEBUG (Lobby): Result:', result);
           
-          // ADDED THIS: Check if game state should change
+          // IMMEDIATE NAVIGATION - don't wait for real-time updates
+          if (result && result.gamePhase && result.gamePhase !== 'lobby') {
+            console.log('DEBUG (Lobby): Navigating immediately to game page');
+            router.push('/game');
+            return; // Exit early to avoid real-time conflicts
+          }
+          
+          // Fallback check in case navigation fails
           setTimeout(() => {
             console.log('DEBUG (Lobby): Current game state after 1 second:', gameRef.current);
           }, 1000);
