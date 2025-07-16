@@ -28,6 +28,7 @@ The project is currently a **fully functional and polished prototype**. The enti
 
 This section tracks recent improvements and bug fixes that have impacted gameplay, UI, and UX.
 
+- **Fixed Card Drawing Randomness:** Solved a critical gameplay flaw where players were repeatedly dealt cards from the same small pool of ~60 cards. The logic was updated to fetch a much larger, more random batch of cards from the database and shuffle them server-side, ensuring true variety and significantly improving replayability.
 - **Fixed Critical Navigation and Loading Bugs:** Addressed a series of complex, interconnected bugs related to the lobby-to-game transition. This involved refactoring the navigation logic into its own dedicated `useGameNavigation` hook, making it more reliable and preventing race conditions that caused players to get stuck in the lobby or experience a black screen.
 - **Enhanced Audio Experience:** Implemented a comprehensive audio system using a React Context.
   - Background music now plays and transitions appropriately between the lobby and in-game states.
