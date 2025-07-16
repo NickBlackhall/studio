@@ -219,7 +219,23 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     );
   }
 
-  const basePlayerView = (
+  if (isBoondoggleRound) {
+    return (
+      <div className="space-y-4">
+        <ScenarioDisplay scenario={gameState.currentScenario} isBoondoggle={true} />
+        <div className="text-center py-6">
+          <h2 className="text-2xl font-im-fell text-foreground">A Boondoggle is afoot!</h2>
+          <PartyPopper className="h-10 w-10 text-accent mx-auto my-4" />
+          <p className="text-muted-foreground mt-1 text-lg">
+            Perform the challenge above and await the Judge's decision!
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (gameState.gamePhase === 'player_submission' && gameState.currentScenario) {
+    return (
     <div className="space-y-2">
       <AnimatePresence>
         {scenarioVisible && gameState.currentScenario && (
@@ -417,38 +433,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         ) : null}
       </div>
     </div>
-  );
-
-  // If it's a Boondoggle round, render the base view with the poster modal over it.
-  if (isBoondoggleRound) {
-    return (
-      <>
-        {basePlayerView}
-        <PureMorphingModal
-          isOpen={true}
-          onClose={() => {}}
-          isDismissable={false}
-          variant="image"
-          className="p-0 w-auto h-auto max-w-lg bg-transparent"
-        >
-          <div className="relative">
-            <Image
-              src="/backgrounds/boondoggle-poster.png"
-              alt="Boondoggle! A challenge is afoot."
-              width={600}
-              height={750}
-              className="object-contain"
-              priority
-              data-ai-hint="boondoggle poster"
-            />
-          </div>
-        </PureMorphingModal>
-      </>
     );
-  }
-
-  if (gameState.gamePhase === 'player_submission' && gameState.currentScenario) {
-    return basePlayerView;
   }
 
   return (
