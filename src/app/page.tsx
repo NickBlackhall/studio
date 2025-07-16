@@ -60,7 +60,6 @@ export default function WelcomePage() {
   const [isProcessingAction, startPlayerActionTransition] = useTransition();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { playTrack } = useAudio();
   const { showLoader, hideLoader, isLoading } = useLoading();
   
@@ -232,6 +231,7 @@ export default function WelcomePage() {
     }
   }, [internalGame, internalThisPlayerId, router, pathname]);
 
+  // Real-time subscriptions - OPTIMIZED VERSION
   useEffect(() => {
     const gameId = internalGame?.gameId;
     if (!gameId) return;
@@ -265,7 +265,7 @@ export default function WelcomePage() {
               ...prev,
               players: prev.players.map(p => 
                 p.id === payload.new.id 
-                  ? { ...p, isReady: payload.new.is_ready || false, score: payload.new.score || 0 }
+                  ? { ...p, isReady: payload.new.is_ready || false, score: payload.new.score || 0, name: payload.new.name || p.name }
                   : p
               )
             };
@@ -288,16 +288,8 @@ export default function WelcomePage() {
         setInternalGame(prev => {
           if (!prev) return null;
           
-          // Parse ready_player_order_str if it exists
           let readyPlayerOrder = prev.ready_player_order || [];
-          if (payload.new.ready_player_order_str) {
-            try {
-              const parsed = JSON.parse(payload.new.ready_player_order_str);
-              readyPlayerOrder = Array.isArray(parsed) ? parsed : [];
-            } catch (e) {
-              console.warn('Failed to parse ready_player_order_str:', e);
-            }
-          } else if (payload.new.ready_player_order) {
+          if (payload.new.ready_player_order) { // Check the array directly
             readyPlayerOrder = payload.new.ready_player_order;
           }
           
@@ -333,7 +325,7 @@ export default function WelcomePage() {
         filter: `game_id=eq.${gameId}`
       }, handleLobbyPlayerUpdate)
       .on('postgres_changes', {
-        event: '*',
+        event: '*', // Listen to all events on games table
         schema: 'public',
         table: 'games',
         filter: `id=eq.${gameId}`
@@ -425,16 +417,29 @@ export default function WelcomePage() {
 
   const handleStartGame = async () => {
     const gameToStart = gameRef.current;
+    console.log("DEBUG (Lobby): handleStartGame triggered.");
+
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
+        console.log("DEBUG (Lobby): Conditions met, calling startGameAction for game:", gameToStart.gameId);
         startPlayerActionTransition(async () => {
             try {
                 await startGameAction(gameToStart.gameId);
+                console.log("DEBUG (Lobby): startGameAction completed successfully.");
             } catch (error: any) {
+                console.error("🔴 DEBUG (Lobby): Error during startGameAction:", error);
                 if (isMountedRef.current) {
-                    if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) return;
+                    if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+                        console.log("DEBUG (Lobby): startGameAction resulted in a redirect.");
+                        return;
+                    }
                     toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
                 }
             }
+        });
+    } else {
+        console.warn("DEBUG (Lobby): handleStartGame called, but conditions not met.", {
+            gameId: gameToStart?.gameId,
+            gamePhase: gameToStart?.gamePhase
         });
     }
   };

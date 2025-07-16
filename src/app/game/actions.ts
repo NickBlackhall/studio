@@ -241,15 +241,10 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     categories: categories,
     lastWinner: lastWinnerDetails,
     winningPlayerId: gameRow.overall_winner_player_id,
-    ready_player_order: [], 
-    ready_player_order_str: JSON.stringify(dbReadyPlayerOrder),
+    ready_player_order: dbReadyPlayerOrder, // Keep as array
     transitionState: gameRow.transition_state as GameClientState['transitionState'],
     transitionMessage: gameRow.transition_message,
   };
-
-  if (typeof gameClientState.ready_player_order_str !== 'string' || !gameClientState.ready_player_order_str.startsWith('[')) {
-    gameClientState.ready_player_order_str = "[]";
-  }
 
   return gameClientState;
 }
@@ -470,6 +465,8 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
 }
 
 export async function startGame(gameId: string): Promise<GameClientState | null> {
+  console.log(`🔵 START (Server): startGame action initiated for gameId: ${gameId}`);
+  
   await supabase
     .from('games')
     .update({ 
@@ -477,6 +474,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
       transition_message: 'Preparing game...' 
     })
     .eq('id', gameId);
+  console.log(`🔵 START (Server): Set transition_state to 'starting_game'.`);
 
   const { data: game, error: gameFetchError } = await supabase
     .from('games')
@@ -488,6 +486,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
     console.error(`🔴 START (Server): Error fetching game ${gameId} for startGame: ${JSON.stringify(gameFetchError, null, 2)}`);
     throw new Error(`Failed to fetch game for start: ${gameFetchError?.message || 'Game not found'}`);
   }
+  console.log(`🔵 START (Server): Successfully fetched game. Phase: ${game.game_phase}`);
 
   if (game.game_phase === 'lobby') {
     const { data: players, error: playersFetchError } = await supabase
@@ -500,27 +499,36 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
       console.error(`🔴 START (Server): Error fetching players for game ${gameId}: ${JSON.stringify(playersFetchError, null, 2)}`);
       throw new Error(`Failed to fetch players for start: ${playersFetchError?.message || 'No players found'}`);
     }
+    console.log(`🔵 START (Server): Fetched ${players.length} players.`);
+    
     if (players.length < MIN_PLAYERS_TO_START) {
+      console.error(`🔴 START (Server): Not enough players. Found ${players.length}, need ${MIN_PLAYERS_TO_START}.`);
       throw new Error(`Not enough players to start game (found ${players.length}, need at least ${MIN_PLAYERS_TO_START}).`);
     }
 
     const allPlayersReady = players.every(p => p.is_ready);
     if (!allPlayersReady) {
+      console.error(`🔴 START (Server): Not all players are ready.`);
       throw new Error(`Not all players are ready. Cannot start the game yet.`);
     }
+    console.log(`🔵 START (Server): All players are ready.`);
 
     const readyPlayerOrder = game.ready_player_order; 
     if (!readyPlayerOrder || readyPlayerOrder.length === 0) {
         console.error(`🔴 START (Server): Cannot start game ${gameId}. ready_player_order is empty or null. Actual value: ${JSON.stringify(readyPlayerOrder)}`);
         throw new Error("Critical error: Player ready order not established for starting the game.");
     }
+    console.log(`🔵 START (Server): Got ready_player_order: ${JSON.stringify(readyPlayerOrder)}`);
+
     const actualFirstJudgeId = readyPlayerOrder[0];
     if (!players.find(p => p.id === actualFirstJudgeId)) {
         console.error(`🔴 START (Server): First player in ready_player_order (${actualFirstJudgeId}) not found in players list for game ${gameId}.`);
         throw new Error("Critical error: Host player in ready order not found in game players.");
     }
+    console.log(`🔵 START (Server): First judge will be ${actualFirstJudgeId}.`);
 
     await supabase.from('games').update({ transition_message: 'Dealing cards...' }).eq('id', gameId);
+    console.log(`🔵 START (Server): Dealing cards...`);
     let accumulatedUsedResponsesForThisGameStart = game.used_responses || [];
     const playerHandInserts: TablesInsert<'player_hands'>[] = [];
 
@@ -544,10 +552,13 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
       const { error: allHandsInsertError } = await supabase.from('player_hands').insert(playerHandInserts);
       if (allHandsInsertError) {
         console.error(`🔴 START (Server) CARDS: Critical error inserting player hands:`, JSON.stringify(allHandsInsertError, null, 2));
+      } else {
+        console.log(`🔵 START (Server): Successfully inserted ${playerHandInserts.length} cards into player_hands.`);
       }
     }
 
     await supabase.from('games').update({ transition_message: 'Selecting first judge...' }).eq('id', gameId);
+    console.log(`🔵 START (Server): Selecting first judge...`);
 
     const gameUpdates: TablesUpdate<'games'> = {
       game_phase: 'category_selection',
@@ -568,6 +579,9 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
       console.error(`🔴 START (Server): Error updating game ${gameId} to start: ${JSON.stringify(updateError, null, 2)}`);
       throw new Error(`Failed to update game state to start: ${updateError.message}`);
     }
+    console.log(`🔵 START (Server): Game successfully updated to 'category_selection'.`);
+  } else {
+    console.warn(`🔵 START (Server): startGame called but game phase is already '${game.game_phase}', not 'lobby'. No action taken.`);
   }
 
   revalidatePath('/');
