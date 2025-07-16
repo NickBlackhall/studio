@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useState, useTransition, useEffect, useRef } from 'react';
-import { Gavel, Send, CheckCircle, Loader2, Crown, PlusCircle, XCircle, SkipForward, Award, HelpCircle } from 'lucide-react';
+import { Gavel, Send, CheckCircle, Loader2, Crown, PlusCircle, XCircle, SkipForward, Award, HelpCircle, PartyPopper } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { cn } from '@/lib/utils';
