@@ -219,229 +219,235 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     );
   }
 
+  const basePlayerView = (
+    <div className="space-y-2">
+      <AnimatePresence>
+        {scenarioVisible && gameState.currentScenario && (
+          <motion.div key={gameState.currentScenario.id}>
+            <ScenarioDisplay
+              scenario={gameState.currentScenario}
+              isBoondoggle={isBoondoggleRound}
+              {...scenarioAnimationProps}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="relative min-h-[450px] [perspective:1000px]">
+        {hasSubmittedThisRound && !isBoondoggleRound ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-transparent backdrop-blur-sm rounded-lg z-50 flex flex-col items-center justify-start text-center p-4 pt-12"
+          >
+            <Image
+              src="/ui/waiting-v1.png"
+              alt="Waiting for other players"
+              width={250}
+              height={250}
+              className="object-contain"
+              data-ai-hint="waiting poster"
+              sizes="50vw"
+            />
+            <p className="font-im-fell text-black text-2xl font-bold mt-4">Submission Sent!</p>
+            <p className="font-im-fell text-black text-lg mt-2">Now, we wait for the others... and the Judge's verdict!</p>
+            <Loader2 className="h-6 w-6 animate-spin text-black/80 mx-auto mt-4" />
+          </motion.div>
+        ) : !isBoondoggleRound ? (
+          handWithCustomCard.map((card, index) => {
+            const isVisible = index < cardsVisible;
+            const isFlipped = index < cardsFlipped;
+            const isThisCardSelected = selectedCardId === card.id;
+
+            return (
+              <motion.div
+                key={`${card.id}-${player.id}-${index}`}
+                className="absolute w-[22rem] left-0 right-0 mx-auto cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
+                style={{
+                  top: 20 + (index * 35),
+                  zIndex: isThisCardSelected ? 50 : 20 - index,
+                }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                onClick={() => handleCardClick(card.id)}
+              >
+                <motion.div
+                  className="relative w-full h-full [transform-style:preserve-3d] shadow-lg rounded-xl"
+                  initial={{ transform: 'translateY(300px) scale(0.8) rotateX(0deg)' }}
+                  animate={{
+                    transform: `
+                      ${isVisible ? 'translateY(0) scale(1)' : 'translateY(300px) scale(0.8)'}
+                      ${isThisCardSelected ? 'translateY(-20px) scale(1.05)' : ''}
+                      ${isFlipped ? 'rotateX(180deg)' : 'rotateX(0deg)'}
+                    `,
+                    boxShadow: isThisCardSelected
+                      ? '0 15px 40px rgba(52, 152, 219, 0.4)'
+                      : '0 6px 20px rgba(0,0,0,0.15)',
+                  }}
+                  transition={{ duration: 0.6, ease: [0.68, -0.55, 0.265, 1.55] }}
+                >
+                  {/* Card Back */}
+                  <div className={cn(
+                    "absolute w-full h-full [backface-visibility:hidden] rounded-xl"
+                  )}>
+                    <Image
+                      src="/ui/mit-card-back.png"
+                      alt="Card Back"
+                      fill
+                      className="object-cover"
+                      data-ai-hint="card back"
+                      priority
+                    />
+                  </div>
+                  
+                  {/* Card Front */}
+                  <div className={cn(
+                      "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl"
+                  )}>
+                    {card.isCustom ? (
+                      <>
+                        <Image
+                          src="/ui/write-in-card-front.png"
+                          alt="Write-in Response Card Front"
+                          fill
+                          className="object-cover"
+                          data-ai-hint="card front"
+                        />
+                        <div className="absolute inset-0">
+                          <div className="relative w-full h-full">
+                            <Textarea
+                              value={customCardText}
+                              onChange={(e) => setCustomCardText(e.target.value)}
+                              placeholder="Make it uniquely terrible..."
+                              className="absolute top-[18%] left-[50%] -translate-x-1/2 w-[85%] h-[40%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-none p-2"
+                              onClick={(e) => e.stopPropagation()}
+                              maxLength={100}
+                            />
+                             {customCardText.trim().length > 0 && selectedCardId === CUSTOM_CARD_ID && (
+                              <div className="absolute bottom-[16%] left-1/2 -translate-x-1/2 w-[45%] h-[20%]">
+                                  <button
+                                      type="button"
+                                      className="w-full h-full bg-transparent group"
+                                      onClick={handleSubmit}
+                                      disabled={isPending}
+                                      aria-label="Submit custom card"
+                                  >
+                                      {isPending ? (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                          <Loader2 className="h-6 w-6 animate-spin text-black" />
+                                      </div>
+                                      ) : (
+                                      <Image
+                                          src="/ui/submit-card-button.png"
+                                          alt="Submit Card"
+                                          fill
+                                          className="object-contain drop-shadow-lg transition-transform group-hover:scale-105"
+                                          data-ai-hint="submit button"
+                                          sizes="30vw"
+                                          priority
+                                      />
+                                      )}
+                                  </button>
+                              </div>
+                             )}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <Image
+                          src="/ui/mit-card-front.png"
+                          alt="Response Card Front"
+                          fill
+                          className="object-cover"
+                          data-ai-hint="card front"
+                        />
+                        <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
+                          <span className="font-im-fell text-black text-2xl leading-none px-4">{card.text}</span>
+                          {isThisCardSelected && (
+                            <button
+                              type="button"
+                              className="bg-transparent border-none p-0 group"
+                              onClick={handleSubmit}
+                              disabled={isPending}
+                            >
+                              {isPending ? (
+                                <div className="h-[45px] w-[120px] flex items-center justify-center">
+                                  <Loader2 className="h-6 w-6 animate-spin text-white" />
+                                </div>
+                              ) : (
+                                <Image
+                                  src="/ui/submit-card-button.png"
+                                  alt="Submit Card"
+                                  width={120}
+                                  height={45}
+                                  className="object-contain drop-shadow-lg"
+                                  data-ai-hint="submit button"
+                                  sizes="30vw"
+                                  priority
+                                />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                    {/* New Card Badge - moved inside the card front */}
+                    {card.isNew && (
+                      <motion.div
+                        className="absolute -top-4 -right-4 w-16 h-16 z-10 animate-pulse"
+                        initial={{ scale: 0, rotate: -15 }}
+                        animate={{ scale: isFlipped ? 1 : 0, rotate: 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                      >
+                        <Image
+                          src="/ui/new-card-badge.png"
+                          alt="New Card"
+                          fill
+                          sizes="10vw"
+                          className="object-contain"
+                          data-ai-hint="new card badge"
+                        />
+                      </motion.div>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            );
+          })
+        ) : null}
+      </div>
+    </div>
+  );
+
   if (isBoondoggleRound) {
     return (
-      <PureMorphingModal
-        isOpen={true}
-        onClose={() => {}}
-        isDismissable={false}
-        variant="image"
-        className="p-0 w-auto h-auto max-w-lg bg-transparent"
-      >
-        <div className="relative">
-          <Image
-            src="/backgrounds/boondoggle-poster.png"
-            alt="Boondoggle! A challenge is afoot."
-            width={600}
-            height={750}
-            className="object-contain"
-            priority
-            data-ai-hint="boondoggle poster"
-          />
-        </div>
-      </PureMorphingModal>
+      <>
+        {basePlayerView}
+        <PureMorphingModal
+          isOpen={true}
+          onClose={() => {}}
+          isDismissable={false}
+          variant="image"
+          className="p-0 w-auto h-auto max-w-lg bg-transparent"
+        >
+          <div className="relative">
+            <Image
+              src="/backgrounds/boondoggle-poster.png"
+              alt="Boondoggle! A challenge is afoot."
+              width={600}
+              height={750}
+              className="object-contain"
+              priority
+              data-ai-hint="boondoggle poster"
+            />
+          </div>
+        </PureMorphingModal>
+      </>
     );
   }
-  
+
   if (gameState.gamePhase === 'player_submission' && gameState.currentScenario) {
-    return (
-      <div className="space-y-2">
-        <AnimatePresence>
-          {scenarioVisible && gameState.currentScenario && (
-            <motion.div key={gameState.currentScenario.id}>
-              <ScenarioDisplay
-                scenario={gameState.currentScenario}
-                {...scenarioAnimationProps}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="relative min-h-[450px] [perspective:1000px]">
-          {hasSubmittedThisRound ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-transparent backdrop-blur-sm rounded-lg z-50 flex flex-col items-center justify-start text-center p-4 pt-12"
-            >
-              <Image
-                src="/ui/waiting-v1.png"
-                alt="Waiting for other players"
-                width={250}
-                height={250}
-                className="object-contain"
-                data-ai-hint="waiting poster"
-                sizes="50vw"
-              />
-              <p className="font-im-fell text-black text-2xl font-bold mt-4">Submission Sent!</p>
-              <p className="font-im-fell text-black text-lg mt-2">Now, we wait for the others... and the Judge's verdict!</p>
-              <Loader2 className="h-6 w-6 animate-spin text-black/80 mx-auto mt-4" />
-            </motion.div>
-          ) : (
-            handWithCustomCard.map((card, index) => {
-              const isVisible = index < cardsVisible;
-              const isFlipped = index < cardsFlipped;
-              const isThisCardSelected = selectedCardId === card.id;
-
-              return (
-                <motion.div
-                  key={`${card.id}-${player.id}-${index}`}
-                  className="absolute w-[22rem] left-0 right-0 mx-auto cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
-                  style={{
-                    top: 20 + (index * 35),
-                    zIndex: isThisCardSelected ? 50 : 20 - index,
-                  }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  onClick={() => handleCardClick(card.id)}
-                >
-                  <motion.div
-                    className="relative w-full h-full [transform-style:preserve-3d] shadow-lg rounded-xl"
-                    initial={{ transform: 'translateY(300px) scale(0.8) rotateX(0deg)' }}
-                    animate={{
-                      transform: `
-                        ${isVisible ? 'translateY(0) scale(1)' : 'translateY(300px) scale(0.8)'}
-                        ${isThisCardSelected ? 'translateY(-20px) scale(1.05)' : ''}
-                        ${isFlipped ? 'rotateX(180deg)' : 'rotateX(0deg)'}
-                      `,
-                      boxShadow: isThisCardSelected
-                        ? '0 15px 40px rgba(52, 152, 219, 0.4)'
-                        : '0 6px 20px rgba(0,0,0,0.15)',
-                    }}
-                    transition={{ duration: 0.6, ease: [0.68, -0.55, 0.265, 1.55] }}
-                  >
-                    {/* Card Back */}
-                    <div className={cn(
-                      "absolute w-full h-full [backface-visibility:hidden] rounded-xl"
-                    )}>
-                      <Image
-                        src="/ui/mit-card-back.png"
-                        alt="Card Back"
-                        fill
-                        className="object-cover"
-                        data-ai-hint="card back"
-                        priority
-                      />
-                    </div>
-                    
-                    {/* Card Front */}
-                    <div className={cn(
-                        "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl"
-                    )}>
-                      {card.isCustom ? (
-                        <>
-                          <Image
-                            src="/ui/write-in-card-front.png"
-                            alt="Write-in Response Card Front"
-                            fill
-                            className="object-cover"
-                            data-ai-hint="card front"
-                          />
-                          <div className="absolute inset-0">
-                            <div className="relative w-full h-full">
-                              <Textarea
-                                value={customCardText}
-                                onChange={(e) => setCustomCardText(e.target.value)}
-                                placeholder="Make it uniquely terrible..."
-                                className="absolute top-[18%] left-[50%] -translate-x-1/2 w-[85%] h-[40%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-none p-2"
-                                onClick={(e) => e.stopPropagation()}
-                                maxLength={100}
-                              />
-                               {customCardText.trim().length > 0 && selectedCardId === CUSTOM_CARD_ID && (
-                                <div className="absolute bottom-[16%] left-1/2 -translate-x-1/2 w-[45%] h-[20%]">
-                                    <button
-                                        type="button"
-                                        className="w-full h-full bg-transparent group"
-                                        onClick={handleSubmit}
-                                        disabled={isPending}
-                                        aria-label="Submit custom card"
-                                    >
-                                        {isPending ? (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <Loader2 className="h-6 w-6 animate-spin text-black" />
-                                        </div>
-                                        ) : (
-                                        <Image
-                                            src="/ui/submit-card-button.png"
-                                            alt="Submit Card"
-                                            fill
-                                            className="object-contain drop-shadow-lg transition-transform group-hover:scale-105"
-                                            data-ai-hint="submit button"
-                                            sizes="30vw"
-                                            priority
-                                        />
-                                        )}
-                                    </button>
-                                </div>
-                               )}
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <Image
-                            src="/ui/mit-card-front.png"
-                            alt="Response Card Front"
-                            fill
-                            className="object-cover"
-                            data-ai-hint="card front"
-                          />
-                          <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
-                            <span className="font-im-fell text-black text-2xl leading-none px-4">{card.text}</span>
-                            {isThisCardSelected && (
-                              <button
-                                type="button"
-                                className="bg-transparent border-none p-0 group"
-                                onClick={handleSubmit}
-                                disabled={isPending}
-                              >
-                                {isPending ? (
-                                  <div className="h-[45px] w-[120px] flex items-center justify-center">
-                                    <Loader2 className="h-6 w-6 animate-spin text-white" />
-                                  </div>
-                                ) : (
-                                  <Image
-                                    src="/ui/submit-card-button.png"
-                                    alt="Submit Card"
-                                    width={120}
-                                    height={45}
-                                    className="object-contain drop-shadow-lg"
-                                    data-ai-hint="submit button"
-                                    sizes="30vw"
-                                    priority
-                                  />
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </>
-                      )}
-                      {/* New Card Badge - moved inside the card front */}
-                      {card.isNew && (
-                        <motion.div
-                          className="absolute -top-4 -right-4 w-16 h-16 z-10 animate-pulse"
-                          initial={{ scale: 0, rotate: -15 }}
-                          animate={{ scale: isFlipped ? 1 : 0, rotate: 0 }}
-                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        >
-                          <Image
-                            src="/ui/new-card-badge.png"
-                            alt="New Card"
-                            fill
-                            sizes="10vw"
-                            className="object-contain"
-                            data-ai-hint="new card badge"
-                          />
-                        </motion.div>
-                      )}
-                    </div>
-                  </motion.div>
-                </motion.div>
-              );
-            })
-          )}
-        </div>
-      </div>
-    );
+    return basePlayerView;
   }
 
   return (
@@ -456,5 +462,3 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
-
-    
