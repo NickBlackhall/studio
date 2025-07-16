@@ -10,20 +10,19 @@ import {
   selectCategory,
   selectWinner,
   nextRound,
-  getCurrentPlayer,
   resetGameForTesting
 } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
-import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
+import { ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
 import PlayerView from '@/components/game/PlayerView';
 import GameOverDisplay from '@/components/game/GameOverDisplay';
 import RecapSequenceDisplay from '@/components/game/RecapSequenceDisplay';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, Play, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX } from 'lucide-react';
+import { Home, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { PureMorphingModal } from '@/components/PureMorphingModal';
@@ -60,20 +59,16 @@ export default function GamePage() {
   }, []);
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
-    console.time('fetchGameAndPlayer');
     try {
       const initialGameState = await getGame();
-      console.timeLog('fetchGameAndPlayer', 'getGame complete');
 
       if (!isMountedRef.current) {
-        console.timeEnd('fetchGameAndPlayer');
         return;
       }
 
       if (!initialGameState || !initialGameState.gameId) {
         toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
         router.push('/?step=setup');
-        console.timeEnd('fetchGameAndPlayer');
         return;
       }
 
@@ -86,13 +81,12 @@ export default function GamePage() {
           router.push('/?step=setup');
         }
       } else {
-        // Optimization: getGame now returns all player data. We can find our player from this list.
         const playerInGameList = initialGameState.players.find(p => p.id === playerIdFromStorage);
         if (playerInGameList) {
           setThisPlayer(playerInGameList);
         } else {
           localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
-          router.push('/?step=setup'); // Player ID exists but isn't in game, so redirect
+          router.push('/?step=setup');
         }
       }
       
@@ -101,8 +95,6 @@ export default function GamePage() {
     } catch (error: any) {
       console.error(`CRITICAL ERROR in fetchGameAndPlayer (from ${origin}):`, error);
       toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
-    } finally {
-        console.timeEnd('fetchGameAndPlayer');
     }
   }, [router, toast, setGameState, setThisPlayer]);
   
@@ -128,7 +120,6 @@ export default function GamePage() {
       }
     }
     
-    // On unmount, stop music
     return () => {
         stopMusic();
     }
@@ -139,7 +130,6 @@ export default function GamePage() {
       return;
     }
     const gameId = internalGameState.gameId;
-    const currentPlayerId = thisPlayerRef.current?.id;
 
     const debouncedFetch = async () => {
       if (!isMountedRef.current) return;
@@ -150,7 +140,6 @@ export default function GamePage() {
       if (updatedFullGame) {
         const currentLocalPlayerId = thisPlayerRef.current?.id;
         
-        // This is a special case to handle the transition from game_over back to a fresh lobby
         if (gameStateRef.current?.gamePhase === 'game_over' && updatedFullGame.gamePhase === 'lobby') {
           toast({ title: "Game Reset", description: "Returning to lobby setup." });
           router.push('/?step=setup');
@@ -184,7 +173,7 @@ export default function GamePage() {
       { name: 'submissions-updates', table: 'responses', filter: `game_id=eq.${gameId}`, event: '*' }
     ];
 
-    const uniqueChannelSuffix = currentPlayerId || Date.now();
+    const uniqueChannelSuffix = thisPlayerRef.current?.id || Date.now();
 
     const activeSubscriptions = channelsConfig.map(channelConfig => {
       const channelName = `${channelConfig.name}-${gameId}-${uniqueChannelSuffix}`;
@@ -293,7 +282,6 @@ export default function GamePage() {
 
   // --- RENDER LOGIC ---
 
-  // Initial loading state before any game state is fetched
   if (!internalGameState) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
@@ -303,7 +291,6 @@ export default function GamePage() {
     );
   }
   
-  // Handle transition overlay separately, this takes precedence
   if (internalGameState.transitionState !== 'idle') {
     return (
       <TransitionOverlay 
@@ -313,7 +300,6 @@ export default function GamePage() {
     );
   }
 
-  // Handle critical error where gameId is missing after load
   if (!internalGameState.gameId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
@@ -331,7 +317,6 @@ export default function GamePage() {
     );
   }
 
-  // Handle spectator mode for games in progress or over
   if (!thisPlayer && (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase) || internalGameState.gamePhase === 'game_over' || internalGameState.gamePhase === 'winner_announcement')) {
       return (
           <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
@@ -351,7 +336,6 @@ export default function GamePage() {
       );
   }
 
-  // Handle case where game is in lobby but user is on this page (e.g., via back button)
   if (internalGameState.gamePhase === 'lobby') {
      return (
        <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
@@ -369,7 +353,6 @@ export default function GamePage() {
      );
   }
 
-  // Handle case where we have a game state, but are still identifying the local player
   if (!thisPlayer && internalGameState.gamePhase !== 'game_over' && internalGameState.gamePhase !== 'winner_announcement') {
      return (
         <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
@@ -394,8 +377,6 @@ export default function GamePage() {
               />;
     }
     
-    // The recap sequence is now handled as an overlay, so we don't need a specific render path here.
-    // Let the main view render underneath but be obscured.
     if (showRecap) {
       return null;
     }
@@ -407,7 +388,6 @@ export default function GamePage() {
       return <PlayerView gameState={internalGameState} player={thisPlayer} />;
     }
     
-    // Fallback for any other state
     return (
         <Card className="text-center">
             <CardHeader><CardTitle>Waiting for Game State</CardTitle></CardHeader>
@@ -443,7 +423,6 @@ export default function GamePage() {
         onMenuClick={() => setIsMenuModalOpen(true)}
       />
       
-      {/* Scoreboard Modal */}
       <PureMorphingModal
         isOpen={isScoreboardOpen}
         onClose={() => setIsScoreboardOpen(false)}
@@ -469,7 +448,6 @@ export default function GamePage() {
         </div>
       </PureMorphingModal>
 
-      {/* Menu Modal */}
       <PureMorphingModal
         isOpen={isMenuModalOpen}
         onClose={() => setIsMenuModalOpen(false)}
@@ -518,7 +496,6 @@ export default function GamePage() {
         </div>
       </PureMorphingModal>
 
-      {/* How to Play Modal */}
       <PureMorphingModal
         isOpen={isHowToPlayModalOpen}
         onClose={() => setIsHowToPlayModalOpen(false)}
