@@ -22,7 +22,6 @@ import type { Tables } from '@/lib/database.types';
 import { useAudio } from '@/contexts/AudioContext';
 import TransitionOverlay from '@/components/ui/TransitionOverlay';
 
-
 export const dynamic = 'force-dynamic';
 
 export default function WelcomePage() {
@@ -170,12 +169,6 @@ export default function WelcomePage() {
     }
   }, [currentStep, playTrack]);
 
-  useEffect(() => {
-    if (internalGame?.transitionState !== 'idle' && internalThisPlayerId) {
-      router.prefetch('/game');
-    }
-  }, [internalGame?.transitionState, internalThisPlayerId, router]);
-
   // New dedicated effect for navigation
   useEffect(() => {
     const game = internalGame;
@@ -189,9 +182,12 @@ export default function WelcomePage() {
       game.gamePhase !== 'lobby' &&
       playerId
     ) {
-      router.push('/game');
-    }
-  }, [internalGame, internalThisPlayerId, router]);
+      // Add a small delay to ensure smooth transition
+      setTimeout(() => {
+        router.push('/game');
+      }, 100);
+    
+  }}, [internalGame, internalThisPlayerId, router]);
 
 
   useEffect(() => {

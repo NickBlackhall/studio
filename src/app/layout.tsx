@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import FontDebugger from '@/components/layout/FontDebugger';
 import { AudioProvider } from '@/contexts/AudioContext';
 import MusicPlayer from '@/components/layout/MusicPlayer';
+import { LoadingProvider } from '@/contexts/LoadingContext';
 
 
 export const metadata: Metadata = {
@@ -37,13 +38,15 @@ export default function RootLayout({
           "antialiased flex flex-col min-h-screen",
         )} suppressHydrationWarning={true}>
         <AudioProvider>
-          <div className="flex min-h-screen w-full flex-col">
-            <main className="flex-grow flex flex-col">
-              {children}
-            </main>
-          </div>
-          <Toaster />
-          <MusicPlayer />
+         <LoadingProvider>
+            <div className="flex min-h-screen w-full flex-col">
+              <main className="flex-grow flex flex-col">
+                {children}
+              </main>
+            </div>
+            <Toaster />
+            <MusicPlayer />
+          </LoadingProvider>
         </AudioProvider>
         <FontDebugger />
       </body>
