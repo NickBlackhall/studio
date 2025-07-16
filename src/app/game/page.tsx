@@ -3,16 +3,14 @@
 
 import { useState, useEffect, useTransition, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
 import {
-  getGame,
   selectCategory,
   selectWinner,
   nextRound,
   getCurrentPlayer,
   resetGameForTesting
 } from '@/app/game/actions';
-import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
+import type { PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
@@ -31,14 +29,14 @@ import GameUI from '@/components/game/GameUI';
 import { useAudio } from '@/contexts/AudioContext';
 import { useLoading } from '@/contexts/LoadingContext';
 import { useTargetedGameSubscription } from '@/hooks/useTargetedGameSubscription';
+import { getGame } from '@/app/game/actions';
 
 export default function GamePage() {
-  const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
-  const gameStateRef = useRef<GameClientState | null>(null);
-
-  const [thisPlayer, setThisPlayerInternal] = useState<PlayerClientState | null>(null);
-  const thisPlayerRef = useRef<PlayerClientState | null>(null);
-
+  const [thisPlayerId, setThisPlayerId] = useState<string | null>(null);
+  const { internalGameState, setInternalGameState, thisPlayer, setThisPlayer } = useTargetedGameSubscription(thisPlayerId);
+  
+  const gameStateRef = useRef(internalGameState);
+  
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
@@ -51,35 +49,9 @@ export default function GamePage() {
   
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
 
-  const setGameState = useCallback((newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
-    if (typeof newState === 'function') {
-        setInternalGameState(prevState => {
-            const result = newState(prevState);
-            gameStateRef.current = result;
-            return result;
-        });
-    } else {
-        gameStateRef.current = newState;
-        if (isMountedRef.current) setInternalGameState(newState);
-    }
-  }, []);
-
-  const setThisPlayer = useCallback((newPlayerState: PlayerClientState | null | ((prevState: PlayerClientState | null) => PlayerClientState | null)) => {
-    if (typeof newPlayerState === 'function') {
-      setThisPlayerInternal(prevState => {
-          const result = newPlayerState(prevState);
-          thisPlayerRef.current = result;
-          return result;
-      });
-    } else {
-      thisPlayerRef.current = newPlayerState;
-      if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
-    }
-  }, []);
-
-  // Use the new targeted subscription hook
-  useTargetedGameSubscription(internalGameState?.gameId, setGameState, setThisPlayer);
-
+  useEffect(() => {
+    gameStateRef.current = internalGameState;
+  }, [internalGameState]);
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
     try {
@@ -92,6 +64,8 @@ export default function GamePage() {
         return;
       }
 
+      setInternalGameState(initialGameState);
+
       const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
       
       if (!playerIdFromStorage) {
@@ -101,6 +75,7 @@ export default function GamePage() {
           router.push('/?step=setup');
         }
       } else {
+        setThisPlayerId(playerIdFromStorage);
         const playerDetails = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
         if (playerDetails) {
             setThisPlayer(playerDetails);
@@ -110,7 +85,6 @@ export default function GamePage() {
         }
       }
       
-      setGameState(initialGameState);
 
     } catch (error: any) {
       console.error(`GamePage: Error in fetchGameAndPlayer (from ${origin}):`, error);
@@ -120,7 +94,7 @@ export default function GamePage() {
         setIsInitialLoading(false);
       }
     }
-  }, [router, toast, setGameState, setThisPlayer]);
+  }, [router, toast, setInternalGameState, setThisPlayer]);
   
 
   useEffect(() => {
@@ -489,3 +463,5 @@ export default function GamePage() {
 }
 
 export const dynamic = 'force-dynamic';
+
+    

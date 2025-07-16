@@ -1,27 +1,20 @@
 
 "use client";
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
-import { getCurrentPlayer } from '@/app/game/actions';
+import { getCurrentPlayer, getGame } from '@/app/game/actions';
 import type { Tables } from '@/lib/database.types';
 
-type SetGameState = (
-  newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)
-) => void;
 
-type SetThisPlayer = (
-  newPlayerState: PlayerClientState | null | ((prevState: PlayerClientState | null) => PlayerClientState | null)
-) => void;
-
-export function useTargetedGameSubscription(
-  gameId: string | undefined, 
-  setGameState: SetGameState,
-  setThisPlayer?: SetThisPlayer
-) {
+export function useTargetedGameSubscription(thisPlayerId: string | null) {
+  const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
+  const [thisPlayer, setThisPlayer] = useState<PlayerClientState | null>(null);
   const isMountedRef = useRef(true);
+
+  const gameId = internalGameState?.gameId;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -30,35 +23,20 @@ export function useTargetedGameSubscription(
     };
   }, []);
 
-  const handleGameUpdate = useCallback((payload: RealtimePostgresChangesPayload<Tables<'games'>>) => {
+  const handleGameUpdate = useCallback(async (payload: RealtimePostgresChangesPayload<Tables<'games'>>) => {
     if (!isMountedRef.current) return;
     const updatedGame = payload.new as Tables<'games'>;
 
-    setGameState(prev => {
-      if (!prev || prev.gameId !== updatedGame.id) return prev;
-      
-      return {
-        ...prev,
-        gamePhase: updatedGame.game_phase as GameClientState['gamePhase'],
-        currentRound: updatedGame.current_round,
-        currentJudgeId: updatedGame.current_judge_id,
-        currentScenario: updatedGame.current_scenario_id === prev.currentScenario?.id ? prev.currentScenario : null, // Needs refetch
-        lastWinner: updatedGame.last_round_winner_player_id ? prev.lastWinner : undefined, // Needs refetch
-        winningPlayerId: updatedGame.overall_winner_player_id,
-        ready_player_order: updatedGame.ready_player_order || [],
-        transitionState: updatedGame.transition_state as GameClientState['transitionState'],
-        transitionMessage: updatedGame.transition_message,
-        // If a significant change happens, a full refetch might be needed.
-        // This simple update avoids flickers on minor changes.
-      };
-    });
-  }, [setGameState]);
+    const fullGameState = await getGame(updatedGame.id);
+    if(isMountedRef.current) setInternalGameState(fullGameState);
+
+  }, []);
 
   const handlePlayersUpdate = useCallback((payload: RealtimePostgresChangesPayload<Tables<'players'>>) => {
     if (!isMountedRef.current) return;
     const updatedPlayer = payload.new as Tables<'players'>;
     
-    setGameState(prev => {
+    setInternalGameState(prev => {
         if (!prev) return prev;
 
         const playerExists = prev.players.some(p => p.id === updatedPlayer.id);
@@ -67,7 +45,7 @@ export function useTargetedGameSubscription(
         if (playerExists) {
             newPlayersList = prev.players.map(p => 
                 p.id === updatedPlayer.id 
-                ? { ...p, name: updatedPlayer.name, avatar: updatedPlayer.avatar, score: updatedPlayer.score, isReady: updatedPlayer.is_ready }
+                ? { ...p, name: updatedPlayer.name, avatar: updatedPlayer.avatar || '', score: updatedPlayer.score, isReady: updatedPlayer.is_ready }
                 : p
             );
         } else {
@@ -77,7 +55,7 @@ export function useTargetedGameSubscription(
                 {
                     id: updatedPlayer.id,
                     name: updatedPlayer.name,
-                    avatar: updatedPlayer.avatar,
+                    avatar: updatedPlayer.avatar || '',
                     score: updatedPlayer.score,
                     isJudge: prev.currentJudgeId === updatedPlayer.id,
                     hand: [], // Hand data is fetched separately
@@ -87,7 +65,7 @@ export function useTargetedGameSubscription(
         }
         return { ...prev, players: newPlayersList };
     });
-  }, [setGameState]);
+  }, []);
 
   const handleSubmissionUpdate = useCallback(async (payload: RealtimePostgresChangesPayload<Tables<'responses'>>) => {
       if (!isMountedRef.current || payload.eventType !== 'INSERT') return;
@@ -95,7 +73,7 @@ export function useTargetedGameSubscription(
 
       const cardText = newSubmission.submitted_text || (await getCardText(newSubmission.response_card_id));
       
-      setGameState(prev => {
+      setInternalGameState(prev => {
           if (!prev) return prev;
           const submissionExists = prev.submissions.some(s => s.playerId === newSubmission.player_id && s.cardId === (newSubmission.response_card_id || `custom-${newSubmission.player_id}`));
           if (submissionExists) return prev;
@@ -112,21 +90,20 @@ export function useTargetedGameSubscription(
               ]
           };
       });
-  }, [setGameState]);
+  }, []);
   
   const handlePlayerHandUpdate = useCallback(async (payload: RealtimePostgresChangesPayload<any>) => {
-    if (!isMountedRef.current || !setThisPlayer) return;
+    if (!isMountedRef.current || !thisPlayerId || !gameId) return;
 
-    const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${gameId}`);
-    const isForThisPlayer = payload.new.player_id === playerIdFromStorage;
+    const isForThisPlayer = payload.new.player_id === thisPlayerId;
     
     if (isForThisPlayer) {
-      const playerDetails = await getCurrentPlayer(playerIdFromStorage!, gameId!);
+      const playerDetails = await getCurrentPlayer(thisPlayerId, gameId);
       if (playerDetails && isMountedRef.current) {
         setThisPlayer(playerDetails);
       }
     }
-  }, [gameId, setThisPlayer]);
+  }, [thisPlayerId, gameId]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -150,6 +127,13 @@ export function useTargetedGameSubscription(
       supabase.removeChannel(gameChanges);
     };
   }, [gameId, handleGameUpdate, handlePlayersUpdate, handleSubmissionUpdate, handlePlayerHandUpdate]);
+
+  return {
+    internalGameState,
+    setInternalGameState,
+    thisPlayer,
+    setThisPlayer
+  }
 }
 
 // Helper to get card text on demand for submissions
@@ -163,3 +147,5 @@ async function getCardText(cardId: string | null): Promise<string | null> {
     if (error) return "Card text not found";
     return data.text;
 }
+
+    
