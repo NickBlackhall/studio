@@ -1,3 +1,4 @@
+
 "use server";
 
 import { revalidatePath } from 'next/cache';
@@ -418,7 +419,7 @@ export async function resetGameForTesting() {
 
 
 async function dealCardsFromSupabase(gameId: string, count: number, existingUsedResponses: string[]): Promise<{ dealtCardIds: string[], updatedUsedResponses: string[] }> {
-  const { data: gameData, error: gameFetchError } = await supabase
+    const { data: gameData, error: gameFetchError } = await supabase
     .from('games')
     .select('used_responses')
     .eq('id', gameId)
@@ -429,36 +430,29 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
     return { dealtCardIds: [], updatedUsedResponses: existingUsedResponses };
   }
 
-  const currentUsedResponsesInGame = gameData.used_responses || [];
-  const allKnownUsedResponses = [...new Set([...currentUsedResponsesInGame, ...existingUsedResponses])];
+  // Combine the DB used responses with any used in this specific server action run
+  const allKnownUsedResponses = [...new Set([...(gameData.used_responses || []), ...existingUsedResponses])];
+  
+  // Call the database function
+  const { data: availableCards, error: rpcError } = await supabase
+    .rpc('get_random_cards', {
+      exclude_ids: allKnownUsedResponses,
+      card_limit: count
+    });
 
-  let query = supabase
-    .from('response_cards')
-    .select('id')
-    .eq('is_active', true);
-
-  if (allKnownUsedResponses.length > 0) {
-    const validUUIDs = allKnownUsedResponses.filter(id => typeof id === 'string' && id.match(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/));
-    if (validUUIDs.length > 0) {
-        query = query.not('id', 'in', `(${validUUIDs.join(',')})`);
-    }
-  }
-
-  const { data: availableCards, error: fetchError } = await query.limit(count + 50); 
-
-  if (fetchError) {
-    console.error(`🔴 CARDS (Server): Error fetching available response cards for game ${gameId}:`, JSON.stringify(fetchError, null, 2));
+  if (rpcError) {
+    console.error(`🔴 CARDS (Server): Error calling get_random_cards RPC for game ${gameId}:`, JSON.stringify(rpcError, null, 2));
     return { dealtCardIds: [], updatedUsedResponses: allKnownUsedResponses };
   }
-
+  
   if (!availableCards || availableCards.length === 0) {
+    // This could mean we've run out of cards. Handle this case if needed.
     return { dealtCardIds: [], updatedUsedResponses: allKnownUsedResponses };
   }
 
-  const shuffledAvailableCards = [...availableCards].sort(() => 0.5 - Math.random());
-  const cardsToDeal = shuffledAvailableCards.slice(0, count);
-  const dealtCardIds = cardsToDeal.map(c => c.id);
-  const newlyDealtAndUsedInThisOperation = [...new Set([...existingUsedResponses, ...dealtCardIds])]; 
+  const dealtCardIds = availableCards.map(c => c.id);
+  // Return the newly dealt cards plus all previously known used cards
+  const newlyDealtAndUsedInThisOperation = [...new Set([...allKnownUsedResponses, ...dealtCardIds])]; 
 
   return { dealtCardIds, updatedUsedResponses: newlyDealtAndUsedInThisOperation };
 }
@@ -1265,3 +1259,5 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
 
   return getGame(gameId); 
 }
+
+    
