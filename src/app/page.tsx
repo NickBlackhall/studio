@@ -23,27 +23,7 @@ import { useAudio } from '@/contexts/AudioContext';
 import TransitionOverlay from '@/components/ui/TransitionOverlay';
 import { useLoading } from '@/contexts/LoadingContext';
 import { useGameNavigation } from '@/hooks/useGameNavigation';
-
-
-// Helper debounce function
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): T & { cancel: () => void } {
-  let timeout: NodeJS.Timeout | null = null;
-  
-  const debounced = ((...args: any[]) => {
-    if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  }) as T & { cancel: () => void };
-  
-  debounced.cancel = () => {
-    if (timeout) clearTimeout(timeout);
-  };
-  
-  return debounced;
-}
-
+import { useTargetedGameSubscription } from '@/hooks/useTargetedGameSubscription';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,9 +47,8 @@ export default function WelcomePage() {
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
   
-  // Use the centralized navigation hook
+  // Centralized navigation hook
   useGameNavigation({ gameState: internalGame, thisPlayerId: internalThisPlayerId, currentPath: pathname });
-
 
   const setGame = useCallback((newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
     if (typeof newState === 'function') {
@@ -92,6 +71,10 @@ export default function WelcomePage() {
       setInternalThisPlayerId(newPlayerId);
     }
   }, []);
+
+  // Use the new targeted subscription hook
+  useTargetedGameSubscription(internalGame?.gameId, setGame);
+
 
   const fetchGameData = useCallback(async (origin: string = "unknown", gameIdToFetch?: string) => {
     let fetchedGameState: GameClientState | null = null;
@@ -185,58 +168,6 @@ export default function WelcomePage() {
     }
   }, [internalGame?.transitionState, internalGame?.gamePhase, internalGame?.transitionMessage, internalGame?.players, showLoader, hideLoader, isLoading]);
 
-
-  // Real-time subscriptions - OPTIMIZED LOBBY VERSION
-  useEffect(() => {
-    const gameId = internalGame?.gameId;
-    if (!gameId || !isMountedRef.current) return;
-  
-    // This debounced function will be our single point of truth for refreshing state.
-    const debouncedRefetch = debounce(async () => {
-        if (!isMountedRef.current) return;
-        try {
-            const updatedGame = await getGame(gameId);
-            if (updatedGame && isMountedRef.current) {
-                setGame(updatedGame);
-            }
-        } catch (error) {
-            console.error('Error in debounced lobby refetch:', error);
-        }
-    }, 500); // 500ms debounce window
-
-    const channel = supabase
-        .channel(`lobby-updates-${gameId}`)
-        .on('postgres_changes', 
-            { event: '*', schema: 'public' }, 
-            (payload) => {
-                // Any change to any table simply triggers a refetch.
-                debouncedRefetch();
-            }
-        )
-        .subscribe((status, err) => {
-            if (status === 'SUBSCRIBED') {
-                console.log(`✅ Subscribed to all lobby updates for game ${gameId}`);
-                // Initial fetch succeeded, but we might have missed an update.
-                // A quick refetch on subscribe ensures consistency.
-                debouncedRefetch();
-            }
-            if (status === 'CHANNEL_ERROR') {
-                console.error('❌ Lobby subscription error:', err);
-                toast({
-                    title: "Connection Issue",
-                    description: "Having trouble with real-time updates. The lobby may feel slow.",
-                    variant: "destructive"
-                });
-            }
-        });
-
-    return () => {
-        debouncedRefetch.cancel();
-        supabase.removeChannel(channel);
-    };
-  }, [internalGame?.gameId, setGame, toast]);
-
-
   const thisPlayerObject = useMemo(() => {
     return internalThisPlayerId && internalGame?.players ? internalGame.players.find(p => p.id === internalThisPlayerId) : null;
   }, [internalThisPlayerId, internalGame?.players]);
@@ -279,7 +210,8 @@ export default function WelcomePage() {
   const handleToggleReady = async (player: PlayerClientState) => {
     if (!internalGame?.gameId || player.id !== internalThisPlayerId) return;
     
-    setInternalGame(prev => {
+    // Optimistic Update
+    setGame(prev => {
       if (!prev) return prev;
       return {
         ...prev,
@@ -290,9 +222,11 @@ export default function WelcomePage() {
     });
     
     try {
+      // Sync with server in background
       await togglePlayerReadyStatus(player.id, internalGame.gameId);
     } catch (error) {
-      setInternalGame(prev => {
+      // Revert on error
+      setGame(prev => {
         if (!prev) return prev;
         return {
           ...prev,
@@ -312,13 +246,8 @@ export default function WelcomePage() {
         try {
           await startGameAction(gameToStart.gameId);
           // Navigation is now handled by the useGameNavigation hook.
-          // This prevents a race condition.
         } catch (error: any) {
           if (isMountedRef.current) {
-            if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-              // This is an expected redirect, let Next.js handle it.
-              return;
-            }
             toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
           }
         }

@@ -1,13 +1,11 @@
 
 "use client";
 
-import { useState } from 'react';
-import { useEffect, useTransition, useCallback, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useState, useEffect, useTransition, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import {
   getGame,
-  startGame,
   selectCategory,
   selectWinner,
   nextRound,
@@ -15,7 +13,7 @@ import {
   resetGameForTesting
 } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
-import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
+import { ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
 import PlayerView from '@/components/game/PlayerView';
@@ -24,7 +22,7 @@ import RecapSequenceDisplay from '@/components/game/RecapSequenceDisplay';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, Play, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX } from 'lucide-react';
+import { Home, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { PureMorphingModal } from '@/components/PureMorphingModal';
@@ -32,27 +30,7 @@ import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
 import { useAudio } from '@/contexts/AudioContext';
 import { useLoading } from '@/contexts/LoadingContext';
-import TransitionOverlay from '@/components/ui/TransitionOverlay';
-
-
-// Helper debounce function
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): T & { cancel: () => void } {
-  let timeout: NodeJS.Timeout | null = null;
-  
-  const debounced = ((...args: any[]) => {
-    if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  }) as T & { cancel: () => void };
-  
-  debounced.cancel = () => {
-    if (timeout) clearTimeout(timeout);
-  };
-  
-  return debounced;
-}
+import { useTargetedGameSubscription } from '@/hooks/useTargetedGameSubscription';
 
 export default function GamePage() {
   const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
@@ -64,7 +42,6 @@ export default function GamePage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
-  const pathname = usePathname();
   const { toast } = useToast();
   const { showLoader, hideLoader } = useLoading();
   const isMountedRef = useRef(true);
@@ -73,7 +50,6 @@ export default function GamePage() {
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
-
 
   const setGameState = useCallback((newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
     if (typeof newState === 'function') {
@@ -100,6 +76,9 @@ export default function GamePage() {
       if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
     }
   }, []);
+
+  // Use the new targeted subscription hook
+  useTargetedGameSubscription(internalGameState?.gameId, setGameState, setThisPlayer);
 
 
   const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
@@ -184,64 +163,6 @@ export default function GamePage() {
         stopMusic();
     }
   }, [internalGameState?.gamePhase, playTrack, stopMusic]);
-
-  // Real-time subscriptions - More reliable refetch-on-trigger model
-  useEffect(() => {
-    const gameId = internalGameState?.gameId;
-    if (!gameId || !isMountedRef.current) {
-        return;
-    }
-
-    // This debounced function will be our single point of truth for refreshing state.
-    const debouncedRefetch = debounce(async () => {
-        if (!isMountedRef.current) return;
-        try {
-            const updatedGame = await getGame(gameId);
-            if (updatedGame && isMountedRef.current) {
-                setGameState(updatedGame);
-                const currentPlayerId = thisPlayerRef.current?.id;
-                if (currentPlayerId) {
-                    const playerDetail = updatedGame.players.find(p => p.id === currentPlayerId);
-                    setThisPlayer(playerDetail || null);
-                }
-            }
-        } catch (error) {
-            console.error('Error in debounced refetch:', error);
-        }
-    }, 500); // 500ms debounce window
-
-    const channel = supabase
-        .channel(`game-updates-${gameId}`)
-        .on('postgres_changes', 
-            { event: '*', schema: 'public' }, 
-            (payload) => {
-                // Any change to any table simply triggers a refetch.
-                debouncedRefetch();
-            }
-        )
-        .subscribe((status, err) => {
-            if (status === 'SUBSCRIBED') {
-                console.log(`✅ Subscribed to all game updates for game ${gameId}`);
-                // Initial fetch succeeded, but we might have missed an update.
-                // A quick refetch on subscribe ensures consistency.
-                debouncedRefetch();
-            }
-            if (status === 'CHANNEL_ERROR') {
-                console.error('❌ Real-time subscription error:', err);
-                toast({
-                    title: "Connection Issue",
-                    description: "Having trouble with real-time updates. The game may feel slow.",
-                    variant: "destructive"
-                });
-            }
-        });
-
-    return () => {
-        debouncedRefetch.cancel();
-        supabase.removeChannel(channel);
-    };
-  }, [internalGameState?.gameId, setGameState, setThisPlayer, toast]);
-
 
   const handleNextRound = useCallback(async () => {
     const gameId = gameStateRef.current?.gameId;
@@ -568,5 +489,3 @@ export default function GamePage() {
 }
 
 export const dynamic = 'force-dynamic';
-
-    
