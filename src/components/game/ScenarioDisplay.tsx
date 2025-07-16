@@ -23,7 +23,8 @@ export default function ScenarioDisplay({ scenario, isBoondoggle = false, ...mot
     );
   }
 
-  const cardImage = isBoondoggle ? "/ui/boondoggle-card-v1.png" : "/ui/scenario-card-v2.png";
+  // Use the standard scenario card for all cases
+  const cardImage = "/ui/scenario-card-v2.png";
   const categoryColor = isBoondoggle ? "text-yellow-300" : "text-red-400";
   const aiHint = isBoondoggle ? "boondoggle card" : "scenario card";
 
