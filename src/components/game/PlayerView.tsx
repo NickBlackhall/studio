@@ -223,25 +223,20 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     return (
       <div className="space-y-4">
         <ScenarioDisplay scenario={gameState.currentScenario} isBoondoggle={true} />
-        <PureMorphingModal
-          isOpen={true}
-          onClose={() => {}}
-          isDismissable={false}
-          variant="image"
-          className="p-0 w-auto h-auto max-w-lg bg-transparent pointer-events-none"
-        >
-          <div className="relative">
-            <Image
-              src="/backgrounds/boondoggle-poster.png"
-              alt="A Boondoggle is afoot!"
-              width={500}
-              height={500}
-              className="object-contain"
-              priority
-              data-ai-hint="boondoggle poster"
-            />
-          </div>
-        </PureMorphingModal>
+        <div className="text-center py-6">
+          <Image
+            src="/backgrounds/boondoggle-poster.png"
+            alt="A Boondoggle is afoot!"
+            width={300}
+            height={300}
+            className="object-contain mx-auto"
+            priority
+            data-ai-hint="boondoggle poster"
+          />
+          <p className="text-muted-foreground mt-4 text-lg">
+            Perform the challenge above and await the Judge's decision!
+          </p>
+        </div>
       </div>
     );
   }
