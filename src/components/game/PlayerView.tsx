@@ -39,6 +39,8 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     gameState.submissions.some(sub => sub.playerId === player.id),
     [gameState.submissions, player.id]
   );
+
+  const isBoondoggleRound = gameState.currentScenario?.category === "Boondoggles" && gameState.gamePhase === 'judging';
   
   const handWithCustomCard = useMemo(() => {
     // Sort the hand so the 'new' card is first, which will render it on top of the stack.
@@ -180,7 +182,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     );
   }
 
-  if (gameState.gamePhase === 'judging') {
+  if (gameState.gamePhase === 'judging' && !isBoondoggleRound) {
     return (
       <PureMorphingModal
         isOpen={true}
@@ -215,6 +217,21 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         </div>
       </PureMorphingModal>
     );
+  }
+
+  if (isBoondoggleRound) {
+     return (
+        <div className="space-y-4">
+            <ScenarioDisplay scenario={gameState.currentScenario} isBoondoggle={true} />
+            <div className="text-center py-6">
+                <h2 className="text-2xl font-im-fell text-foreground">A Boondoggle is afoot!</h2>
+                <PartyPopper className="h-10 w-10 text-accent mx-auto my-4" />
+                <p className="text-muted-foreground mt-1 text-lg">
+                    Perform the challenge above and await the Judge's decision!
+                </p>
+            </div>
+        </div>
+     );
   }
   
   if (gameState.gamePhase === 'player_submission' && gameState.currentScenario) {
@@ -430,4 +447,3 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
-

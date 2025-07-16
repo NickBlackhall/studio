@@ -12,6 +12,40 @@ export const CATEGORIES: string[] = [
   "Absurd and Surreal"
 ];
 
+// Boondoggles are short, physical or verbal challenges.
+export const BOONDOGGLE_CHALLENGES: string[] = [
+  "Strike the most ridiculous pose. The judge will decide who holds it the longest and most majestically.",
+  "Without using words, act out a famous movie scene. First person the judge recognizes wins.",
+  "Tell the best one-sentence joke. The one that makes the judge groan the loudest wins.",
+  "Give everyone at the table a new, terrible nickname. The judge picks the 'best' one.",
+  "Best impression of a famous person (you choose who). The judge decides who is the most convincing.",
+  "Name 5 things that are definitely NOT in your pocket right now. First to list five wins.",
+  "The floor is lava. The last person to get their feet off the floor loses this challenge for everyone else.",
+  "The first person to bring the judge a spoon wins a point. GO!",
+  "Make the weirdest noise you can with your mouth. The judge's favorite sound wins.",
+  "Talk for 30 seconds about a completely boring topic (like beige paint) without pausing or saying 'um'. Judge decides the best.",
+  "Create a secret handshake with the person to your left. The judge will rate the handshake's creativity.",
+  "Best air guitar solo to a song the judge hums. Rock on!",
+  "Invent a new dance move. The judge will pick the one with the most potential to go viral.",
+  "Balance a coaster (or your phone) on your head. Last person with it still balanced wins.",
+  "The judge is a monarch. Address them as such and give them your most pitiful plea for a single point.",
+  "In your best movie trailer voice, dramatically describe the object to your right.",
+  "Silently and dramatically recreate the story of the Three Little Pigs. Judge's favorite performance wins.",
+  "First person to find something blue and touch their nose with it wins.",
+  "Recite the alphabet backwards. Fastest and most accurate wins.",
+  "Best celebrity impersonation. Judge's call.",
+  "Arm wrestle the person to your right. Winner gets the point.",
+  "The judge will name an animal. Everyone must make that animal's sound. Best one wins.",
+  "Staring contest with the judge. If you make the judge blink, you win.",
+  "Compliment the judge in the most creative, over-the-top way possible.",
+  "Build the tallest possible tower using only items currently on the table. Judge's decision is final.",
+  "Tell a story that starts with 'So, there I was...' and ends with '...and that's how I got this scar.' Best story wins.",
+  "First person to stand up and shout 'I'm the king of the world!' wins.",
+  "Write a haiku about the game on your phone or a piece of paper. Best one wins.",
+  "Everyone must try to make the judge laugh without talking. First to succeed wins.",
+  "Best evil laugh. The one that truly chills the judge's bones wins."
+];
+
 export const SCENARIOS_DATA: Record<string, string[]> = {
   "Pop Culture and Internet": [
     "You have to explain a viral TikTok trend to your grandparents. How do you make it as confusing as possible?",

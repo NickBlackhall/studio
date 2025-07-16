@@ -163,7 +163,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   } else if (categoriesData) {
     const distinctCategories = [...new Set(
         categoriesData.map(c => c.category)
-                      .filter(c => c !== null && typeof c === 'string' && c.trim() !== '') as string[]
+                      .filter(c => c !== null && typeof c === 'string' && c.trim() !== '' && c.trim() !== "Boondoggles") as string[]
     )];
     if (distinctCategories.length > 0) {
       categories = distinctCategories;
@@ -845,10 +845,10 @@ export async function submitResponse(playerId: string, responseCardText: string,
 }
 
 
-export async function selectWinner(winningCardText: string, gameId: string): Promise<GameClientState | null> {
+export async function selectWinner(winningCardText: string, gameId: string, boondoggleWinnerId?: string): Promise<GameClientState | null> {
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, current_judge_id')
+    .select('current_round, current_judge_id, current_scenario_id')
     .eq('id', gameId)
     .single();
 
@@ -857,6 +857,44 @@ export async function selectWinner(winningCardText: string, gameId: string): Pro
     throw new Error(`Failed to fetch game for winner selection: ${gameError?.message || 'Game not found'}`);
   }
 
+  // Handle Boondoggle winner selection
+  if (boondoggleWinnerId) {
+    const winnerPlayerId = boondoggleWinnerId;
+    const { data: winnerPlayerData, error: winnerPlayerFetchError } = await supabase
+      .from('players')
+      .select('score')
+      .eq('id', winnerPlayerId)
+      .single();
+
+    if (winnerPlayerFetchError || !winnerPlayerData) {
+      throw new Error("Boondoggle winner player record not found.");
+    }
+
+    const newScore = winnerPlayerData.score + 1;
+    await supabase.from('players').update({ score: newScore }).eq('id', winnerPlayerId);
+    
+    let newGamePhase: GamePhaseClientState = 'winner_announcement';
+    let overallWinnerPlayerId: string | null = null;
+    if (newScore >= POINTS_TO_WIN) {
+      newGamePhase = 'game_over';
+      overallWinnerPlayerId = winnerPlayerId;
+    }
+
+    const gameUpdates: TablesUpdate<'games'> = {
+      game_phase: newGamePhase,
+      last_round_winner_player_id: winnerPlayerId,
+      last_round_winning_card_text: winningCardText, // This is the boondoggle challenge text
+      overall_winner_player_id: overallWinnerPlayerId,
+      updated_at: new Date().toISOString(),
+    };
+    await supabase.from('games').update(gameUpdates).eq('id', gameId);
+
+    revalidatePath('/game');
+    return getGame(gameId);
+  }
+
+
+  // Standard winner selection logic
   type SubmissionWithCard = Tables<'responses'> & {
     response_cards: { text: string | null } | null;
   };
@@ -1079,11 +1117,56 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     }
   }
 
-  if (game.game_phase !== 'winner_announcement') {
+  if (game.game_phase !== 'winner_announcement' && game.game_phase !== 'judging') {
     revalidatePath('/game'); 
     return getGame(gameId);
   }
+  
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('id')
+    .eq('game_id', gameId);
 
+  if (playersError || !players) {
+    throw new Error("Could not fetch players to start next round.");
+  }
+  
+  const nonJudgePlayersCount = players.filter(p => p.id !== game.current_judge_id).length;
+  const isBoondoggle = Math.random() < 0.40 && nonJudgePlayersCount > 1;
+
+  if (isBoondoggle) {
+    const { data: boondoggleScenarios, error: boondoggleError } = await supabase
+      .from('scenarios')
+      .select('id, text, category')
+      .eq('category', 'Boondoggles')
+      .not('id', 'in', `(${(game.used_scenarios || []).join(',')})`);
+      
+    if (boondoggleError || !boondoggleScenarios || boondoggleScenarios.length === 0) {
+      console.warn("🔵 BOONDOGGLE (Server): No unused Boondoggles found, proceeding with normal round.");
+      // Fall through to normal round logic
+    } else {
+      const scenarioToUse = boondoggleScenarios[Math.floor(Math.random() * boondoggleScenarios.length)];
+      const updatedUsedScenarios = [...new Set([...(game.used_scenarios || []), scenarioToUse.id])];
+      
+      const gameUpdates: TablesUpdate<'games'> = {
+        game_phase: 'judging', // Boondoggle UI is handled within 'judging' phase
+        current_scenario_id: scenarioToUse.id,
+        last_round_winner_player_id: null,
+        last_round_winning_card_text: null,
+        used_scenarios: updatedUsedScenarios,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { error: updateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
+      if (updateError) {
+        throw new Error(`Failed to start Boondoggle round: ${updateError.message}`);
+      }
+      revalidatePath('/game');
+      return getGame(gameId);
+    }
+  }
+
+  // --- Normal Round Logic ---
   const readyPlayerOrder = game.ready_player_order;
   if (!readyPlayerOrder || readyPlayerOrder.length === 0) {
     console.error(`🔴 NEXT ROUND (Server): Error: ready_player_order is empty or null for game ${gameId}. Cannot determine next judge. RPO: ${JSON.stringify(readyPlayerOrder)}`);
@@ -1098,7 +1181,6 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     const currentJudgeIndexFallback = game.current_judge_id ? playersFallback.findIndex(p => p.id === game.current_judge_id) : -1;
     game.current_judge_id = playersFallback[(currentJudgeIndexFallback + 1) % playersFallback.length].id;
   }
-
 
   let nextJudgeId: string | null = game.current_judge_id; 
 
@@ -1278,13 +1360,3 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
 
   return getGame(gameId); 
 }
-
-    
-
-    
-
-
-
-    
-
-    

@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useState, useTransition, useEffect, useRef } from 'react';
-import { Gavel, Send, CheckCircle, Loader2, Crown, PlusCircle, XCircle } from 'lucide-react';
+import { Gavel, Send, CheckCircle, Loader2, Crown, PlusCircle, XCircle, SkipForward, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { cn } from '@/lib/utils';
-import { handleJudgeApprovalForCustomCard } from '@/app/game/actions';
+import { handleJudgeApprovalForCustomCard, selectWinner as selectWinnerAction, nextRound } from '@/app/game/actions';
 import Image from 'next/image';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import SwipeableCategorySelector from './SwipeableCategorySelector';
@@ -19,7 +19,7 @@ interface JudgeViewProps {
   gameState: GameClientState;
   judge: PlayerClientState;
   onSelectCategory: (category: string) => Promise<void>;
-  onSelectWinner: (cardText: string) => Promise<void>;
+  onSelectWinner: (cardText: string, boondoggleWinnerId?: string) => Promise<void>;
 }
 
 export default function JudgeView({ gameState, judge, onSelectCategory, onSelectWinner }: JudgeViewProps) {
@@ -27,6 +27,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [pendingWinnerCard, setPendingWinnerCard] = useState<string>('');
   const [isPendingCategory, startTransitionCategory] = useTransition();
   const [isPendingApproval, startTransitionApproval] = useTransition();
+  const [isPendingBoondoggle, startTransitionBoondoggle] = useTransition();
+  const [isPendingSkip, startTransitionSkip] = useTransition();
+
   const { toast } = useToast();
   
   const [shuffledSubmissions, setShuffledSubmissions] = useState<GameClientState['submissions']>([]);
@@ -35,11 +38,12 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const prefersReducedMotion = useReducedMotion();
 
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
+  const isBoondoggleRound = gameState.currentScenario?.category === "Boondoggles" && gameState.gamePhase === 'judging';
   
   useEffect(() => {
     isMountedRef.current = true;
     
-    if (gameState.gamePhase === 'judging' && !isAnimationComplete) {
+    if (gameState.gamePhase === 'judging' && !isAnimationComplete && !isBoondoggleRound) {
       if (shuffledSubmissions.length !== gameState.submissions.length || shuffledSubmissions.length === 0) {
         setShuffledSubmissions([...gameState.submissions].sort(() => Math.random() - 0.5));
       }
@@ -57,7 +61,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     return () => {
       isMountedRef.current = false;
     };
-  }, [gameState.gamePhase, gameState.submissions, isAnimationComplete, prefersReducedMotion, shuffledSubmissions.length]);
+  }, [gameState.gamePhase, gameState.submissions, isAnimationComplete, prefersReducedMotion, shuffledSubmissions.length, isBoondoggleRound]);
   
   const handleUnleashScenario = (category: string) => {
     if (!category) {
@@ -66,6 +70,30 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     }
     startTransitionCategory(async () => {
       await onSelectCategory(category);
+    });
+  };
+  
+  const handleAwardBoondogglePoint = (winnerId: string) => {
+    if (!gameState.currentScenario?.text) return;
+
+    startTransitionBoondoggle(async () => {
+        try {
+            await onSelectWinner(gameState.currentScenario!.text, winnerId);
+        } catch (error: any) {
+            toast({ title: "Error Awarding Point", description: error.message, variant: "destructive" });
+        }
+    });
+  };
+  
+  const handleSkipBoondoggle = () => {
+    if (!gameState.gameId) return;
+    startTransitionSkip(async () => {
+        try {
+            await nextRound(gameState.gameId);
+            toast({ title: "Boondoggle Skipped", description: "On to the next round!" });
+        } catch (error: any) {
+            toast({ title: "Error Skipping", description: error.message, variant: "destructive" });
+        }
     });
   };
 
@@ -183,7 +211,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
         </>
       )}
       
-      {gameState.gamePhase === 'judging' && (
+      {gameState.gamePhase === 'judging' && !isBoondoggleRound && (
         <>
           <AnimatePresence mode="wait">
            {gameState.currentScenario && (
@@ -294,6 +322,39 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             })}
           </div>
         </>
+      )}
+
+      {isBoondoggleRound && (
+        <div className="space-y-4">
+            <ScenarioDisplay scenario={gameState.currentScenario} isBoondoggle={true} />
+            <Card>
+                <CardHeader>
+                    <CardTitle>Award a Point</CardTitle>
+                    <CardDescription>Observe the players and award a point to the best performer.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                    {gameState.players.filter(p => p.id !== judge.id).map(player => (
+                        <div key={player.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                            <span className="font-semibold">{player.name}</span>
+                            <Button
+                                size="sm"
+                                onClick={() => handleAwardBoondogglePoint(player.id)}
+                                disabled={isPendingBoondoggle}
+                            >
+                                {isPendingBoondoggle ? <Loader2 className="animate-spin" /> : <Award />}
+                                Award
+                            </Button>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+            <div className="text-center">
+                <Button variant="outline" size="sm" onClick={handleSkipBoondoggle} disabled={isPendingSkip}>
+                    {isPendingSkip ? <Loader2 className="animate-spin" /> : <SkipForward />}
+                    Skip Boondoggle
+                </Button>
+            </div>
+        </div>
       )}
       
       {gameState.gamePhase === 'judge_approval_pending' && (
