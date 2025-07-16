@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -66,16 +67,11 @@ export default function WelcomePage() {
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
 
   const parseReadyPlayerOrderStr = useCallback((gameState: GameClientState | null): string[] => {
-    if (!gameState || typeof gameState.ready_player_order_str !== 'string') {
+    if (!gameState || !gameState.ready_player_order) {
       return [];
     }
-    try {
-      const parsed = JSON.parse(gameState.ready_player_order_str);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      console.error("Failed to parse ready_player_order_str", e, gameState.ready_player_order_str);
-      return [];
-    }
+    // ready_player_order should be an array directly from the server now
+    return Array.isArray(gameState.ready_player_order) ? gameState.ready_player_order : [];
   }, []);
 
   const setGame = useCallback((newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
@@ -113,11 +109,8 @@ export default function WelcomePage() {
       fetchedGameState = await getGame(gameIdToFetch); 
       
       if (fetchedGameState) {
-        if (typeof fetchedGameState.ready_player_order_str === 'string') {
-            fetchedGameState.ready_player_order = parseReadyPlayerOrderStr(fetchedGameState);
-        } else if (typeof fetchedGameState.ready_player_order === 'undefined' || !Array.isArray(fetchedGameState.ready_player_order)) {
-            fetchedGameState.ready_player_order = [];
-        }
+        // Ensure ready_player_order is an array
+        fetchedGameState.ready_player_order = Array.isArray(fetchedGameState.ready_player_order) ? fetchedGameState.ready_player_order : [];
       }
       
       if (!isMountedRef.current) return;
@@ -162,7 +155,7 @@ export default function WelcomePage() {
         }
       }
     }
-  }, [toast, parseReadyPlayerOrderStr, setGame, setThisPlayerId]);
+  }, [toast, setGame, setThisPlayerId]);
 
   const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
       const currentGameId = gameRef.current?.gameId;
@@ -245,7 +238,7 @@ export default function WelcomePage() {
           
           if (payload.eventType === 'INSERT' && payload.new) {
             // Add new player
-            const newPlayer = {
+            const newPlayer: PlayerClientState = {
               id: payload.new.id,
               name: payload.new.name,
               avatar: payload.new.avatar || '',
@@ -287,15 +280,12 @@ export default function WelcomePage() {
         setInternalGame(prev => {
           if (!prev) return null;
           
-          let readyPlayerOrder = prev.ready_player_order || [];
-          if (payload.new.ready_player_order) { // Check the array directly
-            readyPlayerOrder = payload.new.ready_player_order;
-          }
+          let readyPlayerOrder = payload.new.ready_player_order || prev.ready_player_order || [];
           
           return {
             ...prev,
             ...payload.new,
-            ready_player_order: readyPlayerOrder
+            ready_player_order: Array.isArray(readyPlayerOrder) ? readyPlayerOrder : [],
           };
         });
       }
@@ -324,7 +314,7 @@ export default function WelcomePage() {
         filter: `game_id=eq.${gameId}`
       }, handleLobbyPlayerUpdate)
       .on('postgres_changes', {
-        event: '*', // Listen to all events on games table
+        event: '*', // CORRECTED: Listen to all events
         schema: 'public',
         table: 'games',
         filter: `id=eq.${gameId}`
@@ -415,26 +405,34 @@ export default function WelcomePage() {
   };
 
   const handleStartGame = async () => {
+    console.log('DEBUG (Lobby): handleStartGame triggered.');
+    
     const gameToStart = gameRef.current;
-    console.log("DEBUG (Lobby): handleStartGame triggered.");
-
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
-        console.log("DEBUG (Lobby): Conditions met, calling startGameAction for game:", gameToStart.gameId);
-        startPlayerActionTransition(async () => {
-            try {
-                await startGameAction(gameToStart.gameId);
-                console.log("DEBUG (Lobby): startGameAction completed successfully.");
-            } catch (error: any) {
-                console.error("🔴 DEBUG (Lobby): Error during startGameAction:", error);
-                if (isMountedRef.current) {
-                    if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-                        console.log("DEBUG (Lobby): startGameAction resulted in a redirect.");
-                        return;
-                    }
-                    toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
-                }
+      console.log('DEBUG (Lobby): Conditions met, calling startGameAction for game:', gameToStart.gameId);
+      
+      startPlayerActionTransition(async () => {
+        try {
+          const result = await startGameAction(gameToStart.gameId);
+          console.log('DEBUG (Lobby): startGameAction completed successfully.');
+          console.log('DEBUG (Lobby): Result:', result); // ADDED THIS
+          
+          // ADDED THIS: Check if game state should change
+          setTimeout(() => {
+            console.log('DEBUG (Lobby): Current game state after 1 second:', gameRef.current);
+          }, 1000);
+          
+        } catch (error: any) {
+          console.error('DEBUG (Lobby): Error in startGameAction:', error);
+          if (isMountedRef.current) {
+            if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+              console.log("DEBUG (Lobby): startGameAction resulted in a redirect.");
+              return;
             }
-        });
+            toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
+          }
+        }
+      });
     } else {
         console.warn("DEBUG (Lobby): handleStartGame called, but conditions not met.", {
             gameId: gameToStart?.gameId,
@@ -442,6 +440,7 @@ export default function WelcomePage() {
         });
     }
   };
+
 
   const renderContent = () => {
     if (!internalGame || !internalGame.gameId) {
