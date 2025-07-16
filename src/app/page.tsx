@@ -57,19 +57,20 @@ export default function WelcomePage() {
     }
   }, []);
 
-  const setGame = useCallback((newGameState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
-    if (typeof newGameState === 'function') {
+  const setGame = useCallback((newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
+    console.log("DEBUG (Lobby): setGame called.", { newState: typeof newState === 'function' ? 'function' : newState });
+    if (typeof newState === 'function') {
       setInternalGame(prevState => {
-        const resultState = newGameState(prevState);
+        const resultState = newState(prevState);
         gameRef.current = resultState;
         return resultState;
       });
     } else {
-      gameRef.current = newGameState; 
+      gameRef.current = newState; 
       if (isMountedRef.current) {
-        if (newGameState) {
-          const rpoArray = parseReadyPlayerOrderStr(newGameState);
-          const finalState = { ...newGameState, ready_player_order: rpoArray };
+        if (newState) {
+          const rpoArray = parseReadyPlayerOrderStr(newState);
+          const finalState = { ...newState, ready_player_order: rpoArray };
           setInternalGame(finalState);
         } else {
           setInternalGame(null);
@@ -79,6 +80,7 @@ export default function WelcomePage() {
   }, [parseReadyPlayerOrderStr]);
 
   const setThisPlayerId = useCallback((newPlayerId: string | null) => {
+    console.log(`DEBUG (Lobby): setThisPlayerId set to: ${newPlayerId}`);
     thisPlayerIdRef.current = newPlayerId;
     if (isMountedRef.current) {
       setInternalThisPlayerId(newPlayerId);
@@ -86,10 +88,12 @@ export default function WelcomePage() {
   }, []);
 
   const fetchGameData = useCallback(async (origin: string = "unknown", gameIdToFetch?: string) => {
+    console.log(`DEBUG (Lobby): fetchGameData called from: ${origin}`);
     let fetchedGameState: GameClientState | null = null;
     let playerIdFromStorage: string | null = null;
     try {
       fetchedGameState = await getGame(gameIdToFetch); 
+      console.log("DEBUG (Lobby): fetchGameData received game state:", fetchedGameState);
       
       if (fetchedGameState) {
         if (typeof fetchedGameState.ready_player_order_str === 'string') {
@@ -100,6 +104,7 @@ export default function WelcomePage() {
       }
       
       if (!isMountedRef.current) {
+        console.log("DEBUG (Lobby): fetchGameData aborted, component unmounted.");
         return;
       }
 
@@ -110,22 +115,27 @@ export default function WelcomePage() {
         playerIdFromStorage = localStorage.getItem(localStorageKey);
         
         if (fetchedGameState.players.length === 0 && (origin.includes("reset") || origin.includes("handleResetGame"))) {
+          console.log("DEBUG (Lobby): No players in game after reset, clearing local player ID.");
           localStorage.removeItem(localStorageKey);
           setThisPlayerId(null);
         } else {
           if (playerIdFromStorage) {
             const playerInGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
             if (playerInGame) {
+              console.log(`DEBUG (Lobby): Found and verified player ID in localStorage: ${playerIdFromStorage}`);
               setThisPlayerId(playerIdFromStorage);
             } else {
+              console.log(`DEBUG (Lobby): Player ID ${playerIdFromStorage} from localStorage not in game, removing.`);
               localStorage.removeItem(localStorageKey);
               setThisPlayerId(null);
             }
           } else {
+            console.log("DEBUG (Lobby): No player ID in localStorage.");
             setThisPlayerId(null); 
           }
         }
       } else { 
+        console.warn("DEBUG (Lobby): fetchGameData resulted in null game state or no gameId.");
         setThisPlayerId(null);
         if (isMountedRef.current) {
             setGame(null); 
@@ -133,7 +143,7 @@ export default function WelcomePage() {
         }
       }
     } catch (error: any) {
-      console.error(`fetchGameData CRITICAL ERROR from ${origin}:`, error);
+      console.error(`DEBUG (Lobby): fetchGameData CRITICAL ERROR from ${origin}:`, error);
       if (isMountedRef.current) {
         if (gameIdToFetch) {
             toast({ title: "Game Update Failed", description: `Could not refresh game ${gameIdToFetch}: ${error.message}. State may be temporarily stale.`, variant: "default"});
@@ -147,6 +157,7 @@ export default function WelcomePage() {
   }, [toast, parseReadyPlayerOrderStr, setGame, setThisPlayerId]);
 
   const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
+      console.log("DEBUG (Lobby): handlePlayerAdded triggered with new player:", newPlayer);
       const currentGameId = gameRef.current?.gameId;
       if (newPlayer && newPlayer.id && currentGameId && isMountedRef.current) {
           const localStorageKey = `thisPlayerId_game_${currentGameId}`;
@@ -159,9 +170,11 @@ export default function WelcomePage() {
 
   useEffect(() => {
     isMountedRef.current = true;
+    console.log(`DEBUG (Lobby): Mount/step change. Current step: ${currentStep}. Fetching game data.`);
     fetchGameData(`useEffect[] mount or currentStep change to: ${currentStep}`);
     
     return () => {
+      console.log("DEBUG (Lobby): Component unmounting.");
       isMountedRef.current = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,6 +189,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     if (internalGame?.transitionState !== 'idle' && internalThisPlayerId) {
+      console.log("DEBUG (Lobby): Prefetching /game route due to transition state change.");
       router.prefetch('/game');
     }
   }, [internalGame?.transitionState, internalThisPlayerId, router]);
@@ -184,6 +198,7 @@ export default function WelcomePage() {
   useEffect(() => {
     const game = internalGame;
     const playerId = internalThisPlayerId;
+    console.log("DEBUG (Lobby): Navigation check effect triggered.", { isMounted: isMountedRef.current, gamePhase: game?.gamePhase, transitionState: game?.transitionState, playerId });
 
     if (
       isMountedRef.current &&
@@ -193,7 +208,7 @@ export default function WelcomePage() {
       game.gamePhase !== 'lobby' && // And the game has actually started
       playerId
     ) {
-      // The game has started, let's go!
+      console.log(`DEBUG (Lobby): NAVIGATING to /game. Game phase is '${game.gamePhase}'.`);
       router.push('/game');
     }
   }, [internalGame, internalThisPlayerId, router]);
@@ -202,11 +217,14 @@ export default function WelcomePage() {
   useEffect(() => {
     const gameId = internalGame?.gameId;
     if (!gameId) {
+        console.log("DEBUG (Lobby): Real-time subscription effect skipped, no gameId.");
         return;
     }
   
+    console.log(`DEBUG (Lobby): Setting up real-time subscriptions for gameId: ${gameId}`);
     const fetchGameState = async () => {
       if (!isMountedRef.current) return;
+      console.log("DEBUG (Lobby): Debounced real-time update triggered. Fetching game state.");
       try {
         const fetchedGameState = await getGame(gameId);
         if (isMountedRef.current) {
@@ -218,6 +236,7 @@ export default function WelcomePage() {
     };
   
     const handleRealtimeUpdate = (payload: any) => {
+      console.log("DEBUG (Lobby): Real-time update received.", payload);
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
@@ -234,14 +253,15 @@ export default function WelcomePage() {
     const playersChannel = supabase
       .channel(playersChannelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `game_id=eq.${gameId}` }, handleRealtimeUpdate)
-      .subscribe((status) => {});
+      .subscribe((status) => { console.log(`DEBUG (Lobby): Players channel status: ${status}`)});
   
     const gameChannel = supabase
       .channel(gameChannelName)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` }, handleRealtimeUpdate)
-      .subscribe((status) => {});
+      .subscribe((status) => { console.log(`DEBUG (Lobby): Game channel status: ${status}`)});
         
     return () => {
+      console.log("DEBUG (Lobby): Removing real-time subscriptions.");
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       supabase.removeChannel(playersChannel);
       supabase.removeChannel(gameChannel);
@@ -272,6 +292,7 @@ export default function WelcomePage() {
 
 
   const handleResetGame = async () => {
+    console.log("DEBUG (Lobby): handleResetGame triggered.");
     startPlayerActionTransition(async () => {
       try {
         await resetGameForTesting();
@@ -282,6 +303,7 @@ export default function WelcomePage() {
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
           return; 
         }
+        console.error("DEBUG (Lobby): Reset failed.", error);
         toast({
           title: "Reset Failed",
           description: `Could not reset the game. ${error.message || String(error)}`,
@@ -294,6 +316,7 @@ export default function WelcomePage() {
   const handleToggleReady = async (player: PlayerClientState) => {
     if (!internalGame?.gameId || player.id !== internalThisPlayerId) return;
     
+    console.log(`DEBUG (Lobby): Toggling ready for player ${player.id}. Optimistically updating UI.`);
     setInternalGame(prev => {
       if (!prev) return prev;
       return {
@@ -307,6 +330,7 @@ export default function WelcomePage() {
     try {
       await togglePlayerReadyStatus(player.id, internalGame.gameId);
     } catch (error) {
+      console.error(`DEBUG (Lobby): Toggle ready failed for player ${player.id}. Reverting UI.`, error);
       setInternalGame(prev => {
         if (!prev) return prev;
         return {
@@ -322,6 +346,7 @@ export default function WelcomePage() {
 
   const handleStartGame = async () => {
     const gameToStart = gameRef.current;
+    console.log("DEBUG (Lobby): handleStartGame triggered with game state:", gameToStart);
     if (gameToStart?.gameId && gameToStart.gamePhase === 'lobby') {
         startPlayerActionTransition(async () => {
             try {
@@ -331,6 +356,7 @@ export default function WelcomePage() {
                     if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
                         return; 
                     }
+                    console.error("DEBUG (Lobby): Error starting game.", error);
                     toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
                 }
             }
@@ -339,8 +365,17 @@ export default function WelcomePage() {
   };
 
   const renderContent = () => {
-    // Show a loading screen if the game state hasn't been fetched yet.
+    console.log("DEBUG (Lobby): renderContent called.", { 
+      currentStep, 
+      hasGame: !!internalGame, 
+      gameId: internalGame?.gameId,
+      gamePhase: internalGame?.gamePhase,
+      thisPlayerId: internalThisPlayerId,
+      transitionState: internalGame?.transitionState
+    });
+
     if (!internalGame || !internalGame.gameId) {
+      console.log("DEBUG (Lobby): Rendering loading screen (no game state).");
       return (
         <div className="flex-grow flex items-center justify-center bg-black">
           <Loader2 className="h-12 w-12 animate-spin text-white" />
@@ -348,8 +383,8 @@ export default function WelcomePage() {
       );
     }
     
-    // NEW: If the server is busy, show the transition overlay IN THE LOBBY
     if (internalGame.transitionState !== 'idle') {
+      console.log(`DEBUG (Lobby): Rendering TransitionOverlay. State: ${internalGame.transitionState}, Message: ${internalGame.transitionMessage}`);
       return (
         <TransitionOverlay
           transitionState={internalGame.transitionState}
@@ -359,6 +394,7 @@ export default function WelcomePage() {
     }
 
     if (currentStep === 'welcome') {
+      console.log("DEBUG (Lobby): Rendering 'welcome' step.");
       return (
         <div className="relative flex-grow flex flex-col bg-black">
           <Image
@@ -390,13 +426,14 @@ export default function WelcomePage() {
     }
   
     if (currentStep === 'setup') {
+      console.log("DEBUG (Lobby): Rendering 'setup' step.");
       if (internalGame.gamePhase === 'lobby') {
         if (!thisPlayerObject) {
-          // No player ID for this browser, show setup
+          console.log("DEBUG (Lobby): Rendering PWAGameLayout (no player object).");
           return <PWAGameLayout gameId={internalGame.gameId} onPlayerAdded={handlePlayerAdded} />;
         }
   
-        // Player exists, show lobby
+        console.log("DEBUG (Lobby): Rendering lobby view.");
         const hostPlayerId = internalGame.ready_player_order.length > 0 ? internalGame.ready_player_order[0] : null;
         const enoughPlayers = internalGame.players.length >= MIN_PLAYERS_TO_START;
         const allPlayersReady = enoughPlayers && internalGame.players.every(p => p.isReady);
@@ -453,6 +490,7 @@ export default function WelcomePage() {
             </div>
           );
         });
+        PlayerRow.displayName = 'PlayerRow';
         return (
           <div className="w-full h-screen">
             <div className="relative w-full h-full">
@@ -497,8 +535,7 @@ export default function WelcomePage() {
           </div>
         );
       } else if (!localStorage.getItem(`thisPlayerId_game_${internalGame.gameId}`)) {
-        // Only show spectator screen for completely new users (no stored player ID)
-        // Game is in progress, show spectator view
+        console.log("DEBUG (Lobby): Rendering spectator view.");
         return (
           <div className="w-full h-full flex flex-col justify-center items-center">
             <div className="w-full max-w-md space-y-6 text-center p-4">
@@ -521,6 +558,7 @@ export default function WelcomePage() {
         );
       }
     }
+    console.log("DEBUG (Lobby): renderContent returning null (end of logic).");
     return null;
   };
   
