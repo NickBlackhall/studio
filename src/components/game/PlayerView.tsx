@@ -221,28 +221,25 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
   if (isBoondoggleRound) {
     return (
-      <div className="space-y-4">
-        <ScenarioDisplay scenario={gameState.currentScenario} isBoondoggle={true} />
-        <PureMorphingModal
-          isOpen={true}
-          onClose={() => {}}
-          isDismissable={false}
-          variant="image"
-          className="p-0 w-auto h-auto max-w-lg bg-transparent"
-        >
-          <div className="relative">
-            <Image
-              src="/backgrounds/boondoggle-poster.png"
-              alt="Boondoggle! A challenge is afoot."
-              width={600}
-              height={750}
-              className="object-contain"
-              priority
-              data-ai-hint="boondoggle poster"
-            />
-          </div>
-        </PureMorphingModal>
-      </div>
+      <PureMorphingModal
+        isOpen={true}
+        onClose={() => {}}
+        isDismissable={false}
+        variant="image"
+        className="p-0 w-auto h-auto max-w-lg bg-transparent"
+      >
+        <div className="relative">
+          <Image
+            src="/backgrounds/boondoggle-poster.png"
+            alt="Boondoggle! A challenge is afoot."
+            width={600}
+            height={750}
+            className="object-contain"
+            priority
+            data-ai-hint="boondoggle poster"
+          />
+        </div>
+      </PureMorphingModal>
     );
   }
   
@@ -459,3 +456,5 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
    </Card>
   );
 }
+
+    
