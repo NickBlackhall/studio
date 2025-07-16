@@ -14,7 +14,7 @@ interface UseGameNavigationProps {
 
 export function useGameNavigation({ gameState, thisPlayerId, currentPath }: UseGameNavigationProps) {
   const router = useRouter();
-  const { showLoader, hideLoader } = useLoading();
+  const { showLoader, hideLoader, isLoading } = useLoading();
   const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
@@ -29,42 +29,41 @@ export function useGameNavigation({ gameState, thisPlayerId, currentPath }: UseG
   }, []);
 
   useEffect(() => {
-    if (!gameState || !gameState.gameId || !isMountedRef.current) return;
+    if (!gameState || !gameState.gameId || !isMountedRef.current || isLoading) return;
 
+    // Check if the current user is part of the game's player list.
+    const isPlayerInGame = thisPlayerId && gameState.players.some(p => p.id === thisPlayerId);
+
+    // Condition to navigate TO the game.
     const shouldNavigateToGame = 
-      gameState.transitionState === 'idle' &&
       gameState.gamePhase !== 'lobby' &&
-      thisPlayerId &&
+      isPlayerInGame &&
       currentPath !== '/game';
 
+    // Condition to navigate FROM the game back to the lobby.
     const shouldNavigateToLobby = 
       gameState.gamePhase === 'lobby' &&
+      isPlayerInGame &&
       currentPath !== '/' &&
       !currentPath.includes('step=setup');
 
     if (shouldNavigateToGame) {
-      showLoader('navigation', { message: 'Loading game...' });
+      showLoader('navigation', { message: 'Joining game...' });
       
       navigationTimeoutRef.current = setTimeout(() => {
         if (isMountedRef.current) {
           router.push('/game');
-          // Hide loader after a short delay to allow page to load
-          setTimeout(() => {
-            if (isMountedRef.current) hideLoader();
-          }, 500);
+          // Loader is hidden by the destination page's useEffect.
         }
-      }, 100);
+      }, 150); // Small delay to allow loader to appear
     } else if (shouldNavigateToLobby) {
       showLoader('navigation', { message: 'Returning to lobby...' });
       
       navigationTimeoutRef.current = setTimeout(() => {
         if (isMountedRef.current) {
           router.push('/?step=setup');
-          setTimeout(() => {
-            if (isMountedRef.current) hideLoader();
-          }, 500);
         }
-      }, 100);
+      }, 150);
     }
 
     return () => {
@@ -72,5 +71,5 @@ export function useGameNavigation({ gameState, thisPlayerId, currentPath }: UseG
         clearTimeout(navigationTimeoutRef.current);
       }
     };
-  }, [gameState, thisPlayerId, currentPath, router, showLoader, hideLoader]);
+  }, [gameState, thisPlayerId, currentPath, router, showLoader, hideLoader, isLoading]);
 }
