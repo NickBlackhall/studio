@@ -444,9 +444,8 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
     }
   }
 
-  const { data: availableCards, error: fetchError } = await query
-    .order('random', { postgres_function: 'random' }) // Correct way to order by a PostgreSQL function
-    .limit(count);
+  // CONSERVATIVE FIX: Get a much larger pool and shuffle properly
+  const { data: availableCards, error: fetchError } = await query.limit(count * 50); // Get 50x more cards
 
   if (fetchError) {
     console.error(`🔴 CARDS (Server): Error fetching available response cards for game ${gameId}:`, JSON.stringify(fetchError, null, 2));
@@ -454,10 +453,24 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
   }
   
   if (!availableCards || availableCards.length === 0) {
+    console.error(`🔴 CARDS (Server): No available cards found for game ${gameId}. Total cards fetched: 0`);
     return { dealtCardIds: [], updatedUsedResponses: allKnownUsedResponses };
   }
 
-  const dealtCardIds = availableCards.map(c => c.id);
+  console.log(`🔵 CARDS (Server): Fetched ${availableCards.length} available cards for game ${gameId}`);
+
+  // CONSERVATIVE FIX: Use proven Fisher-Yates shuffle
+  const shuffled = [...availableCards];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  const cardsToDeal = shuffled.slice(0, count);
+  const dealtCardIds = cardsToDeal.map(c => c.id);
+  
+  console.log(`🔵 CARDS (Server): Dealing ${dealtCardIds.length} cards from pool of ${availableCards.length} available cards`);
+  
   const newlyDealtAndUsedInThisOperation = [...new Set([...allKnownUsedResponses, ...dealtCardIds])]; 
 
   return { dealtCardIds, updatedUsedResponses: newlyDealtAndUsedInThisOperation };
@@ -1271,5 +1284,7 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
     
 
 
+
+    
 
     
