@@ -270,11 +270,11 @@ export default function GamePage() {
     }
   };
 
-  const handleSelectWinner = async (winningCardText: string) => {
+  const handleSelectWinner = async (winningCardText: string, boondoggleWinnerId?: string) => {
     if (internalGameState?.gameId) {
       startActionTransition(async () => {
         try {
-          await selectWinner(winningCardText, internalGameState.gameId);
+          await selectWinner(internalGameState.gameId, winningCardText, boondoggleWinnerId);
         } catch (error: any) {
           if (isMountedRef.current) {
             toast({title: "Winner Selection Error", description: error.message || "Failed to select winner.", variant: "destructive"});
@@ -568,3 +568,5 @@ export default function GamePage() {
 }
 
 export const dynamic = 'force-dynamic';
+
+    

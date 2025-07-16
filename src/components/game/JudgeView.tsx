@@ -10,7 +10,7 @@ import { Gavel, Send, CheckCircle, Loader2, Crown, PlusCircle, XCircle, SkipForw
 import { useToast } from '@/hooks/use-toast';
 import ScenarioDisplay from './ScenarioDisplay';
 import { cn } from '@/lib/utils';
-import { handleJudgeApprovalForCustomCard, selectWinner as selectWinnerAction, nextRound } from '@/app/game/actions';
+import { handleJudgeApprovalForCustomCard, nextRound } from '@/app/game/actions';
 import Image from 'next/image';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import SwipeableCategorySelector from './SwipeableCategorySelector';
@@ -93,11 +93,11 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   };
   
   const handleAwardBoondogglePoint = (winnerId: string) => {
-    if (!gameState.currentScenario?.text) return;
-
     startTransitionBoondoggle(async () => {
         try {
-            await onSelectWinner(gameState.currentScenario!.text, winnerId);
+            // For boondoggles, the "winning card text" is irrelevant for logic,
+            // but we pass an empty string for parameter consistency. The action will use the scenario text.
+            await onSelectWinner("", winnerId);
         } catch (error: any) {
             toast({ title: "Error Awarding Point", description: error.message, variant: "destructive" });
         }
@@ -459,3 +459,5 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     </div>
   );
 }
+
+    

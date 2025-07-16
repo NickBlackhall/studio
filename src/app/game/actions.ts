@@ -907,7 +907,7 @@ export async function submitResponse(playerId: string, responseCardText: string,
 }
 
 
-export async function selectWinner(winningCardText: string, gameId: string, boondoggleWinnerId?: string): Promise<GameClientState | null> {
+export async function selectWinner(gameId: string, winningCardText: string, boondoggleWinnerId?: string): Promise<GameClientState | null> {
   const { data: game, error: gameError } = await supabase
     .from('games')
     .select('current_round, current_judge_id, current_scenario_id')
@@ -921,31 +921,42 @@ export async function selectWinner(winningCardText: string, gameId: string, boon
 
   // Handle Boondoggle winner selection
   if (boondoggleWinnerId) {
-    const winnerPlayerId = boondoggleWinnerId;
     const { data: winnerPlayerData, error: winnerPlayerFetchError } = await supabase
       .from('players')
       .select('score')
-      .eq('id', winnerPlayerId)
+      .eq('id', boondoggleWinnerId)
       .single();
 
     if (winnerPlayerFetchError || !winnerPlayerData) {
       throw new Error("Boondoggle winner player record not found.");
     }
+    
+    // Get the boondoggle scenario text to store as the "winning card text"
+    const { data: scenarioData, error: scenarioError } = await supabase
+      .from('scenarios')
+      .select('text')
+      .eq('id', game.current_scenario_id!)
+      .single();
+
+    if (scenarioError || !scenarioData) {
+      throw new Error("Could not retrieve Boondoggle challenge text.");
+    }
+    const boondoggleChallengeText = scenarioData.text;
 
     const newScore = winnerPlayerData.score + 1;
-    await supabase.from('players').update({ score: newScore }).eq('id', winnerPlayerId);
+    await supabase.from('players').update({ score: newScore }).eq('id', boondoggleWinnerId);
     
     let newGamePhase: GamePhaseClientState = 'winner_announcement';
     let overallWinnerPlayerId: string | null = null;
     if (newScore >= POINTS_TO_WIN) {
       newGamePhase = 'game_over';
-      overallWinnerPlayerId = winnerPlayerId;
+      overallWinnerPlayerId = boondoggleWinnerId;
     }
 
     const gameUpdates: TablesUpdate<'games'> = {
       game_phase: newGamePhase,
-      last_round_winner_player_id: winnerPlayerId,
-      last_round_winning_card_text: winningCardText, // This is the boondoggle challenge text
+      last_round_winner_player_id: boondoggleWinnerId,
+      last_round_winning_card_text: boondoggleChallengeText,
       overall_winner_player_id: overallWinnerPlayerId,
       updated_at: new Date().toISOString(),
     };
@@ -1379,5 +1390,7 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
 
   return getGame(gameId); 
 }
+
+    
 
     
