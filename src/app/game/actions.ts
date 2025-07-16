@@ -603,6 +603,68 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
 
 
 export async function selectCategory(gameId: string, category: string): Promise<GameClientState | null> {
+  // --- Boondoggle Trigger Logic ---
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('id, name') // select name for debugging if needed
+    .eq('game_id', gameId);
+
+  const { data: gameForJudge, error: gameForJudgeError } = await supabase
+    .from('games')
+    .select('current_judge_id, used_scenarios')
+    .eq('id', gameId)
+    .single();
+
+  if (playersError || !players || gameForJudgeError || !gameForJudge) {
+    throw new Error("Could not fetch players or game to check for Boondoggle conditions.");
+  }
+  
+  const nonJudgePlayersCount = players.filter(p => p.id !== gameForJudge.current_judge_id).length;
+  const isBoondoggle = Math.random() < 0.40 && nonJudgePlayersCount > 1;
+
+  if (isBoondoggle) {
+    let boondoggleQuery = supabase
+      .from('scenarios')
+      .select('id, text, category')
+      .eq('category', 'Boondoggles');
+      
+    const usedScenarios = gameForJudge.used_scenarios || [];
+    if (usedScenarios.length > 0) {
+        const validUUIDs = usedScenarios.filter(id => typeof id === 'string' && id.match(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/));
+        if (validUUIDs.length > 0) {
+            boondoggleQuery = boondoggleQuery.not('id', 'in', `(${validUUIDs.join(',')})`);
+        }
+    }
+
+    const { data: boondoggleScenarios, error: boondoggleError } = await boondoggleQuery;
+      
+    if (!boondoggleError && boondoggleScenarios && boondoggleScenarios.length > 0) {
+      const scenarioToUse = boondoggleScenarios[Math.floor(Math.random() * boondoggleScenarios.length)];
+      const updatedUsedScenarios = [...new Set([...usedScenarios, scenarioToUse.id])];
+      
+      const gameUpdates: TablesUpdate<'games'> = {
+        game_phase: 'judging', // Boondoggle UI is handled within 'judging' phase
+        current_scenario_id: scenarioToUse.id,
+        last_round_winner_player_id: null,
+        last_round_winning_card_text: null,
+        used_scenarios: updatedUsedScenarios,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { error: updateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
+      if (updateError) {
+        throw new Error(`Failed to start Boondoggle round: ${updateError.message}`);
+      }
+      revalidatePath('/game');
+      return getGame(gameId);
+    }
+    // If boondoggle fails (no cards, etc), fall through to normal logic.
+    console.warn("🔵 BOONDOGGLE (Server): Boondoggle triggered but no unused Boondoggles found, proceeding with normal round.");
+  }
+  // --- END Boondoggle Trigger Logic ---
+
+
+  // --- Original selectCategory Logic ---
   const { data: game, error: gameError } = await supabase
     .from('games')
     .select('used_scenarios, current_judge_id')
@@ -1117,55 +1179,12 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     }
   }
 
+  // Allow skipping from Boondoggle judging
   if (game.game_phase !== 'winner_announcement' && game.game_phase !== 'judging') {
     revalidatePath('/game'); 
     return getGame(gameId);
   }
   
-  const { data: players, error: playersError } = await supabase
-    .from('players')
-    .select('id')
-    .eq('game_id', gameId);
-
-  if (playersError || !players) {
-    throw new Error("Could not fetch players to start next round.");
-  }
-  
-  const nonJudgePlayersCount = players.filter(p => p.id !== game.current_judge_id).length;
-  const isBoondoggle = Math.random() < 0.40 && nonJudgePlayersCount > 1;
-
-  if (isBoondoggle) {
-    const { data: boondoggleScenarios, error: boondoggleError } = await supabase
-      .from('scenarios')
-      .select('id, text, category')
-      .eq('category', 'Boondoggles')
-      .not('id', 'in', `(${(game.used_scenarios || []).join(',')})`);
-      
-    if (boondoggleError || !boondoggleScenarios || boondoggleScenarios.length === 0) {
-      console.warn("🔵 BOONDOGGLE (Server): No unused Boondoggles found, proceeding with normal round.");
-      // Fall through to normal round logic
-    } else {
-      const scenarioToUse = boondoggleScenarios[Math.floor(Math.random() * boondoggleScenarios.length)];
-      const updatedUsedScenarios = [...new Set([...(game.used_scenarios || []), scenarioToUse.id])];
-      
-      const gameUpdates: TablesUpdate<'games'> = {
-        game_phase: 'judging', // Boondoggle UI is handled within 'judging' phase
-        current_scenario_id: scenarioToUse.id,
-        last_round_winner_player_id: null,
-        last_round_winning_card_text: null,
-        used_scenarios: updatedUsedScenarios,
-        updated_at: new Date().toISOString(),
-      };
-      
-      const { error: updateError } = await supabase.from('games').update(gameUpdates).eq('id', gameId);
-      if (updateError) {
-        throw new Error(`Failed to start Boondoggle round: ${updateError.message}`);
-      }
-      revalidatePath('/game');
-      return getGame(gameId);
-    }
-  }
-
   // --- Normal Round Logic ---
   const readyPlayerOrder = game.ready_player_order;
   if (!readyPlayerOrder || readyPlayerOrder.length === 0) {
