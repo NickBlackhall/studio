@@ -419,6 +419,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     </div>
   );
 
+  // If it's a Boondoggle round, render the base view with the poster modal over it.
   if (isBoondoggleRound) {
     return (
       <>
