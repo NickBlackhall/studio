@@ -18,12 +18,19 @@ export function useTargetedGameSubscription({
   setGameState,
   isMountedRef,
 }: UseTargetedGameSubscriptionProps) {
+
   const debouncedRefetch = useCallback(
     debounce(async (gId: string) => {
-      if (!isMountedRef.current || !gId) return;
+      if (!isMountedRef.current || !gId) {
+        console.log(`SUB_HOOK: Debounced refetch skipped. Mounted: ${isMountedRef.current}, GameID: ${gId}`);
+        return;
+      }
       
+      console.log(`SUB_HOOK: Debounced refetch triggered for game ${gId}.`);
       const updatedGameState = await getGame(gId);
+      
       if (isMountedRef.current) {
+        console.log(`SUB_HOOK: Setting new game state. Phase: ${updatedGameState.gamePhase}`);
         setGameState(updatedGameState);
       }
     }, 300), 
@@ -35,7 +42,8 @@ export function useTargetedGameSubscription({
       return;
     }
 
-    const handleChanges = () => {
+    const handleChanges = (payload: any) => {
+      console.log(`SUB_HOOK: Change detected on table '${payload.table}'. Triggering debounced refetch.`);
       debouncedRefetch(gameId);
     };
 
@@ -47,14 +55,15 @@ export function useTargetedGameSubscription({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'player_hands', filter: `game_id=eq.${gameId}` }, handleChanges)
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`✅ Subscribed to targeted updates for game ${gameId}`);
+          console.log(`✅ SUB_HOOK: Subscribed to targeted updates for game ${gameId}`);
         }
         if (status === 'CHANNEL_ERROR') {
-          console.error(`❌ Real-time subscription error for game ${gameId}:`, err);
+          console.error(`🔴 SUB_HOOK: Real-time subscription error for game ${gameId}:`, err);
         }
       });
 
     return () => {
+      console.log(`SUB_HOOK: Unsubscribing from game ${gameId} updates.`);
       supabase.removeChannel(channel);
       debouncedRefetch.cancel();
     };

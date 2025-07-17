@@ -14,62 +14,49 @@ interface UseGameNavigationProps {
 
 export function useGameNavigation({ gameState, thisPlayerId, currentPath }: UseGameNavigationProps) {
   const router = useRouter();
-  const { showLoader, hideLoader, isLoading } = useLoading();
-  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { showLoader, isLoading } = useLoading();
+  const navigationLockRef = useRef(false);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
     isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-      }
-    };
+    return () => { isMountedRef.current = false; };
   }, []);
 
   useEffect(() => {
-    if (!gameState || !gameState.gameId || !isMountedRef.current || isLoading) return;
+    if (!gameState || !gameState.gameId || !isMountedRef.current || isLoading || navigationLockRef.current) {
+        if(isLoading || navigationLockRef.current) console.log("NAV_HOOK: Skipping navigation due to loading or lock.");
+        return;
+    }
 
-    // Check if the current user is part of the game's player list.
     const isPlayerInGame = thisPlayerId && gameState.players.some(p => p.id === thisPlayerId);
+    console.log(`NAV_HOOK: Running check. Path: ${currentPath}, Phase: ${gameState.gamePhase}, PlayerInGame: ${isPlayerInGame}`);
 
-    // Condition to navigate TO the game.
-    const shouldNavigateToGame = 
-      gameState.gamePhase !== 'lobby' &&
-      isPlayerInGame &&
-      currentPath !== '/game';
-
-    // Condition to navigate FROM the game back to the lobby.
-    const shouldNavigateToLobby = 
-      gameState.gamePhase === 'lobby' &&
-      isPlayerInGame &&
-      currentPath !== '/' &&
-      !currentPath.includes('step=setup');
+    const shouldNavigateToGame = gameState.gamePhase !== 'lobby' && isPlayerInGame && currentPath !== '/game';
+    const shouldNavigateToLobby = gameState.gamePhase === 'lobby' && isPlayerInGame && currentPath !== '/' && !currentPath.includes('step=setup');
 
     if (shouldNavigateToGame) {
+      console.log("NAV_HOOK: Condition MET to navigate TO GAME. Locking and navigating.");
+      navigationLockRef.current = true;
       showLoader('navigation', { message: 'Joining game...' });
       
-      navigationTimeoutRef.current = setTimeout(() => {
+      setTimeout(() => {
         if (isMountedRef.current) {
           router.push('/game');
-          // Loader is hidden by the destination page's useEffect.
+          // No need to unlock here, page change will unmount this instance
         }
-      }, 150); // Small delay to allow loader to appear
+      }, 150);
     } else if (shouldNavigateToLobby) {
+      console.log("NAV_HOOK: Condition MET to navigate TO LOBBY. Locking and navigating.");
+      navigationLockRef.current = true;
       showLoader('navigation', { message: 'Returning to lobby...' });
       
-      navigationTimeoutRef.current = setTimeout(() => {
+      setTimeout(() => {
         if (isMountedRef.current) {
           router.push('/?step=setup');
         }
       }, 150);
     }
 
-    return () => {
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-      }
-    };
-  }, [gameState, thisPlayerId, currentPath, router, showLoader, hideLoader, isLoading]);
+  }, [gameState, thisPlayerId, currentPath, router, showLoader, isLoading]);
 }
