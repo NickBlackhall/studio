@@ -514,7 +514,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
     if (!readyPlayerOrder || readyPlayerOrder.length === 0) {
         console.error(`🔴 ACTION: startGame - Cannot start. ready_player_order is empty. Value: ${JSON.stringify(readyPlayerOrder)}`);
         await supabase.from('games').update({ transition_state: 'idle', transition_message: 'Player order not established.' }).eq('id', gameId);
-        throw new Error("Critical error: Player ready order not established.");
+        throw new Error("Critical error: Player order not established.");
     }
     console.log(`🔵 ACTION: startGame - Got ready_player_order: ${JSON.stringify(readyPlayerOrder)}`);
 
@@ -907,5 +907,3 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   revalidatePath('/game');
   return getGame(gameId); 
 }
-
-    
