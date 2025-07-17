@@ -407,11 +407,9 @@ export async function resetGameForTesting() {
 
   } catch (e: any) {
     console.error('🔴 ACTION: resetGameForTesting - Unexpected exception:', e.message, e.stack);
-    // Don't re-throw the redirect error. Let it be handled at the end.
     if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
         // This is expected. We will let the final redirect() call handle it.
     } else {
-       // For other errors, we should still try to redirect, but log it.
        console.error("An error occurred during reset, but will attempt to redirect anyway.");
     }
   }
@@ -482,6 +480,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
 
   if (gameFetchError || !game) {
     console.error(`🔴 ACTION: startGame - Error fetching game:`, JSON.stringify(gameFetchError, null, 2));
+    await supabase.from('games').update({ transition_state: 'idle', transition_message: 'Error fetching game' }).eq('id', gameId);
     throw new Error(`Failed to fetch game for start: ${gameFetchError?.message || 'Game not found'}`);
   }
   console.log(`🔵 ACTION: startGame - Fetched game. Phase: ${game.game_phase}`);
@@ -492,18 +491,21 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
 
     if (playersFetchError || !players) {
       console.error(`🔴 ACTION: startGame - Error fetching players:`, JSON.stringify(playersFetchError, null, 2));
+      await supabase.from('games').update({ transition_state: 'idle', transition_message: 'Error fetching players' }).eq('id', gameId);
       throw new Error(`Failed to fetch players for start: ${playersFetchError?.message || 'No players found'}`);
     }
     console.log(`🔵 ACTION: startGame - Fetched ${players.length} players.`);
     
     if (players.length < MIN_PLAYERS_TO_START) {
       console.error(`🔴 ACTION: startGame - Not enough players. Found ${players.length}, need ${MIN_PLAYERS_TO_START}.`);
+      await supabase.from('games').update({ transition_state: 'idle', transition_message: `Not enough players (${players.length})` }).eq('id', gameId);
       throw new Error(`Not enough players to start game (found ${players.length}, need at least ${MIN_PLAYERS_TO_START}).`);
     }
 
     const allPlayersReady = players.every(p => p.is_ready);
     if (!allPlayersReady) {
       console.error(`🔴 ACTION: startGame - Not all players are ready.`);
+      await supabase.from('games').update({ transition_state: 'idle', transition_message: 'Not all players are ready.' }).eq('id', gameId);
       throw new Error(`Not all players are ready. Cannot start the game yet.`);
     }
     console.log(`🔵 ACTION: startGame - All players are ready.`);
@@ -511,6 +513,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
     const readyPlayerOrder = game.ready_player_order; 
     if (!readyPlayerOrder || readyPlayerOrder.length === 0) {
         console.error(`🔴 ACTION: startGame - Cannot start. ready_player_order is empty. Value: ${JSON.stringify(readyPlayerOrder)}`);
+        await supabase.from('games').update({ transition_state: 'idle', transition_message: 'Player order not established.' }).eq('id', gameId);
         throw new Error("Critical error: Player ready order not established.");
     }
     console.log(`🔵 ACTION: startGame - Got ready_player_order: ${JSON.stringify(readyPlayerOrder)}`);
@@ -518,6 +521,7 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
     const actualFirstJudgeId = readyPlayerOrder[0];
     if (!players.find(p => p.id === actualFirstJudgeId)) {
         console.error(`🔴 ACTION: startGame - First player in order (${actualFirstJudgeId}) not found in game players.`);
+        await supabase.from('games').update({ transition_state: 'idle', transition_message: 'Host player not found.' }).eq('id', gameId);
         throw new Error("Critical error: Host player in ready order not found.");
     }
     console.log(`🔵 ACTION: startGame - First judge will be ${actualFirstJudgeId}.`);
@@ -557,13 +561,14 @@ export async function startGame(gameId: string): Promise<GameClientState | null>
 
     if (updateError) {
       console.error(`🔴 ACTION: startGame - Error updating game state to start:`, JSON.stringify(updateError, null, 2));
+      await supabase.from('games').update({ transition_state: 'idle', transition_message: 'Failed to update game state.' }).eq('id', gameId);
       throw new Error(`Failed to update game state to start: ${updateError.message}`);
     }
     console.log(`🔵 ACTION: startGame - Game successfully started. Revalidating paths.`);
   } else {
     console.warn(`🟡 ACTION: startGame - Called but game phase is '${game.game_phase}', not 'lobby'. No action taken.`);
   }
-
+  
   revalidatePath('/');
   revalidatePath('/game');
   return getGame(gameId); 
@@ -809,12 +814,9 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     console.log(`🔵 ACTION: nextRound - Game is over, resetting.`);
     try {
       await resetGameForTesting(); 
-      // The reset function now handles the redirect, so we shouldn't get here.
       return null;
     } catch (e: any) {
-      // If the error is a redirect, let it propagate.
       if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) throw e;
-      // Otherwise, log and throw a new error.
       throw new Error(`Failed to reset game after game over: ${e.message || 'Unknown error'}`);
     }
   }
@@ -905,3 +907,5 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   revalidatePath('/game');
   return getGame(gameId); 
 }
+
+    
