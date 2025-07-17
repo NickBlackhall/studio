@@ -407,15 +407,16 @@ export async function resetGameForTesting() {
 
   } catch (e: any) {
     console.error('🔴 ACTION: resetGameForTesting - Unexpected exception:', e.message, e.stack);
+    // Don't re-throw the redirect error. Let it be handled at the end.
     if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
-        // This is expected. We are re-throwing to let Next.js handle the redirect.
-        // But we want to avoid re-throwing if we're already redirecting.
-        throw e;
+        // This is expected. We will let the final redirect() call handle it.
+    } else {
+       // For other errors, we should still try to redirect, but log it.
+       console.error("An error occurred during reset, but will attempt to redirect anyway.");
     }
-    // Don't throw for other errors, just log them, as redirect is the final step.
   }
 
-  // Redirect is now the very last thing that happens.
+  // The redirect is the very last thing that happens, after all logic and revalidation.
   redirect('/?step=setup');
 }
 
@@ -808,9 +809,12 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
     console.log(`🔵 ACTION: nextRound - Game is over, resetting.`);
     try {
       await resetGameForTesting(); 
-      return null; 
+      // The reset function now handles the redirect, so we shouldn't get here.
+      return null;
     } catch (e: any) {
-      if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) throw e; 
+      // If the error is a redirect, let it propagate.
+      if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) throw e;
+      // Otherwise, log and throw a new error.
       throw new Error(`Failed to reset game after game over: ${e.message || 'Unknown error'}`);
     }
   }
