@@ -264,7 +264,6 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   };
   
   console.log(`🔵 ACTION: getGame - Successfully built gameClientState for game ${gameId}. Returning.`);
-  // console.log("State details:", JSON.stringify(gameClientState, null, 2)); // UNCOMMENT FOR EXTREME DETAIL
   return gameClientState;
 }
 
@@ -407,14 +406,8 @@ export async function resetGameForTesting() {
 
   } catch (e: any) {
     console.error('🔴 ACTION: resetGameForTesting - Unexpected exception:', e.message, e.stack);
-    if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
-        // This is expected. We will let the final redirect() call handle it.
-    } else {
-       console.error("An error occurred during reset, but will attempt to redirect anyway.");
-    }
   }
 
-  // The redirect is the very last thing that happens, after all logic and revalidation.
   redirect('/?step=setup');
 }
 
@@ -907,3 +900,5 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   revalidatePath('/game');
   return getGame(gameId); 
 }
+
+    

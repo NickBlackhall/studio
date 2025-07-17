@@ -1,3 +1,4 @@
+
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from "@/components/ui/toaster";
@@ -50,3 +51,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    

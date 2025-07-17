@@ -146,19 +146,7 @@ export default function WelcomePage() {
     const channel = supabase
       .channel(`lobby-updates-${gameId}`)
       .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'games' }, 
-          () => debouncedRefetch()
-      )
-      .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'players' }, 
-          () => debouncedRefetch()
-      )
-      .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'player_hands' }, 
-          () => debouncedRefetch()
-      )
-      .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'responses' }, 
+          { event: '*', schema: 'public' }, 
           () => debouncedRefetch()
       )
       .subscribe((status) => {
@@ -350,3 +338,4 @@ export default function WelcomePage() {
   );
 }
 
+    

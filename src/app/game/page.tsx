@@ -163,9 +163,6 @@ export default function GamePage() {
   useEffect(() => {
     if (!internalGameState) return;
     console.log(`GAME_PAGE: Transition state check: ${internalGameState.transitionState}`);
-    // This is now handled by the TransitionOverlay component itself,
-    // which could be part of a global layout context in a larger app.
-    // For now, it's sufficient to have the check in the render logic.
   }, [internalGameState?.transitionState, internalGameState?.transitionMessage, internalGameState?.players]);
 
   // Audio management
@@ -595,3 +592,4 @@ export default function GamePage() {
 
 export const dynamic = 'force-dynamic';
 
+    
