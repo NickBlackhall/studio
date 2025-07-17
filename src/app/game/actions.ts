@@ -344,7 +344,6 @@ export async function addPlayer(name: string, avatar: string): Promise<Tables<'p
 
 export async function resetGameForTesting() {
   console.warn("🔵 ACTION: resetGameForTesting - INITIATED. THIS IS A DESTRUCTIVE ACTION.");
-  let gameToReset: Pick<Tables<'games'>, 'id' | 'game_phase'> | null = null;
 
   try {
     const { data: existingGames, error: fetchError } = await supabase
@@ -360,12 +359,14 @@ export async function resetGameForTesting() {
 
     if (!existingGames || existingGames.length === 0) {
       console.warn("🟡 ACTION: resetGameForTesting - No game found to reset. Redirecting to setup.");
-      revalidatePath('/'); revalidatePath('/game'); revalidatePath('/?step=setup');
+      revalidatePath('/');
+      revalidatePath('/game');
+      revalidatePath('/?step=setup');
       redirect('/?step=setup');
       return;
     }
 
-    gameToReset = existingGames[0];
+    const gameToReset = existingGames[0];
     const gameId = gameToReset.id;
     console.log(`🔵 ACTION: resetGameForTesting - Starting reset for game ${gameId}.`);
 
@@ -399,19 +400,23 @@ export async function resetGameForTesting() {
       throw new Error(`Failed to update game ${gameId} during reset: ${updateError.message}`);
     }
 
-    console.log(`🔵 ACTION: resetGameForTesting - Reset complete. Revalidating and redirecting.`);
-    await new Promise(resolve => setTimeout(resolve, 500)); 
+    console.log(`🔵 ACTION: resetGameForTesting - Reset complete. Revalidating paths BEFORE redirect.`);
+    revalidatePath('/');
+    revalidatePath('/game');
+    revalidatePath('/?step=setup');
 
   } catch (e: any) {
     console.error('🔴 ACTION: resetGameForTesting - Unexpected exception:', e.message, e.stack);
-    if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) throw e;
-    throw new Error(`Reset failed: ${e.message || 'Unknown error'}`);
+    if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) {
+        // This is expected. We are re-throwing to let Next.js handle the redirect.
+        // But we want to avoid re-throwing if we're already redirecting.
+        throw e;
+    }
+    // Don't throw for other errors, just log them, as redirect is the final step.
   }
 
-  revalidatePath('/');
-  revalidatePath('/game');
-  revalidatePath('/?step=setup');
-  redirect('/?step=setup'); 
+  // Redirect is now the very last thing that happens.
+  redirect('/?step=setup');
 }
 
 
