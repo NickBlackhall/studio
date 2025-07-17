@@ -1,16 +1,21 @@
 
 "use client";
 
-import { useState, useEffect, useTransition, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useEffect, useTransition, useCallback, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 import {
+  getGame,
+  startGame,
   selectCategory,
   selectWinner,
   nextRound,
+  getCurrentPlayer,
   resetGameForTesting
 } from '@/app/game/actions';
-import type { PlayerClientState, GamePhaseClientState, GameClientState } from '@/lib/types';
-import { ACTIVE_PLAYING_PHASES } from '@/lib/types';
+import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
+import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
 import PlayerView from '@/components/game/PlayerView';
@@ -19,66 +24,88 @@ import RecapSequenceDisplay from '@/components/game/RecapSequenceDisplay';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX } from 'lucide-react';
+import { Home, Play, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { PureMorphingModal } from '@/components/PureMorphingModal';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
 import { useAudio } from '@/contexts/AudioContext';
-import { useLoading } from '@/contexts/LoadingContext';
-import { useTargetedGameSubscription } from '@/hooks/useTargetedGameSubscription';
-import { useGameNavigation } from '@/hooks/useGameNavigation';
-import { getGame } from '@/app/game/actions';
+import TransitionOverlay from '@/components/ui/TransitionOverlay';
 
+
+// Helper debounce function
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): T & { cancel: () => void } {
+  let timeout: NodeJS.Timeout | null = null;
+  
+  const debounced = ((...args: any[]) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  }) as T & { cancel: () => void };
+  
+  debounced.cancel = () => {
+    if (timeout) clearTimeout(timeout);
+  };
+  
+  return debounced;
+}
 
 export default function GamePage() {
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
-  const [thisPlayer, setThisPlayer] = useState<PlayerClientState | null>(null);
-  const [thisPlayerId, setThisPlayerId] = useState<string | null>(null);
-  
-  const gameStateRef = useRef(internalGameState);
-  
+  const gameStateRef = useRef<GameClientState | null>(null);
+
+  const [thisPlayer, setThisPlayerInternal] = useState<PlayerClientState | null>(null);
+  const thisPlayerRef = useRef<PlayerClientState | null>(null);
+
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
-  const { showLoader, hideLoader } = useLoading();
   const isMountedRef = useRef(true);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
-  
-  useGameNavigation({ gameState: internalGameState, thisPlayerId, currentPath: '/game' });
-  
-  useTargetedGameSubscription({
-    gameId: internalGameState?.gameId || null,
-    setGameState: setInternalGameState,
-    isMountedRef
-  });
 
-  useEffect(() => {
-    gameStateRef.current = internalGameState;
-    console.log("GAME_PAGE: Game state updated.", internalGameState?.gamePhase);
-  }, [internalGameState]);
-  
-  useEffect(() => {
-    if (thisPlayerId && internalGameState?.players) {
-      const playerDetails = internalGameState.players.find(p => p.id === thisPlayerId);
-      if (playerDetails) {
-        setThisPlayer(playerDetails);
-        console.log(`GAME_PAGE: Set thisPlayer to: ${playerDetails.name}`);
-      }
+
+  const setGameState = useCallback((newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
+    if (typeof newState === 'function') {
+        setInternalGameState(prevState => {
+            const result = newState(prevState);
+            gameStateRef.current = result;
+            console.log(`GAME_PAGE: Game state updated. Phase: ${result?.gamePhase}`);
+            return result;
+        });
     } else {
-      setThisPlayer(null);
+        gameStateRef.current = newState;
+        console.log(`GAME_PAGE: Game state updated. Phase: ${newState?.gamePhase}`);
+        if (isMountedRef.current) setInternalGameState(newState);
     }
-  }, [thisPlayerId, internalGameState?.players]);
+  }, []);
+
+  const setThisPlayer = useCallback((newPlayerState: PlayerClientState | null | ((prevState: PlayerClientState | null) => PlayerClientState | null)) => {
+    if (typeof newPlayerState === 'function') {
+      setThisPlayerInternal(prevState => {
+          const result = newPlayerState(prevState);
+          thisPlayerRef.current = result;
+          console.log(`GAME_PAGE: Set thisPlayer to: ${result?.name}`);
+          return result;
+      });
+    } else {
+      thisPlayerRef.current = newPlayerState;
+      console.log(`GAME_PAGE: Set thisPlayer to: ${newPlayerState?.name}`);
+      if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
+    }
+  }, []);
 
 
-  const fetchInitialData = useCallback(async () => {
-    console.log("GAME_PAGE: fetchInitialData - Initiated.");
+  const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
+    console.log(`GAME_PAGE: fetchGameAndPlayer - Initiated from ${origin}.`);
     try {
       const initialGameState = await getGame();
       if (!isMountedRef.current) return;
@@ -88,71 +115,139 @@ export default function GamePage() {
         router.push('/?step=setup');
         return;
       }
-      
-      console.log(`GAME_PAGE: fetchInitialData - Fetched game ${initialGameState.gameId}. Phase: ${initialGameState.gamePhase}`);
-      setInternalGameState(initialGameState);
+      console.log(`GAME_PAGE: fetchGameAndPlayer - Fetched game ${initialGameState.gameId}. Phase: ${initialGameState.gamePhase}`);
 
       const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
-      console.log(`GAME_PAGE: fetchInitialData - Player ID from storage: ${playerIdFromStorage}`);
+      console.log(`GAME_PAGE: fetchGameAndPlayer - Player ID from storage: ${playerIdFromStorage}`);
       
       if (!playerIdFromStorage) {
         if (ACTIVE_PLAYING_PHASES.includes(initialGameState.gamePhase as GamePhaseClientState)) {
-          console.log("GAME_PAGE: fetchInitialData - No player ID, setting as spectator.");
-          setThisPlayer(null);
+          setThisPlayer(null); // Set as spectator
         } else {
-          console.log("GAME_PAGE: fetchInitialData - No player ID and in lobby, redirecting to setup.");
           router.push('/?step=setup');
         }
       } else {
-        setThisPlayerId(playerIdFromStorage);
+        const playerDetails = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
+        if (playerDetails) {
+            setThisPlayer(playerDetails);
+        } else {
+          localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
+          router.push('/?step=setup'); // Player ID exists but isn't in game, so redirect
+        }
       }
+      
+      setGameState(initialGameState);
+
     } catch (error: any) {
-      console.error(`GAME_PAGE: Error in fetchInitialData:`, error);
+      console.error(`GamePage: Error in fetchGameAndPlayer (from ${origin}):`, error);
       toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
     } finally {
       if (isMountedRef.current) {
+        console.log("GAME_PAGE: fetchGameAndPlayer - Finished.");
         setIsInitialLoading(false);
-        console.log("GAME_PAGE: fetchInitialData - Finished.");
       }
     }
-  }, [router, toast]);
+  }, [router, toast, setGameState, setThisPlayer]);
+  
 
   useEffect(() => {
     isMountedRef.current = true;
-    fetchInitialData();
+    fetchGameAndPlayer("initial mount");
     
     return () => {
       isMountedRef.current = false;
     };
-  }, [fetchInitialData]);
+  }, [fetchGameAndPlayer]);
 
+  // Handle transition states from database
   useEffect(() => {
     if (!internalGameState) return;
     console.log(`GAME_PAGE: Transition state check: ${internalGameState.transitionState}`);
-    if (internalGameState.transitionState !== 'idle') {
-       showLoader(internalGameState.transitionState, {
-          message: internalGameState.transitionMessage || 'Loading...',
-          players: internalGameState.players
-        });
-    } else {
-        hideLoader();
-    }
-  }, [internalGameState?.transitionState, internalGameState?.transitionMessage, internalGameState?.players, showLoader, hideLoader]);
+    // This is now handled by the TransitionOverlay component itself,
+    // which could be part of a global layout context in a larger app.
+    // For now, it's sufficient to have the check in the render logic.
+  }, [internalGameState?.transitionState, internalGameState?.transitionMessage, internalGameState?.players]);
 
+  // Audio management
   useEffect(() => {
     if (internalGameState) {
       console.log(`GAME_PAGE: Audio check. Phase: ${internalGameState.gamePhase}. Playing correct track.`);
-      if (internalGameState.gamePhase === 'game_over') playTrack('lobby-music');
-      else if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase) || internalGameState.gamePhase === 'winner_announcement') playTrack('game-music');
-      else playTrack('lobby-music');
+      if (internalGameState.gamePhase === 'game_over') {
+        playTrack('lobby-music');
+      } else if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase) || internalGameState.gamePhase === 'winner_announcement') {
+        playTrack('game-music');
+      } else {
+        playTrack('lobby-music');
+      }
     }
-    return () => { stopMusic(); }
+    
+    // On unmount, stop music
+    return () => {
+        stopMusic();
+    }
   }, [internalGameState?.gamePhase, playTrack, stopMusic]);
+
+  // Real-time subscriptions - More reliable refetch-on-trigger model
+  useEffect(() => {
+    const gameId = internalGameState?.gameId;
+    if (!gameId || !isMountedRef.current) {
+        return;
+    }
+
+    // This debounced function will be our single point of truth for refreshing state.
+    const debouncedRefetch = debounce(async () => {
+        if (!isMountedRef.current) return;
+        console.log(`GAME_PAGE: Real-time update triggered refetch for game ${gameId}`);
+        try {
+            const updatedGame = await getGame(gameId);
+            if (updatedGame && isMountedRef.current) {
+                setGameState(updatedGame);
+                const currentPlayerId = thisPlayerRef.current?.id;
+                if (currentPlayerId) {
+                    const playerDetail = updatedGame.players.find(p => p.id === currentPlayerId);
+                    setThisPlayer(playerDetail || null);
+                }
+            }
+        } catch (error) {
+            console.error('Error in debounced refetch:', error);
+        }
+    }, 500); // 500ms debounce window
+
+    const channel = supabase
+        .channel(`game-updates-${gameId}`)
+        .on('postgres_changes', 
+            { event: '*', schema: 'public' }, 
+            (payload) => {
+                debouncedRefetch();
+            }
+        )
+        .subscribe((status, err) => {
+            if (status === 'SUBSCRIBED') {
+                console.log(`GAME_PAGE: Subscribed to real-time updates for game ${gameId}`);
+                debouncedRefetch();
+            }
+            if (status === 'CHANNEL_ERROR') {
+                console.error('❌ Real-time subscription error:', err);
+                toast({
+                    title: "Connection Issue",
+                    description: "Having trouble with real-time updates. The game may feel slow.",
+                    variant: "destructive"
+                });
+            }
+        });
+
+    return () => {
+        console.log(`GAME_PAGE: Unsubscribing from real-time updates for game ${gameId}`);
+        debouncedRefetch.cancel();
+        supabase.removeChannel(channel);
+    };
+  }, [internalGameState?.gameId, setGameState, setThisPlayer, toast]);
+
 
   const handleNextRound = useCallback(async () => {
     const gameId = gameStateRef.current?.gameId;
     if (gameId) {
-      console.log(`GAME_PAGE: handleNextRound triggered for game ${gameId}.`);
+      console.log(`GAME_PAGE: handleNextRound triggered for game ${gameId}`);
       try {
         await nextRound(gameId);
       } catch (error: any) {
@@ -165,7 +260,7 @@ export default function GamePage() {
 
   const handleSelectCategory = async (category: string) => {
     if (internalGameState?.gameId) {
-      console.log(`GAME_PAGE: handleSelectCategory triggered for category "${category}".`);
+      console.log(`GAME_PAGE: handleSelectCategory triggered for category: ${category}`);
       startActionTransition(async () => {
         try {
           await selectCategory(internalGameState.gameId, category);
@@ -200,15 +295,18 @@ export default function GamePage() {
         await resetGameForTesting();
       } catch (error: any) {
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-        } else if (isMountedRef.current) {
+          // Let the redirect happen
+        } else {
+          if (isMountedRef.current) {
             toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
+          }
         }
       }
     }
   };
 
   const handlePlayAgainNo = () => {
-    console.log("GAME_PAGE: handlePlayAgainNo triggered. Navigating to /");
+    console.log("GAME_PAGE: handlePlayAgainNo triggered.");
     router.push('/');
   };
 
@@ -219,8 +317,14 @@ export default function GamePage() {
         await resetGameForTesting();
       } catch (error: any) {
         if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-        } else if (isMountedRef.current) {
-          toast({ title: "Reset Failed", description: `Could not reset the game. ${error.message || String(error)}`, variant: "destructive" });
+        } else {
+          if (isMountedRef.current) {
+            toast({
+              title: "Reset Failed",
+              description: `Could not reset the game. ${error.message || String(error)}`,
+              variant: "destructive",
+            });
+          }
         }
       }
     });
@@ -241,11 +345,28 @@ export default function GamePage() {
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Image src="/ui/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
         <h1 className="text-4xl font-bold text-destructive mb-4">Critical Game Error!</h1>
-        <p className="text-lg text-muted-foreground mb-8">Could not load or initialize game session.</p>
-        <Link href="/?step=setup"><Button variant="default" size="lg"><Home className="mr-2 h-5 w-5" /> Go to Lobby Setup</Button></Link>
+        <p className="text-lg text-muted-foreground mb-8">
+          Could not load or initialize the game session. Please try again or reset.
+        </p>
+        <Link href="/?step=setup">
+          <Button variant="default" size="lg" className="bg-primary text-primary-foreground hover:bg-primary/80 text-lg">
+            <Home className="mr-2 h-5 w-5" /> Go to Lobby Setup
+          </Button>
+        </Link>
       </div>
     );
   }
+  
+  // Render transition overlay if the game is in a transition state
+  if (internalGameState.transitionState !== 'idle') {
+    return (
+        <TransitionOverlay
+            transitionState={internalGameState.transitionState}
+            message={internalGameState.transitionMessage}
+        />
+    );
+  }
+
 
   if (!thisPlayer && ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase as GamePhaseClientState)) {
       console.log("GAME_PAGE: Rendering spectator view.");
@@ -253,55 +374,90 @@ export default function GamePage() {
           <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
               <Image src="/ui/new-logo.png" alt="Game in Progress" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
               <h1 className="text-4xl font-bold text-primary mb-4">Game in Progress</h1>
-              <p className="text-lg text-muted-foreground mb-8">This game has started. You're watching as a spectator.</p>
-              <div className="w-full max-w-sm my-6"><Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} /></div>
+              <p className="text-lg text-muted-foreground mb-8">
+                  This game has already started. You can watch, but you can't join until it's over.
+              </p>
+              <div className="w-full max-w-sm my-6">
+                <Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} />
+              </div>
               <Button onClick={handleResetGameFromGamePage} variant="outline" size="lg" disabled={isActionPending}>
-                  {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (For Testing)
+                  {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  Reset Game (For Testing)
               </Button>
           </div>
       );
   }
 
   if (internalGameState.gamePhase === 'lobby') {
-    console.log("GAME_PAGE: Game phase is 'lobby'. Rendering redirect to setup.");
+    console.log("GAME_PAGE: Game has returned to lobby, redirecting.");
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Image src="/ui/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
         <h1 className="text-4xl font-bold text-primary mb-4">Game Has Returned to Lobby</h1>
-        <p className="text-lg text-muted-foreground mb-8">The game session has been reset or ended.</p>
-        <Link href="/?step=setup" className="mt-6"><Button variant="default" size="lg">Go to Player Setup & Lobby</Button></Link>
+        <p className="text-lg text-muted-foreground mb-8">
+          The game session has been reset or ended.
+        </p>
+          <Link href="/?step=setup" className="mt-6">
+            <Button variant="default" size="lg">
+                Go to Player Setup & Lobby
+            </Button>
+        </Link>
       </div>
     );
   }
 
   if (!thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over')) {
-     console.log("GAME_PAGE: Player not identified. Rendering loading state.");
+     console.log("GAME_PAGE: Player not identified yet, showing loading state.");
      return (
         <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
           <p className="text-xl text-muted-foreground">Identifying player...</p>
-          <Link href="/?step=setup" className="mt-4"><Button variant="outline">Go to Lobby</Button></Link>
+          <p className="text-sm mt-2">If this persists, you might not be part of this game or try returning to the lobby.</p>
+           <Link href="/?step=setup" className="mt-4">
+            <Button variant="outline">Go to Lobby</Button>
+          </Link>
         </div>
      );
   }
 
   const showRecap = internalGameState.gamePhase === 'winner_announcement' && internalGameState.lastWinner;
-  console.log(`GAME_PAGE: Rendering main content. Show recap: ${!!showRecap}`);
 
   const renderGameContent = () => {
+    console.log(`GAME_PAGE: Rendering main content. Show recap: ${showRecap}`);
     if (!thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over')) {
         if (ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase)) {
-            return <Card className="text-center"><CardHeader><CardTitle className="text-destructive">Player Identification Error</CardTitle></CardHeader><CardContent><p>Could not identify your player profile for this active game.</p></CardContent></Card>;
+            return (
+                <Card className="text-center">
+                    <CardHeader><CardTitle className="text-destructive">Player Identification Error</CardTitle></CardHeader>
+                    <CardContent><p>Could not identify your player profile for this active game. Please try returning to the lobby.</p></CardContent>
+                </Card>
+            );
         }
     }
 
     if (internalGameState.gamePhase === 'game_over') {
       console.log("GAME_PAGE: Rendering GameOverDisplay.");
-      return <GameOverDisplay gameState={internalGameState} onPlayAgainYes={handlePlayAgainYes} onPlayAgainNo={handlePlayAgainNo} />;
+      return <GameOverDisplay
+                gameState={internalGameState}
+                onPlayAgainYes={handlePlayAgainYes}
+                onPlayAgainNo={handlePlayAgainNo}
+              />;
     }
 
+    if (internalGameState.gamePhase === 'lobby') { 
+        console.log("GAME_PAGE: Rendering lobby redirect content.");
+        return (
+            <div className="text-center py-10">
+                <h2 className="text-2xl font-semibold mb-4">Game is in Lobby</h2>
+                <p className="mb-4">The game has returned to the lobby. Please go to player setup.</p>
+                <Link href="/?step=setup">
+                    <Button>Go to Lobby Setup</Button>
+                </Link>
+            </div>
+        );
+    }
+    
     if (showRecap) {
-      console.log("GAME_PAGE: Recap is active, so main content is null.");
       return null;
     }
 
@@ -315,8 +471,12 @@ export default function GamePage() {
       return <PlayerView gameState={internalGameState} player={thisPlayer} />;
     }
     
-    console.log(`GAME_PAGE: Rendering fallback view for phase: ${internalGameState.gamePhase}`);
-    return <Card className="text-center"><CardHeader><CardTitle>Waiting for Game State</CardTitle></CardHeader><CardContent><p>Phase: {internalGameState.gamePhase}. Role is being determined.</p></CardContent></Card>;
+    return (
+        <Card className="text-center">
+            <CardHeader><CardTitle>Waiting for Game State</CardTitle></CardHeader>
+            <CardContent><p>The game is in phase: {internalGameState.gamePhase}. Your role is being determined or an issue occurred.</p></CardContent>
+        </Card>
+    );
   };
 
   return (
@@ -338,34 +498,101 @@ export default function GamePage() {
         </main>
       </div>
       
-      <GameUI gameState={internalGameState} thisPlayer={thisPlayer} onScoresClick={() => setIsScoreboardOpen(true)} onMenuClick={() => setIsMenuModalOpen(true)} />
+      <GameUI
+        gameState={internalGameState}
+        thisPlayer={thisPlayer}
+        onScoresClick={() => setIsScoreboardOpen(true)}
+        onMenuClick={() => setIsMenuModalOpen(true)}
+      />
       
-      <PureMorphingModal isOpen={isScoreboardOpen} onClose={() => setIsScoreboardOpen(false)} variant="image" className="p-0 w-auto h-auto max-w-md bg-transparent">
+      {/* Scoreboard Modal */}
+      <PureMorphingModal
+        isOpen={isScoreboardOpen}
+        onClose={() => setIsScoreboardOpen(false)}
+        variant="image"
+        className="p-0 w-auto h-auto max-w-md bg-transparent"
+      >
         <div className="relative">
-          <Image src="/backgrounds/scoreboard-poster.png" alt="Leaderboard" width={512} height={768} className="object-contain" priority data-ai-hint="scoreboard poster" />
-          <div className="absolute left-[10%] right-[10%] bottom-[15%]" style={{ top: '45%' }}><Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} /></div>
+          <Image
+            src="/backgrounds/scoreboard-poster.png"
+            alt="Leaderboard"
+            width={512}
+            height={768}
+            className="object-contain"
+            priority
+            data-ai-hint="scoreboard poster"
+          />
+          <div className="absolute left-[10%] right-[10%] bottom-[15%]" style={{ top: '45%' }}>
+            <Scoreboard
+              players={internalGameState.players}
+              currentJudgeId={internalGameState.currentJudgeId}
+            />
+          </div>
         </div>
       </PureMorphingModal>
 
-      <PureMorphingModal isOpen={isMenuModalOpen} onClose={() => setIsMenuModalOpen(false)} variant="settings" icon="⚙️" title="Game Menu">
-        <div className="text-white/90 mb-5">Options and actions for the game.</div>
+      <PureMorphingModal
+        isOpen={isMenuModalOpen}
+        onClose={() => setIsMenuModalOpen(false)}
+        variant="settings"
+        icon="⚙️"
+        title="Game Menu"
+      >
+        <div className="text-white/90 mb-5">
+          Options and actions for the game.
+        </div>
         <div className="flex flex-col gap-3">
-          <Button variant="outline" onClick={toggleMute} className="bg-white/20 hover:bg-white/30 text-white border-white/30">
-            {audioState.isMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />} {audioState.isMuted ? 'Unmute Audio' : 'Mute Audio'}
+          <Button
+            variant="outline"
+            onClick={toggleMute}
+            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+          >
+            {audioState.isMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
+            {audioState.isMuted ? 'Unmute Audio' : 'Mute Audio'}
           </Button>
-          <Button variant="outline" onClick={() => { setIsMenuModalOpen(false); setIsHowToPlayModalOpen(true); }} className="bg-white/20 hover:bg-white/30 text-white border-white/30"><HelpCircle className="mr-2 h-4 w-4" /> How to Play</Button>
-          <Link href="/?step=setup" className="inline-block" onClick={() => setIsMenuModalOpen(false)}><Button variant="outline" className="w-full bg-white/20 hover:bg-white/30 text-white border-white/30"><Home className="mr-2 h-4 w-4" /> Exit to Lobby</Button></Link>
-          <Button onClick={() => { handleResetGameFromGamePage(); setIsMenuModalOpen(false); }} className="bg-red-500/80 hover:bg-red-600/80 text-white" disabled={isActionPending}>
-            {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setIsMenuModalOpen(false);
+              setIsHowToPlayModalOpen(true);
+            }}
+            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+          >
+            <HelpCircle className="mr-2 h-4 w-4" /> How to Play
+          </Button>
+          <Link href="/?step=setup" className="inline-block" onClick={() => setIsMenuModalOpen(false)}>
+            <Button variant="outline" className="w-full bg-white/20 hover:bg-white/30 text-white border-white/30">
+              <Home className="mr-2 h-4 w-4" /> Exit to Lobby
+            </Button>
+          </Link>
+          <Button
+            onClick={() => {
+              handleResetGameFromGamePage();
+              setIsMenuModalOpen(false);
+            }}
+            className="bg-red-500/80 hover:bg-red-600/80 text-white"
+            disabled={isActionPending}
+          >
+            {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Reset Game (Testing)
           </Button>
         </div>
       </PureMorphingModal>
 
-      <PureMorphingModal isOpen={isHowToPlayModalOpen} onClose={() => setIsHowToPlayModalOpen(false)} variant="default" icon="❓" title="How to Play">
+      <PureMorphingModal
+        isOpen={isHowToPlayModalOpen}
+        onClose={() => setIsHowToPlayModalOpen(false)}
+        variant="default"
+        icon="❓"
+        title="How to Play"
+      >
         <HowToPlayModalContent />
       </PureMorphingModal>
+
     </>
   );
 }
 
 export const dynamic = 'force-dynamic';
+
+    
