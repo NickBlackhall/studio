@@ -51,6 +51,7 @@ export default function WelcomePage() {
   useTargetedGameSubscription({
     gameId: internalGameState?.gameId || null,
     setGameState: setInternalGameState,
+    isMountedRef,
   });
 
   useEffect(() => {
