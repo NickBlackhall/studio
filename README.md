@@ -62,3 +62,5 @@ These are larger-scale ideas for the future evolution of the game.
 - **Community Content:** Create forms for users to submit their own scenario and response card ideas, which can then be curated and added to the official game deck.
 
 this line has been changed for the test
+
+Test line added by Claude Code to verify edit capabilities.
