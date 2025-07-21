@@ -31,6 +31,7 @@ import { PureMorphingModal } from '@/components/PureMorphingModal';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
 import { useAudio } from '@/contexts/AudioContext';
+import { useLoading } from '@/contexts/LoadingContext';
 import TransitionOverlay from '@/components/ui/TransitionOverlay';
 
 
@@ -71,6 +72,7 @@ export default function GamePage() {
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
+  const { setGlobalLoading } = useLoading();
 
 
   const setGameState = useCallback((newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
@@ -145,9 +147,10 @@ export default function GamePage() {
       if (isMountedRef.current) {
         console.log("GAME_PAGE: fetchGameAndPlayer - Finished.");
         setIsInitialLoading(false);
+        setGlobalLoading(false);
       }
     }
-  }, [router, toast, setGameState, setThisPlayer]);
+  }, [router, toast, setGameState, setThisPlayer, setGlobalLoading]);
   
 
   useEffect(() => {

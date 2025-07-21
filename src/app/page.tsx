@@ -19,6 +19,7 @@ import ReadyToggle from '@/components/game/ReadyToggle';
 import PWAGameLayout from '@/components/PWAGameLayout';
 import type { Tables } from '@/lib/database.types';
 import { useAudio } from '@/contexts/AudioContext';
+import { useLoading } from '@/contexts/LoadingContext';
 import { getGame } from '@/app/game/actions';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -55,6 +56,7 @@ export default function WelcomePage() {
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const { playTrack } = useAudio();
+  const { setGlobalLoading } = useLoading();
   
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
@@ -170,10 +172,11 @@ export default function WelcomePage() {
   
   useEffect(() => {
     if (internalGameState && internalGameState.gamePhase !== 'lobby' && internalGameState.gamePhase !== 'game_over' && thisPlayer) {
-      console.log(`LOBBY: Game phase is ${internalGameState.gamePhase}, navigating to /game.`);
+      console.log(`LOBBY: Game phase is ${internalGameState.gamePhase}, starting loading and navigating to /game.`);
+      setGlobalLoading(true);
       router.push('/game');
     }
-  }, [internalGameState, thisPlayer, router]);
+  }, [internalGameState, thisPlayer, router, setGlobalLoading]);
 
   const sortedPlayersForDisplay = useMemo(() => {
     if (!internalGameState?.players) return [];
