@@ -106,22 +106,42 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
   const gameId = gameRow.id;
   console.log(`🔵 ACTION: getGame - Processing for gameId: ${gameId}. Phase: ${gameRow.game_phase}`);
 
-  let playersData: Tables<'players'>[] = [];
-  const { data: fetchedPlayersData, error: playersError } = await supabase
-    .from('players')
-    .select('*')
-    .eq('game_id', gameId);
+  // Parallelize all database queries for better performance
+  const [
+    playersResult,
+    categoriesResult,
+    scenarioResult,
+    submissionsResult
+  ] = await Promise.allSettled([
+    // Players query
+    supabase.from('players').select('*').eq('game_id', gameId),
+    
+    // Categories query
+    supabase.from('scenarios').select('category'),
+    
+    // Current scenario query (only if needed)
+    gameRow.current_scenario_id 
+      ? supabase.from('scenarios').select('id, category, text').eq('id', gameRow.current_scenario_id).single()
+      : Promise.resolve({ data: null, error: null }),
+      
+    // Submissions query (only if needed)
+    (gameRow.game_phase === 'judging' || gameRow.game_phase === 'player_submission' || gameRow.game_phase === 'judge_approval_pending') && gameRow.current_round > 0
+      ? supabase.from('responses').select('*, response_cards(id, text)').eq('game_id', gameId).eq('round_number', gameRow.current_round)
+      : Promise.resolve({ data: null, error: null })
+  ]);
 
-  if (playersError) {
-    console.error(`🔴 ACTION: getGame - Error fetching players for game ${gameId}:`, JSON.stringify(playersError, null, 2));
-    playersData = [];
-  } else {
-    playersData = fetchedPlayersData || [];
+  // Process players result
+  let playersData: Tables<'players'>[] = [];
+  if (playersResult.status === 'fulfilled' && !playersResult.value.error) {
+    playersData = playersResult.value.data || [];
     console.log(`🔵 ACTION: getGame - Fetched ${playersData.length} players.`);
+  } else {
+    console.error(`🔴 ACTION: getGame - Error fetching players for game ${gameId}:`, playersResult.status === 'fulfilled' ? playersResult.value.error : playersResult.reason);
   }
 
   const playerIds = playersData.map(p => p.id);
   
+  // Fetch player hands separately (needs playerIds from above)
   type HandDataWithCard = Tables<'player_hands'> & {
     response_cards: Pick<Tables<'response_cards'>, 'id' | 'text'> | null;
   };
@@ -168,70 +188,55 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     };
   });
 
-  const { data: categoriesData, error: categoriesError } = await supabase
-    .from('scenarios')
-    .select('category');
-
+  // Process categories result
   let categories: string[] = ["Default Category"];
-  if (categoriesError) {
-    console.error('🔴 ACTION: getGame - Error fetching categories:', JSON.stringify(categoriesError, null, 2));
-  } else if (categoriesData) {
+  if (categoriesResult.status === 'fulfilled' && !categoriesResult.value.error && categoriesResult.value.data) {
     const distinctCategories = [...new Set(
-        categoriesData.map(c => c.category)
+        categoriesResult.value.data.map(c => c.category)
                       .filter(c => c !== null && typeof c === 'string' && c.trim() !== '' && c.trim() !== "Boondoggles") as string[]
     )];
     if (distinctCategories.length > 0) {
       categories = distinctCategories;
       console.log(`🔵 ACTION: getGame - Loaded ${categories.length} distinct categories.`);
     }
+  } else {
+    console.error('🔴 ACTION: getGame - Error fetching categories:', categoriesResult.status === 'fulfilled' ? categoriesResult.value.error : categoriesResult.reason);
   }
 
+  // Process current scenario result
   let currentScenario: ScenarioClientState | null = null;
-  if (gameRow.current_scenario_id) {
-    const { data: scenarioData, error: scenarioError } = await supabase
-      .from('scenarios')
-      .select('id, category, text')
-      .eq('id', gameRow.current_scenario_id)
-      .single();
-    if (scenarioError) {
-      console.error('🔴 ACTION: getGame - Error fetching current scenario:', JSON.stringify(scenarioError, null, 2));
-    }
-    if (scenarioData) {
-      currentScenario = {
-        id: scenarioData.id,
-        category: scenarioData.category || 'Unknown',
-        text: scenarioData.text,
-      };
-      console.log(`🔵 ACTION: getGame - Loaded current scenario:`, currentScenario);
-    }
+  if (scenarioResult.status === 'fulfilled' && !scenarioResult.value.error && scenarioResult.value.data) {
+    const scenarioData = scenarioResult.value.data;
+    currentScenario = {
+      id: scenarioData.id,
+      category: scenarioData.category || 'Unknown',
+      text: scenarioData.text,
+    };
+    console.log(`🔵 ACTION: getGame - Loaded current scenario:`, currentScenario);
+  } else if (scenarioResult.status === 'rejected' || (scenarioResult.status === 'fulfilled' && scenarioResult.value.error)) {
+    console.error('🔴 ACTION: getGame - Error fetching current scenario:', scenarioResult.status === 'fulfilled' ? scenarioResult.value.error : scenarioResult.reason);
   }
   
+  // Process submissions result
   type SubmissionWithCard = Tables<'responses'> & {
     response_cards: Pick<Tables<'response_cards'>, 'id' | 'text'> | null;
   };
   let submissions: GameClientState['submissions'] = [];
-  if ((gameRow.game_phase === 'judging' || gameRow.game_phase === 'player_submission' || gameRow.game_phase === 'judge_approval_pending') && gameRow.current_round > 0) {
-    const { data: submissionData, error: submissionError } = await supabase
-      .from('responses')
-      .select('*, response_cards(id, text)')
-      .eq('game_id', gameId)
-      .eq('round_number', gameRow.current_round);
+  if (submissionsResult.status === 'fulfilled' && !submissionsResult.value.error && submissionsResult.value.data) {
+    const submissionData = submissionsResult.value.data as SubmissionWithCard[];
+    submissions = submissionData.map((s) => {
+      const cardText = s.submitted_text || s.response_cards?.text || 'Error: Card text not found';
+      const cardId = s.response_card_id || (s.submitted_text ? `custom-${s.player_id}-${gameRow.current_round}` : `error-${s.player_id}`);
 
-    if (submissionError) {
-      console.error(`🔴 ACTION: getGame - Error fetching submissions for round ${gameRow.current_round}:`, JSON.stringify(submissionError, null, 2));
-    } else if (submissionData) {
-      submissions = (submissionData as SubmissionWithCard[]).map((s) => {
-        const cardText = s.submitted_text || s.response_cards?.text || 'Error: Card text not found';
-        const cardId = s.response_card_id || (s.submitted_text ? `custom-${s.player_id}-${gameRow.current_round}` : `error-${s.player_id}`);
-
-        return {
-          playerId: s.player_id,
-          cardId: cardId,
-          cardText: cardText,
-        };
-      });
-      console.log(`🔵 ACTION: getGame - Loaded ${submissions.length} submissions for round ${gameRow.current_round}.`);
-    }
+      return {
+        playerId: s.player_id,
+        cardId: cardId,
+        cardText: cardText,
+      };
+    });
+    console.log(`🔵 ACTION: getGame - Loaded ${submissions.length} submissions for round ${gameRow.current_round}.`);
+  } else if (submissionsResult.status === 'rejected' || (submissionsResult.status === 'fulfilled' && submissionsResult.value.error)) {
+    console.error(`🔴 ACTION: getGame - Error fetching submissions for round ${gameRow.current_round}:`, submissionsResult.status === 'fulfilled' ? submissionsResult.value.error : submissionsResult.reason);
   }
 
   let lastWinnerDetails: GameClientState['lastWinner'] = undefined;
