@@ -147,7 +147,12 @@ export default function GamePage() {
       if (isMountedRef.current) {
         console.log("GAME_PAGE: fetchGameAndPlayer - Finished.");
         setIsInitialLoading(false);
-        setGlobalLoading(false);
+        // Small delay to ensure smooth transition from lobby
+        setTimeout(() => {
+          if (isMountedRef.current) {
+            setGlobalLoading(false);
+          }
+        }, 150);
       }
     }
   }, [router, toast, setGameState, setThisPlayer, setGlobalLoading]);

@@ -119,17 +119,17 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    font-family: 'IM Fell English SC', serif;
+    @apply font-im-fell;
   }
 
   h1, h2, h3, h4, h5, h6,
   .card-title { 
-    font-family: 'IM Fell English SC', serif;
+    @apply font-im-fell;
   }
 
   /* Force consistent font rendering */
   h1, h2, h3, h4, h5, h6, .text-3xl {
-    font-family: 'IM Fell English SC', serif !important;
+    @apply font-im-fell !important;
     font-synthesis: none;
     text-rendering: optimizeSpeed;
     -webkit-font-smoothing: antialiased;
@@ -204,14 +204,14 @@
   color: #000;
   background: transparent;
   outline: none;
-  font-family: 'IM Fell English SC', serif;
+  @apply font-im-fell;
   letter-spacing: 0.5px;
   border: none;
 }
 
 .name-input::placeholder {
   color: rgba(0, 0, 0, 0.7);
-  font-family: 'IM Fell English SC', serif;
+  @apply font-im-fell;
   font-size: 2rem;
 }
 

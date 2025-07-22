@@ -46,7 +46,8 @@
 }
 
 .message {
-  font-family: 'IM Fell English SC', serif;
+  /* Matches tailwind.config.ts font-im-fell definition */
+  font-family: "IM Fell English SC", serif;
   color: #000000;
   font-style: normal;
   margin-top: 15px;
