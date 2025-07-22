@@ -116,12 +116,12 @@ export default function WelcomePage() {
       const playerInGame = fullGameState.players.find(p => p.id === newPlayer.id);
       if (playerInGame) setThisPlayer(playerInGame);
       
-      // Delay turning off loading to allow lobby content to start fading in
+      // Delay turning off loading to coordinate with lobby fade-in animation
       setTimeout(() => {
         if (isMountedRef.current) {
           setGlobalLoading(false);
         }
-      }, 200); // Small delay to coordinate with lobby fade-in animation
+      }, 100);
     }
   }, [internalGameState?.gameId, setGlobalLoading]);
 
@@ -151,27 +151,35 @@ export default function WelcomePage() {
       } catch (error) {
         console.error('Error in debounced refetch:', error);
       }
-    }, 500);
+    }, 200);
 
     const channel = supabase
       .channel(`lobby-updates-${gameId}`)
       .on('postgres_changes', 
           { event: '*', schema: 'public' }, 
-          () => debouncedRefetch()
+          () => {
+            if (isMountedRef.current) {
+              debouncedRefetch();
+            }
+          }
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log(`LOBBY: Subscribed to real-time updates for game ${gameId}`);
-          debouncedRefetch();
+          if (isMountedRef.current) {
+            debouncedRefetch();
+          }
         }
       });
       
     return () => {
       console.log(`LOBBY: Unsubscribing from real-time updates for game ${gameId}`);
-      debouncedRefetch.cancel();
+      if (debouncedRefetch) {
+        debouncedRefetch.cancel();
+      }
       supabase.removeChannel(channel);
     };
-  }, [internalGameState?.gameId, thisPlayer?.id, toast]);
+  }, [internalGameState?.gameId, thisPlayer?.id]);
 
 
   useEffect(() => {
@@ -196,7 +204,7 @@ export default function WelcomePage() {
       }
       return (a.name || '').localeCompare(b.name || '');
     });
-  }, [internalGameState?.players, thisPlayer]);
+  }, [internalGameState?.players, thisPlayer?.id]);
 
 
   const handleResetGame = async () => {
@@ -288,7 +296,7 @@ export default function WelcomePage() {
           return (
             <div className="flex items-center justify-between p-3">
               <div className="flex items-center min-w-0">
-                {player.avatar?.startsWith('/') ? <Image src={player.avatar} alt={`${(player.name as string) || "Player"}'s avatar`} width={56} height={56} className="mr-3 rounded-sm object-cover flex-shrink-0" data-ai-hint="player avatar" /> : <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>}
+                {player.avatar?.startsWith('/') ? <Image src={player.avatar} alt={`${(player.name as string) || "Player"}'s avatar`} width={56} height={56} className="mr-3 rounded-sm object-cover flex-shrink-0" data-ai-hint="player avatar" loading="lazy" /> : <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>}
                 <h2 className="text-3xl text-black truncate">{(player.name as string) || 'Player'}</h2>
               </div>
               <div className="flex-shrink-0 ml-2 flex items-center justify-center">
