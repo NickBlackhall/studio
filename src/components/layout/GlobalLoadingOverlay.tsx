@@ -9,7 +9,7 @@ export default function GlobalLoadingOverlay() {
   const [shouldRender, setShouldRender] = useState(false);
   const [opacityClass, setOpacityClass] = useState('opacity-0');
 
-  const FADE_DURATION_MS = 500; // Define duration in ms
+  const FADE_DURATION_MS = 800; // Define duration in ms - extended to coordinate with content fade-in
 
   useEffect(() => {
     let fadeInTimer: NodeJS.Timeout;
@@ -17,10 +17,8 @@ export default function GlobalLoadingOverlay() {
 
     if (isGlobalLoading) {
       setShouldRender(true);
-      // Increased delay to ensure opacity-0 is rendered before transitioning
-      fadeInTimer = setTimeout(() => {
-        setOpacityClass('opacity-100');
-      }, 50); // Increased from 10ms to 50ms
+      // Immediate visibility to prevent content flash
+      setOpacityClass('opacity-100');
     } else {
       setOpacityClass('opacity-0');
       // Wait for the fade-out transition to complete before unmounting

@@ -56,7 +56,7 @@ export default function WelcomePage() {
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const { playTrack } = useAudio();
-  const { setGlobalLoading } = useLoading();
+  const { setGlobalLoading, isGlobalLoading } = useLoading();
   
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
@@ -106,6 +106,7 @@ export default function WelcomePage() {
   const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
     if (newPlayer && newPlayer.id && internalGameState?.gameId && isMountedRef.current) {
       console.log(`LOBBY: handlePlayerAdded - Player ${newPlayer.id} added to game ${internalGameState.gameId}.`);
+      setGlobalLoading(true); // Show loading overlay during transition
       const localStorageKey = `thisPlayerId_game_${internalGameState.gameId}`;
       localStorage.setItem(localStorageKey, newPlayer.id);
       
@@ -114,8 +115,15 @@ export default function WelcomePage() {
       setInternalGameState(fullGameState);
       const playerInGame = fullGameState.players.find(p => p.id === newPlayer.id);
       if (playerInGame) setThisPlayer(playerInGame);
+      
+      // Delay turning off loading to allow lobby content to start fading in
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          setGlobalLoading(false);
+        }
+      }, 200); // Small delay to coordinate with lobby fade-in animation
     }
-  }, [internalGameState?.gameId]);
+  }, [internalGameState?.gameId, setGlobalLoading]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -293,10 +301,10 @@ export default function WelcomePage() {
 
         console.log("LOBBY: Rendering main lobby view.");
         return (
-          <div className="w-full h-screen">
+          <div className={`w-full h-screen ${isGlobalLoading ? 'opacity-0' : 'animate-in fade-in duration-700 ease-out'}`}>
             <div className="relative w-full h-full">
               <Image src="/backgrounds/lobby-poster.jpg" alt="Lobby background" fill className="poster-image" data-ai-hint="lobby poster" />
-              <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col">
+              <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 ease-out">
                 <div className="overflow-y-auto space-y-2">{sortedPlayersForDisplay.map((player) => <PlayerRow key={player.id} player={player} />)}</div>
                 <div className="flex-shrink-0 text-center px-4 pt-4 space-y-2">
                   <p className="bg-transparent font-semibold text-black">{lobbyMessage}</p>
@@ -307,7 +315,7 @@ export default function WelcomePage() {
                   )}
                 </div>
               </div>
-              <div className="absolute bottom-[2%] left-0 right-0 flex items-center justify-center gap-4">
+              <div className="absolute bottom-[2%] left-0 right-0 flex items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-500 ease-out">
                 <Dialog><DialogTrigger asChild><button className="bg-transparent border-none p-0"><Image src="/ui/how-to-play-button.png" alt="How to Play" width={118} height={44} className="object-contain" data-ai-hint="how to play button" priority /></button></DialogTrigger><DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent></Dialog>
                 <Button onClick={handleResetGame} variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80" disabled={isProcessingAction}>{isProcessingAction ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />} Reset Lobby</Button>
               </div>
