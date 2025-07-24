@@ -33,7 +33,24 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [scenarioVisible, setScenarioVisible] = useState(false);
   const [cardsVisible, setCardsVisible] = useState(0);
   const [cardsFlipped, setCardsFlipped] = useState(0);
+  const [flippedCardIds, setFlippedCardIds] = useState<Set<string>>(new Set());
+  
+  // Touch handling for swipe detection
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const swipeOccurredRef = useRef(false);
+  
+  // Drag state for visual feedback
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+  
+  // Animation sequence state
+  const [exitingCardId, setExitingCardId] = useState<string | null>(null);
+  const [exitDirection, setExitDirection] = useState<'left' | 'right'>('right');
+  const [slidingUp, setSlidingUp] = useState(false);
+  
+  // Card order state for shuffling
+  const [cardOrder, setCardOrder] = useState<string[]>([]);
 
   const hasSubmittedThisRound = useMemo(() => 
     gameState.submissions.some(sub => sub.playerId === player.id),
@@ -51,8 +68,18 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     });
 
     const customCard = { id: CUSTOM_CARD_ID, text: customCardText, isCustom: true, isNew: false };
-    return [...sortedHand, customCard];
-  }, [player.hand, customCardText]);
+    const baseCards = [...sortedHand, customCard];
+    
+    // If cardOrder is empty or doesn't match current cards, initialize it
+    const cardIds = baseCards.map(c => c.id);
+    if (cardOrder.length !== cardIds.length || !cardIds.every(id => cardOrder.includes(id))) {
+      setCardOrder(cardIds);
+      return baseCards;
+    }
+    
+    // Return cards in the current shuffled order
+    return cardOrder.map(id => baseCards.find(card => card.id === id)).filter(Boolean) as typeof baseCards;
+  }, [player.hand, customCardText, cardOrder]);
 
   // Animation Trigger
   useEffect(() => {
@@ -64,6 +91,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       setScenarioVisible(false);
       setCardsVisible(0);
       setCardsFlipped(0);
+      setFlippedCardIds(new Set());
       setSelectedCardId(null);
       
       timers.push(setTimeout(() => setScenarioVisible(true), 500));
@@ -77,9 +105,12 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       }, 1200));
 
       timers.push(setTimeout(() => {
-        handWithCustomCard.forEach((_, index) => {
+        handWithCustomCard.forEach((card, index) => {
           timers.push(setTimeout(() => {
-            if (isMountedRef.current) setCardsFlipped(prev => prev + 1);
+            if (isMountedRef.current) {
+              setCardsFlipped(prev => prev + 1);
+              setFlippedCardIds(prev => new Set(prev).add(card.id));
+            }
           }, index * 120));
         });
       }, 2400));
@@ -103,8 +134,113 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
 
   const handleCardClick = (cardId: string) => {
-    if (isAnimating || hasSubmittedThisRound) return;
+    if (isAnimating || hasSubmittedThisRound || swipeOccurredRef.current) return;
     setSelectedCardId(selectedCardId === cardId ? null : cardId);
+  };
+
+  // Shuffle function with sequenced animations
+  const shuffleCard = (cardId: string, direction: 'left' | 'right' = 'right') => {
+    if (isAnimating || hasSubmittedThisRound) return;
+    
+    setIsAnimating(true);
+    
+    // Step 1: Card slides away (300ms)
+    setExitingCardId(cardId);
+    setExitDirection(direction);
+    
+    setTimeout(() => {
+      // Step 2: Other cards slide up to fill gap (1000ms)
+      setSlidingUp(true);
+      
+      setTimeout(() => {
+        // Step 3: Update card order and show card at bottom
+        setCardOrder(prevOrder => {
+          const newOrder = [...prevOrder];
+          const cardIndex = newOrder.indexOf(cardId);
+          if (cardIndex !== -1) {
+            const [card] = newOrder.splice(cardIndex, 1);
+            newOrder.push(card);
+          }
+          return newOrder;
+        });
+        
+        // Step 4: Reset animation states
+        setExitingCardId(null);
+        setSlidingUp(false);
+        setIsAnimating(false);
+      }, 500); // Cards slide up duration
+    }, 300); // Card exit duration
+  };
+
+  // Touch event handlers for swipe detection
+  const handleTouchStart = (e: React.TouchEvent, cardId: string) => {
+    e.preventDefault(); // Prevent scrolling during card interaction
+    const touch = e.touches[0];
+    swipeOccurredRef.current = false;
+    setDraggingCardId(cardId);
+    setDragOffset({ x: 0, y: 0 });
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent, cardId: string) => {
+    if (!touchStartRef.current || draggingCardId !== cardId) return;
+    
+    e.preventDefault(); // Prevent scrolling during card drag
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    
+    // Invert Y-axis so dragging down moves card down on screen
+    setDragOffset({ x: deltaX, y: -deltaY });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent, cardId: string) => {
+    if (!touchStartRef.current) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const deltaTime = Date.now() - touchStartRef.current.time;
+    
+    // Calculate distance and velocity
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const velocity = distance / deltaTime;
+    
+    // Swipe thresholds
+    const minDistance = 40;
+    const minVelocity = 0.3;
+    
+    // Determine swipe direction (horizontal swipes need to be more horizontal than vertical)
+    const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+    const isVertical = Math.abs(deltaY) > Math.abs(deltaX);
+    
+    if ((distance > minDistance || velocity > minVelocity)) {
+      if (isHorizontal) {
+        const direction = deltaX > 0 ? 'right' : 'left';
+        console.log(`Swipe detected: ${direction} on card ${cardId}`, { deltaX, deltaY, distance, velocity });
+        swipeOccurredRef.current = true;
+        shuffleCard(cardId, direction);
+      } else if (isVertical && deltaY < 0) {
+        console.log(`Swipe detected: up on card ${cardId}`, { deltaX, deltaY, distance, velocity });
+        swipeOccurredRef.current = true;
+        // TODO: Implement swipe up to submit in next step
+      }
+    }
+    
+    // Reset drag state
+    setDragOffset(null);
+    setDraggingCardId(null);
+    
+    // Reset swipe flag after a short delay to allow click prevention
+    setTimeout(() => {
+      swipeOccurredRef.current = false;
+    }, 100);
+    
+    touchStartRef.current = null;
   };
   
   const handleSubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -279,19 +415,28 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         ) : !isBoondoggleRound ? (
           handWithCustomCard.map((card, index) => {
             const isVisible = index < cardsVisible;
-            const isFlipped = index < cardsFlipped;
+            const isFlipped = flippedCardIds.has(card.id);
             const isThisCardSelected = selectedCardId === card.id;
 
             return (
               <motion.div
                 key={`${card.id}-${player.id}-${index}`}
-                className="absolute w-[22rem] left-0 right-0 mx-auto cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
+                className={`absolute w-[22rem] left-0 right-0 mx-auto [transform-style:preserve-3d] aspect-[1536/600] ${index === 0 ? 'cursor-pointer' : 'cursor-default'}`}
                 style={{
                   top: 20 + (index * 35),
                   zIndex: isThisCardSelected ? 50 : 20 - index,
                 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                onClick={() => handleCardClick(card.id)}
+                transition={{ 
+                  type: slidingUp ? 'tween' : 'spring', 
+                  stiffness: 400, 
+                  damping: 30,
+                  duration: slidingUp ? 0.5 : undefined,
+                  ease: slidingUp ? 'linear' : undefined
+                }}
+                onClick={() => index === 0 ? handleCardClick(card.id) : undefined}
+                onTouchStart={(e) => index === 0 ? handleTouchStart(e, card.id) : undefined}
+                onTouchMove={(e) => index === 0 ? handleTouchMove(e, card.id) : undefined}
+                onTouchEnd={(e) => index === 0 ? handleTouchEnd(e, card.id) : undefined}
               >
                 <motion.div
                   className="relative w-full h-full [transform-style:preserve-3d] shadow-lg rounded-xl"
@@ -301,12 +446,21 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                       ${isVisible ? 'translateY(0) scale(1)' : 'translateY(300px) scale(0.8)'}
                       ${isThisCardSelected ? 'translateY(-20px) scale(1.05)' : ''}
                       ${isFlipped ? 'rotateX(180deg)' : 'rotateX(0deg)'}
+                      ${draggingCardId === card.id && dragOffset ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : ''}
+                      ${exitingCardId === card.id ? `translateX(${exitDirection === 'right' ? '100vw' : '-100vw'})` : ''}
+                      ${slidingUp && index > 0 && card.id !== exitingCardId ? 'translateY(-35px)' : ''}
                     `,
                     boxShadow: isThisCardSelected
                       ? '0 15px 40px rgba(52, 152, 219, 0.4)'
                       : '0 6px 20px rgba(0,0,0,0.15)',
                   }}
-                  transition={{ duration: 0.6, ease: [0.68, -0.55, 0.265, 1.55] }}
+                  transition={{ 
+                    duration: draggingCardId === card.id ? 0 : 
+                             exitingCardId === card.id ? 0.3 :
+                             slidingUp ? 0.5 : 0.6, 
+                    ease: exitingCardId === card.id ? 'easeOut' :
+                          slidingUp ? 'linear' : [0.68, -0.55, 0.265, 1.55]
+                  }}
                 >
                   {/* Card Back */}
                   <div className={cn(

@@ -120,6 +120,9 @@
     flex-direction: column;
     position: relative;
     @apply font-im-fell;
+    /* Prevent horizontal scrolling globally, allow vertical */
+    touch-action: pan-y;
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6,
