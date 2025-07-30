@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2 } from 'lucide-react';
 import Image from "next/image";
+import { useAudio } from '@/contexts/AudioContext';
 
 interface SwipeableCategorySelectorProps {
   categories: string[];
@@ -19,6 +20,7 @@ export default function SwipeableCategorySelector({
 }: SwipeableCategorySelectorProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
+  const { playSfx } = useAudio();
 
   const enhancedCategories = useMemo(() => {
     const categoryImageMap: { [key: string]: string } = {
@@ -39,6 +41,7 @@ export default function SwipeableCategorySelector({
   const selectedCategory = enhancedCategories[currentIndex]?.name;
 
   const paginate = (newDirection: number) => {
+    playSfx('category-select');
     setDirection(newDirection);
     setCurrentIndex((prevIndex) => (prevIndex + newDirection + enhancedCategories.length) % enhancedCategories.length);
   };
@@ -54,6 +57,7 @@ export default function SwipeableCategorySelector({
 
   const handleUnleash = () => {
     if (selectedCategory) {
+      playSfx('unleash-scenario');
       onUnleashScenario(selectedCategory);
     }
   };

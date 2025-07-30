@@ -440,7 +440,20 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
     }
   }
 
-  const { data: availableCards, error: fetchError } = await query.limit(count * 50);
+  // Smart limit: Use different multipliers based on whether this is initial deal or replacement
+  const isInitialDeal = count > 10; // Heuristic: >10 cards likely means initial deal
+  const multiplier = isInitialDeal ? 3 : 5; // More variety for initial deal, less for replacement
+  const totalAvailable = 1013 - allKnownUsedResponses.length; // Approximate available cards
+  const smartLimit = Math.min(count * multiplier, Math.max(totalAvailable, count)); // Never less than count needed
+  
+  // Log warning if running low on cards
+  if (totalAvailable < 100) {
+    console.warn(`⚠️ UTIL: dealCards - Running low on cards! Only ${totalAvailable} cards remaining for game ${gameId}`);
+  }
+  
+  const { data: availableCards, error: fetchError } = await query
+    .order('id') // Add consistent ordering (using id instead of RANDOM() for now to avoid PostgreSQL function issues)
+    .limit(smartLimit);
 
   if (fetchError) {
     console.error(`🔴 UTIL: dealCards - Error fetching available response cards for game ${gameId}:`, JSON.stringify(fetchError, null, 2));

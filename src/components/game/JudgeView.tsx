@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFoo
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { Gavel, Send, CheckCircle, Loader2, Crown, PlusCircle, XCircle, SkipForward, Award, HelpCircle, PartyPopper } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAudio } from '@/contexts/AudioContext';
 import ScenarioDisplay from './ScenarioDisplay';
 import { cn } from '@/lib/utils';
 import { handleJudgeApprovalForCustomCard, nextRound } from '@/app/game/actions';
@@ -50,6 +51,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
 
   const { toast } = useToast();
+  const { playSfx } = useAudio();
   
   const [shuffledSubmissions, setShuffledSubmissions] = useState<GameClientState['submissions']>([]);
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
@@ -58,6 +60,13 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
 
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
   const isBoondoggleRound = gameState.currentScenario?.category === "Boondoggles" && gameState.gamePhase === 'judging';
+
+  // Play devil laughter sound when boondoggle is revealed
+  useEffect(() => {
+    if (isBoondoggleRound) {
+      playSfx('boondoggle');
+    }
+  }, [isBoondoggleRound, playSfx]);
   
   useEffect(() => {
     isMountedRef.current = true;
@@ -126,6 +135,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
         return;
     }
 
+    playSfx('crown-winner');
     setPendingWinnerCard(cardText);
     
     try {

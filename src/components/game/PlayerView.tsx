@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useState, useTransition, useEffect, useMemo, useRef } from 'react';
 import { Send, Loader2, ListCollapse, VenetianMask, Gavel, Edit3, CheckSquare, Sparkles, PartyPopper, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAudio } from '@/contexts/AudioContext';
 import ScenarioDisplay from './ScenarioDisplay';
 import { submitResponse } from '@/app/game/actions';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [customCardText, setCustomCardText] = useState('');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { playSfx } = useAudio();
   const isMountedRef = useRef(true);
 
   // Animation state
@@ -48,6 +50,12 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [isDraggingUp, setIsDraggingUp] = useState(false);
   const [draggingUpCardId, setDraggingUpCardId] = useState<string | null>(null);
   
+  // Card submission animation state
+  const [isSubmittingCard, setIsSubmittingCard] = useState(false);
+  const [submittingCardId, setSubmittingCardId] = useState<string | null>(null);
+  const [submissionStartPosition, setSubmissionStartPosition] = useState<{ x: number; y: number } | null>(null);
+  const [submissionVelocity, setSubmissionVelocity] = useState<{ x: number; y: number } | null>(null);
+  
   // Animation sequence state
   const [exitingCardId, setExitingCardId] = useState<string | null>(null);
   const [exitDirection, setExitDirection] = useState<'left' | 'right'>('right');
@@ -62,6 +70,13 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   );
 
   const isBoondoggleRound = gameState.currentScenario?.category === "Boondoggles" && gameState.gamePhase === 'judging';
+
+  // Play devil laughter sound when boondoggle is revealed
+  useEffect(() => {
+    if (isBoondoggleRound) {
+      playSfx('boondoggle');
+    }
+  }, [isBoondoggleRound, playSfx]);
   
   const handWithCustomCard = useMemo(() => {
     // Sort the hand so the 'new' card is first, which will render it on top of the stack.
@@ -109,6 +124,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       }, 1200));
 
       timers.push(setTimeout(() => {
+        // Play the card deal sound once at the start of the flip sequence
+        playSfx('card-flip');
+        
         handWithCustomCard.forEach((card, index) => {
           timers.push(setTimeout(() => {
             if (isMountedRef.current) {
@@ -128,6 +146,11 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       startAnimation();
     } else {
       setScenarioVisible(gameState.gamePhase === 'player_submission' && hasSubmittedThisRound);
+      // Clean up submission animation state when phase changes or submission completes
+      setIsSubmittingCard(false);
+      setSubmittingCardId(null);
+      setSubmissionStartPosition(null);
+      setSubmissionVelocity(null);
     }
 
     return () => {
@@ -271,9 +294,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         const upwardVelocity = upwardDistance / deltaTime;
         
         // Two ways to submit:
-        // 1. Quick flick: 60px distance OR 0.4px/ms velocity
-        // 2. Deliberate drag: reached 50% of screen height
-        const flickThreshold = upwardDistance > 60 || upwardVelocity > 0.4;
+        // 1. Quick flick: 40px distance AND 0.4px/ms velocity (both required)
+        // 2. Deliberate drag: reached 30% of screen height
+        const flickThreshold = upwardDistance > 40 && upwardVelocity > 0.4;
         const dragThreshold = upwardDistance > window.innerHeight * 0.3; // 30% of screen height
         
         if (flickThreshold || dragThreshold) {
@@ -281,7 +304,20 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             deltaY, upwardDistance, upwardVelocity, flickThreshold, dragThreshold 
           });
           swipeOccurredRef.current = true;
-          handleSwipeUpSubmit(cardId);
+          
+          // Capture current position and velocity for smooth transition
+          const currentPosition = dragOffset || { x: 0, y: 0 };
+          const velocity = { x: deltaX / deltaTime, y: deltaY / deltaTime };
+          
+          // Start submission animation with momentum
+          setSubmissionStartPosition(currentPosition);
+          setSubmissionVelocity(velocity);
+          setIsSubmittingCard(true);
+          setSubmittingCardId(cardId);
+          handleSwipeUpSubmit(cardId, currentPosition, velocity);
+          
+          // Don't reset drag states here - let the animation handle it
+          return;
         } else {
           console.log(`Swipe up detected but below threshold:`, { upwardDistance, upwardVelocity });
         }
@@ -303,13 +339,15 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   };
 
   // Handle swipe up to submit
-  const handleSwipeUpSubmit = (cardId: string) => {
-    console.log('handleSwipeUpSubmit called for card:', cardId);
+  const handleSwipeUpSubmit = (cardId: string, startPosition?: { x: number; y: number }, velocity?: { x: number; y: number }) => {
+    console.log('handleSwipeUpSubmit called for card:', cardId, { startPosition, velocity });
     
     if (hasSubmittedThisRound) {
       console.log('Already submitted this round');
       return;
     }
+
+    playSfx('card-submit');
 
     const selectedCardData = handWithCustomCard.find(c => c.id === cardId);
     if (!selectedCardData) {
@@ -322,23 +360,54 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
     if (!textToSubmit.trim()) {
       toast({ title: "Empty card?", description: "Your card needs some text!", variant: "destructive" });
+      // Reset submission state on validation error
+      setIsSubmittingCard(false);
+      setSubmittingCardId(null);
+      setSubmissionStartPosition(null);
+      setSubmissionVelocity(null);
       return;
     }
 
-    console.log('Submitting card via swipe up:', { cardId, isCustom, textToSubmit });
+    console.log('Starting card fly animation for submission:', { cardId, isCustom, textToSubmit });
 
-    startTransition(async () => {
-      try {
-        await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustom);
-        if (isMountedRef.current) {
-          setCustomCardText('');
+    // Clean up drag states smoothly - no artificial delay
+    setDragOffset(null);
+    setDraggingCardId(null);
+    setIsDraggingUp(false);
+    setDraggingUpCardId(null);
+
+    // Calculate dynamic animation duration based on velocity
+    const baseVelocity = velocity ? Math.abs(velocity.y) : 0;
+    const minDuration = 300;
+    const maxDuration = 600;
+    // Higher velocity = shorter duration (feels more responsive)
+    const dynamicDuration = Math.max(minDuration, maxDuration - (baseVelocity * 200));
+
+    // Start the card fly animation - submission happens after animation completes
+    setTimeout(() => {
+      console.log('Card animation complete, submitting response');
+      
+      startTransition(async () => {
+        try {
+          await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustom);
+          if (isMountedRef.current) {
+            setCustomCardText('');
+            // DON'T reset submission animation state after successful submission
+            // Let the card stay "gone" - it will be cleaned up when the game phase changes
+            console.log('Submission successful, card stays gone');
+          }
+        } catch (error: any) {
+          if (isMountedRef.current) {
+            toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
+            // Only reset submission state on error so card reappears
+            setIsSubmittingCard(false);
+            setSubmittingCardId(null);
+            setSubmissionStartPosition(null);
+            setSubmissionVelocity(null);
+          }
         }
-      } catch (error: any) {
-        if (isMountedRef.current) {
-          toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
-        }
-      }
-    });
+      });
+    }, dynamicDuration);
   };
   
   const handleSubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -581,15 +650,40 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                       y: (isVisible ? 0 : 300) + (isThisCardSelected ? -20 : 0) - 35
                     }),
                     
+                    // Submission fly-away animation (overrides everything else)
+                    ...(submittingCardId === card.id && (() => {
+                      const startPos = submissionStartPosition || { x: 0, y: 0 };
+                      const velocity = submissionVelocity || { x: 0, y: 0 };
+                      
+                      // Use momentum for more natural trajectory
+                      const momentumX = velocity.x * 100; // Scale velocity for visual effect
+                      const momentumBoost = Math.abs(velocity.y) * 50; // Extra upward boost from velocity
+                      
+                      return {
+                        y: startPos.y - window.innerHeight * 0.8 - momentumBoost,
+                        x: startPos.x + momentumX * 0.3, // Slight horizontal drift based on momentum
+                        scale: 0.6, // Shrink more for dramatic effect
+                        opacity: 0,
+                        rotateZ: velocity.x > 0 ? 8 : -8, // Rotate based on horizontal momentum
+                      };
+                    })()),
+                    
                     boxShadow: isThisCardSelected
                       ? '0 15px 40px rgba(52, 152, 219, 0.4)'
                       : '0 6px 20px rgba(0,0,0,0.15)',
                   }}
                   transition={{ 
                     duration: draggingCardId === card.id ? 0 : 
+                             submittingCardId === card.id ? (() => {
+                               const baseVelocity = submissionVelocity ? Math.abs(submissionVelocity.y) : 0;
+                               const minDuration = 0.3;
+                               const maxDuration = 0.6;
+                               return Math.max(minDuration, maxDuration - (baseVelocity * 0.2));
+                             })() :
                              exitingCardId === card.id ? 0.3 :
                              slidingUp ? 0.25 : 0.6, 
-                    ease: exitingCardId === card.id ? 'easeOut' :
+                    ease: submittingCardId === card.id ? [0.15, 0.8, 0.25, 1] : // More natural spring-like easing
+                          exitingCardId === card.id ? 'easeOut' :
                           slidingUp ? 'easeInOut' : [0.68, -0.55, 0.265, 1.55]
                   }}
                 >

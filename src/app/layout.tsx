@@ -6,8 +6,9 @@ import { cn } from '@/lib/utils';
 import FontDebugger from '@/components/layout/FontDebugger';
 import { AudioProvider } from '@/contexts/AudioContext';
 import { LoadingProvider } from '@/contexts/LoadingContext';
+import { SharedGameProvider } from '@/contexts/SharedGameContext';
 import MusicPlayer from '@/components/layout/MusicPlayer';
-import GlobalLoadingOverlay from '@/components/layout/GlobalLoadingOverlay';
+import UnifiedTransitionOverlay from '@/components/ui/UnifiedTransitionOverlay';
 
 
 export const metadata: Metadata = {
@@ -41,6 +42,7 @@ export default function RootLayout({
         )} suppressHydrationWarning={true}>
         <LoadingProvider>
           <AudioProvider>
+            <SharedGameProvider>
               <div className="flex min-h-screen w-full flex-col">
                 <main className="flex-grow flex flex-col">
                   {children}
@@ -48,7 +50,8 @@ export default function RootLayout({
               </div>
               <Toaster />
               <MusicPlayer />
-              <GlobalLoadingOverlay />
+              <UnifiedTransitionOverlay />
+            </SharedGameProvider>
           </AudioProvider>
         </LoadingProvider>
         <FontDebugger />

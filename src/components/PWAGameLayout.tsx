@@ -8,6 +8,7 @@ import { AVATARS } from '@/lib/data';
 import { addPlayer as addPlayerAction } from '@/app/game/actions';
 import type { Tables } from '@/lib/database.types';
 import { useRouter } from 'next/navigation';
+import { useAudio } from '@/contexts/AudioContext';
 
 interface PWAGameLayoutProps {
   gameId: string;
@@ -19,9 +20,11 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
   const [avatarIndex, setAvatarIndex] = useState(0);
   const [isProcessing, startTransition] = useTransition();
   const { toast } = useToast();
+  const { playSfx } = useAudio();
   const router = useRouter();
 
   const handleAvatarChange = (direction: number) => {
+    playSfx('button-click');
     const newIndex = (avatarIndex + direction + AVATARS.length) % AVATARS.length;
     setAvatarIndex(newIndex);
   };
@@ -41,9 +44,12 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
       try {
         const selectedAvatar = AVATARS[avatarIndex];
         const newPlayer = await addPlayerAction(name, selectedAvatar);
+        console.log(`PWA_LAYOUT: addPlayerAction returned:`, newPlayer);
         if (newPlayer) {
+          console.log(`PWA_LAYOUT: Calling onPlayerAdded with player ${newPlayer.id}`);
           onPlayerAdded(newPlayer);
         } else {
+          console.log(`PWA_LAYOUT: addPlayerAction returned null`);
           toast({ title: "Join Error", description: "Could not add player to the game. It might have already started.", variant: "destructive"});
         }
       } catch (error: any) {

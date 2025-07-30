@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion, usePresence, wrap } from "framer-motion";
+import { useAudio } from '@/contexts/AudioContext';
 
 interface AvatarCarouselProps {
   avatars: string[];
@@ -86,6 +87,7 @@ export default function AvatarCarousel({
     : (avatars.length > 0 ? 0 : -1);
 
   const [[page, direction], setPage] = useState([initialIndex, 0]);
+  const { playSfx } = useAudio();
 
   useEffect(() => {
     const newInitialIndex = initialAvatar && avatars.length > 0 
@@ -111,6 +113,7 @@ export default function AvatarCarousel({
 
   const paginate = (newDirection: number) => {
     if (avatars.length === 0) return;
+    playSfx('button-click');
     const newPageIndex = page + newDirection;
     setPage([newPageIndex, newDirection]);
     const nextAvatarIndex = wrap(0, avatars.length, newPageIndex);

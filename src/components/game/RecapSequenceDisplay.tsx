@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { PlayerClientState } from '@/lib/types';
 import FlippingWinnerCard from './FlippingWinnerCard';
 import Image from 'next/image';
+import { useAudio } from '@/contexts/AudioContext';
 
 interface RecapSequenceDisplayProps {
   lastWinnerPlayer: PlayerClientState;
@@ -35,6 +36,7 @@ function RecapSequenceDisplay({
   const [hasStartedNextRound, setHasStartedNextRound] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
+  const { playSfx } = useAudio();
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -54,6 +56,9 @@ function RecapSequenceDisplay({
     setHasStartedNextRound(false);
     setRotation(0);
     if (timerRef.current) clearTimeout(timerRef.current);
+
+    // Play the round winner announcement sound
+    playSfx('round-winner');
 
     // Sequence starts here
     // 1. Show banner, then flip to details
@@ -78,7 +83,7 @@ function RecapSequenceDisplay({
     }, RECAP_STEP_DURATIONS.winnerBanner + RECAP_STEP_DURATIONS.winnerDetails + RECAP_STEP_DURATIONS.scoreboard);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastWinnerPlayer.id, lastWinnerCardText]); // Re-trigger if winner changes
+  }, [lastWinnerPlayer.id, lastWinnerCardText, playSfx]); // Re-trigger if winner changes
 
   // Effect to trigger next round once the loading animation is visible
   useEffect(() => {

@@ -33,9 +33,18 @@ const PureMorphingModal: React.FC<PureMorphingModalProps> = ({
     default: 'bg-gradient-to-br from-purple-600 to-purple-700',
     winner: 'bg-gradient-to-br from-green-500 to-green-600',
     scoreboard: 'bg-red-600', 
-    settings: 'bg-gradient-to-br from-purple-600 to-purple-700',
+    settings: 'bg-white',
     gameOver: 'bg-gradient-to-br from-gray-800 to-gray-900',
     image: 'bg-transparent',
+  };
+
+  const textColorStyles = {
+    default: 'text-white',
+    winner: 'text-white',
+    scoreboard: 'text-white',
+    settings: 'text-black',
+    gameOver: 'text-white',
+    image: 'text-white',
   };
 
   return (
@@ -70,9 +79,10 @@ const PureMorphingModal: React.FC<PureMorphingModalProps> = ({
                   ease: [0.175, 0.885, 0.32, 1.275]
                 }}
                 className={`
-                  w-full max-w-md h-auto p-8 text-center text-white 
+                  w-full max-w-md h-auto p-8 text-center 
                   rounded-lg overflow-hidden relative
                   ${variantStyles[variant]}
+                  ${textColorStyles[variant]}
                   ${className}
                 `}
                 style={{
@@ -88,10 +98,11 @@ const PureMorphingModal: React.FC<PureMorphingModalProps> = ({
                 {isDismissable && (
                   <button
                     onClick={onClose}
-                    className="absolute right-4 top-4 z-20 rounded-full p-1 opacity-70 
-                              transition-opacity hover:opacity-100 bg-white/10 hover:bg-white/20"
+                    className={`absolute right-4 top-4 z-20 rounded-full p-1 opacity-70 
+                              transition-opacity hover:opacity-100 
+                              ${variant === 'settings' ? 'bg-black/10 hover:bg-black/20' : 'bg-white/10 hover:bg-white/20'}`}
                   >
-                    <X className="h-5 w-5 text-white" />
+                    <X className={`h-5 w-5 ${variant === 'settings' ? 'text-black' : 'text-white'}`} />
                   </button>
                 )}
 

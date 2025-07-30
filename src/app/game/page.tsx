@@ -1,21 +1,16 @@
 
 "use client";
 
-import { useState } from 'react';
-import { useEffect, useTransition, useCallback, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { useState, useTransition, useCallback, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-  getGame,
-  startGame,
   selectCategory,
   selectWinner,
   nextRound,
-  getCurrentPlayer,
   resetGameForTesting
 } from '@/app/game/actions';
-import type { GameClientState, PlayerClientState, GamePhaseClientState } from '@/lib/types';
-import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
+import type { PlayerClientState, GamePhaseClientState } from '@/lib/types';
+import { ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
 import JudgeView from '@/components/game/JudgeView';
 import PlayerView from '@/components/game/PlayerView';
@@ -24,154 +19,49 @@ import RecapSequenceDisplay from '@/components/game/RecapSequenceDisplay';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, Play, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX } from 'lucide-react';
+import { Home, Play, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX, Music, Zap } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { PureMorphingModal } from '@/components/PureMorphingModal';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import GameUI from '@/components/game/GameUI';
 import { useAudio } from '@/contexts/AudioContext';
+import { useSharedGame } from '@/contexts/SharedGameContext';
 import { useLoading } from '@/contexts/LoadingContext';
-import TransitionOverlay from '@/components/ui/TransitionOverlay';
+import FullScreenLoader from '@/components/ui/FullScreenLoader';
 
 
-// Helper debounce function
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): T & { cancel: () => void } {
-  let timeout: NodeJS.Timeout | null = null;
-  
-  const debounced = ((...args: any[]) => {
-    if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  }) as T & { cancel: () => void };
-  
-  debounced.cancel = () => {
-    if (timeout) clearTimeout(timeout);
-  };
-  
-  return debounced;
-}
 
 export default function GamePage() {
-  const [internalGameState, setInternalGameState] = useState<GameClientState | null>(null);
-  const gameStateRef = useRef<GameClientState | null>(null);
-
-  const [thisPlayer, setThisPlayerInternal] = useState<PlayerClientState | null>(null);
-  const thisPlayerRef = useRef<PlayerClientState | null>(null);
-
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
-  const pathname = usePathname();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   
-  const { playTrack, stop: stopMusic, state: audioState, toggleMute, playSfx } = useAudio();
+  const { playTrack, stop: stopMusic, state: audioState, toggleMute, toggleMusicMute, toggleSfxMute } = useAudio();
+  const { gameState: internalGameState, thisPlayer, isInitializing } = useSharedGame();
   const { setGlobalLoading } = useLoading();
 
 
-  const setGameState = useCallback((newState: GameClientState | null | ((prevState: GameClientState | null) => GameClientState | null)) => {
-    if (typeof newState === 'function') {
-        setInternalGameState(prevState => {
-            const result = newState(prevState);
-            gameStateRef.current = result;
-            console.log(`GAME_PAGE: Game state updated. Phase: ${result?.gamePhase}`);
-            return result;
-        });
-    } else {
-        gameStateRef.current = newState;
-        console.log(`GAME_PAGE: Game state updated. Phase: ${newState?.gamePhase}`);
-        if (isMountedRef.current) setInternalGameState(newState);
-    }
-  }, []);
-
-  const setThisPlayer = useCallback((newPlayerState: PlayerClientState | null | ((prevState: PlayerClientState | null) => PlayerClientState | null)) => {
-    if (typeof newPlayerState === 'function') {
-      setThisPlayerInternal(prevState => {
-          const result = newPlayerState(prevState);
-          thisPlayerRef.current = result;
-          console.log(`GAME_PAGE: Set thisPlayer to: ${result?.name}`);
-          return result;
-      });
-    } else {
-      thisPlayerRef.current = newPlayerState;
-      console.log(`GAME_PAGE: Set thisPlayer to: ${newPlayerState?.name}`);
-      if (isMountedRef.current) setThisPlayerInternal(newPlayerState);
-    }
-  }, []);
-
-
-  const fetchGameAndPlayer = useCallback(async (origin: string = "unknown") => {
-    console.log(`GAME_PAGE: fetchGameAndPlayer - Initiated from ${origin}.`);
-    try {
-      const initialGameState = await getGame();
-      if (!isMountedRef.current) return;
-
-      if (!initialGameState || !initialGameState.gameId) {
-        toast({ title: "Game Not Found", description: "Could not find an active game session.", variant: "destructive" });
-        router.push('/?step=setup');
-        return;
-      }
-      console.log(`GAME_PAGE: fetchGameAndPlayer - Fetched game ${initialGameState.gameId}. Phase: ${initialGameState.gamePhase}`);
-
-      const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${initialGameState.gameId}`);
-      console.log(`GAME_PAGE: fetchGameAndPlayer - Player ID from storage: ${playerIdFromStorage}`);
-      
-      if (!playerIdFromStorage) {
-        if (ACTIVE_PLAYING_PHASES.includes(initialGameState.gamePhase as GamePhaseClientState)) {
-          setThisPlayer(null); // Set as spectator
-        } else {
-          router.push('/?step=setup');
-        }
-      } else {
-        const playerDetails = await getCurrentPlayer(playerIdFromStorage, initialGameState.gameId);
-        if (playerDetails) {
-            setThisPlayer(playerDetails);
-        } else {
-          localStorage.removeItem(`thisPlayerId_game_${initialGameState.gameId}`);
-          router.push('/?step=setup'); // Player ID exists but isn't in game, so redirect
-        }
-      }
-      
-      setGameState(initialGameState);
-
-    } catch (error: any) {
-      console.error(`GamePage: Error in fetchGameAndPlayer (from ${origin}):`, error);
-      toast({ title: "Error Loading Game", description: "Could not fetch game data.", variant: "destructive" });
-    } finally {
-      if (isMountedRef.current) {
-        console.log("GAME_PAGE: fetchGameAndPlayer - Finished.");
-        setIsInitialLoading(false);
-        // Small delay to ensure smooth transition from lobby
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            setGlobalLoading(false);
-          }
-        }, 150);
-      }
-    }
-  }, [router, toast, setGameState, setThisPlayer, setGlobalLoading]);
   
 
   useEffect(() => {
     isMountedRef.current = true;
-    fetchGameAndPlayer("initial mount");
-    
     return () => {
       isMountedRef.current = false;
     };
-  }, [fetchGameAndPlayer]);
+  }, []);
 
-  // Handle transition states from database
+  // Clear global loading flag when game page is ready
   useEffect(() => {
-    if (!internalGameState) return;
-    console.log(`GAME_PAGE: Transition state check: ${internalGameState.transitionState}`);
-  }, [internalGameState?.transitionState, internalGameState?.transitionMessage, internalGameState?.players]);
+    if (!isInitializing && internalGameState) {
+      console.log("GAME_PAGE: Game ready, clearing global loading flag");
+      setGlobalLoading(false);
+    }
+  }, [isInitializing, internalGameState, setGlobalLoading]);
 
   // Audio management
   useEffect(() => {
@@ -192,65 +82,10 @@ export default function GamePage() {
     }
   }, [internalGameState?.gamePhase, playTrack, stopMusic]);
 
-  // Real-time subscriptions - More reliable refetch-on-trigger model
-  useEffect(() => {
-    const gameId = internalGameState?.gameId;
-    if (!gameId || !isMountedRef.current) {
-        return;
-    }
-
-    // This debounced function will be our single point of truth for refreshing state.
-    const debouncedRefetch = debounce(async () => {
-        if (!isMountedRef.current) return;
-        console.log(`GAME_PAGE: Real-time update triggered refetch for game ${gameId}`);
-        try {
-            const updatedGame = await getGame(gameId);
-            if (updatedGame && isMountedRef.current) {
-                setGameState(updatedGame);
-                const currentPlayerId = thisPlayerRef.current?.id;
-                if (currentPlayerId) {
-                    const playerDetail = updatedGame.players.find(p => p.id === currentPlayerId);
-                    setThisPlayer(playerDetail || null);
-                }
-            }
-        } catch (error) {
-            console.error('Error in debounced refetch:', error);
-        }
-    }, 500); // 500ms debounce window
-
-    const channel = supabase
-        .channel(`game-updates-${gameId}`)
-        .on('postgres_changes', 
-            { event: '*', schema: 'public' }, 
-            (payload) => {
-                debouncedRefetch();
-            }
-        )
-        .subscribe((status, err) => {
-            if (status === 'SUBSCRIBED') {
-                console.log(`GAME_PAGE: Subscribed to real-time updates for game ${gameId}`);
-                debouncedRefetch();
-            }
-            if (status === 'CHANNEL_ERROR') {
-                console.error('❌ Real-time subscription error:', err);
-                toast({
-                    title: "Connection Issue",
-                    description: "Having trouble with real-time updates. The game may feel slow.",
-                    variant: "destructive"
-                });
-            }
-        });
-
-    return () => {
-        console.log(`GAME_PAGE: Unsubscribing from real-time updates for game ${gameId}`);
-        debouncedRefetch.cancel();
-        supabase.removeChannel(channel);
-    };
-  }, [internalGameState?.gameId, setGameState, setThisPlayer, toast]);
 
 
   const handleNextRound = useCallback(async () => {
-    const gameId = gameStateRef.current?.gameId;
+    const gameId = internalGameState?.gameId;
     if (gameId) {
       console.log(`GAME_PAGE: handleNextRound triggered for game ${gameId}`);
       try {
@@ -261,7 +96,7 @@ export default function GamePage() {
         }
       }
     }
-  }, [toast]);
+  }, [internalGameState?.gameId, toast]);
 
   const handleSelectCategory = async (category: string) => {
     if (internalGameState?.gameId) {
@@ -336,14 +171,8 @@ export default function GamePage() {
   };
 
 
-  if (isInitialLoading) {
-    return (
-       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm">
-         <Loader2 className="h-12 w-12 animate-spin text-primary-foreground mb-4" />
-         <p className="text-lg text-primary-foreground font-semibold">Loading Game...</p>
-       </div>
-    );
-  }
+  // Let UnifiedTransitionOverlay handle the loading display
+  // No need for local loader since overlay is global
 
   if (!internalGameState || !internalGameState.gameId) {
     return (
@@ -362,15 +191,7 @@ export default function GamePage() {
     );
   }
   
-  // Render transition overlay if the game is in a transition state
-  if (internalGameState.transitionState !== 'idle') {
-    return (
-        <TransitionOverlay
-            transitionState={internalGameState.transitionState}
-            message={internalGameState.transitionMessage}
-        />
-    );
-  }
+  // UnifiedTransitionOverlay handles transition states globally
 
 
   if (!thisPlayer && ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase as GamePhaseClientState)) {
@@ -543,17 +364,34 @@ export default function GamePage() {
         icon="⚙️"
         title="Game Menu"
       >
-        <div className="text-white/90 mb-5">
+        <div className="text-black/90 mb-5">
           Options and actions for the game.
         </div>
         <div className="flex flex-col gap-3">
+          <div className="text-black/80 text-sm font-medium mb-2">Audio Controls</div>
           <Button
             variant="outline"
             onClick={toggleMute}
-            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            className="bg-black/10 hover:bg-black/20 text-black border-black/30"
           >
             {audioState.isMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
-            {audioState.isMuted ? 'Unmute Audio' : 'Mute Audio'}
+            {audioState.isMuted ? 'Unmute All Audio' : 'Mute All Audio'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={toggleMusicMute}
+            className="bg-black/10 hover:bg-black/20 text-black border-black/30"
+          >
+            {audioState.musicMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Music className="mr-2 h-4 w-4" />}
+            {audioState.musicMuted ? 'Unmute Music' : 'Mute Music'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={toggleSfxMute}
+            className="bg-black/10 hover:bg-black/20 text-black border-black/30"
+          >
+            {audioState.sfxMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Zap className="mr-2 h-4 w-4" />}
+            {audioState.sfxMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
           </Button>
           <Button 
             variant="outline" 
@@ -561,12 +399,12 @@ export default function GamePage() {
               setIsMenuModalOpen(false);
               setIsHowToPlayModalOpen(true);
             }}
-            className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            className="bg-black/10 hover:bg-black/20 text-black border-black/30"
           >
             <HelpCircle className="mr-2 h-4 w-4" /> How to Play
           </Button>
           <Link href="/?step=setup" className="inline-block" onClick={() => setIsMenuModalOpen(false)}>
-            <Button variant="outline" className="w-full bg-white/20 hover:bg-white/30 text-white border-white/30">
+            <Button variant="outline" className="w-full bg-black/10 hover:bg-black/20 text-black border-black/30">
               <Home className="mr-2 h-4 w-4" /> Exit to Lobby
             </Button>
           </Link>
@@ -587,7 +425,7 @@ export default function GamePage() {
       <PureMorphingModal
         isOpen={isHowToPlayModalOpen}
         onClose={() => setIsHowToPlayModalOpen(false)}
-        variant="default"
+        variant="settings"
         icon="❓"
         title="How to Play"
       >
