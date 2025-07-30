@@ -1,7 +1,7 @@
 # Netlify configuration for Next.js 15 + Supabase game
+
 [build]
-  command   = "npm run build"
-  publish   = ".next"
+  command = "npm run build"
 
 [build.environment]
   NODE_VERSION = "20.19.1"
@@ -10,23 +10,18 @@
 [functions]
   node_bundler = "esbuild"
 
-[plugins]
-  [[plugins]]
-    package = "@netlify/next"
+[[plugins]]
+  package = "@netlify/next"
 
-# Build cache configuration for faster rebuilds
 [build.cache]
   paths = [ 
     "node_modules/.cache",
     ".next/cache"
   ]
 
-# Context-specific build settings
-[context.production]
-  [context.production.environment]
-    NODE_ENV = "production"
-    NODE_VERSION = "20.19.1"
+[context.production.environment]
+  NODE_ENV = "production"
+  NODE_VERSION = "20.19.1"
 
-[context.deploy-preview]
-  [context.deploy-preview.environment]
-    NODE_VERSION = "20.19.1"
+[context.deploy-preview.environment]
+  NODE_VERSION = "20.19.1"
