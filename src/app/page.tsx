@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, HelpCircle, Info, Lock } from 'lucide-react';
+import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, Info, Lock } from 'lucide-react';
 import type { PlayerClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,8 @@ import { useSharedGame } from '@/contexts/SharedGameContext';
 import { useLoading } from '@/contexts/LoadingContext';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import ConfigurationError from '@/components/ConfigurationError';
+import { PureMorphingModal } from '@/components/PureMorphingModal';
+import { Volume2, VolumeX, Music, Zap, HelpCircle, Home } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,9 +50,11 @@ function WelcomePageContent() {
   const [isProcessingAction, startPlayerActionTransition] = useTransition();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
-  const { playTrack } = useAudio();
+  const { playTrack, state: audioState, toggleMute, toggleMusicMute, toggleSfxMute } = useAudio();
   const { gameState: internalGameState, thisPlayer, setThisPlayer } = useSharedGame();
   const { setGlobalLoading } = useLoading();
+  const [isMenuModalOpen, setIsMenuModalOpen] = React.useState(false);
+  const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = React.useState(false);
   
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
@@ -69,7 +73,8 @@ function WelcomePageContent() {
         avatar: newPlayer.avatar || '',
         isReady: newPlayer.is_ready || false,
         score: newPlayer.score || 0,
-        isJudge: false // Will be updated by real-time updates
+        isJudge: false, // Will be updated by real-time updates
+        hand: [] // Initialize empty hand for lobby
       };
       console.log(`LOBBY: handlePlayerAdded - Setting thisPlayer directly:`, playerClientState);
       setThisPlayer(playerClientState);
@@ -232,9 +237,10 @@ function WelcomePageContent() {
                   )}
                 </div>
               </div>
-              <div className="absolute bottom-[2%] left-0 right-0 flex items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-500 ease-out">
-                <Dialog><DialogTrigger asChild><button className="bg-transparent border-none p-0"><Image src="/ui/how-to-play-button.png" alt="How to Play" width={118} height={44} className="object-contain" data-ai-hint="how to play button" priority /></button></DialogTrigger><DialogContent className="max-w-2xl"><HowToPlayModalContent /></DialogContent></Dialog>
-                <Button onClick={handleResetGame} variant="outline" size="sm" className="border-amber-800/50 text-amber-900 hover:bg-amber-100/80" disabled={isProcessingAction}>{isProcessingAction ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />} Reset Lobby</Button>
+              <div className="absolute bottom-[2%] left-0 right-0 flex items-center justify-center animate-in fade-in slide-in-from-bottom-2 duration-700 delay-500 ease-out">
+                <button onClick={() => setIsMenuModalOpen(true)} className="bg-transparent border-none p-0">
+                  <Image src="/ui/menu-button-v2.png" alt="Game Menu" width={118} height={44} className="object-contain" data-ai-hint="menu button" priority />
+                </button>
               </div>
             </div>
           </div>
@@ -262,6 +268,74 @@ function WelcomePageContent() {
   return (
     <div className={cn("min-h-screen flex flex-col bg-black")}>
       <div className="flex-grow flex flex-col justify-center">{renderContent()}</div>
+      
+      {/* Menu Modal */}
+      <PureMorphingModal
+        isOpen={isMenuModalOpen}
+        onClose={() => setIsMenuModalOpen(false)}
+        variant="settings"
+        icon="⚙️"
+        title="Game Menu"
+      >
+        <div className="text-black/90 mb-5">
+          Options and actions for the game.
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="text-black/80 text-sm font-medium mb-2">Audio Controls</div>
+          <Button
+            variant="outline"
+            onClick={toggleMute}
+            className="bg-black/10 hover:bg-black/20 text-black border-black/30"
+          >
+            {audioState.isMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
+            {audioState.isMuted ? 'Unmute All Audio' : 'Mute All Audio'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={toggleMusicMute}
+            className="bg-black/10 hover:bg-black/20 text-black border-black/30"
+          >
+            {audioState.musicMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Music className="mr-2 h-4 w-4" />}
+            {audioState.musicMuted ? 'Unmute Music' : 'Mute Music'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={toggleSfxMute}
+            className="bg-black/10 hover:bg-black/20 text-black border-black/30"
+          >
+            {audioState.sfxMuted ? <VolumeX className="mr-2 h-4 w-4" /> : <Zap className="mr-2 h-4 w-4" />}
+            {audioState.sfxMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setIsMenuModalOpen(false);
+              setIsHowToPlayModalOpen(true);
+            }}
+            className="bg-black/10 hover:bg-black/20 text-black border-black/30"
+          >
+            <HelpCircle className="mr-2 h-4 w-4" /> How to Play
+          </Button>
+          <Button
+            onClick={() => {
+              handleResetGame();
+              setIsMenuModalOpen(false);
+            }}
+            className="bg-red-500/80 hover:bg-red-600/80 text-white"
+            disabled={isProcessingAction}
+          >
+            {isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Reset Game (Testing)
+          </Button>
+        </div>
+      </PureMorphingModal>
+
+      {/* How to Play Modal */}
+      <Dialog open={isHowToPlayModalOpen} onOpenChange={setIsHowToPlayModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <HowToPlayModalContent />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
