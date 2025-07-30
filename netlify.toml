@@ -10,8 +10,7 @@
 [functions]
   node_bundler = "esbuild"
 
-[[plugins]]
-  package = "@netlify/next"
+# Plugin is configured in Netlify UI, removing from here to avoid conflict
 
 [build.cache]
   paths = [ 
