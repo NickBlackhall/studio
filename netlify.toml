@@ -1,6 +1,6 @@
 # Netlify configuration for Next.js 15 + Supabase game
 [build]
-  command = "npm run build"
+  command = "npm ci --include=dev && npm run build"
   publish = ".next"
 
 [build.environment]
@@ -19,7 +19,6 @@
   ]
 
 [context.production.environment]
-  NODE_ENV = "production"
   NODE_VERSION = "20.19.1"
 
 [context.deploy-preview.environment]
