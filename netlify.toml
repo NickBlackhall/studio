@@ -4,7 +4,8 @@
   publish   = ".next"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "20.19.1"
+  NPM_VERSION = "10.9.2"
 
 [functions]
   node_bundler = "esbuild"
@@ -13,6 +14,19 @@
   [[plugins]]
     package = "@netlify/next"
 
-# Optional: cache node_modules for faster builds
+# Build cache configuration for faster rebuilds
 [build.cache]
-  paths = [ "node_modules/.cache" ]
+  paths = [ 
+    "node_modules/.cache",
+    ".next/cache"
+  ]
+
+# Context-specific build settings
+[context.production]
+  [context.production.environment]
+    NODE_ENV = "production"
+    NODE_VERSION = "20.19.1"
+
+[context.deploy-preview]
+  [context.deploy-preview.environment]
+    NODE_VERSION = "20.19.1"
