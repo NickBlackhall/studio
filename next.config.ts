@@ -2,7 +2,6 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -19,13 +18,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  experimental: {
-    allowedDevOrigins: [
-      'https://6000-firebase-studio-1748385878962.cluster-joak5ukfbnbyqspg4tewa33d24.cloudworkstations.dev',
-      'https://9000-firebase-studio-1748385878962.cluster-joak5ukfbnbyqspg4tewa33d24.cloudworkstations.dev',
-      'https://9003-firebase-studio-1748385878962.cluster-joak5ukfbnbyqspg4tewa33d24.cloudworkstations.dev'
-    ],
-  },
+  // Only include experimental options in development
+  ...(process.env.NODE_ENV === 'development' && {
+    experimental: {
+      allowedDevOrigins: [
+        'https://6000-firebase-studio-1748385878962.cluster-joak5ukfbnbyqspg4tewa33d24.cloudworkstations.dev',
+        'https://9000-firebase-studio-1748385878962.cluster-joak5ukfbnbyqspg4tewa33d24.cloudworkstations.dev',
+        'https://9003-firebase-studio-1748385878962.cluster-joak5ukfbnbyqspg4tewa33d24.cloudworkstations.dev'
+      ],
+    },
+  }),
 };
 
 export default nextConfig;
