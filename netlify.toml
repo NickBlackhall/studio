@@ -1,0 +1,18 @@
+# Netlify configuration for Next.js 15 + Supabase game
+[build]
+  command   = "npm run build"
+  publish   = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  node_bundler = "esbuild"
+
+[plugins]
+  [[plugins]]
+    package = "@netlify/next"
+
+# Optional: cache node_modules for faster builds
+[build.cache]
+  paths = [ "node_modules/.cache" ]

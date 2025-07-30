@@ -10,7 +10,7 @@ import type { PlayerClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import React, { useEffect, useCallback, useTransition, useRef, useMemo, startTransition } from 'react';
+import React, { useEffect, useCallback, useTransition, useRef, useMemo, startTransition, Suspense } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
@@ -25,7 +25,7 @@ import { useLoading } from '@/contexts/LoadingContext';
 export const dynamic = 'force-dynamic';
 
 
-export default function WelcomePage() {
+function WelcomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -247,6 +247,14 @@ export default function WelcomePage() {
     <div className={cn("min-h-screen flex flex-col bg-black")}>
       <div className="flex-grow flex flex-col justify-center">{renderContent()}</div>
     </div>
+  );
+}
+
+export default function WelcomePage() {
+  return (
+    <Suspense fallback={<div className="flex-grow flex items-center justify-center bg-black"><div className="text-white">Loading...</div></div>}>
+      <WelcomePageContent />
+    </Suspense>
   );
 }
 
