@@ -119,6 +119,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
               aspectRatio: '1'
             }}
             aria-label="View Scores"
+            title="View Scoreboard"
           >
             <Image
               src="/ui/scores-button-v2.png"
@@ -164,6 +165,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
               aspectRatio: '1'
             }}
             aria-label="Open Menu"
+            title="Open Game Menu"
           >
             <Image
               src="/ui/menu-button-v2.png"
