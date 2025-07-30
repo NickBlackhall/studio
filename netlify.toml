@@ -1,4 +1,4 @@
-# Netlify configuration for Next.js 15 + Supabase game
+# Netlify configuration for Next.js 15 + Supabase game - force refresh
 [build]
   command = "npm ci --include=dev && npm run build"
   publish = ".next"
