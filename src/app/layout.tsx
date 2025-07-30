@@ -14,6 +14,7 @@ import DebugPanel from '@/components/DebugPanel';
 
 
 export const metadata: Metadata = {
+  manifest: '/manifest.json',
   title: 'Make It Terrible',
   description: 'The game of terrible choices and hilarious outcomes!',
 };
@@ -69,5 +70,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    
