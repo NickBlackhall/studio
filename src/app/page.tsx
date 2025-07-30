@@ -21,11 +21,27 @@ import type { Tables } from '@/lib/database.types';
 import { useAudio } from '@/contexts/AudioContext';
 import { useSharedGame } from '@/contexts/SharedGameContext';
 import { useLoading } from '@/contexts/LoadingContext';
+import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import ConfigurationError from '@/components/ConfigurationError';
 
 export const dynamic = 'force-dynamic';
 
 
 function WelcomePageContent() {
+  // Check configuration first
+  if (!isSupabaseConfigured()) {
+    return (
+      <ConfigurationError 
+        title="Game Configuration Error"
+        message="The game cannot start because it's missing required configuration."
+        details={[
+          !process.env.NEXT_PUBLIC_SUPABASE_URL ? "NEXT_PUBLIC_SUPABASE_URL is not set" : "",
+          !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "NEXT_PUBLIC_SUPABASE_ANON_KEY is not set" : ""
+        ].filter(Boolean)}
+      />
+    );
+  }
+
   const router = useRouter();
   const searchParams = useSearchParams();
   

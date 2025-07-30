@@ -9,6 +9,8 @@ import { LoadingProvider } from '@/contexts/LoadingContext';
 import { SharedGameProvider } from '@/contexts/SharedGameContext';
 import MusicPlayer from '@/components/layout/MusicPlayer';
 import UnifiedTransitionOverlay from '@/components/ui/UnifiedTransitionOverlay';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import DebugPanel from '@/components/DebugPanel';
 
 
 export const metadata: Metadata = {
@@ -40,20 +42,23 @@ export default function RootLayout({
       <body className={cn(
           "antialiased flex flex-col min-h-screen",
         )} suppressHydrationWarning={true}>
-        <LoadingProvider>
-          <AudioProvider>
-            <SharedGameProvider>
-              <div className="flex min-h-screen w-full flex-col">
-                <main className="flex-grow flex flex-col">
-                  {children}
-                </main>
-              </div>
-              <Toaster />
-              <MusicPlayer />
-              <UnifiedTransitionOverlay />
-            </SharedGameProvider>
-          </AudioProvider>
-        </LoadingProvider>
+        <ErrorBoundary>
+          <LoadingProvider>
+            <AudioProvider>
+              <SharedGameProvider>
+                <div className="flex min-h-screen w-full flex-col">
+                  <main className="flex-grow flex flex-col">
+                    {children}
+                  </main>
+                </div>
+                <Toaster />
+                <MusicPlayer />
+                <UnifiedTransitionOverlay />
+                <DebugPanel />
+              </SharedGameProvider>
+            </AudioProvider>
+          </LoadingProvider>
+        </ErrorBoundary>
         <FontDebugger />
       </body>
     </html>

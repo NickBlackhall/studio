@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { getGame } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
 
@@ -26,6 +26,16 @@ export function SharedGameProvider({ children }: { children: React.ReactNode }) 
   const initializeGame = useCallback(async () => {
     console.log("SHARED_CONTEXT: initializeGame - Started");
     setIsInitializing(true);
+    
+    // Check if Supabase is properly configured
+    if (!isSupabaseConfigured()) {
+      console.error("SHARED_CONTEXT: Error initializing game: Supabase is not properly configured");
+      console.log("SHARED_CONTEXT: Please check environment variables:");
+      console.log("- NEXT_PUBLIC_SUPABASE_URL");
+      console.log("- NEXT_PUBLIC_SUPABASE_ANON_KEY");
+      setIsInitializing(false);
+      return;
+    }
     
     try {
       const fetchedGameState = await getGame();
