@@ -50,10 +50,15 @@ This section tracks recent improvements and bug fixes that have impacted gamepla
   - **Animation Sequencing:** Implemented smooth 3-step animation: (1) card slides off screen in swipe direction (300ms), (2) remaining cards slide up to fill gap (500ms), (3) swiped card appears at bottom of stack
   - **Direction Correction:** Fixed Y-axis inversion so dragging down moves card down on screen (not up)
   - **Spring Effect Removal:** Eliminated bouncy spring animations during shuffle sequence for cleaner, linear card movement
+- **Shuffle Animation Fixes:** Completely resolved the "re-deal" animation artifacts that caused cards to briefly flip back to logo side during shuffle. Fixed by changing React component keys from index-based to ID-based, preserving card identity and flip states during reordering.
+- **Mobile Touch Optimization:** Implemented comprehensive touch event handling to prevent page scrolling during card interactions on mobile devices. Added dynamic CSS touch-action properties and proper event propagation control.
+- **Animation Performance:** Reduced shuffle animation timing from 400ms to 250ms and simplified transform logic from complex string concatenation to clean object-based properties, eliminating transform conflicts and improving responsiveness.
+- **Card Selection Restoration:** Fixed broken card selection and custom card editing functionality that was disrupted during animation improvements. Cards now properly respond to taps and custom card text input works reliably.
+- **Selection State Management:** Resolved edge case where selected cards would remain "stuck" in elevated position after being swiped away. Now automatically clears selection when a selected card is shuffled, while preserving any typed custom card content.
 
-### Known Issues (In Progress)
-- **Shuffle Animation Artifacts:** Cards still exhibit a brief "re-deal" animation during shuffle sequence where the stack moves down, cards briefly show their backs, then spring back up. Root cause is conflict between index-based visibility system and card reordering. Attempted fix using card ID-based visibility tracking broke the initial dealing animation and was reverted.
-- **Touch Area Coverage:** Touch events for card swiping only work when dragging from the center of cards. Dragging from edges/corners still allows page scrolling to occur, indicating incomplete touch area coverage or event propagation issues.
+### Known Issues (Resolved)
+- ~~**Shuffle Animation Artifacts:** Cards no longer exhibit "re-deal" animation during shuffle sequence. Fixed by preserving component identity through stable React keys.~~
+- ~~**Touch Area Coverage:** Touch events now work reliably across entire card surface with proper scroll prevention on mobile devices.~~
 - **Swipe-up Submit Feature:** Planned functionality to allow swiping a selected card upward toward the scenario area to submit it (more intuitive than tap-to-reveal-submit-button workflow). Basic detection logic exists but submission behavior not implemented.
 
 ## Roadmap & Next Steps

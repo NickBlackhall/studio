@@ -6,9 +6,10 @@ import Image from 'next/image';
 interface ScenarioDisplayProps extends MotionProps {
   scenario: Scenario | null;
   isBoondoggle?: boolean;
+  showSubmissionPrompt?: boolean;
 }
 
-export default function ScenarioDisplay({ scenario, isBoondoggle = false, ...motionProps }: ScenarioDisplayProps) {
+export default function ScenarioDisplay({ scenario, isBoondoggle = false, showSubmissionPrompt = false, ...motionProps }: ScenarioDisplayProps) {
   if (!scenario) {
     // This state is usually handled by the parent component (PlayerView/JudgeView)
     // But as a fallback if somehow directly rendered with null scenario:
@@ -45,10 +46,10 @@ export default function ScenarioDisplay({ scenario, isBoondoggle = false, ...mot
         <div className="relative z-10 flex h-full flex-col items-center justify-center p-4">
             <div className="space-y-2">
                 <p className={`font-corben text-xl font-bold uppercase tracking-wider ${categoryColor}`}>
-                    {scenario.category}
+                    {showSubmissionPrompt ? "Submit Response" : scenario.category}
                 </p>
                 <h2 className="font-im-fell text-3xl md:text-4xl text-white leading-tight">
-                    {scenario.text}
+                    {showSubmissionPrompt ? "Swipe card here to submit your response" : scenario.text}
                 </h2>
             </div>
         </div>

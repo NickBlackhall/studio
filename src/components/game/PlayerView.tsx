@@ -44,6 +44,10 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
   
+  // Upward drag state for submission
+  const [isDraggingUp, setIsDraggingUp] = useState(false);
+  const [draggingUpCardId, setDraggingUpCardId] = useState<string | null>(null);
+  
   // Animation sequence state
   const [exitingCardId, setExitingCardId] = useState<string | null>(null);
   const [exitDirection, setExitDirection] = useState<'left' | 'right'>('right');
@@ -134,13 +138,35 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
 
   const handleCardClick = (cardId: string) => {
-    if (isAnimating || hasSubmittedThisRound || swipeOccurredRef.current) return;
-    setSelectedCardId(selectedCardId === cardId ? null : cardId);
+    console.log('Card clicked:', cardId, 'Current selected:', selectedCardId);
+    // Only block clicks during shuffle animations, not during initial card dealing
+    const isShuffleAnimating = exitingCardId !== null || slidingUp;
+    if (isShuffleAnimating || hasSubmittedThisRound || swipeOccurredRef.current) return;
+    
+    // Only allow selection for custom card - regular cards don't need selection anymore
+    if (cardId === CUSTOM_CARD_ID) {
+      setSelectedCardId(selectedCardId === cardId ? null : cardId);
+    }
   };
 
-  // Shuffle function with sequenced animations
+  // Shuffle function with improved sequenced animations
   const shuffleCard = (cardId: string, direction: 'left' | 'right' = 'right') => {
-    if (isAnimating || hasSubmittedThisRound) return;
+    console.log('shuffleCard called with:', cardId, direction);
+    const isShuffleAnimating = exitingCardId !== null || slidingUp;
+    console.log('Shuffle animation check:', { isShuffleAnimating, exitingCardId, slidingUp, hasSubmittedThisRound });
+    
+    if (isShuffleAnimating || hasSubmittedThisRound) {
+      console.log('Shuffle blocked - returning early');
+      return;
+    }
+    
+    console.log('Starting shuffle animation');
+    
+    // Clear selection if the card being shuffled is currently selected
+    if (selectedCardId === cardId) {
+      console.log('Clearing selection for swiped card:', cardId);
+      setSelectedCardId(null);
+    }
     
     setIsAnimating(true);
     
@@ -149,32 +175,33 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     setExitDirection(direction);
     
     setTimeout(() => {
-      // Step 2: Other cards slide up to fill gap (1000ms)
+      // Step 2: Immediately update card order while cards are still sliding
+      setCardOrder(prevOrder => {
+        const newOrder = [...prevOrder];
+        const cardIndex = newOrder.indexOf(cardId);
+        if (cardIndex !== -1) {
+          const [card] = newOrder.splice(cardIndex, 1);
+          newOrder.push(card);
+        }
+        return newOrder;
+      });
+      
+      // Step 3: Other cards slide up to fill gap (400ms)
       setSlidingUp(true);
       
       setTimeout(() => {
-        // Step 3: Update card order and show card at bottom
-        setCardOrder(prevOrder => {
-          const newOrder = [...prevOrder];
-          const cardIndex = newOrder.indexOf(cardId);
-          if (cardIndex !== -1) {
-            const [card] = newOrder.splice(cardIndex, 1);
-            newOrder.push(card);
-          }
-          return newOrder;
-        });
-        
         // Step 4: Reset animation states
         setExitingCardId(null);
         setSlidingUp(false);
         setIsAnimating(false);
-      }, 500); // Cards slide up duration
+      }, 250); // Further reduced slide up duration for responsiveness
     }, 300); // Card exit duration
   };
 
   // Touch event handlers for swipe detection
   const handleTouchStart = (e: React.TouchEvent, cardId: string) => {
-    e.preventDefault(); // Prevent scrolling during card interaction
+    // Note: Can't preventDefault in React touch events due to passive listeners
+    // Will handle scroll prevention via CSS instead
     const touch = e.touches[0];
     swipeOccurredRef.current = false;
     setDraggingCardId(cardId);
@@ -189,13 +216,26 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   const handleTouchMove = (e: React.TouchEvent, cardId: string) => {
     if (!touchStartRef.current || draggingCardId !== cardId) return;
     
-    e.preventDefault(); // Prevent scrolling during card drag
     const touch = e.touches[0];
     const deltaX = touch.clientX - touchStartRef.current.x;
     const deltaY = touch.clientY - touchStartRef.current.y;
     
-    // Invert Y-axis so dragging down moves card down on screen
-    setDragOffset({ x: deltaX, y: -deltaY });
+    // Use natural Y-axis direction (down is positive)
+    setDragOffset({ x: deltaX, y: deltaY });
+    
+    // Check for upward movement (negative deltaY = upward)
+    const isMovingUp = deltaY < -20; // 20px threshold to start showing submission hint
+    const wasMovingUp = isDraggingUp;
+    
+    if (isMovingUp && !wasMovingUp) {
+      console.log('Started dragging up for submission:', cardId);
+      setIsDraggingUp(true);
+      setDraggingUpCardId(cardId);
+    } else if (!isMovingUp && wasMovingUp) {
+      console.log('Stopped dragging up:', cardId);
+      setIsDraggingUp(false);
+      setDraggingUpCardId(null);
+    }
   };
 
   const handleTouchEnd = (e: React.TouchEvent, cardId: string) => {
@@ -222,18 +262,37 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       if (isHorizontal) {
         const direction = deltaX > 0 ? 'right' : 'left';
         console.log(`Swipe detected: ${direction} on card ${cardId}`, { deltaX, deltaY, distance, velocity });
+        console.log('Calling shuffleCard with:', cardId, direction);
         swipeOccurredRef.current = true;
         shuffleCard(cardId, direction);
       } else if (isVertical && deltaY < 0) {
-        console.log(`Swipe detected: up on card ${cardId}`, { deltaX, deltaY, distance, velocity });
-        swipeOccurredRef.current = true;
-        // TODO: Implement swipe up to submit in next step
+        // Upward swipe - check submission thresholds
+        const upwardDistance = Math.abs(deltaY);
+        const upwardVelocity = upwardDistance / deltaTime;
+        
+        // Two ways to submit:
+        // 1. Quick flick: 60px distance OR 0.4px/ms velocity
+        // 2. Deliberate drag: reached 50% of screen height
+        const flickThreshold = upwardDistance > 60 || upwardVelocity > 0.4;
+        const dragThreshold = upwardDistance > window.innerHeight * 0.3; // 30% of screen height
+        
+        if (flickThreshold || dragThreshold) {
+          console.log(`Swipe up to submit detected on card ${cardId}`, { 
+            deltaY, upwardDistance, upwardVelocity, flickThreshold, dragThreshold 
+          });
+          swipeOccurredRef.current = true;
+          handleSwipeUpSubmit(cardId);
+        } else {
+          console.log(`Swipe up detected but below threshold:`, { upwardDistance, upwardVelocity });
+        }
       }
     }
     
     // Reset drag state
     setDragOffset(null);
     setDraggingCardId(null);
+    setIsDraggingUp(false);
+    setDraggingUpCardId(null);
     
     // Reset swipe flag after a short delay to allow click prevention
     setTimeout(() => {
@@ -241,6 +300,45 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     }, 100);
     
     touchStartRef.current = null;
+  };
+
+  // Handle swipe up to submit
+  const handleSwipeUpSubmit = (cardId: string) => {
+    console.log('handleSwipeUpSubmit called for card:', cardId);
+    
+    if (hasSubmittedThisRound) {
+      console.log('Already submitted this round');
+      return;
+    }
+
+    const selectedCardData = handWithCustomCard.find(c => c.id === cardId);
+    if (!selectedCardData) {
+      console.log('Card not found:', cardId);
+      return;
+    }
+
+    const isCustom = selectedCardData.id === CUSTOM_CARD_ID;
+    const textToSubmit = isCustom ? customCardText : selectedCardData.text;
+
+    if (!textToSubmit.trim()) {
+      toast({ title: "Empty card?", description: "Your card needs some text!", variant: "destructive" });
+      return;
+    }
+
+    console.log('Submitting card via swipe up:', { cardId, isCustom, textToSubmit });
+
+    startTransition(async () => {
+      try {
+        await submitResponse(player.id, textToSubmit, gameState.gameId, gameState.currentRound, isCustom);
+        if (isMountedRef.current) {
+          setCustomCardText('');
+        }
+      } catch (error: any) {
+        if (isMountedRef.current) {
+          toast({ title: "Submission Error", description: error.message || "Failed to submit response.", variant: "destructive" });
+        }
+      }
+    });
   };
   
   const handleSubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -386,13 +484,19 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             <ScenarioDisplay
               scenario={gameState.currentScenario}
               isBoondoggle={isBoondoggleRound}
+              showSubmissionPrompt={isDraggingUp}
               {...scenarioAnimationProps}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="relative min-h-[450px] [perspective:1000px]">
+      <div 
+        className="relative min-h-[450px] [perspective:1000px]"
+        style={{
+          touchAction: draggingCardId ? 'none' : 'pan-y'
+        }}
+      >
         {hasSubmittedThisRound && !isBoondoggleRound ? (
           <motion.div
             initial={{ opacity: 0 }}
@@ -420,11 +524,12 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
 
             return (
               <motion.div
-                key={`${card.id}-${player.id}-${index}`}
+                key={`${card.id}-${player.id}`}
                 className={`absolute w-[22rem] left-0 right-0 mx-auto [transform-style:preserve-3d] aspect-[1536/600] ${index === 0 ? 'cursor-pointer' : 'cursor-default'}`}
                 style={{
                   top: 20 + (index * 35),
                   zIndex: isThisCardSelected ? 50 : 20 - index,
+                  touchAction: index === 0 ? 'none' : 'auto'
                 }}
                 transition={{ 
                   type: slidingUp ? 'tween' : 'spring', 
@@ -440,16 +545,42 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
               >
                 <motion.div
                   className="relative w-full h-full [transform-style:preserve-3d] shadow-lg rounded-xl"
-                  initial={{ transform: 'translateY(300px) scale(0.8) rotateX(0deg)' }}
+                  initial={{ 
+                    y: 300, 
+                    scale: 0.8, 
+                    rotateX: 0,
+                    x: 0
+                  }}
                   animate={{
-                    transform: `
-                      ${isVisible ? 'translateY(0) scale(1)' : 'translateY(300px) scale(0.8)'}
-                      ${isThisCardSelected ? 'translateY(-20px) scale(1.05)' : ''}
-                      ${isFlipped ? 'rotateX(180deg)' : 'rotateX(0deg)'}
-                      ${draggingCardId === card.id && dragOffset ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : ''}
-                      ${exitingCardId === card.id ? `translateX(${exitDirection === 'right' ? '100vw' : '-100vw'})` : ''}
-                      ${slidingUp && index > 0 && card.id !== exitingCardId ? 'translateY(-35px)' : ''}
-                    `,
+                    // Base position and visibility
+                    y: isVisible ? 0 : 300,
+                    scale: isVisible ? 1 : 0.8,
+                    
+                    // Card selection state
+                    ...(isThisCardSelected && {
+                      y: (isVisible ? 0 : 300) - 20,
+                      scale: (isVisible ? 1 : 0.8) * 1.05
+                    }),
+                    
+                    // Card flip state
+                    rotateX: isFlipped ? 180 : 0,
+                    
+                    // Drag state (immediate, no transition)
+                    ...(draggingCardId === card.id && dragOffset && {
+                      x: dragOffset.x,
+                      y: (isVisible ? 0 : 300) + (isThisCardSelected ? -20 : 0) + dragOffset.y
+                    }),
+                    
+                    // Exit animation for shuffle
+                    ...(exitingCardId === card.id && {
+                      x: exitDirection === 'right' ? window.innerWidth : -window.innerWidth
+                    }),
+                    
+                    // Slide up animation during shuffle
+                    ...(slidingUp && index > 0 && card.id !== exitingCardId && {
+                      y: (isVisible ? 0 : 300) + (isThisCardSelected ? -20 : 0) - 35
+                    }),
+                    
                     boxShadow: isThisCardSelected
                       ? '0 15px 40px rgba(52, 152, 219, 0.4)'
                       : '0 6px 20px rgba(0,0,0,0.15)',
@@ -457,9 +588,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                   transition={{ 
                     duration: draggingCardId === card.id ? 0 : 
                              exitingCardId === card.id ? 0.3 :
-                             slidingUp ? 0.5 : 0.6, 
+                             slidingUp ? 0.25 : 0.6, 
                     ease: exitingCardId === card.id ? 'easeOut' :
-                          slidingUp ? 'linear' : [0.68, -0.55, 0.265, 1.55]
+                          slidingUp ? 'easeInOut' : [0.68, -0.55, 0.265, 1.55]
                   }}
                 >
                   {/* Card Back */}
@@ -496,7 +627,15 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                               onChange={(e) => setCustomCardText(e.target.value)}
                               placeholder="Make it uniquely terrible..."
                               className="absolute top-[18%] left-[50%] -translate-x-1/2 w-[85%] h-[40%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-none p-2"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                console.log('Custom card textarea clicked, current selected:', selectedCardId);
+                                e.stopPropagation();
+                                // Auto-select custom card when textarea is clicked
+                                if (selectedCardId !== CUSTOM_CARD_ID) {
+                                  console.log('Auto-selecting custom card');
+                                  setSelectedCardId(CUSTOM_CARD_ID);
+                                }
+                              }}
                               maxLength={100}
                             />
                              {customCardText.trim().length > 0 && selectedCardId === CUSTOM_CARD_ID && (
