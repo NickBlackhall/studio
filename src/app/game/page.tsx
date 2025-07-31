@@ -9,6 +9,7 @@ import {
   nextRound,
   resetGameForTesting
 } from '@/app/game/actions';
+import PinCodeModal from '@/components/PinCodeModal';
 import type { PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
@@ -40,6 +41,7 @@ export default function GamePage() {
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, toggleMusicMute, toggleSfxMute } = useAudio();
   const { gameState: internalGameState, thisPlayer, isInitializing } = useSharedGame();
@@ -150,6 +152,10 @@ export default function GamePage() {
     router.push('/');
   };
 
+  const handleResetGameFromGamePageWithPin = () => {
+    setIsPinModalOpen(true);
+  };
+
   const handleResetGameFromGamePage = async () => {
     console.log("GAME_PAGE: handleResetGameFromGamePage triggered.");
     startActionTransition(async () => {
@@ -206,7 +212,7 @@ export default function GamePage() {
               <div className="w-full max-w-sm my-6">
                 <Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} />
               </div>
-              <Button onClick={handleResetGameFromGamePage} variant="outline" size="lg" disabled={isActionPending}>
+              <Button onClick={handleResetGameFromGamePageWithPin} variant="outline" size="lg" disabled={isActionPending}>
                   {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                   Reset Game (For Testing)
               </Button>
@@ -410,8 +416,8 @@ export default function GamePage() {
           </Link>
           <Button
             onClick={() => {
-              handleResetGameFromGamePage();
               setIsMenuModalOpen(false);
+              handleResetGameFromGamePageWithPin();
             }}
             className="bg-red-500/80 hover:bg-red-600/80 text-white"
             disabled={isActionPending}
@@ -431,6 +437,14 @@ export default function GamePage() {
       >
         <HowToPlayModalContent />
       </PureMorphingModal>
+
+      {/* PIN Code Modal */}
+      <PinCodeModal
+        isOpen={isPinModalOpen}
+        onClose={() => setIsPinModalOpen(false)}
+        onSuccess={handleResetGameFromGamePage}
+        title="Enter PIN to Reset Game"
+      />
 
     </>
   );

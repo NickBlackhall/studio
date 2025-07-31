@@ -24,6 +24,7 @@ import { useLoading } from '@/contexts/LoadingContext';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import ConfigurationError from '@/components/ConfigurationError';
 import { PureMorphingModal } from '@/components/PureMorphingModal';
+import PinCodeModal from '@/components/PinCodeModal';
 import { Volume2, VolumeX, Music, Zap, HelpCircle, Home, Edit } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -55,6 +56,7 @@ function WelcomePageContent() {
   const { setGlobalLoading } = useLoading();
   const [isMenuModalOpen, setIsMenuModalOpen] = React.useState(false);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = React.useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = React.useState(false);
   
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
@@ -118,6 +120,10 @@ function WelcomePageContent() {
     });
   }, [internalGameState?.players, thisPlayer?.id]);
 
+
+  const handleResetGameWithPin = () => {
+    setIsPinModalOpen(true);
+  };
 
   const handleResetGame = async () => {
     startPlayerActionTransition(async () => {
@@ -257,7 +263,7 @@ function WelcomePageContent() {
                 <div className="absolute left-[10%] right-[10%] bottom-[15%]" style={{ top: '45%' }}><Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} /></div>
               </div>
               <Card className="shadow-md border-muted rounded-lg"><CardContent className="p-6"><p className="text-muted-foreground">The lobby will re-open once the current game finishes.</p></CardContent></Card>
-              <Button onClick={handleResetGame} variant="destructive" className="mt-6" disabled={isProcessingAction}>{isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)</Button>
+              <Button onClick={handleResetGameWithPin} variant="destructive" className="mt-6" disabled={isProcessingAction}>{isProcessingAction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Reset Game (Testing)</Button>
             </div>
           </div>
         );
@@ -329,8 +335,8 @@ function WelcomePageContent() {
           </Button>
           <Button
             onClick={() => {
-              handleResetGame();
               setIsMenuModalOpen(false);
+              handleResetGameWithPin();
             }}
             className="bg-red-500/80 hover:bg-red-600/80 text-white"
             disabled={isProcessingAction}
@@ -347,6 +353,14 @@ function WelcomePageContent() {
           <HowToPlayModalContent />
         </DialogContent>
       </Dialog>
+
+      {/* PIN Code Modal */}
+      <PinCodeModal
+        isOpen={isPinModalOpen}
+        onClose={() => setIsPinModalOpen(false)}
+        onSuccess={handleResetGame}
+        title="Enter PIN to Reset Game"
+      />
     </div>
   );
 }

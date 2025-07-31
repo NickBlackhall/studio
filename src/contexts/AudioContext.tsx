@@ -42,6 +42,7 @@ export const SOUND_EFFECTS: { [key: string]: string } = {
   'card-submit': '/Sound/sound-effects/quick-woosh_01.wav',
   'crown-winner': '/Sound/sound-effects/we-have-a-winner.mp3',
   'round-winner': '/Sound/sound-effects/round-winner-announcement.mp3',
+  'join-game': '/Sound/sound-effects/join-game-button.mp3',
 };
 
 

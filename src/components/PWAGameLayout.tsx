@@ -40,6 +40,8 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
       return;
     }
     
+    playSfx('join-game');
+    
     startTransition(async () => {
       try {
         const selectedAvatar = AVATARS[avatarIndex];
