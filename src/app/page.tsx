@@ -24,7 +24,7 @@ import { useLoading } from '@/contexts/LoadingContext';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import ConfigurationError from '@/components/ConfigurationError';
 import { PureMorphingModal } from '@/components/PureMorphingModal';
-import { Volume2, VolumeX, Music, Zap, HelpCircle, Home } from 'lucide-react';
+import { Volume2, VolumeX, Music, Zap, HelpCircle, Home, Edit } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -230,6 +230,7 @@ function WelcomePageContent() {
                 <div className="overflow-y-auto space-y-2">{sortedPlayersForDisplay.map((player) => <PlayerRow key={player.id} player={player} />)}</div>
                 <div className="flex-shrink-0 text-center px-4 pt-4 space-y-2">
                   <p className="bg-transparent font-semibold text-black">{lobbyMessage}</p>
+                  {!enoughPlayers || !allPlayersReady ? <p className="bg-transparent font-semibold text-black">Tap the toggle to ready up</p> : null}
                   {showStartGameButton && (
                     <button onClick={handleStartGame} disabled={isProcessingAction} className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70">
                       {isProcessingAction ? <div className="h-[71.52px] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-black" /></div> : <Image src="/ui/start-game-button.png" alt="Start the Mayhem" width={189.84 * 1.2 * 1.2} height={71.52 * 1.2 * 1.2} className="object-contain drop-shadow-xl" data-ai-hint="start button" priority />}
@@ -315,6 +316,16 @@ function WelcomePageContent() {
             className="bg-black/10 hover:bg-black/20 text-black border-black/30"
           >
             <HelpCircle className="mr-2 h-4 w-4" /> How to Play
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              window.open('https://forms.gle/vj3Z9NnyGrQ1yf737', '_blank');
+              setIsMenuModalOpen(false);
+            }}
+            className="bg-black/10 hover:bg-black/20 text-black border-black/30"
+          >
+            <Edit className="mr-2 h-4 w-4" /> User Submissions
           </Button>
           <Button
             onClick={() => {
