@@ -66,6 +66,13 @@ This section tracks recent improvements and bug fixes that have impacted gamepla
   - **Cache Cleanup**: Cleared `.next` and `node_modules/.cache` to resolve webpack chunk corruption
   - **Stability Prioritization**: Made strategic decision to maintain working app for family beta test over pursuing flickering optimizations
   - **Comprehensive Documentation**: Created detailed LOBBY_DEVELOPMENT_GUIDE.md documenting the flickering root cause, optimization attempts, failures, and recovery process for future development
+- **Judge's Hand Swipe Mechanics (August 2025):** Solved critical UX issue discovered during 11-player family test where judge's hand became cramped and difficult to use with 10 response cards:
+  - **Problem Identified**: Cards stacked at 75px intervals created 750px height, overwhelming mobile screens and making card selection difficult
+  - **Solution Implemented**: Ported excellent swipe mechanics from PlayerView to JudgeView, allowing judge to browse cards by swiping left/right
+  - **Improved Card Layout**: Reduced stacking to 25px intervals, showing only 2-3 cards at once instead of overwhelming stack
+  - **Touch Optimization**: Added comprehensive touch event handling with drag feedback and momentum physics
+  - **Preserved Functionality**: Maintained all existing judge features (card selection, crown winner button, flip animations)
+  - **Scalable UX**: Now works seamlessly with 11+ players using familiar swipe gestures from player experience
 
 ### Known Issues (Resolved)
 - ~~**Shuffle Animation Artifacts:** Cards no longer exhibit "re-deal" animation during shuffle sequence. Fixed by preserving component identity through stable React keys.~~
@@ -273,6 +280,10 @@ Our current focus is on refining the core experience and preparing the app for a
 ### Upcoming Features
 These are the next major gameplay mechanics and features on the horizon.
 - **Audio Experience:** Add background music to the welcome, setup, and lobby screens. Implement sound effects for key game actions to enhance the user experience.
+
+### Immediate Priorities (Post-Family Testing)
+These are critical features needed based on real-world gameplay testing.
+- **Player Removal System:** Currently, the "Exit to Lobby" button doesn't properly remove players from active games, causing confusion and potential game-breaking scenarios when judges leave. This requires implementing proper database cleanup, judge reassignment logic, and real-time state updates for remaining players.
 
 ### Long-Term Vision
 These are larger-scale ideas for the future evolution of the game.

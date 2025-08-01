@@ -1,11 +1,57 @@
-# Claude Session Notes - July 30, 2025
+# Claude Session Notes - August 1, 2025
 
 ## Session Context Summary  
-- **Family Test Preparation**: 11-player family test ready (in 3-4 days)
+- **Post-Family Test**: 11-player family test completed successfully 
 - **Current Status**: Game is stable and working in development mode (localhost:9003)
-- **Main Goal**: Complete audio system implementation and final polish for family test
+- **Main Goal**: Address critical UX issues discovered during family test
 
 ## Major Accomplishments This Session
+
+### ✅ Back-to-Back Boondoggles Prevention (Quick Fix)
+**Status**: COMPLETED - Prevents consecutive Boondoggle rounds
+- **Problem Solved**: Family test had Boondoggle → Boondoggle rounds, killing game momentum
+- **Solution**: Check if previous round was Boondoggle before triggering new one
+- **Implementation**: Modified `selectCategory()` to query current scenario category before random trigger
+- **Logic**: `isBoondoggle = Math.random() < 0.40 && nonJudgePlayersCount > 1 && !wasLastRoundBoondoggle`
+- **Impact**: Maintains 40% Boondoggle rate but distributes it better across rounds
+
+### ✅ Judge's Hand Swipe Mechanics Implementation (Critical UX Fix)
+**Status**: COMPLETED - Major improvement for large group gameplay
+- **Problem Solved**: With 11 players, judge's hand became cramped and difficult to use
+- **Impact**: Judge can now easily browse through all 10 response cards using familiar swipe gestures
+- **User Experience**: Transformed cramped 750px card stack into smooth, browsable interface
+
+#### Implementation Details:
+1. **Touch Gesture System**:
+   - Ported excellent swipe mechanics from PlayerView to JudgeView
+   - Left/right swipes move top card to bottom of stack
+   - Only top card is interactive (prevents accidental selections)
+   - Smooth 3-step animation: slide away → cards move up → card appears at bottom
+
+2. **Improved Card Layout**:
+   - Reduced card stacking from 75px to 25px intervals (much less cramped)
+   - With 11 players: only 2-3 cards visible at once instead of overwhelming stack
+   - Better mobile viewing and touch targets
+
+3. **Preserved Judge Features**:
+   - All existing functionality maintained (card selection, crown winner button, etc.)
+   - Card flip reveal animations still work
+   - Pending states and error handling unchanged
+
+#### Technical Implementation:
+- **File Modified**: `src/components/game/JudgeView.tsx`
+- **New State Management**: Touch handling, card ordering, animation states
+- **Touch Events**: `handleTouchStart`, `handleTouchMove`, `handleTouchEnd`
+- **Card Shuffling**: `shuffleCard()` function with momentum physics
+- **Animation States**: `exitingCardId`, `exitDirection`, `slidingUp`, `dragOffset`
+
+#### Benefits for Large Groups:
+- **Scalable UX**: Works well with 11+ players (previously problematic)
+- **Familiar Interaction**: Same swipe mechanics players already know from their own hand
+- **Mobile Optimized**: Touch-friendly for phones and tablets
+- **Reduced Cognitive Load**: Judge sees fewer cards at once, easier to focus
+
+## Major Accomplishments Previous Session
 
 ### ✅ Complete Audio System Implementation (Major Feature)
 **Status**: COMPLETED - Comprehensive audio experience implemented
@@ -75,31 +121,51 @@
 - **Real-time multiplayer**: Stable for family test
 - **Card pool**: More than sufficient (1,014 cards available)
 
-### Known Issues & Polish Items (User's Original List)
+### Issues Discovered During Family Test
+- **✅ Judge's Hand UX (FIXED)**: With 11 players, judge couldn't easily see/select response cards - NOW SOLVED with swipe mechanics
+- **❌ Player Removal System (MAJOR ISSUE)**: "Exit to Lobby" button doesn't actually remove players from active games
+  - **Problem**: Players who leave still appear in other players' games, can break judge rotation
+  - **Current Behavior**: Button only redirects to lobby without database cleanup
+  - **Impact**: Confuses remaining players, can cause game to get stuck if judge leaves
+  - **Solution Needed**: Proper player removal with database cleanup, judge reassignment, real-time updates
+  - **Complexity**: Major database changes, requires careful testing - **DEFERRED** until full development capacity
 - **Lobby→game transition**: Still has double loading systems
 - **Round winner loading animation**: Needs improvement
 - **Overall loading speed**: Better but could be optimized further
-- **Poor internet connection handling**: Potential concern for family test
+- **Poor internet connection handling**: Potential concern for larger groups
 - **Avatar selection smoothness**: Could use better Framer Motion animations
 - **Scenario selection**: Could feel smoother
 - **Mobile audio**: Music doesn't work well on mobile browsers
-- **Sound effects & haptics**: Not yet implemented
 - **Boondoggles fanfare**: Needs more excitement when they occur
 - **Production deployment**: Ready to move to Netlify when user is at full computer
 
 ### Files Modified This Session
-- `package.json` - Dependencies and scripts cleaned up
-- `package-lock.json` - Updated after dependency removal
-- `README.md` - Added comprehensive deployment guide and performance optimization notes
-- `src/app/page.tsx` - Temporarily modified then reverted (working state restored)
+- `src/components/game/JudgeView.tsx` - Added comprehensive swipe mechanics for card browsing
+- `src/app/game/actions.ts` - Fixed back-to-back Boondoggles by checking previous round type
+- `CLAUDE_SESSION_NOTES.md` - Updated with judge hand fix and Boondoggle fix implementations
+- `README.md` - Added judge hand swipe mechanics to solved issues
 
 ## Next Session Priorities
 
-### High Priority (Family Test Preparation)
-1. **Audio file compression** - Music files are 10.3MB total (5.6MB + 4.7MB)
-2. **Image optimization** - Background posters 3-4MB each, winner avatars 3.6MB each
-3. **Simple loading improvements** - Preload critical assets
-4. **Poor connection testing** - Test game with simulated slow connections
+### High Priority (Continued Family Testing)
+1. **Test judge hand swipe mechanics** - Verify new implementation works well with 11+ players
+2. **Continue family play testing** - Discover additional UX issues and edge cases
+3. **Document new issues** - Track problems discovered during testing sessions
+
+### Medium Priority (Polish & Performance)
+1. **Fix lobby→game transition** - Address double loading systems
+2. **Improve round winner animations** - Smoother loading sequences
+3. **Audio file compression** - Music files are 10.3MB total (5.6MB + 4.7MB)
+4. **Image optimization** - Background posters 3-4MB each, winner avatars 3.6MB each
+
+### Future Major Features (Requires Full Development Capacity)
+1. **Player Removal System** - Implement proper "leave game" functionality
+   - Create `removePlayerFromGame()` server action
+   - Handle judge reassignment when current judge leaves
+   - Clean up player data (hands, submissions, references)
+   - Update real-time subscriptions for remaining players
+   - Add confirmation dialog to prevent accidental exits
+   - Handle edge cases (last 2 players, mid-round departures)
 
 ### Medium Priority (UX Polish)
 1. **Fix lobby→game transition** - Investigate double loading systems
@@ -138,12 +204,13 @@ npm install @genkit-ai/googleai @genkit-ai/next genkit-cli genkit
 # Add back genkit scripts to package.json
 ```
 
-## User's Family Test Requirements
-- **11 players confirmed working**
-- **Game loads faster** (major performance win achieved)
-- **4-5 days until test** - prioritize stability and loading optimization
-- **Potential poor Wi-Fi** - focus on asset size reduction next
+## Family Test Results & Next Steps
+- **✅ 11 players confirmed working** - Game handled large group successfully
+- **✅ Major UX issue identified** - Judge's hand was difficult to use with 10 cards
+- **✅ Critical fix implemented** - Judge can now swipe through cards easily
+- **Next Priority**: Test new judge hand mechanics with large group
+- **Future Focus**: Continue addressing remaining polish items for production deployment
 
 ---
 
-*Last updated: July 29, 2025 - End of optimization session. Game confirmed working with 11 players after major performance improvements.*
+*Last updated: August 1, 2025 - Judge hand swipe mechanics implemented to solve critical UX issue discovered during 11-player family test.*

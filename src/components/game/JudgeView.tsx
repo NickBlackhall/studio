@@ -5,7 +5,7 @@ import type { GameClientState, PlayerClientState } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useState, useTransition, useEffect, useRef } from 'react';
+import { useState, useTransition, useEffect, useRef, useMemo } from 'react';
 import { Gavel, Send, CheckCircle, Loader2, Crown, PlusCircle, XCircle, SkipForward, Award, HelpCircle, PartyPopper } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAudio } from '@/contexts/AudioContext';
@@ -50,6 +50,22 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [isPendingSkip, startTransitionSkip] = useTransition();
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
 
+  // Touch handling for swipe detection
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swipeOccurredRef = useRef(false);
+  
+  // Drag state for visual feedback
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+  
+  // Animation sequence state
+  const [exitingCardId, setExitingCardId] = useState<string | null>(null);
+  const [exitDirection, setExitDirection] = useState<'left' | 'right'>('right');
+  const [slidingUp, setSlidingUp] = useState(false);
+  
+  // Card order state for shuffling
+  const [cardOrder, setCardOrder] = useState<string[]>([]);
+
   const { toast } = useToast();
   const { playSfx } = useAudio();
   
@@ -57,6 +73,24 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const isMountedRef = useRef(true);
   const prefersReducedMotion = useReducedMotion();
+  
+  // Create ordered submissions for swiping
+  const orderedSubmissions = useMemo(() => {
+    if (cardOrder.length === 0 && shuffledSubmissions.length > 0) {
+      const initialOrder = shuffledSubmissions.map((_, index) => index.toString());
+      setCardOrder(initialOrder);
+      return shuffledSubmissions;
+    }
+    
+    if (cardOrder.length !== shuffledSubmissions.length) {
+      const newOrder = shuffledSubmissions.map((_, index) => index.toString());
+      setCardOrder(newOrder);
+      return shuffledSubmissions;
+    }
+    
+    // Return submissions in the current shuffled order
+    return cardOrder.map(indexStr => shuffledSubmissions[parseInt(indexStr)]).filter(Boolean);
+  }, [shuffledSubmissions, cardOrder]);
 
   const showApprovalModal = gameState.gamePhase === 'judge_approval_pending' && gameState.currentJudgeId === judge.id;
   const isBoondoggleRound = gameState.currentScenario?.category === "Boondoggles" && gameState.gamePhase === 'judging';
@@ -90,6 +124,108 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
       isMountedRef.current = false;
     };
   }, [gameState.gamePhase, gameState.submissions, isAnimationComplete, prefersReducedMotion, shuffledSubmissions.length, isBoondoggleRound]);
+  
+  // Shuffle function for card reordering
+  const shuffleCard = (submissionIndex: number, direction: 'left' | 'right' = 'right') => {
+    const isShuffleAnimating = exitingCardId !== null || slidingUp;
+    
+    if (isShuffleAnimating || !isAnimationComplete) {
+      return;
+    }
+    
+    const cardId = submissionIndex.toString();
+    
+    // Clear selection if the card being shuffled is currently selected
+    if (selectedWinningCard === orderedSubmissions[submissionIndex]?.cardText) {
+      setSelectedWinningCard('');
+    }
+    
+    // Step 1: Card slides away (300ms)
+    setExitingCardId(cardId);
+    setExitDirection(direction);
+    
+    setTimeout(() => {
+      // Step 2: Update card order
+      setCardOrder(prevOrder => {
+        const newOrder = [...prevOrder];
+        const cardIndex = newOrder.indexOf(cardId);
+        if (cardIndex !== -1) {
+          const [card] = newOrder.splice(cardIndex, 1);
+          newOrder.push(card);
+        }
+        return newOrder;
+      });
+      
+      // Step 3: Other cards slide up to fill gap
+      setSlidingUp(true);
+      
+      setTimeout(() => {
+        // Step 4: Reset animation states
+        setExitingCardId(null);
+        setSlidingUp(false);
+      }, 250);
+    }, 300);
+  };
+  
+  // Touch event handlers for swipe detection
+  const handleTouchStart = (e: React.TouchEvent, submissionIndex: number) => {
+    const touch = e.touches[0];
+    swipeOccurredRef.current = false;
+    setDraggingCardId(submissionIndex.toString());
+    setDragOffset({ x: 0, y: 0 });
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent, submissionIndex: number) => {
+    if (!touchStartRef.current || draggingCardId !== submissionIndex.toString()) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    
+    setDragOffset({ x: deltaX, y: deltaY });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent, submissionIndex: number) => {
+    if (!touchStartRef.current) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+    const deltaTime = Date.now() - touchStartRef.current.time;
+    
+    // Calculate distance and velocity
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    const velocity = distance / deltaTime;
+    
+    // Swipe thresholds
+    const minDistance = 40;
+    const minVelocity = 0.3;
+    
+    // Determine swipe direction (horizontal swipes need to be more horizontal than vertical)
+    const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+    
+    if ((distance > minDistance || velocity > minVelocity) && isHorizontal) {
+      const direction = deltaX > 0 ? 'right' : 'left';
+      swipeOccurredRef.current = true;
+      shuffleCard(submissionIndex, direction);
+    }
+    
+    // Reset drag state
+    setDragOffset(null);
+    setDraggingCardId(null);
+    
+    // Reset swipe flag after a short delay to allow click prevention
+    setTimeout(() => {
+      swipeOccurredRef.current = false;
+    }, 100);
+    
+    touchStartRef.current = null;
+  };
   
   const handleUnleashScenario = (category: string) => {
     if (!category) {
@@ -151,8 +287,15 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     }
   };
   
-  const handleCardClick = (cardText: string) => {
-    if (!isAnimationComplete || !!pendingWinnerCard) {
+  const handleCardClick = (cardText: string, submissionIndex: number) => {
+    // Only block clicks during shuffle animations and if pending winner
+    const isShuffleAnimating = exitingCardId !== null || slidingUp;
+    if (isShuffleAnimating || !!pendingWinnerCard || swipeOccurredRef.current) {
+        return;
+    }
+    
+    // Only allow clicks on the top card (index 0) after animation is complete
+    if (!isAnimationComplete || submissionIndex !== 0) {
         return;
     }
     
@@ -252,30 +395,71 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
             )}
           </AnimatePresence>
           
-          <div className="relative mt-12 min-h-[450px] [perspective:1000px]">
-            {shuffledSubmissions.map((submission, index) => {
+          <div 
+            className="relative mt-12 min-h-[450px] [perspective:1000px]"
+            style={{
+              touchAction: draggingCardId ? 'none' : 'pan-y'
+            }}
+          >
+            {orderedSubmissions.map((submission, index) => {
               const isSelected = selectedWinningCard === submission.cardText;
               const isPending = pendingWinnerCard === submission.cardText;
+              const cardId = cardOrder[index];
+              const originalIndex = parseInt(cardId);
               
               return (
                 <motion.div
                   key={submission.playerId}
-                  className="absolute w-full max-w-sm mx-auto left-0 right-0 cursor-pointer [transform-style:preserve-3d] aspect-[1536/600]"
+                  className={`absolute w-full max-w-sm mx-auto left-0 right-0 [transform-style:preserve-3d] aspect-[1536/600] ${index === 0 ? 'cursor-pointer' : 'cursor-default'}`}
                   style={{
-                    top: 20 + (index * 35),
+                    top: 20 + (index * 25),
                     zIndex: isSelected ? 50 : 20 - index,
+                    touchAction: index === 0 ? 'none' : 'auto'
                   }}
                    animate={{
-                    y: isAnimationComplete ? index * 75 : index * 30,
-                    scale: isAnimationComplete && isSelected ? 1.1 : (isAnimationComplete ? 1 : 1 - (shuffledSubmissions.length - 1 - index) * 0.05),
-                    transition: { type: 'spring', stiffness: 100, damping: 15, delay: isAnimationComplete ? index * 0.1 : 0 }
+                    // Base position based on card reveal animation
+                    y: isAnimationComplete ? index * 25 : index * 30,
+                    scale: isAnimationComplete && isSelected ? 1.1 : (isAnimationComplete ? 1 : 1 - (orderedSubmissions.length - 1 - index) * 0.05),
+                    
+                    // Drag state (immediate, no transition)
+                    ...(draggingCardId === cardId && dragOffset && {
+                      x: dragOffset.x,
+                      y: (isAnimationComplete ? index * 25 : index * 30) + dragOffset.y
+                    }),
+                    
+                    // Exit animation for shuffle
+                    ...(exitingCardId === cardId && {
+                      x: exitDirection === 'right' ? window.innerWidth : -window.innerWidth
+                    }),
+                    
+                    // Slide up animation during shuffle
+                    ...(slidingUp && index > 0 && cardId !== exitingCardId && {
+                      y: (isAnimationComplete ? index * 25 : index * 30) - 25
+                    }),
+                    
+                    transition: { 
+                      type: draggingCardId === cardId ? 'tween' :
+                           exitingCardId === cardId ? 'tween' :
+                           slidingUp ? 'tween' : 'spring',
+                      stiffness: 100, 
+                      damping: 15, 
+                      duration: draggingCardId === cardId ? 0 :
+                               exitingCardId === cardId ? 0.3 :
+                               slidingUp ? 0.25 : undefined,
+                      ease: exitingCardId === cardId ? 'easeOut' :
+                            slidingUp ? 'easeInOut' : undefined,
+                      delay: isAnimationComplete && !draggingCardId && !exitingCardId && !slidingUp ? index * 0.1 : 0
+                    }
                   }}
                   onAnimationComplete={() => {
-                    if (!prefersReducedMotion && index === shuffledSubmissions.length - 1) {
+                    if (!prefersReducedMotion && index === orderedSubmissions.length - 1 && !isAnimationComplete) {
                       if (isMountedRef.current) setIsAnimationComplete(true);
                     }
                   }}
-                  onClick={() => handleCardClick(submission.cardText)}
+                  onClick={() => index === 0 ? handleCardClick(submission.cardText, index) : undefined}
+                  onTouchStart={(e) => index === 0 ? handleTouchStart(e, index) : undefined}
+                  onTouchMove={(e) => index === 0 ? handleTouchMove(e, index) : undefined}
+                  onTouchEnd={(e) => index === 0 ? handleTouchEnd(e, index) : undefined}
                 >
                   <motion.div
                     className="relative w-full h-full [transform-style:preserve-3d] shadow-lg rounded-xl"

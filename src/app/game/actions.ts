@@ -590,11 +590,30 @@ export async function selectCategory(gameId: string, category: string): Promise<
   console.log(`🔵 ACTION: selectCategory - Initiated for game ${gameId}, category "${category}"`);
   // --- Boondoggle Trigger Logic ---
   const { data: players, error: playersError } = await supabase.from('players').select('id, name').eq('game_id', gameId);
-  const { data: gameForJudge, error: gameForJudgeError } = await supabase.from('games').select('current_judge_id, used_scenarios').eq('id', gameId).single();
+  const { data: gameForJudge, error: gameForJudgeError } = await supabase.from('games').select('current_judge_id, used_scenarios, current_scenario_id').eq('id', gameId).single();
   if (playersError || !players || gameForJudgeError || !gameForJudge) throw new Error("Could not fetch players or game for Boondoggle check.");
   
+  // Check if the current scenario (from previous round) is a Boondoggle to prevent back-to-back
+  let wasLastRoundBoondoggle = false;
+  if (gameForJudge.current_scenario_id) {
+    const { data: currentScenario, error: scenarioError } = await supabase
+      .from('scenarios')
+      .select('category')
+      .eq('id', gameForJudge.current_scenario_id)
+      .single();
+    
+    if (!scenarioError && currentScenario) {
+      wasLastRoundBoondoggle = currentScenario.category === 'Boondoggles';
+      console.log(`🔵 ACTION: selectCategory - Previous round was ${wasLastRoundBoondoggle ? 'a Boondoggle' : 'regular'}`);
+    }
+  }
+  
   const nonJudgePlayersCount = players.filter(p => p.id !== gameForJudge.current_judge_id).length;
-  const isBoondoggle = Math.random() < 0.40 && nonJudgePlayersCount > 1;
+  const isBoondoggle = Math.random() < 0.40 && nonJudgePlayersCount > 1 && !wasLastRoundBoondoggle;
+
+  if (wasLastRoundBoondoggle) {
+    console.log("🔵 ACTION: selectCategory - Skipping Boondoggle check - previous round was already a Boondoggle");
+  }
 
   if (isBoondoggle) {
     console.log("🎲 ACTION: selectCategory - Boondoggle triggered!");
