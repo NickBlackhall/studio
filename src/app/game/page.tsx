@@ -10,6 +10,7 @@ import {
   resetGameForTesting
 } from '@/app/game/actions';
 import PinCodeModal from '@/components/PinCodeModal';
+import DevConsoleModal from '@/components/DevConsoleModal';
 import type { PlayerClientState, GamePhaseClientState } from '@/lib/types';
 import { ACTIVE_PLAYING_PHASES } from '@/lib/types';
 import Scoreboard from '@/components/game/Scoreboard';
@@ -20,7 +21,7 @@ import RecapSequenceDisplay from '@/components/game/RecapSequenceDisplay';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, Play, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX, Music, Zap } from 'lucide-react';
+import { Home, Play, Loader2, RefreshCw, HelpCircle, Volume2, VolumeX, Music, Zap, Terminal } from 'lucide-react';
 import Image from 'next/image';
 import { useToast } from "@/hooks/use-toast";
 import { PureMorphingModal } from '@/components/PureMorphingModal';
@@ -42,6 +43,7 @@ export default function GamePage() {
   const [isScoreboardOpen, setIsScoreboardOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [isDevConsoleOpen, setIsDevConsoleOpen] = useState(false);
   
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, toggleMusicMute, toggleSfxMute } = useAudio();
   const { gameState: internalGameState, thisPlayer, isInitializing } = useSharedGame();
@@ -409,6 +411,18 @@ export default function GamePage() {
           >
             <HelpCircle className="mr-2 h-4 w-4" /> How to Play
           </Button>
+          {(process.env.NODE_ENV === 'development' || (typeof window !== 'undefined' && window.location.search.includes('dev'))) && (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsMenuModalOpen(false);
+                setIsDevConsoleOpen(true);
+              }}
+              className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 border-blue-500/30"
+            >
+              <Terminal className="mr-2 h-4 w-4" /> Dev Console
+            </Button>
+          )}
           <Link href="/?step=setup" className="inline-block" onClick={() => setIsMenuModalOpen(false)}>
             <Button variant="outline" className="w-full bg-black/10 hover:bg-black/20 text-black border-black/30">
               <Home className="mr-2 h-4 w-4" /> Exit to Lobby
@@ -444,6 +458,14 @@ export default function GamePage() {
         onClose={() => setIsPinModalOpen(false)}
         onSuccess={handleResetGameFromGamePage}
         title="Enter PIN to Reset Game"
+      />
+
+      {/* Dev Console Modal */}
+      <DevConsoleModal
+        isOpen={isDevConsoleOpen}
+        onClose={() => setIsDevConsoleOpen(false)}
+        gameState={internalGameState}
+        thisPlayer={thisPlayer}
       />
 
     </>
