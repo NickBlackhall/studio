@@ -171,7 +171,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   const handleTouchStart = (e: React.TouchEvent, submissionIndex: number) => {
     const touch = e.touches[0];
     swipeOccurredRef.current = false;
-    setDraggingCardId(submissionIndex.toString());
+    setDraggingCardId(cardOrder[0]); // The top card's ID from cardOrder
     setDragOffset({ x: 0, y: 0 });
     touchStartRef.current = {
       x: touch.clientX,
@@ -181,7 +181,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   };
 
   const handleTouchMove = (e: React.TouchEvent, submissionIndex: number) => {
-    if (!touchStartRef.current || draggingCardId !== submissionIndex.toString()) return;
+    if (!touchStartRef.current || draggingCardId !== cardOrder[0]) return;
     
     const touch = e.touches[0];
     const deltaX = touch.clientX - touchStartRef.current.x;
@@ -457,9 +457,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                     }
                   }}
                   onClick={() => index === 0 ? handleCardClick(submission.cardText, index) : undefined}
-                  onTouchStart={(e) => index === 0 ? handleTouchStart(e, index) : undefined}
-                  onTouchMove={(e) => index === 0 ? handleTouchMove(e, index) : undefined}
-                  onTouchEnd={(e) => index === 0 ? handleTouchEnd(e, index) : undefined}
+                  onTouchStart={(e) => index === 0 ? handleTouchStart(e, originalIndex) : undefined}
+                  onTouchMove={(e) => index === 0 ? handleTouchMove(e, originalIndex) : undefined}
+                  onTouchEnd={(e) => index === 0 ? handleTouchEnd(e, originalIndex) : undefined}
                 >
                   <motion.div
                     className="relative w-full h-full [transform-style:preserve-3d] shadow-lg rounded-xl"
