@@ -25,7 +25,8 @@ import { isSupabaseConfigured } from '@/lib/supabaseClient';
 import ConfigurationError from '@/components/ConfigurationError';
 import { PureMorphingModal } from '@/components/PureMorphingModal';
 import PinCodeModal from '@/components/PinCodeModal';
-import { Volume2, VolumeX, Music, Zap, HelpCircle, Home, Edit } from 'lucide-react';
+import DevConsoleModal from '@/components/DevConsoleModal';
+import { Volume2, VolumeX, Music, Zap, HelpCircle, Home, Edit, Terminal } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +58,7 @@ function WelcomePageContent() {
   const [isMenuModalOpen, setIsMenuModalOpen] = React.useState(false);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = React.useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = React.useState(false);
+  const [isDevConsoleOpen, setIsDevConsoleOpen] = React.useState(false);
   
   const currentStepQueryParam = searchParams?.get('step');
   const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
@@ -333,6 +335,18 @@ function WelcomePageContent() {
           >
             <Edit className="mr-2 h-4 w-4" /> User Submissions
           </Button>
+          {(process.env.NODE_ENV === 'development' || (typeof window !== 'undefined' && window.location.search.includes('dev'))) && (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsMenuModalOpen(false);
+                setIsDevConsoleOpen(true);
+              }}
+              className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 border-blue-500/30"
+            >
+              <Terminal className="mr-2 h-4 w-4" /> Dev Console
+            </Button>
+          )}
           <Button
             onClick={() => {
               setIsMenuModalOpen(false);
@@ -360,6 +374,14 @@ function WelcomePageContent() {
         onClose={() => setIsPinModalOpen(false)}
         onSuccess={handleResetGame}
         title="Enter PIN to Reset Game"
+      />
+
+      {/* Dev Console Modal */}
+      <DevConsoleModal
+        isOpen={isDevConsoleOpen}
+        onClose={() => setIsDevConsoleOpen(false)}
+        gameState={internalGameState}
+        thisPlayer={thisPlayer}
       />
     </div>
   );
