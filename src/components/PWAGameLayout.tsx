@@ -45,7 +45,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
     startTransition(async () => {
       try {
         const selectedAvatar = AVATARS[avatarIndex];
-        const newPlayer = await addPlayerAction(name, selectedAvatar);
+        const newPlayer = await addPlayerAction(name, selectedAvatar, gameId);
         console.log(`PWA_LAYOUT: addPlayerAction returned:`, newPlayer);
         if (newPlayer) {
           console.log(`PWA_LAYOUT: Calling onPlayerAdded with player ${newPlayer.id}`);

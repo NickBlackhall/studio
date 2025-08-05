@@ -27,6 +27,11 @@ export type Database = {
           used_responses: string[] | null // uuid[]
           transition_state: string // text, e.g., 'idle', 'starting_game'
           transition_message: string | null // text
+          room_code: string // varchar(6), unique room identifier
+          is_public: boolean // boolean, whether game appears in public browser
+          max_players: number // integer, maximum players allowed (2-20)
+          room_name: string | null // text, optional custom room name
+          created_by_player_id: string | null // uuid, FK to players.id, room creator
         }
         Insert: {
           id?: string // uuid, defaults to gen_random_uuid()
@@ -44,6 +49,11 @@ export type Database = {
           used_responses?: string[] | null // uuid[], defaults to {}
           transition_state?: string // text, defaults to 'idle'
           transition_message?: string | null // text
+          room_code: string // varchar(6), unique room identifier
+          is_public?: boolean // boolean, defaults to true
+          max_players?: number // integer, defaults to 10
+          room_name?: string | null // text, optional custom room name
+          created_by_player_id?: string | null // uuid, room creator
         }
         Update: {
           id?: string
@@ -61,6 +71,11 @@ export type Database = {
           used_responses?: string[] | null
           transition_state?: string
           transition_message?: string | null
+          room_code?: string
+          is_public?: boolean
+          max_players?: number
+          room_name?: string | null
+          created_by_player_id?: string | null
         }
         Relationships: [
           {

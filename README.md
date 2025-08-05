@@ -73,6 +73,13 @@ This section tracks recent improvements and bug fixes that have impacted gamepla
   - **Touch Optimization**: Added comprehensive touch event handling with drag feedback and momentum physics
   - **Preserved Functionality**: Maintained all existing judge features (card selection, crown winner button, flip animations)
   - **Scalable UX**: Now works seamlessly with 11+ players using familiar swipe gestures from player experience
+- **Main Menu Visual Redesign (August 2025):** Updated main menu buttons with custom background images and sound effects:
+  - **Custom Backgrounds**: Replaced generic card backgrounds with purpose-built images for "Join or Create Game" and "Settings & More" buttons
+  - **Image Integration**: Updated buttons to use 1536x600 custom background images with proper aspect ratio (384px × 150px display size)
+  - **Content Removal**: Eliminated overlaid text and icons since they're baked into the new background images
+  - **Sound Effects**: Added "Button Firm 2_01.wav" sound effect to both main menu buttons for tactile feedback
+  - **Hover Removal**: Disabled hover effects to prevent interference with custom button designs
+  - **Responsive Scaling**: Maintained 65% scale for proper mobile display while preserving image quality
 
 ### Known Issues (Resolved)
 - ~~**Shuffle Animation Artifacts:** Cards no longer exhibit "re-deal" animation during shuffle sequence. Fixed by preserving component identity through stable React keys.~~
@@ -280,6 +287,68 @@ Our current focus is on refining the core experience and preparing the app for a
 ### Upcoming Features
 These are the next major gameplay mechanics and features on the horizon.
 - **Audio Experience:** Add background music to the welcome, setup, and lobby screens. Implement sound effects for key game actions to enhance the user experience.
+
+### Major Room System Implementation (January 2025)
+Complete room/lobby system overhaul enabling multi-room gameplay and proper player isolation.
+
+**✅ Room Creation & Management System**
+*Completed: January 2025 - Full multi-room functionality*
+
+**Impact:** Transformed single-game app into multi-room platform supporting concurrent games
+**Action taken:** Implemented comprehensive room system with unique codes, public/private rooms, and player validation
+
+**Room Features Implemented:**
+- **Room Creation**: Generate unique 6-character room codes (ABC123 format) excluding confusing characters (0,O,1,I)
+- **Room Validation**: Check room existence, capacity limits, and game phase before joining
+- **Public Room Browser**: View all available public rooms with real-time player counts and game status
+- **Private Rooms**: Support for invite-only rooms via room codes
+- **Room Settings**: Configurable room names, public/private toggle, max player limits (4-12 players)
+- **Auto-cleanup**: Empty rooms automatically deleted after 10 minutes of inactivity
+
+**✅ Multi-Player Room Joining Bug Fixes**
+*Completed: January 2025 - "Same room, different worlds" issue resolved*
+
+**Problem Identified:** Players could see the same room in browser but end up in different game instances
+**Root Cause:** `handleJoinRoom` was placeholder code that didn't actually join specific rooms
+**Solution:** Complete room joining implementation with proper URL parameter handling
+
+**Technical Fixes:**
+- **Real Room Joining**: `handleJoinRoom` now validates room and redirects with room code parameter (`/?step=setup&room=ABC123`)
+- **Game Loading**: SharedGameContext loads specific games via room code instead of finding random games
+- **Player Targeting**: `addPlayer` action now accepts `targetGameId` parameter to join correct game
+- **Validation Layer**: Check room existence, capacity, and phase before allowing joins
+- **Debug Logging**: Enhanced console logging to track which game ID each player joins
+
+**Database Schema Updates:**
+- Added `room_code` (required), `room_name`, `is_public`, `max_players` columns to games table
+- Updated `findOrCreateGame()` to generate room codes for backward compatibility
+- Implemented `getGameByRoomCode()` and `findGameByRoomCodeWithPlayers()` functions
+
+**Files Modified:**
+- `src/app/game/actions.ts` - Added `createRoom()`, `getGameByRoomCode()`, `cleanupEmptyRooms()` functions
+- `src/lib/roomCodes.ts` - Complete room code generation, validation, and lookup system
+- `src/contexts/SharedGameContext.tsx` - URL parameter handling for room codes
+- `src/components/MainMenu.tsx` - New hierarchical menu with room options as sub-menu
+- `src/components/room/` - Complete room management UI (creation, browser, join modals)
+- `src/app/page.tsx` - Real `handleJoinRoom()` implementation replacing placeholder
+
+**User Experience Improvements:**
+- **Main Menu Reorganization**: Condensed main menu to 3 primary options with sub-menus for cleaner UX
+- **PIN-Protected Reset**: Added testing reset function to Settings & More sub-menu
+- **Room Browser**: Live view of all public rooms with join buttons and status indicators
+- **Error Handling**: Specific error messages for full rooms, games in progress, invalid codes
+
+**Flow Before Fix:**
+1. Player A creates Room ABC123 → Joins Game 1
+2. Player B browses rooms → Sees Room ABC123 → Clicks join
+3. **BUG**: Redirected to `/?step=setup` (no room code) → Loads Game 2
+4. **Result**: Players in different games, can't see each other
+
+**Flow After Fix:**
+1. Player A creates Room ABC123 → Joins Game 1  
+2. Player B browses rooms → Sees Room ABC123 → Clicks join
+3. **FIXED**: Validates Room ABC123 → Redirects to `/?step=setup&room=ABC123` → Loads Game 1
+4. **Result**: Both players in Game 1, see each other in lobby, real-time sync works
 
 ### Immediate Priorities (Post-Family Testing)
 These are critical features needed based on real-world gameplay testing.

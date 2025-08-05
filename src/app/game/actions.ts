@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 import type { GameClientState, PlayerClientState, ScenarioClientState, GamePhaseClientState, PlayerHandCard } from '@/lib/types';
 import type { Tables, TablesInsert, TablesUpdate } from '@/lib/database.types';
 import { CARDS_PER_HAND, POINTS_TO_WIN, MIN_PLAYERS_TO_START } from '@/lib/types';
+import { generateUniqueRoomCode } from '@/lib/roomCodes';
 
 
 export async function findOrCreateGame(): Promise<Tables<'games'>> {
@@ -44,6 +45,10 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
   }
   console.log("🔵 ACTION: findOrCreateGame - No games found, creating a new one.");
 
+  // Generate room code for the new game
+  const roomCode = await generateUniqueRoomCode();
+  console.log("🔵 ACTION: findOrCreateGame - Generated room code:", roomCode);
+
   const newGameData: TablesInsert<'games'> = {
     game_phase: 'lobby',
     current_round: 0,
@@ -58,6 +63,10 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
     updated_at: new Date().toISOString(),
     transition_state: 'idle',
     transition_message: null,
+    room_code: roomCode,
+    room_name: 'Quick Game',
+    is_public: false,
+    max_players: 8
   };
   const { data: newGame, error: createError } = await supabase
     .from('games')
@@ -175,7 +184,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
         }
         return null;
       })
-      .filter((card): card is PlayerHandCard => card !== null);
+      .filter((card): card is { id: string; text: string; isNew: boolean } => card !== null);
       
     return {
       id: p.id,
@@ -273,13 +282,28 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
 }
 
 
-export async function addPlayer(name: string, avatar: string): Promise<Tables<'players'> | null> {
-  console.log(`🔵 ACTION: addPlayer - Initiated for name: "${name}"`);
-  const gameRow = await findOrCreateGame();
-  if (!gameRow || !gameRow.id) {
-    console.error('🔴 ACTION: addPlayer - Failed to find or create a game session.');
-    throw new Error('Could not find or create game session to add player.');
+export async function addPlayer(name: string, avatar: string, targetGameId?: string): Promise<Tables<'players'> | null> {
+  console.log(`🔵 ACTION: addPlayer - Initiated for name: "${name}", targetGameId: ${targetGameId || 'none'}`);
+  
+  let gameRow: Tables<'games'>;
+  
+  if (targetGameId) {
+    // Use specific game ID
+    const { data, error } = await supabase.from('games').select('*').eq('id', targetGameId).single();
+    if (error || !data) {
+      console.error(`🔴 ACTION: addPlayer - Failed to find game ${targetGameId}:`, error?.message);
+      throw new Error(`Could not find game with ID: ${targetGameId}`);
+    }
+    gameRow = data;
+  } else {
+    // Fallback to find/create game
+    gameRow = await findOrCreateGame();
+    if (!gameRow || !gameRow.id) {
+      console.error('🔴 ACTION: addPlayer - Failed to find or create a game session.');
+      throw new Error('Could not find or create game session to add player.');
+    }
   }
+  
   const gameId = gameRow.id;
   console.log(`🔵 ACTION: addPlayer - Game ID is ${gameId}. Phase: ${gameRow.game_phase}.`);
 
@@ -362,11 +386,11 @@ export async function resetGameForTesting() {
     }
 
     if (!existingGames || existingGames.length === 0) {
-      console.warn("🟡 ACTION: resetGameForTesting - No game found to reset. Redirecting to setup.");
+      console.warn("🟡 ACTION: resetGameForTesting - No game found to reset. Redirecting to main menu.");
       revalidatePath('/');
       revalidatePath('/game');
-      revalidatePath('/?step=setup');
-      redirect('/?step=setup');
+      revalidatePath('/?step=menu');
+      redirect('/?step=menu');
       return;
     }
 
@@ -407,13 +431,182 @@ export async function resetGameForTesting() {
     console.log(`🔵 ACTION: resetGameForTesting - Reset complete. Revalidating paths BEFORE redirect.`);
     revalidatePath('/');
     revalidatePath('/game');
-    revalidatePath('/?step=setup');
+    revalidatePath('/?step=menu');
 
   } catch (e: any) {
     console.error('🔴 ACTION: resetGameForTesting - Unexpected exception:', e.message, e.stack);
   }
 
-  redirect('/?step=setup');
+  redirect('/?step=menu');
+}
+
+export async function getGameByRoomCode(roomCode: string): Promise<GameClientState> {
+  console.log(`🔵 ACTION: getGameByRoomCode - Finding game with code: ${roomCode}`);
+  
+  try {
+    const { data: gameData, error } = await supabase
+      .from('games')
+      .select('*')
+      .eq('room_code', roomCode.toUpperCase())
+      .single();
+
+    if (error) {
+      console.error(`🔴 ACTION: getGameByRoomCode - Error finding game with room code ${roomCode}:`, error.message);
+      throw new Error(`Game not found with room code: ${roomCode}`);
+    }
+
+    if (!gameData) {
+      console.error(`🔴 ACTION: getGameByRoomCode - No game found with room code: ${roomCode}`);
+      throw new Error(`Game not found with room code: ${roomCode}`);
+    }
+
+    console.log(`🔵 ACTION: getGameByRoomCode - Found game ${gameData.id} for room code ${roomCode}`);
+    
+    // Use the existing getGame function with the found game ID
+    return await getGame(gameData.id);
+
+  } catch (error: any) {
+    console.error('🔴 ACTION: getGameByRoomCode - Error:', error.message);
+    throw error;
+  }
+}
+
+export async function cleanupEmptyRooms(): Promise<void> {
+  console.log("🔵 ACTION: cleanupEmptyRooms - Starting cleanup of empty rooms");
+  
+  try {
+    // Find games that are older than 10 minutes and have no players
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    
+    const { data: emptyGames, error: fetchError } = await supabase
+      .from('games')
+      .select(`
+        id,
+        room_name,
+        room_code,
+        created_at,
+        players:players(count)
+      `)
+      .lt('created_at', tenMinutesAgo);
+
+    if (fetchError) {
+      console.error("🔴 ACTION: cleanupEmptyRooms - Error fetching games:", fetchError.message);
+      return;
+    }
+
+    if (!emptyGames || emptyGames.length === 0) {
+      console.log("🔵 ACTION: cleanupEmptyRooms - No games found older than 10 minutes");
+      return;
+    }
+
+    // Filter to only games with 0 players
+    const gamesToDelete = emptyGames.filter(game => {
+      const playerCount = (game.players as any)?.[0]?.count || 0;
+      return playerCount === 0;
+    });
+
+    if (gamesToDelete.length === 0) {
+      console.log("🔵 ACTION: cleanupEmptyRooms - No empty games found to clean up");
+      return;
+    }
+
+    console.log(`🔵 ACTION: cleanupEmptyRooms - Found ${gamesToDelete.length} empty games to delete`);
+
+    // Delete each empty game
+    for (const game of gamesToDelete) {
+      console.log(`🔵 ACTION: cleanupEmptyRooms - Deleting empty game: ${game.room_name} (${game.room_code})`);
+      
+      // Delete associated data first
+      const tablesToClear = ['player_hands', 'responses', 'winners'];
+      for (const table of tablesToClear) {
+        await supabase.from(table as any).delete().eq('game_id', game.id);
+      }
+
+      // Delete the game itself
+      const { error: deleteError } = await supabase
+        .from('games')
+        .delete()
+        .eq('id', game.id);
+
+      if (deleteError) {
+        console.error(`🔴 ACTION: cleanupEmptyRooms - Error deleting game ${game.id}:`, deleteError.message);
+      } else {
+        console.log(`✅ ACTION: cleanupEmptyRooms - Successfully deleted empty game: ${game.room_name}`);
+      }
+    }
+
+    // Revalidate paths to update any cached data
+    revalidatePath('/');
+    revalidatePath('/?step=menu');
+    
+    console.log(`🔵 ACTION: cleanupEmptyRooms - Cleanup complete. Deleted ${gamesToDelete.length} empty rooms.`);
+
+  } catch (error: any) {
+    console.error('🔴 ACTION: cleanupEmptyRooms - Unexpected error:', error.message);
+  }
+}
+
+export async function createRoom(roomName: string, isPublic: boolean, maxPlayers: number): Promise<Tables<'games'>> {
+  console.log("🔵 ACTION: createRoom - Creating new room:", { roomName, isPublic, maxPlayers });
+
+  try {
+    // Clean up empty rooms before creating new one (fire and forget)
+    cleanupEmptyRooms().catch(err => console.error('Background cleanup failed:', err));
+
+    // Generate unique room code
+    const roomCode = await generateUniqueRoomCode();
+    console.log("🔵 ACTION: createRoom - Generated room code:", roomCode);
+
+    // Create new game with room settings
+    const newGameData: TablesInsert<'games'> = {
+      game_phase: 'lobby',
+      current_round: 0,
+      current_judge_id: null,
+      current_scenario_id: null,
+      ready_player_order: [],
+      last_round_winner_player_id: null,
+      last_round_winning_card_text: null,
+      overall_winner_player_id: null,
+      used_scenarios: [],
+      used_responses: [],
+      updated_at: new Date().toISOString(),
+      transition_state: 'idle',
+      transition_message: null,
+      room_code: roomCode,
+      room_name: roomName.trim() || 'Unnamed Room',
+      is_public: isPublic,
+      max_players: maxPlayers
+    };
+
+    const { data: newGame, error: insertError } = await supabase
+      .from('games')
+      .insert(newGameData)
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("🔴 ACTION: createRoom - Error creating room:", JSON.stringify(insertError, null, 2));
+      throw new Error(`Failed to create room: ${insertError.message}`);
+    }
+
+    if (!newGame) {
+      console.error("🔴 ACTION: createRoom - No game data returned after creation");
+      throw new Error('Room creation failed - no game data returned');
+    }
+
+    console.log("🔵 ACTION: createRoom - Successfully created room:", newGame.id, "with code:", roomCode);
+    
+    // Revalidate relevant paths
+    revalidatePath('/');
+    revalidatePath('/?step=setup');
+    revalidatePath('/?step=menu');
+
+    return newGame;
+
+  } catch (error: any) {
+    console.error('🔴 ACTION: createRoom - Unexpected error:', error.message);
+    throw new Error(`Failed to create room: ${error.message}`);
+  }
 }
 
 
@@ -881,6 +1074,63 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
   return getGame(gameId);
 }
 
+export async function findAvailableRoomForQuickJoin(): Promise<string | null> {
+  console.log("🔵 ACTION: findAvailableRoomForQuickJoin - Looking for available public rooms");
+  
+  try {
+    // Clean up empty rooms before searching (fire and forget)
+    cleanupEmptyRooms().catch(err => console.error('Background cleanup failed:', err));
+
+    // Find public rooms that are joinable (lobby or early game phases)
+    const { data: availableGames, error } = await supabase
+      .from('games')
+      .select(`
+        id,
+        room_code,
+        room_name,
+        game_phase,
+        max_players,
+        created_at,
+        players:players(count)
+      `)
+      .eq('is_public', true)
+      .eq('game_phase', 'lobby') // Only join lobbies for simplicity
+      .order('created_at', { ascending: false }); // Newest first
+
+    if (error) {
+      console.error("🔴 ACTION: findAvailableRoomForQuickJoin - Error fetching games:", error.message);
+      throw new Error(`Failed to find available rooms: ${error.message}`);
+    }
+
+    if (!availableGames || availableGames.length === 0) {
+      console.log("🔵 ACTION: findAvailableRoomForQuickJoin - No public rooms found");
+      return null;
+    }
+
+    // Filter to only games with available slots
+    const joinableGames = availableGames.filter(game => {
+      const currentPlayers = (game.players as any)?.[0]?.count || 0;
+      const availableSlots = game.max_players - currentPlayers;
+      return availableSlots > 0;
+    });
+
+    if (joinableGames.length === 0) {
+      console.log("🔵 ACTION: findAvailableRoomForQuickJoin - No rooms with available slots");
+      return null;
+    }
+
+    // Return the room code of the first available game (newest)
+    const chosenGame = joinableGames[0];
+    console.log(`🔵 ACTION: findAvailableRoomForQuickJoin - Found room: ${chosenGame.room_code} (${chosenGame.room_name})`);
+    
+    return chosenGame.room_code;
+
+  } catch (error: any) {
+    console.error('🔴 ACTION: findAvailableRoomForQuickJoin - Unexpected error:', error.message);
+    throw new Error(`Quick join failed: ${error.message}`);
+  }
+}
+
 export async function getCurrentPlayer(playerId: string, gameId: string): Promise<PlayerClientState | undefined> {
   console.log(`🔵 ACTION: getCurrentPlayer - Fetching details for player ${playerId} in game ${gameId}`);
   if (!playerId || !gameId) return undefined;
@@ -894,7 +1144,7 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
   const { data: gameData } = await supabase.from('games').select('current_judge_id').eq('id', gameId).single();
   
   const { data: handData } = await supabase.from('player_hands').select('*, response_cards(id, text)').eq('player_id', playerId).eq('game_id', gameId);
-  const handCards: PlayerHandCard[] = (handData as any[])?.map(h => h.response_cards ? { id: h.response_cards.id, text: h.response_cards.text, isNew: h.is_new ?? false } : null).filter(Boolean) || [];
+  const handCards: PlayerHandCard[] = (handData as any[])?.map(h => h.response_cards ? { id: h.response_cards.id, text: h.response_cards.text, isNew: h.is_new ?? false } : null).filter((card): card is PlayerHandCard => card !== null) || [];
 
   console.log(`🔵 ACTION: getCurrentPlayer - Found player ${playerData.name} with ${handCards.length} cards.`);
   return {

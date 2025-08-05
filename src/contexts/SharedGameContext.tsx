@@ -2,8 +2,9 @@
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { getGame } from '@/app/game/actions';
+import { getGame, getGameByRoomCode } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
+import { useSearchParams } from 'next/navigation';
 
 interface SharedGameContextType {
   gameState: GameClientState | null;
@@ -22,6 +23,7 @@ export function SharedGameProvider({ children }: { children: React.ReactNode }) 
   const [thisPlayer, setThisPlayer] = useState<PlayerClientState | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const isMountedRef = useRef(true);
+  const searchParams = useSearchParams();
 
   const initializeGame = useCallback(async () => {
     console.log("SHARED_CONTEXT: initializeGame - Started");
@@ -38,11 +40,24 @@ export function SharedGameProvider({ children }: { children: React.ReactNode }) 
     }
     
     try {
-      const fetchedGameState = await getGame();
+      // Check for room code in URL parameters
+      const roomCodeParam = searchParams?.get('room');
+      let fetchedGameState: GameClientState;
+      
+      if (roomCodeParam) {
+        console.log(`🔵 SHARED_CONTEXT: Room code found in URL: ${roomCodeParam} - Loading specific game`);
+        fetchedGameState = await getGameByRoomCode(roomCodeParam);
+        console.log(`🔵 SHARED_CONTEXT: Loaded game ${fetchedGameState.gameId} via room code ${roomCodeParam}`);
+      } else {
+        console.log("🔵 SHARED_CONTEXT: No room code in URL, using default game loading");
+        fetchedGameState = await getGame();
+        console.log(`🔵 SHARED_CONTEXT: Loaded default game ${fetchedGameState.gameId}`);
+      }
+      
       if (!isMountedRef.current) return;
 
       if (fetchedGameState?.gameId) {
-        console.log(`SHARED_CONTEXT: Game ${fetchedGameState.gameId} loaded, phase: ${fetchedGameState.gamePhase}`);
+        console.log(`🔵 SHARED_CONTEXT: Game ${fetchedGameState.gameId} loaded, phase: ${fetchedGameState.gamePhase}, players: ${fetchedGameState.players.length}`);
         setGameState(fetchedGameState);
 
         // Check for stored player ID
@@ -73,7 +88,7 @@ export function SharedGameProvider({ children }: { children: React.ReactNode }) 
         setIsInitializing(false);
       }
     }
-  }, []);
+  }, [searchParams]);
 
   const refetchGameState = useCallback(async () => {
     if (!gameState?.gameId || !isMountedRef.current) return;
@@ -118,13 +133,14 @@ export function SharedGameProvider({ children }: { children: React.ReactNode }) 
     const gameId = gameState?.gameId;
     if (!gameId || !isMountedRef.current) return;
 
-    console.log(`SHARED_CONTEXT: Setting up real-time subscription for game ${gameId}`);
+    console.log(`🔵 SHARED_CONTEXT: Setting up real-time subscription for game ${gameId}`);
 
     const channel = supabase
       .channel(`shared-game-updates-${gameId}`)
       .on('postgres_changes', 
           { event: '*', schema: 'public' }, 
-          () => {
+          (payload) => {
+            console.log(`🔵 SHARED_CONTEXT: Real-time update received for game ${gameId}:`, payload.eventType, payload.table);
             if (isMountedRef.current) {
               refetchGameState();
             }
@@ -132,7 +148,7 @@ export function SharedGameProvider({ children }: { children: React.ReactNode }) 
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`SHARED_CONTEXT: Subscribed to real-time updates for game ${gameId}`);
+          console.log(`🔵 SHARED_CONTEXT: ✅ Subscribed to real-time updates for game ${gameId}`);
         }
       });
 

@@ -4,7 +4,8 @@
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction } from '@/app/game/actions';
+import { addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction, createRoom, findAvailableRoomForQuickJoin } from '@/app/game/actions';
+import { findGameByRoomCodeWithPlayers } from '@/lib/roomCodes';
 import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, Info, Lock } from 'lucide-react';
 import type { PlayerClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
@@ -26,6 +27,10 @@ import ConfigurationError from '@/components/ConfigurationError';
 import { PureMorphingModal } from '@/components/PureMorphingModal';
 import PinCodeModal from '@/components/PinCodeModal';
 import DevConsoleModal from '@/components/DevConsoleModal';
+import MainMenu from '@/components/MainMenu';
+import CreateRoomModal, { type RoomSettings } from '@/components/room/CreateRoomModal';
+import JoinRoomModal from '@/components/room/JoinRoomModal';
+import RoomBrowserModal from '@/components/room/RoomBrowserModal';
 import { Volume2, VolumeX, Music, Zap, HelpCircle, Home, Edit, Terminal } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -59,14 +64,21 @@ function WelcomePageContent() {
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = React.useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = React.useState(false);
   const [isDevConsoleOpen, setIsDevConsoleOpen] = React.useState(false);
+  const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = React.useState(false);
+  const [isJoinRoomModalOpen, setIsJoinRoomModalOpen] = React.useState(false);
+  const [isRoomBrowserModalOpen, setIsRoomBrowserModalOpen] = React.useState(false);
+  const [isCreatingRoom, setIsCreatingRoom] = React.useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = React.useState(false);
   
   const currentStepQueryParam = searchParams?.get('step');
-  const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 'welcome';
+  const roomCodeParam = searchParams?.get('room');
+  const currentStep = currentStepQueryParam === 'setup' ? 'setup' : 
+                     currentStepQueryParam === 'menu' ? 'menu' : 'welcome';
   
   
   const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
     if (newPlayer && newPlayer.id && internalGameState?.gameId && isMountedRef.current) {
-      console.log(`LOBBY: handlePlayerAdded - Player ${newPlayer.id} added to game ${internalGameState.gameId}.`);
+      console.log(`🔵 LOBBY: handlePlayerAdded - Player ${newPlayer.name} (${newPlayer.id}) added to game ${internalGameState.gameId}.`);
       const localStorageKey = `thisPlayerId_game_${internalGameState.gameId}`;
       localStorage.setItem(localStorageKey, newPlayer.id);
       
@@ -80,7 +92,7 @@ function WelcomePageContent() {
         isJudge: false, // Will be updated by real-time updates
         hand: [] // Initialize empty hand for lobby
       };
-      console.log(`LOBBY: handlePlayerAdded - Setting thisPlayer directly:`, playerClientState);
+      console.log(`🔵 LOBBY: handlePlayerAdded - Setting thisPlayer to ${newPlayer.name} in game ${internalGameState.gameId}`);
       setThisPlayer(playerClientState);
     }
   }, [internalGameState?.gameId, setThisPlayer]);
@@ -92,7 +104,7 @@ function WelcomePageContent() {
 
 
   useEffect(() => {
-    if (currentStep === 'welcome' || currentStep === 'setup') playTrack('lobby-music');
+    if (currentStep === 'welcome' || currentStep === 'menu' || currentStep === 'setup') playTrack('lobby-music');
   }, [currentStep, playTrack]);
   
   const hasNavigatedRef = useRef(false);
@@ -102,13 +114,17 @@ function WelcomePageContent() {
       console.log(`LOBBY: Game phase is ${internalGameState.gamePhase}, navigating to /game with atomic loading.`);
       hasNavigatedRef.current = true; // Prevent multiple navigations
       
+      // Preserve room code when navigating to game page
+      const roomCode = searchParams.get('room');
+      const gameUrl = roomCode ? `/game?room=${roomCode}` : '/game';
+      
       // Use startTransition to batch loading flag + navigation in same render cycle
       startTransition(() => {
         setGlobalLoading(true);   // Show overlay before navigation
-        router.push('/game');
+        router.push(gameUrl);
       });
     }
-  }, [internalGameState, thisPlayer, router, setGlobalLoading]);
+  }, [internalGameState, thisPlayer, router, setGlobalLoading, searchParams]);
 
   const sortedPlayersForDisplay = useMemo(() => {
     if (!internalGameState?.players) return [];
@@ -131,6 +147,17 @@ function WelcomePageContent() {
     startPlayerActionTransition(async () => {
       try {
         console.log("LOBBY: handleResetGame - User clicked reset.");
+        
+        // Clear localStorage before server reset to prevent stale player data
+        if (internalGameState?.gameId) {
+          const localStorageKey = `thisPlayerId_game_${internalGameState.gameId}`;
+          console.log("LOBBY: handleResetGame - Clearing localStorage key:", localStorageKey);
+          localStorage.removeItem(localStorageKey);
+          
+          // Also clear thisPlayer state immediately to prevent race conditions
+          setThisPlayer(null);
+        }
+        
         await resetGameForTesting();
       } catch (error: any) {
         if (!isMountedRef.current || (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT'))) return; 
@@ -174,6 +201,116 @@ function WelcomePageContent() {
     }
   };
 
+  // Room Management Functions
+  const handleCreateRoom = async (roomSettings: RoomSettings) => {
+    setIsCreatingRoom(true);
+    try {
+      console.log('Creating room with settings:', roomSettings);
+      
+      const newGame = await createRoom(
+        roomSettings.roomName, 
+        roomSettings.isPublic, 
+        roomSettings.maxPlayers
+      );
+      
+      toast({ 
+        title: "Room Created!", 
+        description: `Room "${roomSettings.roomName}" created with code: ${newGame.room_code}` 
+      });
+      
+      setIsCreateRoomModalOpen(false);
+      router.push(`/?step=setup&room=${newGame.room_code}`);
+    } catch (error: any) {
+      toast({ title: "Failed to create room", description: error.message, variant: "destructive" });
+    } finally {
+      setIsCreatingRoom(false);
+    }
+  };
+
+  const handleJoinRoom = async (roomCode: string) => {
+    setIsJoiningRoom(true);
+    try {
+      console.log(`MAIN: handleJoinRoom - Attempting to join room with code: ${roomCode}`);
+      
+      // Validate room exists and is joinable
+      const gameData = await findGameByRoomCodeWithPlayers(roomCode);
+      
+      if (!gameData) {
+        throw new Error(`Room ${roomCode} not found`);
+      }
+
+      console.log(`MAIN: handleJoinRoom - Found game ${gameData.id} for room ${roomCode}, phase: ${gameData.game_phase}, players: ${gameData.currentPlayers}/${gameData.max_players}`);
+
+      // Check if game is in a joinable state
+      if (gameData.game_phase !== 'lobby') {
+        throw new Error(`Room ${roomCode} is already in progress (${gameData.game_phase}). Cannot join now.`);
+      }
+
+      // Check if room is full
+      if (gameData.availableSlots <= 0) {
+        throw new Error(`Room ${roomCode} is full (${gameData.currentPlayers}/${gameData.max_players} players). Cannot join.`);
+      }
+      
+      toast({ 
+        title: "Joining Room!", 
+        description: `Joining room ${roomCode} (${gameData.room_name || 'Unnamed Room'})` 
+      });
+      
+      setIsJoinRoomModalOpen(false);
+      setIsRoomBrowserModalOpen(false);
+      
+      // Redirect with room code parameter so SharedGameContext loads the correct game
+      console.log(`MAIN: handleJoinRoom - Redirecting to /?step=setup&room=${roomCode}`);
+      router.push(`/?step=setup&room=${roomCode}`);
+      
+    } catch (error: any) {
+      console.error('MAIN: handleJoinRoom - Error:', error.message);
+      toast({ 
+        title: "Failed to join room", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsJoiningRoom(false);
+    }
+  };
+
+  const handleQuickJoin = async () => {
+    setIsJoiningRoom(true);
+    try {
+      console.log('MAIN: handleQuickJoin - Looking for available rooms...');
+      
+      toast({ title: "Quick Join", description: "Looking for available rooms..." });
+      
+      // Find an available room
+      const roomCode = await findAvailableRoomForQuickJoin();
+      
+      if (!roomCode) {
+        toast({ 
+          title: "No Available Rooms", 
+          description: "No public rooms are currently available. Try creating a new room!", 
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      console.log(`MAIN: handleQuickJoin - Found available room: ${roomCode}`);
+      
+      // Use the existing handleJoinRoom logic to join the found room
+      await handleJoinRoom(roomCode);
+      
+    } catch (error: any) {
+      console.error('MAIN: handleQuickJoin - Error:', error.message);
+      toast({ 
+        title: "Quick Join Failed", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsJoiningRoom(false);
+    }
+  };
+
   const renderContent = () => {
     if (!internalGameState || !internalGameState.gameId) {
       return <div className="flex-grow flex items-center justify-center bg-black"><Loader2 className="h-12 w-12 animate-spin text-white" /></div>;
@@ -184,11 +321,23 @@ function WelcomePageContent() {
         <div className="relative flex-grow flex flex-col bg-black">
           <Image src="/backgrounds/mobile-background.jpg" alt="Make It Terrible background" fill className="poster-image" priority data-ai-hint="game poster" />
           <div className="relative z-10 flex flex-grow items-center justify-center">
-            <button onClick={() => router.push('/?step=setup')} className="group animate-slow-scale-pulse">
+            <button onClick={() => router.push('/?step=menu')} className="group animate-slow-scale-pulse">
               <Image src="/ui/enter-the-chaos-button.png" alt="Enter the Chaos" width={252} height={95} className="object-contain drop-shadow-xl" data-ai-hint="chaos button" priority />
             </button>
           </div>
         </div>
+      );
+    }
+
+    if (currentStep === 'menu') {
+      return (
+        <MainMenu
+          onCreateRoom={() => setIsCreateRoomModalOpen(true)}
+          onJoinByCode={() => setIsJoinRoomModalOpen(true)}
+          onBrowseRooms={() => setIsRoomBrowserModalOpen(true)}
+          onQuickJoin={handleQuickJoin}
+          onResetGame={handleResetGameWithPin}
+        />
       );
     }
   
@@ -382,6 +531,29 @@ function WelcomePageContent() {
         onClose={() => setIsDevConsoleOpen(false)}
         gameState={internalGameState}
         thisPlayer={thisPlayer}
+      />
+
+      {/* Room Management Modals */}
+      <CreateRoomModal
+        isOpen={isCreateRoomModalOpen}
+        onClose={() => setIsCreateRoomModalOpen(false)}
+        onCreateRoom={handleCreateRoom}
+        isCreating={isCreatingRoom}
+      />
+
+      <JoinRoomModal
+        isOpen={isJoinRoomModalOpen}
+        onClose={() => setIsJoinRoomModalOpen(false)}
+        onJoinRoom={handleJoinRoom}
+        isJoining={isJoiningRoom}
+        initialRoomCode={roomCodeParam || ''}
+      />
+
+      <RoomBrowserModal
+        isOpen={isRoomBrowserModalOpen}
+        onClose={() => setIsRoomBrowserModalOpen(false)}
+        onJoinRoom={handleJoinRoom}
+        isJoining={isJoiningRoom}
       />
     </div>
   );

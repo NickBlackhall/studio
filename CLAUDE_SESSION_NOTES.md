@@ -1,55 +1,119 @@
-# Claude Session Notes - August 1, 2025
+# Claude Session Notes - August 5, 2025
 
 ## Session Context Summary  
-- **Post-Family Test**: 11-player family test completed successfully 
-- **Current Status**: Game is stable and working in development mode (localhost:9003)
-- **Main Goal**: Address critical UX issues discovered during family test
+- **Post-Implementation**: Main menu visual redesign completed
+- **Current Status**: Game is stable with enhanced main menu UI
+- **Main Goal**: Update main menu buttons with custom background images and sound effects
 
 ## Major Accomplishments This Session
 
-### ✅ Back-to-Back Boondoggles Prevention (Quick Fix)
-**Status**: COMPLETED - Prevents consecutive Boondoggle rounds
-- **Problem Solved**: Family test had Boondoggle → Boondoggle rounds, killing game momentum
-- **Solution**: Check if previous round was Boondoggle before triggering new one
-- **Implementation**: Modified `selectCategory()` to query current scenario category before random trigger
-- **Logic**: `isBoondoggle = Math.random() < 0.40 && nonJudgePlayersCount > 1 && !wasLastRoundBoondoggle`
-- **Impact**: Maintains 40% Boondoggle rate but distributes it better across rounds
-
-### ✅ Judge's Hand Swipe Mechanics Implementation (Critical UX Fix)
-**Status**: COMPLETED - Major improvement for large group gameplay
-- **Problem Solved**: With 11 players, judge's hand became cramped and difficult to use
-- **Impact**: Judge can now easily browse through all 10 response cards using familiar swipe gestures
-- **User Experience**: Transformed cramped 750px card stack into smooth, browsable interface
+### ✅ Main Menu Visual Redesign (UI Enhancement)
+**Status**: COMPLETED - Custom background images and sound effects implemented
+- **Problem Solved**: Generic main menu buttons didn't match the game's custom visual style
+- **Impact**: More polished, professional main menu appearance with tactile audio feedback
+- **User Experience**: Players now see custom-designed buttons instead of generic card backgrounds
 
 #### Implementation Details:
-1. **Touch Gesture System**:
-   - Ported excellent swipe mechanics from PlayerView to JudgeView
-   - Left/right swipes move top card to bottom of stack
-   - Only top card is interactive (prevents accidental selections)
-   - Smooth 3-step animation: slide away → cards move up → card appears at bottom
+1. **Custom Background Images**:
+   - Replaced generic `mit-card-front.png` background with purpose-built button images
+   - "Join or Create Game" button uses `join-create-game-button-main-menu.jpg` (1536x600)
+   - "Settings & More" button uses `settings-more-button.jpg` (1536x600)
+   - Proper aspect ratio maintained at 384px × 150px display size (2.56:1 ratio)
 
-2. **Improved Card Layout**:
-   - Reduced card stacking from 75px to 25px intervals (much less cramped)
-   - With 11 players: only 2-3 cards visible at once instead of overwhelming stack
-   - Better mobile viewing and touch targets
+2. **Content Optimization**:
+   - Removed overlaid text, icons, and descriptions since they're baked into new background images
+   - Eliminated hover effects to prevent interference with custom button designs
+   - Maintained proper button structure with spacer divs for consistent height
 
-3. **Preserved Judge Features**:
-   - All existing functionality maintained (card selection, crown winner button, etc.)
-   - Card flip reveal animations still work
-   - Pending states and error handling unchanged
+3. **Audio Integration**:
+   - Added "Button Firm 2_01.wav" sound effect to both main menu buttons
+   - Sound plays before opening respective modals for immediate tactile feedback
+   - Integrated with existing `useAudio` context and `playSfx` functionality
+
+4. **Responsive Design**:
+   - Maintained 65% scale for proper mobile display while preserving image quality
+   - Fixed dimensions ensure consistent appearance across devices
+   - Background images use `cover` sizing to prevent distortion
 
 #### Technical Implementation:
-- **File Modified**: `src/components/game/JudgeView.tsx`
-- **New State Management**: Touch handling, card ordering, animation states
-- **Touch Events**: `handleTouchStart`, `handleTouchMove`, `handleTouchEnd`
-- **Card Shuffling**: `shuffleCard()` function with momentum physics
-- **Animation States**: `exitingCardId`, `exitDirection`, `slidingUp`, `dragOffset`
+- **File Modified**: `src/components/MainMenu.tsx`
+- **Background Logic**: Conditional background image selection based on button title
+- **Audio Integration**: Enhanced `onClick` handlers with `playSfx()` calls
+- **CSS Properties**: Combined `height`, `backgroundImage`, `backgroundSize`, `backgroundPosition`, `backgroundRepeat` in style object
 
-#### Benefits for Large Groups:
-- **Scalable UX**: Works well with 11+ players (previously problematic)
-- **Familiar Interaction**: Same swipe mechanics players already know from their own hand
-- **Mobile Optimized**: Touch-friendly for phones and tablets
-- **Reduced Cognitive Load**: Judge sees fewer cards at once, easier to focus
+### ✅ Previous Session: Complete Room System Implementation (Critical Infrastructure)
+**Status**: COMPLETED - Full multi-room architecture implemented
+- **Problem Solved**: Single-game app couldn't support multiple concurrent games/rooms
+- **Impact**: Transformed app into multi-room platform supporting unlimited concurrent games
+- **User Experience**: Players can now create, browse, and join specific rooms with unique codes
+
+#### Implementation Details:
+1. **Room Creation System**:
+   - Generate unique 6-character room codes (e.g., ABC123) excluding confusing characters (0,O,1,I)
+   - Room settings: configurable names, public/private toggle, max players (4-12)
+   - Automatic room code generation prevents collisions across all games
+   - Room validation before creation (unique codes, valid settings)
+
+2. **Room Management Features**:
+   - **Public Room Browser**: Live view of all available public rooms with real-time player counts
+   - **Private Room Access**: Join rooms via specific room codes for invite-only games
+   - **Room Cleanup**: Empty rooms automatically deleted after 10 minutes of inactivity
+   - **Capacity Management**: Prevent joining full rooms with proper error messaging
+
+### ✅ "Same Room, Different Worlds" Bug Fix (Critical Multi-Player Issue)
+**Status**: COMPLETED - Multi-player joining completely fixed
+- **Problem Solved**: Players could see same room but end up in different game instances
+- **Root Cause**: `handleJoinRoom` was placeholder code that didn't actually join specific rooms
+- **Impact**: Multiple players can now successfully join the same room and see each other
+
+#### Technical Implementation:
+1. **Room Validation & Joining**:
+   - `handleJoinRoom` now validates room existence, capacity, and game phase
+   - Redirects to `/?step=setup&room=ABC123` with room code parameter
+   - SharedGameContext loads specific game via `getGameByRoomCode()`
+   - Real-time subscriptions work properly for same game instance
+
+2. **Player Targeting System**:
+   - `addPlayer` action now accepts `targetGameId` parameter
+   - Players join specific games instead of random games via `findOrCreateGame()`
+   - Prevents "wrong game" assignment that caused isolation
+
+3. **Database Schema Updates**:
+   - Added `room_code` (required), `room_name`, `is_public`, `max_players` to games table
+   - Updated `findOrCreateGame()` to generate room codes for backward compatibility
+   - Implemented room code lookup and validation functions
+
+#### Flow Before Fix vs After Fix:
+**BEFORE (Broken)**:
+1. Player A creates Room ABC123 → Joins Game 1
+2. Player B browses rooms → Sees Room ABC123 → Clicks join
+3. **BUG**: Redirected to `/?step=setup` (no room code) → Loads Game 2  
+4. **Result**: Players in different games, can't see each other
+
+**AFTER (Fixed)**:
+1. Player A creates Room ABC123 → Joins Game 1
+2. Player B browses rooms → Sees Room ABC123 → Clicks join  
+3. **FIXED**: Validates Room ABC123 → Redirects to `/?step=setup&room=ABC123` → Loads Game 1
+4. **Result**: Both players in Game 1, see each other in lobby, real-time sync works
+
+### ✅ Main Menu UX Reorganization (User Experience Enhancement)
+**Status**: COMPLETED - Cleaner, more intuitive navigation
+- **Problem Solved**: Main menu was cluttered with 7+ options overwhelming new users
+- **Solution**: Condensed to 3 primary options with sub-menus for better organization
+- **Impact**: Much cleaner first impression and easier navigation for room selection
+
+#### New Menu Structure:
+- **Main Menu**: 3 large prominent cards
+  1. 🎮 **Join or Create Game** (sub-menu with room options)
+  2. ⚙️ **Settings & More** (sub-menu with audio, help, reset)
+  3. 🔮 **Coming Soon: Player Accounts** (teaser card)
+- **Sub-Menu Navigation**: Back arrow returns to main menu, smooth slide transitions
+
+### ✅ Database Constraint & Player Joining Fixes
+**Status**: COMPLETED - Critical stability improvements
+- **Problem Solved**: Database constraint errors causing 500 server errors and app crashes
+- **Root Cause**: `room_code` column became required but old `findOrCreateGame()` wasn't setting it
+- **Solution**: Updated game creation to always generate room codes with proper fallback values
 
 ## Major Accomplishments Previous Session
 
@@ -140,17 +204,22 @@
 - **Production deployment**: Ready to move to Netlify when user is at full computer
 
 ### Files Modified This Session
-- `src/components/game/JudgeView.tsx` - Added comprehensive swipe mechanics for card browsing
-- `src/app/game/actions.ts` - Fixed back-to-back Boondoggles by checking previous round type
-- `CLAUDE_SESSION_NOTES.md` - Updated with judge hand fix and Boondoggle fix implementations
-- `README.md` - Added judge hand swipe mechanics to solved issues
+- `src/app/game/actions.ts` - Added `createRoom()`, `getGameByRoomCode()`, `cleanupEmptyRooms()`, updated `addPlayer()`
+- `src/lib/roomCodes.ts` - Complete room code system with generation, validation, and lookup functions  
+- `src/contexts/SharedGameContext.tsx` - URL parameter handling for room codes and enhanced debug logging
+- `src/components/MainMenu.tsx` - Hierarchical menu system with sub-menus and PIN-protected reset
+- `src/components/room/` - Complete room management UI (CreateRoomModal, RoomBrowserModal, JoinRoomModal)
+- `src/app/page.tsx` - Real `handleJoinRoom()` implementation with validation and error handling
+- `README.md` - Added comprehensive room system documentation and multi-player fix details
+- `CLAUDE_SESSION_NOTES.md` - Updated with room system implementation and bug fix details
 
 ## Next Session Priorities
 
-### High Priority (Continued Family Testing)
-1. **Test judge hand swipe mechanics** - Verify new implementation works well with 11+ players
-2. **Continue family play testing** - Discover additional UX issues and edge cases
-3. **Document new issues** - Track problems discovered during testing sessions
+### High Priority (Multi-Room Testing)
+1. **Test room creation and joining** - Verify players can create and join the same rooms successfully
+2. **Test room browser functionality** - Ensure public rooms show up with accurate player counts
+3. **Test room capacity limits** - Verify full rooms prevent new joins with proper error messages
+4. **Continue multi-player testing** - Discover any remaining edge cases with room system
 
 ### Medium Priority (Polish & Performance)
 1. **Fix lobby→game transition** - Address double loading systems
@@ -204,13 +273,14 @@ npm install @genkit-ai/googleai @genkit-ai/next genkit-cli genkit
 # Add back genkit scripts to package.json
 ```
 
-## Family Test Results & Next Steps
-- **✅ 11 players confirmed working** - Game handled large group successfully
-- **✅ Major UX issue identified** - Judge's hand was difficult to use with 10 cards
-- **✅ Critical fix implemented** - Judge can now swipe through cards easily
-- **Next Priority**: Test new judge hand mechanics with large group
+## Room System Implementation Results & Next Steps
+- **✅ Complete room system implemented** - Full multi-room architecture working
+- **✅ Major multi-player bug fixed** - "Same room, different worlds" issue resolved completely  
+- **✅ Database constraints resolved** - App stability restored after constraint errors
+- **✅ UX improvements implemented** - Cleaner main menu and better room navigation
+- **Next Priority**: Test room system with multiple concurrent games and players
 - **Future Focus**: Continue addressing remaining polish items for production deployment
 
 ---
 
-*Last updated: August 1, 2025 - Judge hand swipe mechanics implemented to solve critical UX issue discovered during 11-player family test.*
+*Last updated: January 4, 2025 - Complete room system implemented with multi-player joining fixes, enabling full multi-room gameplay functionality.*
