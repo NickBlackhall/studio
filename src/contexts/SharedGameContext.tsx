@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, Suspense } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { getGame, getGameByRoomCode } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
@@ -18,7 +18,7 @@ interface SharedGameContextType {
 
 const SharedGameContext = createContext<SharedGameContextType | undefined>(undefined);
 
-export function SharedGameProvider({ children }: { children: React.ReactNode }) {
+function SharedGameProviderContent({ children }: { children: React.ReactNode }) {
   const [gameState, setGameState] = useState<GameClientState | null>(null);
   const [thisPlayer, setThisPlayer] = useState<PlayerClientState | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -184,6 +184,16 @@ export function SharedGameProvider({ children }: { children: React.ReactNode }) 
     <SharedGameContext.Provider value={value}>
       {children}
     </SharedGameContext.Provider>
+  );
+}
+
+export function SharedGameProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<div className="flex-grow flex items-center justify-center bg-black"><div className="text-white">Loading game...</div></div>}>
+      <SharedGameProviderContent>
+        {children}
+      </SharedGameProviderContent>
+    </Suspense>
   );
 }
 

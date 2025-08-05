@@ -117,7 +117,6 @@ export default function DebugPanel() {
 
   // Show in development, or in production with ?debug param, or if there are connection errors
   const shouldShow = process.env.NODE_ENV === 'development' || 
-                    (typeof window !== 'undefined' && window.location.search.includes('debug')) ||
                     (debugInfo && !debugInfo.supabase.connected);
                     
   if (!shouldShow) {
