@@ -473,5 +473,3 @@ export default function GamePage() {
   );
 }
 
-// Force dynamic rendering to avoid SSR issues
-export const dynamic = 'force-dynamic';

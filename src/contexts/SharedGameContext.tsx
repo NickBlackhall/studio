@@ -14,6 +14,8 @@ interface SharedGameContextType {
   setThisPlayer: (player: PlayerClientState | null) => void;
   initializeGame: () => Promise<void>;
   refetchGameState: () => Promise<void>;
+  createNewGame: () => Promise<GameClientState>;
+  joinGameByRoomCode: (roomCode: string) => Promise<GameClientState>;
 }
 
 const SharedGameContext = createContext<SharedGameContextType | undefined>(undefined);
@@ -163,12 +165,64 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     isMountedRef.current = true;
-    initializeGame();
+    
+    // Only auto-initialize if there's a room code in the URL
+    const roomCodeParam = searchParams?.get('room');
+    if (roomCodeParam) {
+      console.log(`SHARED_CONTEXT: Room code found in URL (${roomCodeParam}), auto-initializing game`);
+      initializeGame();
+    } else {
+      console.log("SHARED_CONTEXT: No room code in URL, skipping auto-initialization");
+      setIsInitializing(false);
+    }
     
     return () => {
       isMountedRef.current = false;
     };
-  }, [initializeGame]);
+  }, [initializeGame, searchParams]);
+
+  const createNewGame = useCallback(async (): Promise<GameClientState> => {
+    console.log("SHARED_CONTEXT: createNewGame - Creating new game");
+    setIsInitializing(true);
+    
+    try {
+      // Create a new game by calling getGame without parameters (which creates a new lobby)
+      const newGameState = await getGame();
+      
+      if (isMountedRef.current && newGameState?.gameId) {
+        console.log(`SHARED_CONTEXT: Created new game ${newGameState.gameId}`);
+        setGameState(newGameState);
+        setIsInitializing(false);
+        return newGameState;
+      }
+      throw new Error("Failed to create new game");
+    } catch (error) {
+      console.error("SHARED_CONTEXT: Error creating new game:", error);
+      setIsInitializing(false);
+      throw error;
+    }
+  }, []);
+
+  const joinGameByRoomCode = useCallback(async (roomCode: string): Promise<GameClientState> => {
+    console.log(`SHARED_CONTEXT: joinGameByRoomCode - Joining game with code: ${roomCode}`);
+    setIsInitializing(true);
+    
+    try {
+      const gameState = await getGameByRoomCode(roomCode);
+      
+      if (isMountedRef.current && gameState?.gameId) {
+        console.log(`SHARED_CONTEXT: Joined game ${gameState.gameId} via room code ${roomCode}`);
+        setGameState(gameState);
+        setIsInitializing(false);
+        return gameState;
+      }
+      throw new Error(`Failed to join game with room code: ${roomCode}`);
+    } catch (error) {
+      console.error(`SHARED_CONTEXT: Error joining game with room code ${roomCode}:`, error);
+      setIsInitializing(false);
+      throw error;
+    }
+  }, []);
 
   const value = {
     gameState,
@@ -178,6 +232,8 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     setThisPlayer,
     initializeGame,
     refetchGameState,
+    createNewGame,
+    joinGameByRoomCode,
   };
 
   return (

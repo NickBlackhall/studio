@@ -103,8 +103,14 @@ export const RESPONSE_CARDS_DATA: string[] = [
   "Hand them a participation trophy for existing."
 ];
 
+// Fisher-Yates shuffle to ensure unbiased randomization
 export const getShuffledDeck = (cards: string[]): string[] => {
-  return [...cards].sort(() => Math.random() - 0.5);
+  const deck = [...cards];
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
 };
 
 export const generateScenarios = (): Record<string, Scenario[]> => {

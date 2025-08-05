@@ -35,6 +35,7 @@ import { Volume2, VolumeX, Music, Zap, HelpCircle, Home, Edit, Terminal } from '
 
 export const dynamic = 'force-dynamic';
 
+
 function WelcomePageContent() {
   // Check configuration first
   if (!isSupabaseConfigured()) {
@@ -428,13 +429,14 @@ function WelcomePageContent() {
           </div>
         );
       }
+    }
     
     // If we get here, there's some other game phase or condition
     return null;
   };
-
+  
   return (
-    <div className="min-h-screen flex flex-col bg-black">
+    <div className={cn("min-h-screen flex flex-col bg-black")}>
       <div className="flex-grow flex flex-col justify-center">{renderContent()}</div>
       
       {/* Menu Modal */}
@@ -578,5 +580,3 @@ export default function WelcomePage() {
 }
 
 // Force dynamic rendering to avoid SSR issues with contexts
-
-// Test comment to verify edit capability - Claude can edit files
