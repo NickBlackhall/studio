@@ -1,6 +1,7 @@
 
 "use client";
 
+import dynamic from 'next/dynamic';
 import { useState, useTransition, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -472,6 +473,5 @@ export default function GamePage() {
   );
 }
 
+// Force dynamic rendering to avoid SSR issues
 export const dynamic = 'force-dynamic';
-
-    

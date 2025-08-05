@@ -567,4 +567,5 @@ export default function WelcomePage() {
   );
 }
 
-    
+// Force dynamic rendering to avoid SSR issues with contexts
+export const dynamic = 'force-dynamic';
