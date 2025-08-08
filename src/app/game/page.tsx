@@ -223,20 +223,32 @@ export default function GamePage() {
       );
   }
 
-  if (internalGameState.gamePhase === 'lobby') {
-    console.log("GAME_PAGE: Game has returned to lobby, redirecting.");
+  // Auto-redirect when game returns to lobby (reset scenario)
+  useEffect(() => {
+    if (internalGameState?.gamePhase === 'lobby' && !thisPlayer) {
+      console.log("GAME_PAGE: Game has returned to lobby, auto-redirecting to main menu and clearing URL state.");
+      
+      // Set reset flag to ensure clean state
+      localStorage.setItem('gameResetFlag', 'true');
+      
+      const timeoutId = setTimeout(() => {
+        // Navigate to main menu without any room code
+        router.push('/?step=menu');
+      }, 1000); // 1 second delay to avoid infinite loops
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [internalGameState?.gamePhase, thisPlayer, router]);
+
+  if (internalGameState.gamePhase === 'lobby' && !thisPlayer) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Image src="/ui/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
-        <h1 className="text-4xl font-bold text-primary mb-4">Game Has Returned to Lobby</h1>
+        <h1 className="text-4xl font-bold text-primary mb-4">Game Reset</h1>
         <p className="text-lg text-muted-foreground mb-8">
-          The game session has been reset or ended.
+          Returning to main menu...
         </p>
-          <Link href="/?step=setup" className="mt-6">
-            <Button variant="default" size="lg">
-                Go to Player Setup & Lobby
-            </Button>
-        </Link>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }

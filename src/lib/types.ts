@@ -2,7 +2,16 @@
 // We will rely on database.types.ts for the core database object.
 // These types can be specific to application logic or client-side state if needed.
 
-export type TransitionState = 'idle' | 'starting_game' | 'transitioning';
+export type TransitionState = 
+  | 'idle' 
+  | 'starting_game' 
+  | 'dealing_cards' 
+  | 'ready'
+  | 'selecting_scenario'
+  | 'processing_submissions'
+  | 'announcing_winner'
+  | 'next_round'
+  | 'game_ending';
 
 export interface PlayerHandCard { // Explicit type for cards in a player's hand
   id: string;

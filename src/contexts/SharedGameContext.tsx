@@ -93,14 +93,30 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
   }, [searchParams]);
 
   const refetchGameState = useCallback(async () => {
-    if (!gameState?.gameId || !isMountedRef.current) return;
+    if (!gameState?.gameId || !isMountedRef.current) {
+      console.log(`SHARED_CONTEXT: refetchGameState skipped - gameId: ${gameState?.gameId}, mounted: ${isMountedRef.current}`);
+      return;
+    }
     
     try {
       console.log(`SHARED_CONTEXT: refetchGameState for game ${gameState.gameId}`);
       const updatedGame = await getGame(gameState.gameId);
       
-      if (updatedGame && isMountedRef.current) {
+      if (updatedGame && isMountedRef.current && gameState) {
         console.log(`SHARED_CONTEXT: Updated game state - phase: ${updatedGame.gamePhase}, players: ${updatedGame.players.length}`);
+        
+        // Clear client-side transition state when server says transition is complete
+        if (updatedGame.transitionState === 'idle' && gameState?.transitionState !== 'idle') {
+          console.log(`🔵 SHARED_CONTEXT: Server completed transition - clearing client state (${gameState?.transitionState} → idle)`);
+        }
+        
+        // Additional safety: clear transition state when game phase advances from lobby
+        if (gameState?.gamePhase === 'lobby' && updatedGame.gamePhase !== 'lobby' && updatedGame.transitionState !== 'idle') {
+          console.log('🔵 SHARED_CONTEXT: Game advanced from lobby but server transition not idle - forcing clear');
+          updatedGame.transitionState = 'idle';
+          updatedGame.transitionMessage = null;
+        }
+        
         setGameState(updatedGame);
         
         // Check for stored player ID even if thisPlayer doesn't exist yet
@@ -133,7 +149,33 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
   // Real-time subscription effect
   useEffect(() => {
     const gameId = gameState?.gameId;
-    if (!gameId || !isMountedRef.current) return;
+    const isTransitioning = gameState?.transitionState !== 'idle' && gameState?.transitionState !== null;
+    
+    // Don't set up subscriptions if there's no game state or during reset scenarios
+    if (!gameId || !isMountedRef.current || !gameState) {
+      console.log(`🔇 SHARED_CONTEXT: Skipping subscription setup - gameId: ${gameId}, mounted: ${isMountedRef.current}, gameState: ${!!gameState}`);
+      return;
+    }
+    
+    if (isTransitioning) {
+      console.log(`🔇 SHARED_CONTEXT: Setting up polling during transition (${gameState?.transitionState})`);
+      
+      // Poll every 500ms during transitions to catch completion
+      const pollInterval = setInterval(() => {
+        if (isMountedRef.current && gameState) {
+          console.log(`🔄 SHARED_CONTEXT: Polling for transition completion...`);
+          refetchGameState();
+        }
+      }, 500);
+      
+      // Cleanup interval
+      return () => {
+        console.log(`🔇 SHARED_CONTEXT: Clearing transition polling`);
+        clearInterval(pollInterval);
+      };
+    }
+    
+    console.log(`🔵 SHARED_CONTEXT: Transition check - transitionState: ${gameState?.transitionState}, isTransitioning: ${isTransitioning}`);
 
     console.log(`🔵 SHARED_CONTEXT: Setting up real-time subscription for game ${gameId}`);
 
@@ -143,8 +185,11 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
           { event: '*', schema: 'public' }, 
           (payload) => {
             console.log(`🔵 SHARED_CONTEXT: Real-time update received for game ${gameId}:`, payload.eventType, payload.table);
-            if (isMountedRef.current) {
+            // Extra check to ensure we still have valid game state before processing updates
+            if (isMountedRef.current && gameState) {
               refetchGameState();
+            } else {
+              console.log(`🔇 SHARED_CONTEXT: Ignoring real-time update - component unmounted or gameState cleared`);
             }
           }
       )
@@ -158,13 +203,52 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
       console.log(`SHARED_CONTEXT: Unsubscribing from real-time updates for game ${gameId}`);
       supabase.removeChannel(channel);
     };
-  }, [gameState?.gameId, refetchGameState]);
+  }, [gameState?.gameId, gameState?.transitionState, refetchGameState]);
 
   // Note: Automatic navigation removed to avoid circular dependencies
   // Pages should handle navigation based on shared game state
 
   useEffect(() => {
     isMountedRef.current = true;
+    
+    // Check for reset flag and clear state if found - this takes priority over URL params
+    const resetFlag = localStorage.getItem('gameResetFlag');
+    if (resetFlag === 'true') {
+      console.log('🔄 SHARED_CONTEXT: Reset flag detected, clearing all game state and preventing auto-reconnection');
+      localStorage.removeItem('gameResetFlag');
+      
+      // Clear all possible game-related localStorage entries
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('thisPlayerId_game_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Force cleanup of any existing subscriptions first
+      try {
+        supabase.removeAllChannels();
+        console.log('🔄 SHARED_CONTEXT: Force-cleared all Supabase channels');
+      } catch (error) {
+        console.log('🔄 SHARED_CONTEXT: Error clearing channels (expected):', error);
+      }
+      
+      setGameState(null);
+      setThisPlayer(null);
+      setIsInitializing(false);
+      
+      // Force URL change to remove room code if present
+      const roomCodeParam = searchParams?.get('room');
+      if (roomCodeParam) {
+        console.log('🔄 SHARED_CONTEXT: Removing room code from URL after reset');
+        // Use window.history to avoid triggering navigation effects
+        window.history.replaceState(null, '', '/?step=menu');
+      }
+      
+      return;
+    }
     
     // Only auto-initialize if there's a room code in the URL
     const roomCodeParam = searchParams?.get('room');

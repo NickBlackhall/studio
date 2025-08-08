@@ -3,17 +3,16 @@
 
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { addPlayer as addPlayerAction, resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction, createRoom, findAvailableRoomForQuickJoin } from '@/app/game/actions';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction, createRoom, findAvailableRoomForQuickJoin } from '@/app/game/actions';
 import { findGameByRoomCodeWithPlayers } from '@/lib/roomCodes';
-import { Users, Play, ArrowRight, RefreshCw, Loader2, CheckSquare, XSquare, Info, Lock } from 'lucide-react';
+import { RefreshCw, Loader2, CheckSquare, XSquare, Lock } from 'lucide-react';
 import type { PlayerClientState } from '@/lib/types';
-import { MIN_PLAYERS_TO_START, ACTIVE_PLAYING_PHASES } from '@/lib/types';
-import { cn } from '@/lib/utils';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { MIN_PLAYERS_TO_START } from '@/lib/types';
+import { useSearchParams, useRouter } from 'next/navigation';
 import React, { useEffect, useCallback, useTransition, useRef, useMemo, startTransition, Suspense } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
 import ReadyToggle from '@/components/game/ReadyToggle';
@@ -31,7 +30,7 @@ import MainMenu from '@/components/MainMenu';
 import CreateRoomModal, { type RoomSettings } from '@/components/room/CreateRoomModal';
 import JoinRoomModal from '@/components/room/JoinRoomModal';
 import RoomBrowserModal from '@/components/room/RoomBrowserModal';
-import { Volume2, VolumeX, Music, Zap, HelpCircle, Home, Edit, Terminal } from 'lucide-react';
+import { Volume2, VolumeX, Music, Zap, HelpCircle, Edit, Terminal } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +56,7 @@ function WelcomePageContent() {
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const { playTrack, state: audioState, toggleMute, toggleMusicMute, toggleSfxMute } = useAudio();
-  const { gameState: internalGameState, thisPlayer, setThisPlayer, createNewGame, joinGameByRoomCode, isInitializing } = useSharedGame();
+  const { gameState: internalGameState, thisPlayer, setThisPlayer, setGameState, joinGameByRoomCode, isInitializing } = useSharedGame();
   const { setGlobalLoading } = useLoading();
   const [isMenuModalOpen, setIsMenuModalOpen] = React.useState(false);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = React.useState(false);
@@ -107,21 +106,82 @@ function WelcomePageContent() {
   }, [currentStep, playTrack]);
   
   const hasNavigatedRef = useRef(false);
+  const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Safety timeout for stuck transitions
+  useEffect(() => {
+    if (internalGameState && 
+        internalGameState.gamePhase !== 'lobby' && 
+        internalGameState.gamePhase !== 'game_over' && 
+        internalGameState.transitionState && 
+        internalGameState.transitionState !== 'idle' && 
+        internalGameState.transitionState !== null && 
+        thisPlayer && 
+        !hasNavigatedRef.current) {
+      
+      
+      // Clear any existing timeout
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+      }
+      
+      // Set timeout to force navigation if transition gets stuck
+      transitionTimeoutRef.current = setTimeout(() => {
+        if (!hasNavigatedRef.current) {
+          hasNavigatedRef.current = true;
+          
+          const roomCode = searchParams.get('room');
+          const gameUrl = roomCode ? `/game?room=${roomCode}` : '/game';
+          
+          // Set loading state immediately to prevent gap
+          setGlobalLoading(true);
+          
+          // Small delay to ensure loading overlay appears before navigation
+          setTimeout(() => {
+            startTransition(() => {
+              router.push(gameUrl);
+            });
+          }, 50);
+        }
+      }, 5000);
+    } else {
+      // Clear timeout if conditions no longer met
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+        transitionTimeoutRef.current = null;
+      }
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+      }
+    };
+  }, [internalGameState, thisPlayer, router, setGlobalLoading, searchParams]);
   
   useEffect(() => {
-    if (internalGameState && internalGameState.gamePhase !== 'lobby' && internalGameState.gamePhase !== 'game_over' && thisPlayer && !hasNavigatedRef.current) {
-      console.log(`LOBBY: Game phase is ${internalGameState.gamePhase}, navigating to /game with atomic loading.`);
+    if (internalGameState && 
+        internalGameState.gamePhase !== 'lobby' && 
+        internalGameState.gamePhase !== 'game_over' && 
+        (internalGameState.transitionState === 'idle' || internalGameState.transitionState === null) && 
+        thisPlayer && 
+        !hasNavigatedRef.current) {
       hasNavigatedRef.current = true; // Prevent multiple navigations
       
       // Preserve room code when navigating to game page
       const roomCode = searchParams.get('room');
       const gameUrl = roomCode ? `/game?room=${roomCode}` : '/game';
       
-      // Use startTransition to batch loading flag + navigation in same render cycle
-      startTransition(() => {
-        setGlobalLoading(true);   // Show overlay before navigation
-        router.push(gameUrl);
-      });
+      // Set loading state immediately to prevent gap
+      setGlobalLoading(true);
+      
+      // Small delay to ensure loading overlay appears before navigation
+      setTimeout(() => {
+        startTransition(() => {
+          router.push(gameUrl);
+        });
+      }, 50); // 50ms delay to ensure smooth overlay transition
     }
   }, [internalGameState, thisPlayer, router, setGlobalLoading, searchParams]);
 
@@ -157,6 +217,12 @@ function WelcomePageContent() {
           setThisPlayer(null);
         }
         
+        // Clear game state to prevent auto-rejoin
+        setGameState(null);
+        
+        // Set reset flag to ensure clean state after redirect
+        localStorage.setItem('gameResetFlag', 'true');
+        
         await resetGameForTesting();
       } catch (error: any) {
         if (!isMountedRef.current || (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT'))) return; 
@@ -188,10 +254,24 @@ function WelcomePageContent() {
   const handleStartGame = async () => {
     if (internalGameState?.gameId && internalGameState.gamePhase === 'lobby') {
       console.log("LOBBY: handleStartGame - User clicked Start Game.");
+      
+      // Temporarily set client-side transition state to block UI
+      setGameState({
+        ...internalGameState,
+        transitionState: 'starting_game',
+        transitionMessage: 'Starting game...'
+      });
+      
       startPlayerActionTransition(async () => {
         try {
           await startGameAction(internalGameState.gameId);
         } catch (error: any) {
+          // Restore on error
+          setGameState({
+            ...internalGameState,
+            transitionState: 'idle',
+            transitionMessage: null
+          });
           if (isMountedRef.current) {
             toast({ title: "Error Starting Game", description: error.message || String(error), variant: "destructive" });
           }
@@ -317,6 +397,19 @@ function WelcomePageContent() {
   };
 
   const renderContent = () => {
+    // Show loading overlay during game transitions
+    if (internalGameState?.transitionState && internalGameState.transitionState !== 'idle') {
+      return (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="text-center">
+            <Loader2 className="h-16 w-16 animate-spin text-white mb-4 mx-auto" />
+            <h2 className="text-2xl text-white font-bold">Starting Game...</h2>
+            <p className="text-white/80">{internalGameState.transitionMessage || 'Preparing your cards...'}</p>
+          </div>
+        </div>
+      );
+    }
+    
     // Show loading only if we're initializing a game (e.g., from room code URL)
     if (isInitializing) {
       return <div className="flex-grow flex items-center justify-center bg-black"><Loader2 className="h-12 w-12 animate-spin text-white" /></div>;
@@ -361,6 +454,7 @@ function WelcomePageContent() {
         const enoughPlayers = internalGameState.players.length >= MIN_PLAYERS_TO_START;
         const allPlayersReady = enoughPlayers && internalGameState.players.every(p => p.isReady);
         const showStartGameButton = thisPlayer.id === hostPlayerId && enoughPlayers && allPlayersReady;
+
   
         let lobbyMessage = "";
         if (!enoughPlayers) lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players. Waiting for ${MIN_PLAYERS_TO_START - (internalGameState.players?.length || 0)} more...`;
@@ -579,4 +673,3 @@ export default function WelcomePage() {
 
 // Force dynamic rendering to avoid SSR issues with contexts
 
-// Test comment to verify edit capability - Claude can edit files

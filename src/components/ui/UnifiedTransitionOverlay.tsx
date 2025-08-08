@@ -35,7 +35,8 @@ export default function UnifiedTransitionOverlay({
     } else if (gameState?.transitionState && gameState.transitionState !== 'idle') {
       message = getTransitionMessage(gameState.transitionState);
     } else if (isGlobalLoading) {
-      message = "Loading...";
+      // Better message for navigation loading
+      message = gameState?.gamePhase === 'lobby' ? "Starting game..." : "Loading...";
     }
   }
 

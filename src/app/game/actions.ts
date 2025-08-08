@@ -1059,7 +1059,8 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
   let nextJudgeId: string | null = game.current_judge_id; 
   if (readyPlayerOrder && readyPlayerOrder.length > 0) {
     const currentJudgeIndex = game.current_judge_id ? readyPlayerOrder.findIndex(playerId => playerId === game.current_judge_id) : -1;
-    nextJudgeId = readyPlayerOrder[(currentJudgeIndex + 1) % readyPlayerOrder.length];
+    const nextJudgeIndex = (currentJudgeIndex + 1) % readyPlayerOrder.length;
+    nextJudgeId = readyPlayerOrder[nextJudgeIndex];
   }
   console.log(`🔵 ACTION: nextRound - Current judge ${game.current_judge_id}, next judge will be ${nextJudgeId}.`);
   
@@ -1144,7 +1145,16 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
   const { data: gameData } = await supabase.from('games').select('current_judge_id').eq('id', gameId).single();
   
   const { data: handData } = await supabase.from('player_hands').select('*, response_cards(id, text)').eq('player_id', playerId).eq('game_id', gameId);
-  const handCards: PlayerHandCard[] = (handData as any[])?.map(h => h.response_cards ? { id: h.response_cards.id, text: h.response_cards.text, isNew: h.is_new ?? false } : null).filter((card): card is PlayerHandCard => card !== null) || [];
+  const handCards: PlayerHandCard[] = (handData as any[])?.reduce((cards: PlayerHandCard[], h) => {
+    if (h.response_cards) {
+      cards.push({
+        id: h.response_cards.id,
+        text: h.response_cards.text,
+        isNew: h.is_new ?? false
+      });
+    }
+    return cards;
+  }, []) || [];
 
   console.log(`🔵 ACTION: getCurrentPlayer - Found player ${playerData.name} with ${handCards.length} cards.`);
   return {
