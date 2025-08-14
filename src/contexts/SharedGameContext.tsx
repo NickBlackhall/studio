@@ -31,6 +31,14 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     console.log("SHARED_CONTEXT: initializeGame - Started");
     setIsInitializing(true);
     
+    // CRITICAL: Block initialization during reset
+    const resetFlag = typeof window !== 'undefined' ? localStorage.getItem('gameResetFlag') : null;
+    if (resetFlag === 'true') {
+      console.log('INIT: skipping initializeGame due to resetFlag');
+      setIsInitializing(false);
+      return;
+    }
+    
     // Check if Supabase is properly configured
     if (!isSupabaseConfigured()) {
       console.error("SHARED_CONTEXT: Error initializing game: Supabase is not properly configured");
@@ -146,10 +154,35 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     }
   }, [gameState?.gameId, thisPlayer?.id]);
 
+  // Handle automatic navigation for reset transition
+  useEffect(() => {
+    if (gameState?.transitionState === 'resetting_game') {
+      console.log('🔄 SHARED_CONTEXT: Reset transition detected - scheduling navigation to main menu');
+      
+      // Wait for the transition overlay to be visible, then navigate
+      const timeoutId = setTimeout(() => {
+        console.log('🔄 SHARED_CONTEXT: Navigating to main menu after reset');
+        // Set reset flag to ensure clean state
+        localStorage.setItem('gameResetFlag', 'true');
+        // Use window.location for hard navigation to ensure clean state
+        window.location.href = '/?step=menu';
+      }, 2000); // Give 2 seconds to see the reset message
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [gameState?.transitionState]);
+
   // Real-time subscription effect
   useEffect(() => {
     const gameId = gameState?.gameId;
     const isTransitioning = gameState?.transitionState !== 'idle' && gameState?.transitionState !== null;
+    
+    // CRITICAL: Block subscriptions during reset
+    const resetFlag = localStorage.getItem('gameResetFlag');
+    if (resetFlag === 'true') {
+      console.log(`🔇 SHARED_CONTEXT: resetFlag=TRUE → skip subscription setup`);
+      return;
+    }
     
     // Don't set up subscriptions if there's no game state or during reset scenarios
     if (!gameId || !isMountedRef.current || !gameState) {
@@ -205,50 +238,23 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     };
   }, [gameState?.gameId, gameState?.transitionState, refetchGameState]);
 
+  // CRITICAL: Clear state when reset flag is present - check on every render
+  useEffect(() => {
+    const resetFlag = localStorage.getItem('gameResetFlag');
+    if (resetFlag === 'true') {
+      console.log('🔄 SHARED_CONTEXT: Reset flag detected → clearing all client state');
+      setGameState(null);
+      setThisPlayer(null);
+      // Clear the flag immediately to prevent re-triggering
+      localStorage.removeItem('gameResetFlag');
+    }
+  }, []); // Only run once on mount
+
   // Note: Automatic navigation removed to avoid circular dependencies
   // Pages should handle navigation based on shared game state
 
   useEffect(() => {
     isMountedRef.current = true;
-    
-    // Check for reset flag and clear state if found - this takes priority over URL params
-    const resetFlag = localStorage.getItem('gameResetFlag');
-    if (resetFlag === 'true') {
-      console.log('🔄 SHARED_CONTEXT: Reset flag detected, clearing all game state and preventing auto-reconnection');
-      localStorage.removeItem('gameResetFlag');
-      
-      // Clear all possible game-related localStorage entries
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('thisPlayerId_game_')) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      
-      // Force cleanup of any existing subscriptions first
-      try {
-        supabase.removeAllChannels();
-        console.log('🔄 SHARED_CONTEXT: Force-cleared all Supabase channels');
-      } catch (error) {
-        console.log('🔄 SHARED_CONTEXT: Error clearing channels (expected):', error);
-      }
-      
-      setGameState(null);
-      setThisPlayer(null);
-      setIsInitializing(false);
-      
-      // Force URL change to remove room code if present
-      const roomCodeParam = searchParams?.get('room');
-      if (roomCodeParam) {
-        console.log('🔄 SHARED_CONTEXT: Removing room code from URL after reset');
-        // Use window.history to avoid triggering navigation effects
-        window.history.replaceState(null, '', '/?step=menu');
-      }
-      
-      return;
-    }
     
     // Only auto-initialize if there's a room code in the URL
     const roomCodeParam = searchParams?.get('room');

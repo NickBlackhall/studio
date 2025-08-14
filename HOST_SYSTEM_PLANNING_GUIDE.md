@@ -34,6 +34,8 @@ The ready system is **deeply integrated** throughout the codebase:
 - Real-time updates for remaining players
 - Handle edge cases (last 2 players, mid-round departures)
 
+**Related Work**: Reset button functionality (August 2025) provides foundation for proper player removal system - server-first approach with transition states and real-time coordination proven successful for game state cleanup and multi-player notifications.
+
 #### 1.2 Room System Stability Testing
 **Recent Changes**: Just implemented full multi-room system
 **Priority**: Ensure stability before adding complexity

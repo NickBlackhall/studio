@@ -32,10 +32,12 @@ import { useAudio } from '@/contexts/AudioContext';
 import { useSharedGame } from '@/contexts/SharedGameContext';
 import { useLoading } from '@/contexts/LoadingContext';
 import FullScreenLoader from '@/components/ui/FullScreenLoader';
+import { supabase } from '@/lib/supabaseClient';
 
 
 
 export default function GamePage() {
+  // Always declare all hooks first - no early returns before hooks!
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
   const { toast } = useToast();
@@ -50,15 +52,30 @@ export default function GamePage() {
   const { gameState: internalGameState, thisPlayer, isInitializing } = useSharedGame();
   const { setGlobalLoading } = useLoading();
 
-
-  
-
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
   }, []);
+  
+  // Early return after hooks are declared - this is safe
+  if (!internalGameState || !internalGameState.gameId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
+        <Image src="/ui/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
+        <h1 className="text-4xl font-bold text-destructive mb-4">Critical Game Error!</h1>
+        <p className="text-lg text-muted-foreground mb-8">
+          Could not load or initialize the game session. Please try again or reset.
+        </p>
+        <Link href="/?step=setup">
+          <Button variant="default" size="lg" className="bg-primary text-primary-foreground hover:bg-primary/80 text-lg">
+            <Home className="mr-2 h-5 w-5" /> Go to Lobby Setup
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   // Clear global loading flag when game page is ready
   useEffect(() => {
@@ -134,18 +151,22 @@ export default function GamePage() {
   };
 
   const handlePlayAgainYes = async () => {
-    if (internalGameState?.gameId) {
-      console.log("GAME_PAGE: handlePlayAgainYes triggered.");
-      try {
-        await resetGameForTesting();
-      } catch (error: any) {
-        if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-          // Let the redirect happen
-        } else {
-          if (isMountedRef.current) {
-            toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
-          }
-        }
+    if (!internalGameState?.gameId) return;
+    console.log("GAME_PAGE: handlePlayAgainYes - Starting server reset");
+    
+    try {
+      // Call the server action first - it will handle the transition state and reset
+      await resetGameForTesting({ clientWillNavigate: true });
+      console.log("GAME_PAGE: handlePlayAgainYes - Server reset completed");
+    } catch (error: any) {
+      if (typeof error?.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+        // This is expected when the server redirects
+        console.log("GAME_PAGE: handlePlayAgainYes - Server redirect received");
+        return;
+      }
+      
+      if (isMountedRef.current) {
+        toast({ title: "Reset Error", description: error.message || "Could not reset for new game.", variant: "destructive" });
       }
     }
   };
@@ -163,17 +184,23 @@ export default function GamePage() {
     console.log("GAME_PAGE: handleResetGameFromGamePage triggered.");
     startActionTransition(async () => {
       try {
-        await resetGameForTesting();
+        // Call the server action first - it will handle the transition state and reset
+        console.log("GAME_PAGE: handleResetGameFromGamePage - Calling server reset action");
+        await resetGameForTesting({ clientWillNavigate: true });
+        console.log("GAME_PAGE: handleResetGameFromGamePage - Server reset completed");
       } catch (error: any) {
-        if (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
-        } else {
-          if (isMountedRef.current) {
-            toast({
-              title: "Reset Failed",
-              description: `Could not reset the game. ${error.message || String(error)}`,
-              variant: "destructive",
-            });
-          }
+        if (typeof error?.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+          // This is expected when the server redirects
+          console.log("GAME_PAGE: handleResetGameFromGamePage - Server redirect received");
+          return;
+        }
+        
+        if (isMountedRef.current) {
+          toast({
+            title: "Reset Failed",
+            description: `Could not reset the game. ${error.message || String(error)}`,
+            variant: "destructive",
+          });
         }
       }
     });
@@ -182,46 +209,8 @@ export default function GamePage() {
 
   // Let UnifiedTransitionOverlay handle the loading display
   // No need for local loader since overlay is global
-
-  if (!internalGameState || !internalGameState.gameId) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-        <Image src="/ui/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
-        <h1 className="text-4xl font-bold text-destructive mb-4">Critical Game Error!</h1>
-        <p className="text-lg text-muted-foreground mb-8">
-          Could not load or initialize the game session. Please try again or reset.
-        </p>
-        <Link href="/?step=setup">
-          <Button variant="default" size="lg" className="bg-primary text-primary-foreground hover:bg-primary/80 text-lg">
-            <Home className="mr-2 h-5 w-5" /> Go to Lobby Setup
-          </Button>
-        </Link>
-      </div>
-    );
-  }
   
   // UnifiedTransitionOverlay handles transition states globally
-
-
-  if (!thisPlayer && ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase as GamePhaseClientState)) {
-      console.log("GAME_PAGE: Rendering spectator view.");
-      return (
-          <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-              <Image src="/ui/new-logo.png" alt="Game in Progress" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
-              <h1 className="text-4xl font-bold text-primary mb-4">Game in Progress</h1>
-              <p className="text-lg text-muted-foreground mb-8">
-                  This game has already started. You can watch, but you can't join until it's over.
-              </p>
-              <div className="w-full max-w-sm my-6">
-                <Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} />
-              </div>
-              <Button onClick={handleResetGameFromGamePageWithPin} variant="outline" size="lg" disabled={isActionPending}>
-                  {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                  Reset Game (For Testing)
-              </Button>
-          </div>
-      );
-  }
 
   // Auto-redirect when game returns to lobby (reset scenario)
   useEffect(() => {
@@ -240,7 +229,13 @@ export default function GamePage() {
     }
   }, [internalGameState?.gamePhase, thisPlayer, router]);
 
-  if (internalGameState.gamePhase === 'lobby' && !thisPlayer) {
+  // Determine what to render based on game state
+  const shouldShowLobbyRedirect = internalGameState.gamePhase === 'lobby' && !thisPlayer;
+  const shouldShowPlayerIdentification = !thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over');
+  const shouldShowSpectatorView = !thisPlayer && ACTIVE_PLAYING_PHASES.includes(internalGameState.gamePhase as GamePhaseClientState);
+
+  // Render special cases
+  if (shouldShowLobbyRedirect) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
         <Image src="/ui/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
@@ -253,7 +248,7 @@ export default function GamePage() {
     );
   }
 
-  if (!thisPlayer && (internalGameState.gamePhase !== 'winner_announcement' && internalGameState.gamePhase !== 'game_over')) {
+  if (shouldShowPlayerIdentification) {
      console.log("GAME_PAGE: Player not identified yet, showing loading state.");
      return (
         <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
@@ -265,6 +260,26 @@ export default function GamePage() {
           </Link>
         </div>
      );
+  }
+
+  if (shouldShowSpectatorView) {
+      console.log("GAME_PAGE: Rendering spectator view.");
+      return (
+          <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
+              <Image src="/ui/new-logo.png" alt="Game in Progress" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
+              <h1 className="text-4xl font-bold text-primary mb-4">Game in Progress</h1>
+              <p className="text-lg text-muted-foreground mb-8">
+                  This game has already started. You can watch, but you can't join until it's over.
+              </p>
+              <div className="w-full max-w-sm my-6">
+                <Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} />
+              </div>
+              <Button onClick={handleResetGameFromGamePageWithPin} variant="outline" size="lg" disabled={isActionPending}>
+                  {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  Reset Game (For Testing)
+              </Button>
+          </div>
+      );
   }
 
   const showRecap = internalGameState.gamePhase === 'winner_announcement' && internalGameState.lastWinner;

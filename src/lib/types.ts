@@ -11,7 +11,8 @@ export type TransitionState =
   | 'processing_submissions'
   | 'announcing_winner'
   | 'next_round'
-  | 'game_ending';
+  | 'game_ending'
+  | 'resetting_game';
 
 export interface PlayerHandCard { // Explicit type for cards in a player's hand
   id: string;
@@ -30,11 +31,17 @@ export interface PlayerClientState {
   isReady: boolean;
 }
 
+// Legacy alias for backwards compatibility  
+export type Player = PlayerClientState;
+
 export interface ScenarioClientState { 
   id: string;
   category: string;
   text: string;
 }
+
+// Legacy alias for backwards compatibility
+export type Scenario = ScenarioClientState;
 
 export interface SubmissionClientState { 
   playerId: string;

@@ -370,7 +370,7 @@ export async function addPlayer(name: string, avatar: string, targetGameId?: str
   return newPlayer;
 }
 
-export async function resetGameForTesting() {
+export async function resetGameForTesting(opts?: { clientWillNavigate?: boolean }) {
   console.warn("🔵 ACTION: resetGameForTesting - INITIATED. THIS IS A DESTRUCTIVE ACTION.");
 
   try {
@@ -386,11 +386,14 @@ export async function resetGameForTesting() {
     }
 
     if (!existingGames || existingGames.length === 0) {
-      console.warn("🟡 ACTION: resetGameForTesting - No game found to reset. Redirecting to main menu.");
+      console.warn("🟡 ACTION: resetGameForTesting - No game found to reset.");
       revalidatePath('/');
       revalidatePath('/game');
       revalidatePath('/?step=menu');
-      redirect('/?step=menu');
+      
+      if (!opts?.clientWillNavigate) {
+        redirect('/?step=menu');
+      }
       return;
     }
 
@@ -398,6 +401,25 @@ export async function resetGameForTesting() {
     const gameId = gameToReset.id;
     console.log(`🔵 ACTION: resetGameForTesting - Starting reset for game ${gameId}.`);
 
+    // STEP 1: First notify all clients that reset is happening
+    console.log(`🔵 ACTION: resetGameForTesting - Setting transition state to notify all clients`);
+    const { error: transitionError } = await supabase
+      .from('games')
+      .update({ 
+        transition_state: 'resetting_game', 
+        transition_message: 'Game is being reset. You will be redirected to the main menu.',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', gameId);
+    
+    if (transitionError) {
+      console.error(`🔴 ACTION: resetGameForTesting - Error setting transition state:`, JSON.stringify(transitionError, null, 2));
+    }
+
+    // Give clients a moment to see the reset notification
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // STEP 2: Clear all game data
     const { error: clearPlayerRefsError } = await supabase
       .from('games')
       .update({ current_judge_id: null, last_round_winner_player_id: null, overall_winner_player_id: null })
@@ -415,6 +437,7 @@ export async function resetGameForTesting() {
     const { error: playersDeleteError } = await supabase.from('players').delete().eq('game_id', gameId);
     if (playersDeleteError) console.error(`🔴 ACTION: resetGameForTesting - Error deleting players:`, JSON.stringify(playersDeleteError, null, 2));
     
+    // STEP 3: Reset the game to lobby state
     const updateData: TablesUpdate<'games'> = {
       game_phase: 'lobby', current_round: 0, current_judge_id: null, current_scenario_id: null,
       ready_player_order: [], last_round_winner_player_id: null, last_round_winning_card_text: null,
@@ -437,7 +460,13 @@ export async function resetGameForTesting() {
     console.error('🔴 ACTION: resetGameForTesting - Unexpected exception:', e.message, e.stack);
   }
 
-  redirect('/?step=menu');
+  revalidatePath('/');
+  revalidatePath('/game');
+  revalidatePath('/?step=menu');
+
+  if (!opts?.clientWillNavigate) {
+    redirect('/?step=menu');
+  }
 }
 
 export async function getGameByRoomCode(roomCode: string): Promise<GameClientState> {

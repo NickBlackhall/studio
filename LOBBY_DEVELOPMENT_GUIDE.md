@@ -516,13 +516,52 @@ if (roomCodeParam) {
 }
 ```
 
+### ✅ Reset Button Stability Fix (August 10, 2025)
+**Status**: MAJOR PROGRESS - Critical React crashes resolved, multi-player coordination improved
+
+#### Problems Addressed
+1. **React Hooks Violation**: "Rendered fewer hooks than expected" error causing game crashes when reset button pressed
+2. **Single-Player Reset**: Only the player pressing reset was affected, others remained in game
+3. **Client-Side Race Conditions**: Immediate navigation and cleanup before server action completed
+4. **TypeScript Compilation Issues**: Missing type exports blocking successful builds
+
+#### Technical Solutions Implemented
+- **React Hooks Fix**: Restructured GamePage component to ensure all hooks called in consistent order on every render by moving critical early returns after hook declarations
+- **Server-First Architecture**: Completely rewrote reset handlers to call `await resetGameForTesting()` first instead of immediate client cleanup
+- **Transition State Integration**: Successfully leveraged existing transition state system with new `'resetting_game'` state showing "Resetting game... You will be redirected to the main menu" to all connected players
+- **Multi-Player Notification**: Enhanced `resetGameForTesting` action to set transition state → wait 1.5 seconds → clear game data → reset to lobby, ensuring all players see coordinated reset experience
+- **Type System Cleanup**: Added missing `Player` and `Scenario` type exports, fixed unused variable errors preventing builds
+
+#### Files Modified
+- `src/app/game/page.tsx` - Fixed React hooks order, simplified reset handlers to server-first approach
+- `src/app/page.tsx` - Updated lobby reset handler to await server action
+- `src/app/game/actions.ts` - Enhanced resetGameForTesting with transition state notifications and multi-player coordination
+- `src/lib/types.ts` - Added `'resetting_game'` transition state, exported legacy type aliases
+- `src/contexts/SharedGameContext.tsx` - Added automatic navigation on reset transition detection
+- `src/components/ui/UnifiedTransitionOverlay.tsx` - Added reset transition message support
+- `src/components/layout/GlobalLoadingOverlay.tsx` - Fixed TypeScript unused variable error
+
+#### Current Status
+- ✅ **Judge/Initiating Player**: Reset works perfectly with proper notification and main menu navigation
+- ✅ **React Stability**: No more hooks crashes, smooth component re-renders during reset
+- ✅ **Server Coordination**: All players see reset notification simultaneously via real-time subscriptions
+- ⚠️ **Non-Initiating Players**: Minor issue where other players land in lobby instead of main menu (needs investigation)
+- ✅ **Development Environment**: TypeScript compilation errors resolved, server runs without bootstrap issues
+
+#### Technical Architecture Insights
+This implementation proves the **transition state approach is highly effective** for coordinating complex multi-player operations. The reset functionality serves as a successful proof-of-concept for the broader LOBBY_TRANSITION_FIX_PLAN.md strategy.
+
 ### Files Modified This Session
 - `src/components/MainMenu.tsx` - Custom backgrounds and sound effects
-- `src/app/page.tsx` - Room code preservation during navigation
+- `src/app/page.tsx` - Room code preservation during navigation, updated lobby reset handler
+- `src/app/game/page.tsx` - React hooks fix, server-first reset approach
+- `src/app/game/actions.ts` - Multi-player reset coordination with transition states
+- `src/lib/types.ts` - Reset transition state and type exports
+- `src/contexts/SharedGameContext.tsx` - Reset transition auto-navigation
+- `src/components/ui/UnifiedTransitionOverlay.tsx` - Reset notification support
 - `LOBBY_TRANSITION_FIX_PLAN.md` - Comprehensive transition fix strategy
-- `CLAUDE_SESSION_NOTES.md` - Session documentation
-- `README.md` - Updated with main menu redesign details
+- `README.md` - Updated with reset button fix documentation
 
 ---
 
-*Last updated: August 5, 2025 - Main menu visual redesign completed, critical navigation crash fixed, transition smoothness plan documented. Room system architecture stable and working.*
+*Last updated: August 10, 2025 - Reset button stability dramatically improved with React hooks fix and server-first architecture. Transition state system proven effective for multi-player coordination. Room system architecture stable and working.*

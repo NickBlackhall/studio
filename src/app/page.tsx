@@ -21,7 +21,7 @@ import type { Tables } from '@/lib/database.types';
 import { useAudio } from '@/contexts/AudioContext';
 import { useSharedGame } from '@/contexts/SharedGameContext';
 import { useLoading } from '@/contexts/LoadingContext';
-import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
 import ConfigurationError from '@/components/ConfigurationError';
 import { PureMorphingModal } from '@/components/PureMorphingModal';
 import PinCodeModal from '@/components/PinCodeModal';
@@ -207,25 +207,18 @@ function WelcomePageContent() {
       try {
         console.log("LOBBY: handleResetGame - User clicked reset.");
         
-        // Clear localStorage before server reset to prevent stale player data
-        if (internalGameState?.gameId) {
-          const localStorageKey = `thisPlayerId_game_${internalGameState.gameId}`;
-          console.log("LOBBY: handleResetGame - Clearing localStorage key:", localStorageKey);
-          localStorage.removeItem(localStorageKey);
-          
-          // Also clear thisPlayer state immediately to prevent race conditions
-          setThisPlayer(null);
+        // Call the server action first - it will handle the transition state and reset
+        console.log("LOBBY: handleResetGame - Calling server reset action");
+        await resetGameForTesting({ clientWillNavigate: true });
+        console.log("LOBBY: handleResetGame - Server reset completed");
+      } catch (error: any) {
+        if (typeof error?.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+          // This is expected when the server redirects
+          console.log("LOBBY: handleResetGame - Server redirect received");
+          return;
         }
         
-        // Clear game state to prevent auto-rejoin
-        setGameState(null);
-        
-        // Set reset flag to ensure clean state after redirect
-        localStorage.setItem('gameResetFlag', 'true');
-        
-        await resetGameForTesting();
-      } catch (error: any) {
-        if (!isMountedRef.current || (typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT'))) return; 
+        if (!isMountedRef.current) return;
         toast({ title: "Reset Failed", description: `Could not reset the game. ${error.message || String(error)}`, variant: "destructive" });
       }
     });
@@ -311,6 +304,13 @@ function WelcomePageContent() {
   };
 
   const handleJoinRoom = async (roomCode: string) => {
+    // CRITICAL: Block room joining during reset
+    const resetFlag = localStorage.getItem('gameResetFlag');
+    if (resetFlag === 'true') {
+      console.log(`MAIN: handleJoinRoom - Blocked due to reset flag`);
+      return;
+    }
+    
     setIsJoiningRoom(true);
     try {
       console.log(`MAIN: handleJoinRoom - Attempting to join room with code: ${roomCode}`);
@@ -397,6 +397,21 @@ function WelcomePageContent() {
   };
 
   const renderContent = () => {
+    // CRITICAL: Check reset flag first - always show menu during reset regardless of game state
+    const resetFlag = typeof window !== 'undefined' ? localStorage.getItem('gameResetFlag') : null;
+    if (resetFlag === 'true') {
+      console.log('LOBBY: renderContent - Reset flag active, forcing menu display');
+      return (
+        <MainMenu
+          onCreateRoom={() => setIsCreateRoomModalOpen(true)}
+          onJoinByCode={() => setIsJoinRoomModalOpen(true)}
+          onBrowseRooms={() => setIsRoomBrowserModalOpen(true)}
+          onQuickJoin={handleQuickJoin}
+          onResetGame={handleResetGameWithPin}
+        />
+      );
+    }
+    
     // Show loading overlay during game transitions
     if (internalGameState?.transitionState && internalGameState.transitionState !== 'idle') {
       return (

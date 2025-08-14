@@ -80,6 +80,14 @@ This section tracks recent improvements and bug fixes that have impacted gamepla
   - **Sound Effects**: Added "Button Firm 2_01.wav" sound effect to both main menu buttons for tactile feedback
   - **Hover Removal**: Disabled hover effects to prevent interference with custom button designs
   - **Responsive Scaling**: Maintained 65% scale for proper mobile display while preserving image quality
+- **Reset Button Multi-Player Fix (August 2025):** Resolved critical reset functionality issues affecting game stability and multi-player coordination:
+  - **React Hooks Error Resolution**: Fixed "rendered fewer hooks than expected" error in GamePage component by ensuring consistent hook call order on every render, eliminating crashes when reset button was pressed
+  - **Server-First Reset Architecture**: Completely restructured reset flow to use server-side coordination instead of client-side cleanup, preventing race conditions and ensuring all connected players receive reset notifications
+  - **Transition State Integration**: Successfully implemented 'resetting_game' transition state with UnifiedTransitionOverlay showing "Resetting game... You will be redirected to the main menu" to all players for 1.5 seconds before server cleanup
+  - **Multi-Player Coordination**: Updated resetGameForTesting action to broadcast reset state to all connected players via real-time subscriptions, ensuring synchronized experience across all clients
+  - **Comprehensive Handler Updates**: Simplified all reset handlers (lobby reset, game page reset, play again reset) to use consistent server-first approach with proper error handling for redirect responses
+  - **TypeScript Compilation Fixes**: Resolved missing type exports (Player, Scenario) and unused variable errors that were preventing successful builds
+  - **Current Status**: Reset functionality works correctly for initiating player (proper notification and navigation), with remaining minor issue where other players land in lobby instead of main menu (investigation ongoing)
 
 ### Known Issues (Resolved)
 - ~~**Shuffle Animation Artifacts:** Cards no longer exhibit "re-deal" animation during shuffle sequence. Fixed by preserving component identity through stable React keys.~~
@@ -360,6 +368,12 @@ These are larger-scale ideas for the future evolution of the game.
 - **Custom Rule Sets:** Introduce rule variations like a "Drinking Game Mode" or a "Family Friendly Mode" that filters adult content.
 - **Multi-Room Support:** Build the infrastructure to allow for multiple, separate game instances to run concurrently.
 - **Community Content:** Create forms for users to submit their own scenario and response card ideas, which can then be curated and added to the official game deck.
+- **Camera-to-Camera Communication:** Implement video chat capabilities for remote players to see and interact with each other face-to-face during gameplay. This could significantly enhance the social experience by allowing players to see reactions, expressions, and body language while playing. Technical implementation options include:
+  - **WebRTC Integration**: Browser-native peer-to-peer video using WebRTC APIs for direct player connections
+  - **Third-Party Video SDKs**: Services like Daily.co, Agora.io, or Twilio Video for managed video infrastructure
+  - **Hybrid Approach**: Optional video overlay that can be toggled on/off, with picture-in-picture layout during gameplay
+  - **Mobile Optimization**: Front-facing camera integration optimized for mobile browsers and PWA capabilities
+  - **Bandwidth Considerations**: Adaptive video quality based on connection speed, with audio-only fallback options
 
 this line has been changed for the test
 

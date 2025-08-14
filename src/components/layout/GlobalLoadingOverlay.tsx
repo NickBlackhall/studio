@@ -12,7 +12,6 @@ export default function GlobalLoadingOverlay() {
   const FADE_DURATION_MS = 800; // Define duration in ms - extended to coordinate with content fade-in
 
   useEffect(() => {
-    let fadeInTimer: NodeJS.Timeout;
     let fadeOutTimer: NodeJS.Timeout;
 
     if (isGlobalLoading) {
@@ -28,7 +27,6 @@ export default function GlobalLoadingOverlay() {
     }
 
     return () => {
-      clearTimeout(fadeInTimer);
       clearTimeout(fadeOutTimer);
     };
   }, [isGlobalLoading]);
