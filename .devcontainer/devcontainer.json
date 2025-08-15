@@ -1,0 +1,55 @@
+{
+  "name": "Multi-Player Game Dev",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-18-bullseye",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/eitsupi/devcontainer-features/jq:2": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-playwright.playwright",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "ms-vscode.vscode-json",
+        "ms-vscode.test-adapter-converter",
+        "ms-vscode.js-debug",
+        "formulahendry.auto-rename-tag",
+        "christian-kohler.path-intellisense"
+      ],
+      "settings": {
+        "typescript.preferences.includePackageJsonAutoImports": "on",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "playwright.reuseBrowser": true,
+        "playwright.showTrace": true
+      }
+    }
+  },
+  "forwardPorts": [9003, 54321, 5432],
+  "portsAttributes": {
+    "9003": {
+      "label": "Next.js Dev Server",
+      "onAutoForward": "notify"
+    },
+    "54321": {
+      "label": "Supabase API",
+      "onAutoForward": "silent"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "npm install && npx playwright install --with-deps",
+  "postStartCommand": "echo '🎮 Ready for multi-player game development!' && echo '📝 Run: npm run dev (Next.js)' && echo '🧪 Run: npm run test:e2e:ui (Playwright UI)'",
+  "remoteUser": "node",
+  "containerEnv": {
+    "NODE_ENV": "development"
+  },
+  "mounts": [
+    "source=node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume"
+  ]
+}
