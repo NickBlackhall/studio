@@ -375,6 +375,119 @@ These are larger-scale ideas for the future evolution of the game.
   - **Mobile Optimization**: Front-facing camera integration optimized for mobile browsers and PWA capabilities
   - **Bandwidth Considerations**: Adaptive video quality based on connection speed, with audio-only fallback options
 
-this line has been changed for the test
+## Testing Infrastructure (August 2025)
 
-Test line added by Claude Code to verify edit capabilities.
+### Comprehensive Testing Foundation
+**Status:** Complete with 120 total tests across unit, integration, and real-time analysis
+**Objective:** Build reliable test foundation + root cause analysis of transition issues
+**Outcome:** Successfully identified and validated specific causes of lobby/navigation problems
+
+#### Testing Architecture Implemented
+
+**✅ Unit Testing Framework (69 tests)**
+- **Jest + React Testing Library** configured for Next.js 15.2.3
+- **Mock data utilities** (`createMockPlayer`, `createMockGame`, `createMockGameInPhase`)
+- **Game logic testing** covering validation, phases, scoring, judge rotation
+- **Component rendering verification** for critical UI elements
+
+**✅ Integration Testing with Real Database (30 tests)**
+- **Live Supabase testing** with real database operations and cleanup
+- **Safe test isolation** using `TEST_` prefixes and automatic data cleanup
+- **Multi-player coordination scenarios** tested with actual database state
+- **Navigation flow testing** with concurrent player operations
+
+**✅ Root Cause Analysis Testing (21 tests)**
+- **Server actions behavior testing** (12 tests) - validates backend logic is sound
+- **Subscription timing analysis** (9 tests) - exposes real-time coordination issues
+- **Specific transition scenario testing** - identifies exact failure patterns
+
+#### Key Findings: Root Causes of Transition Issues
+
+**Primary Problem Validated:** Frontend subscription/state coordination issues, NOT backend logic
+**Evidence:** All server actions and database operations work correctly in isolation
+
+**Specific Root Causes Identified:**
+
+1. **Subscription Timing Gaps**
+   - Real-time updates don't fire immediately or cause flooding
+   - **Evidence:** "3 players changed ready state, received 6 notifications"
+   - **Impact:** Players see different game states during transitions
+
+2. **Polling vs Subscription Timing**
+   - 500ms polling in SharedGameContext misses rapid state changes
+   - **Evidence:** Subscription captured `['dealing_cards', 'ready', 'idle']` vs Polling captured `['idle', 'idle', 'ready', 'idle']`
+   - **Impact:** UI jumps or gets stuck in transition screens
+
+3. **State Synchronization Race Conditions**
+   - localStorage and database state become inconsistent
+   - **Evidence:** Players see "localStorage has player ID but database doesn't have player"
+   - **Impact:** SharedGameContext shows player as "in game" but they're not
+
+4. **Ready Player Order Coordination**
+   - ready_player_order array can contain players who aren't actually ready
+   - **Evidence:** Game starts but ready order contains players with `is_ready: false`
+   - **Impact:** Game coordination fails during transitions
+
+#### Files Created for Testing Infrastructure
+
+**Core Test Files:**
+```
+✅ jest.config.js                     - Jest configuration for Next.js
+✅ jest.setup.js                      - Global mocks and test setup
+✅ tests/fixtures/mockData.ts          - Mock data utilities (69 unit tests)
+✅ tests/helpers/testDatabase.ts       - Real Supabase integration testing
+✅ tests/helpers/test-utils.tsx        - Custom React testing utilities
+```
+
+**Integration Test Suites:**
+```
+✅ tests/integration/serverActionsBehavior.test.ts    - 12 tests validating backend logic
+✅ tests/integration/subscriptionTiming.test.ts       - 9 tests exposing real-time issues
+✅ tests/integration/transitionScenarios.test.ts      - 9 tests identifying coordination problems
+```
+
+**Component Tests:**
+```
+✅ tests/unit/components/MainMenu.test.tsx            - First component rendering test
+✅ tests/unit/gameLogic/                              - Game validation and logic tests
+```
+
+#### Testing Commands Available
+
+```bash
+# Run all tests once
+npm test
+
+# Run tests and watch for changes (continuous testing)
+npm run test:watch
+
+# Check test configuration
+npm test -- --listTests
+```
+
+#### Impact on Development Workflow
+
+**Before Testing Infrastructure:**
+- Manual testing only - click through entire game to test changes
+- No regression protection - changes could break existing features  
+- Time-consuming setup for testing different game states
+- Transition issues remained mysterious and hard to reproduce
+
+**After Testing Infrastructure:**
+- `npm test` instantly verifies 120 test scenarios don't crash
+- Root causes of transition issues precisely identified and validated
+- Safe database testing environment for complex multi-player scenarios
+- Clear evidence that backend logic is sound - focus on frontend coordination
+- Foundation for implementing fixes with test-driven development
+
+#### Next Steps for Issue Resolution
+
+**Validated Focus Areas for Fixes:**
+1. **SharedGameContext subscription timing** - implement debouncing and coordination
+2. **Polling frequency optimization** - reduce gaps in rapid state change detection  
+3. **localStorage synchronization** - add validation and recovery mechanisms
+4. **Ready player order consistency** - implement atomic updates and validation
+
+**Testing Foundation Complete:** All infrastructure in place to test fixes and prevent regressions during implementation.
+
+---
