@@ -3,6 +3,10 @@ import '@testing-library/jest-dom'
 // Load environment variables for integration tests
 require('dotenv').config({ path: '.env.local' })
 
+// Add Node.js polyfills for Next.js server actions
+global.TextEncoder = require('util').TextEncoder
+global.TextDecoder = require('util').TextDecoder
+
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
   Menu: () => <div data-testid="menu-icon">Menu</div>,
