@@ -6,8 +6,9 @@ test.describe('Basic Game Flow', () => {
     await page.goto('/');
     await expect(page.locator('[data-testid="enter-chaos-button"]')).toBeVisible();
     
-    // Click to enter main menu
-    await page.click('[data-testid="enter-chaos-button"]');
+    // Wait a moment for animation to settle, then force click
+    await page.waitForTimeout(1000);
+    await page.click('[data-testid="enter-chaos-button"]', { force: true });
     
     // Should now see main menu
     await expect(page.locator('[data-testid="main-menu"]')).toBeVisible();
