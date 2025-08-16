@@ -208,25 +208,48 @@ await page.reload();
 
 **Result:** Room creation test now passes consistently! The full Welcome → Main Menu → Modal → Form workflow is functional.
 
-### 📋 **Remaining Tasks**
-1. ✅ **Debug room creation modal flow** - COMPLETED! UI workflow working
-2. **Fix Supabase connectivity in test environment** - Database connection errors during room code generation
-3. **Add lobby interface test IDs** - For post-room-creation validation  
-4. **Complete multi-player test scenarios** - Foundation now solid for expansion
-5. **Optimize test performance** - Current test takes 52.5s, can likely be optimized
+### 🔍 **CURRENT PHASE: Lobby Behavior Diagnostics (August 2025)**
+
+**Shifted focus from basic E2E testing to SOLVING REAL UX ISSUES:**
+- User-reported lobby behavior problems (weeks-long issue)
+- Lobby→game transition smoothness improvements needed
+- Multi-player coordination reliability
+
+**Created Diagnostic Test Suite (`lobby-diagnostics.spec.ts`):**
+1. **Lobby Creation Flow Analysis** - Tracks post-room-creation user experience
+2. **Multi-Player Joining Behavior** - Diagnoses second player joining issues  
+3. **Lobby→Game Transition Timing** - Measures transition smoothness and timing
+
+**Tests Output:**
+- Console logs tracking each step of user journey
+- Screenshots of different lobby states (`test-results/lobby-*.png`)
+- Timing measurements for transition performance
+- URL tracking and element visibility diagnostics
+
+**Purpose:** Generate concrete data to identify specific UX improvements rather than generic testing.
+
+### 📋 **Next Steps**
+1. **Run lobby diagnostic tests** - Collect real UX data from failing scenarios
+2. **Analyze diagnostic output** - Identify specific bottlenecks and race conditions
+3. **Implement targeted fixes** - Based on diagnostic insights, not guesswork
+4. **Validate improvements** - Use same tests to confirm fixes work
+5. **Expand to full multi-player scenarios** - Once core issues resolved
 
 ### 🛠 **Commands for Testing in Codespaces**
 ```bash
-# Run specific test
+# Run lobby diagnostic tests (CURRENT FOCUS)
+npx playwright test e2e/tests/lobby-diagnostics.spec.ts --project=chromium
+
+# Run specific working tests
 npx playwright test e2e/tests/basic-flow.spec.ts:4 --project=chromium
 
 # View test results with screenshots
 npx playwright show-report
 
-# Run headless (all browsers)
+# Run all tests (expect some failures due to missing data-testids)
 npm run test:e2e
 
-# Run with UI (requires xvfb for Codespace)
+# Run with UI (requires xvfb for Codespace) 
 xvfb-run npm run test:e2e:ui
 ```
 
