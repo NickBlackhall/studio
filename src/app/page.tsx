@@ -450,7 +450,7 @@ function WelcomePageContent() {
         <div className="relative flex-grow flex flex-col bg-black">
           <Image src="/backgrounds/mobile-background.jpg" alt="Make It Terrible background" fill className="poster-image" priority data-ai-hint="game poster" />
           <div className="relative z-10 flex flex-grow items-center justify-center">
-            <button onClick={() => router.push('/?step=menu')} className="group animate-slow-scale-pulse">
+            <button onClick={() => router.push('/?step=menu')} className="group animate-slow-scale-pulse" data-testid="enter-chaos-button">
               <Image src="/ui/enter-the-chaos-button.png" alt="Enter the Chaos" width={252} height={95} className="object-contain drop-shadow-xl" data-ai-hint="chaos button" priority />
             </button>
           </div>
