@@ -15,8 +15,14 @@ test.describe('Basic Game Flow', () => {
   });
 
   test('should create a new game', async ({ page, gameCode, playerName }) => {
-    // Navigate to main menu
+    // Clear any previous state and navigate to main menu
     await page.goto('/');
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    await page.reload();
+    
     await page.waitForTimeout(1000);
     await page.click('[data-testid="enter-chaos-button"]', { force: true });
     await expect(page.locator('[data-testid="main-menu"]')).toBeVisible();
