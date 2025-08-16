@@ -49,6 +49,7 @@ export default function UnifiedTransitionOverlay({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
           className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-[9999]"
+          data-testid="transition-overlay"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0, y: 20 }}
@@ -61,6 +62,7 @@ export default function UnifiedTransitionOverlay({
               opacity: { duration: 0.4 }
             }}
             className="bg-white p-8 rounded-2xl text-center shadow-2xl flex flex-col items-center gap-4 text-black max-w-sm mx-4 border border-gray-200/20"
+            data-testid="transition-content"
           >
             <motion.div
               animate={{ rotate: 360 }}
@@ -73,6 +75,7 @@ export default function UnifiedTransitionOverlay({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.3 }}
               className="font-semibold text-xl"
+              data-testid="transition-message"
             >
               {message || "Loading..."}
             </motion.p>
