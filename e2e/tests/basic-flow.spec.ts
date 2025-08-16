@@ -17,13 +17,24 @@ test.describe('Basic Game Flow', () => {
   test('should create a new game', async ({ page, gameCode, playerName }) => {
     // Navigate to main menu
     await page.goto('/');
-    await page.click('[data-testid="enter-chaos-button"]');
+    await page.waitForTimeout(1000);
+    await page.click('[data-testid="enter-chaos-button"]', { force: true });
     await expect(page.locator('[data-testid="main-menu"]')).toBeVisible();
     
-    // Click to create room (this opens modal workflow)
-    // Note: The actual flow involves clicking menu options to open modals
-    // For now, let's navigate directly to the expected URL after room creation
-    await expect(page).toHaveURL('/?step=menu');
+    // Click "Join or Create Game" card
+    await page.waitForTimeout(500);
+    await page.click('[data-testid="join-create-card"]', { force: true });
+    
+    // Click "Create New Room" option
+    await expect(page.locator('[data-testid="menu-create-new-room"]')).toBeVisible();
+    await page.click('[data-testid="menu-create-new-room"]');
+    
+    // Fill out create room form and create
+    await expect(page.locator('[data-testid="create-game-button"]')).toBeVisible();
+    await page.click('[data-testid="create-game-button"]');
+    
+    // Should redirect to lobby with room code
+    await expect(page).toHaveURL(/\/\?room=\w{6}$/);
   });
 
   test('should join existing game', async ({ page, browser, gameCode, playerName }) => {

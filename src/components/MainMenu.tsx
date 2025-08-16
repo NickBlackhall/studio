@@ -167,6 +167,7 @@ export default function MainMenu({
                     key={option.title}
                     className="relative overflow-hidden bg-transparent cursor-pointer shadow-lg w-96"
                     onClick={option.onClick}
+                    data-testid={option.title === "Join or Create Game" ? "join-create-card" : "settings-card"}
                     style={{
                       height: '150px',
                       backgroundImage: option.title === "Join or Create Game" 
@@ -215,6 +216,7 @@ export default function MainMenu({
                 setIsJoinCreateModalOpen(false);
                 option.onClick();
               }}
+              data-testid={`menu-${option.title.toLowerCase().replace(/\s+/g, '-')}`}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center space-x-3">
