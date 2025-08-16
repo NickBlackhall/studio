@@ -122,22 +122,103 @@ npm run test:e2e:debug    # Debug specific tests
 - **Responsive design validation**
 - **Theme and state variations**
 
-## 🚀 Next Steps for Implementation
+## 🚀 GitHub Codespaces E2E Testing Setup - COMPLETED ✅
 
-### High Priority (Required for tests to pass)
-1. **Add data-testid attributes** to components (see `DATA_TESTID_GUIDE.md`)
-2. **Set up local Supabase** for test database isolation
-3. **Run tests in GitHub Codespaces** for full browser support
+### ✅ **GitHub Codespaces Configuration (August 2025)**
+Successfully configured GitHub Codespaces for E2E testing after resolving multiple technical challenges:
 
-### Medium Priority (Enhanced coverage)
-1. **Add custom card flow** UI elements
-2. **Implement transition state messages** for reset coordination  
-3. **Add error boundary** components with test IDs
+**Fixed Issues:**
+1. **devcontainer.json errors** - Removed problematic `jq` feature that was causing container creation failures
+2. **Environment variables** - Added `.env.local` with Supabase credentials for test database connection
+3. **Port forwarding** - Configured ports 9003 (Next.js), 54321 (Supabase), 5432 (PostgreSQL)
+4. **Browser dependencies** - Playwright installs browsers with `--with-deps` for headless testing
 
-### Low Priority (Nice to have)
-1. **Performance testing** with larger player counts
-2. **Accessibility testing** integration
-3. **Mobile-specific gesture** testing
+**Working Codespace Setup:**
+```json
+{
+  "name": "Multi-Player Game Dev",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-18-bullseye",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [9003, 54321, 5432],
+  "postCreateCommand": "npm install && npx playwright install --with-deps"
+}
+```
+
+### ✅ **Data-testid Implementation**
+Added comprehensive `data-testid` attributes to enable proper E2E testing:
+
+**Components Updated:**
+- `MainMenu.tsx` - `data-testid="main-menu"`, `join-create-card`, `settings-card`
+- `PWAGameLayout.tsx` - `data-testid="player-name-input"`, `join-game-button`
+- `CreateRoomModal.tsx` - `data-testid="create-game-button"`
+- `JoinRoomModal.tsx` - `data-testid="game-code-input"`
+- `page.tsx` - `data-testid="enter-chaos-button"` for welcome screen
+
+**Menu Options Added:**
+- `menu-create-new-room`, `menu-join-by-code`, `menu-browse-public-rooms`, `menu-quick-join`
+
+### ✅ **Test Flow Alignment**
+Updated tests to match intended UX flow: **Welcome Screen → Main Menu → Room Creation/Joining**
+
+**Working Test Pattern:**
+```javascript
+// 1. Start at welcome screen
+await page.goto('/');
+await expect(page.locator('[data-testid="enter-chaos-button"]')).toBeVisible();
+
+// 2. Navigate to main menu
+await page.click('[data-testid="enter-chaos-button"]', { force: true });
+await expect(page.locator('[data-testid="main-menu"]')).toBeVisible();
+
+// 3. Follow modal workflow for room creation
+await page.click('[data-testid="join-create-card"]', { force: true });
+await page.click('[data-testid="menu-create-new-room"]');
+```
+
+### ✅ **Animation Handling**
+Resolved CSS animation stability issues preventing test interactions:
+- Used `{ force: true }` clicks for animated elements
+- Added `waitForTimeout()` for animation settling
+- Handles `animate-slow-scale-pulse` class properly
+
+### 🔧 **Current Status: Welcome → Menu Flow Working**
+- ✅ **Welcome screen test** - Successfully passing
+- ✅ **Main menu navigation** - Button clicks work with force option
+- ⚠️ **Room creation flow** - In progress, debugging modal interactions
+- ⚠️ **Multi-player scenarios** - Pending room creation completion
+
+### 📋 **Remaining Tasks**
+1. **Debug room creation modal flow** - Modal interactions need refinement
+2. **Add lobby interface test IDs** - For post-room-creation validation
+3. **Complete multi-player test scenarios** - Once single-player flow works
+4. **Environment variable persistence** - Ensure `.env.local` remains in Codespace
+
+### 🛠 **Commands for Testing in Codespaces**
+```bash
+# Run specific test
+npx playwright test e2e/tests/basic-flow.spec.ts:4 --project=chromium
+
+# View test results with screenshots
+npx playwright show-report
+
+# Run headless (all browsers)
+npm run test:e2e
+
+# Run with UI (requires xvfb for Codespace)
+xvfb-run npm run test:e2e:ui
+```
+
+### 💡 **Key Learnings**
+1. **GitHub Codespaces works great for E2E testing** once properly configured
+2. **CSS animations require special handling** in automated tests
+3. **Modal workflows need careful sequencing** with proper waits
+4. **Environment variables must be properly set** for full app functionality
+5. **Force clicks solve many interaction issues** with animated UI elements
+
+This setup provides a solid foundation for comprehensive E2E testing in a cloud environment!
 
 ## 📈 Coverage Metrics
 
