@@ -153,6 +153,7 @@ export default function CreateRoomModal({
             onClick={handleCreate}
             className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
             disabled={isCreating}
+            data-testid="create-game-button"
           >
             {isCreating ? (
               <div className="flex items-center space-x-2">

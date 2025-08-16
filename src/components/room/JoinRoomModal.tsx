@@ -105,6 +105,7 @@ export default function JoinRoomModal({
               className="pl-10 pr-10 bg-white/90 border-black/20 text-center text-lg font-mono tracking-wider"
               maxLength={6}
               autoFocus
+              data-testid="game-code-input"
             />
             {/* Validation Icon */}
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">

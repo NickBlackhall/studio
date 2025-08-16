@@ -95,6 +95,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
               onChange={(e) => setName(e.target.value)}
               onKeyDown={handleInputKeyDown}
               required
+              data-testid="player-name-input"
             />
           </div>
         </div>
@@ -124,6 +125,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
                 type="submit"
                 className="bg-transparent border-none p-0 group"
                 disabled={isProcessing}
+                data-testid="join-game-button"
               >
                 {isProcessing ? (
                   <span className="text-white text-2xl font-bold uppercase animate-pulse">Joining...</span>

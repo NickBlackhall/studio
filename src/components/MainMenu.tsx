@@ -144,7 +144,7 @@ export default function MainMenu({
   ];
 
   return (
-    <div className="w-full h-screen animate-in fade-in duration-700 ease-out">
+    <div className="w-full h-screen animate-in fade-in duration-700 ease-out" data-testid="main-menu">
       <div className="relative w-full h-full">
         {/* Background Image */}
         <Image 
