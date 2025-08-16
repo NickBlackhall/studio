@@ -188,14 +188,25 @@ function WelcomePageContent() {
   const sortedPlayersForDisplay = useMemo(() => {
     if (!internalGameState?.players) return [];
     const validPlayers = internalGameState.players.filter((p): p is PlayerClientState => typeof p === 'object' && p !== null && 'id' in p && 'name' in p);
-    return [...validPlayers].sort((a, b) => {
+    
+    // Merge optimistic thisPlayer state for immediate responsiveness
+    const playersWithOptimisticState = validPlayers.map(player => {
+      // For the current player, use optimistic state from thisPlayer for immediate UI feedback
+      if (thisPlayer && player.id === thisPlayer.id) {
+        return { ...player, ...thisPlayer };
+      }
+      // For other players, use server state
+      return player;
+    });
+    
+    return [...playersWithOptimisticState].sort((a, b) => {
       if (thisPlayer) {
         if (a.id === thisPlayer.id) return -1;
         if (b.id === thisPlayer.id) return 1;
       }
       return (a.name || '').localeCompare(b.name || '');
     });
-  }, [internalGameState?.players, thisPlayer?.id]);
+  }, [internalGameState?.players, thisPlayer]);
 
 
   const handleResetGameWithPin = () => {

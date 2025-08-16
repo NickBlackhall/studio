@@ -24,6 +24,7 @@ export default function ReadyToggle({ isReady, onToggle, disabled = false }: Rea
       role="switch"
       aria-checked={isReady}
       aria-label={isReady ? "Ready status: On" : "Ready status: Off"}
+      data-testid={`ready-toggle-${isReady ? 'on' : 'off'}`}
     >
       <span className="sr-only">{isReady ? "Status: Ready" : "Status: Not Ready"}</span>
       <Image

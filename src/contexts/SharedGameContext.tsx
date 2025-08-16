@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useRef, useEffect, Suspense } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, Suspense, startTransition } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { getGame, getGameByRoomCode } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
@@ -26,6 +26,9 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
   const [isInitializing, setIsInitializing] = useState(true);
   const isMountedRef = useRef(true);
   const searchParams = useSearchParams();
+  
+  // Debouncing for subscription updates
+  const subscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const initializeGame = useCallback(async () => {
     console.log("SHARED_CONTEXT: initializeGame - Started");
@@ -101,16 +104,17 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
   }, [searchParams]);
 
   const refetchGameState = useCallback(async () => {
-    if (!gameState?.gameId || !isMountedRef.current) {
-      console.log(`SHARED_CONTEXT: refetchGameState skipped - gameId: ${gameState?.gameId}, mounted: ${isMountedRef.current}`);
+    const currentGameId = gameState?.gameId;
+    if (!currentGameId || !isMountedRef.current) {
+      console.log(`SHARED_CONTEXT: refetchGameState skipped - gameId: ${currentGameId}, mounted: ${isMountedRef.current}`);
       return;
     }
     
     try {
-      console.log(`SHARED_CONTEXT: refetchGameState for game ${gameState.gameId}`);
-      const updatedGame = await getGame(gameState.gameId);
+      console.log(`SHARED_CONTEXT: refetchGameState for game ${currentGameId}`);
+      const updatedGame = await getGame(currentGameId);
       
-      if (updatedGame && isMountedRef.current && gameState) {
+      if (updatedGame && isMountedRef.current) {
         console.log(`SHARED_CONTEXT: Updated game state - phase: ${updatedGame.gamePhase}, players: ${updatedGame.players.length}`);
         
         // Clear client-side transition state when server says transition is complete
@@ -152,7 +156,7 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     } catch (error) {
       console.error('SHARED_CONTEXT: Error in refetchGameState:', error);
     }
-  }, [gameState?.gameId, thisPlayer?.id]);
+  }, []); // Empty dependency array - uses current gameState via closure
 
   // Handle automatic navigation for reset transition
   useEffect(() => {
@@ -172,71 +176,169 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     }
   }, [gameState?.transitionState]);
 
-  // Real-time subscription effect
+  // Real-time subscription effect - STABLE (no dynamic dependencies)
   useEffect(() => {
     const gameId = gameState?.gameId;
     const isTransitioning = gameState?.transitionState !== 'idle' && gameState?.transitionState !== null;
+    const subscriptionId = Math.random().toString(36).substr(2, 9);
     
     // CRITICAL: Block subscriptions during reset
     const resetFlag = localStorage.getItem('gameResetFlag');
     if (resetFlag === 'true') {
-      console.log(`🔇 SHARED_CONTEXT: resetFlag=TRUE → skip subscription setup`);
+      console.log(`🔇 SUB_${subscriptionId}: resetFlag=TRUE → skip subscription setup`);
       return;
     }
     
     // Don't set up subscriptions if there's no game state or during reset scenarios
-    if (!gameId || !isMountedRef.current || !gameState) {
-      console.log(`🔇 SHARED_CONTEXT: Skipping subscription setup - gameId: ${gameId}, mounted: ${isMountedRef.current}, gameState: ${!!gameState}`);
+    if (!gameId || !isMountedRef.current) {
+      console.log(`🔇 SUB_${subscriptionId}: Skipping subscription setup - gameId: ${gameId}, mounted: ${isMountedRef.current}`);
       return;
     }
     
-    if (isTransitioning) {
-      console.log(`🔇 SHARED_CONTEXT: Setting up polling during transition (${gameState?.transitionState})`);
-      
-      // Poll every 500ms during transitions to catch completion
-      const pollInterval = setInterval(() => {
-        if (isMountedRef.current && gameState) {
-          console.log(`🔄 SHARED_CONTEXT: Polling for transition completion...`);
-          refetchGameState();
-        }
-      }, 500);
-      
-      // Cleanup interval
-      return () => {
-        console.log(`🔇 SHARED_CONTEXT: Clearing transition polling`);
-        clearInterval(pollInterval);
-      };
+    console.log(`🔥 SUB_${subscriptionId}: NEW SUBSCRIPTION EFFECT TRIGGERED - gameId: ${gameId}, transitionState: ${gameState?.transitionState}`)
+    
+    // Enhanced debugging for flickering investigation
+    const debugFlickering = typeof window !== 'undefined' && localStorage.getItem('debugFlickering') === 'true';
+    if (debugFlickering) {
+      console.log(`🔍 SUB_${subscriptionId}: FLICKERING DEBUG - Current gameState:`, {
+        gameId: gameState?.gameId,
+        gamePhase: gameState?.gamePhase,
+        transitionState: gameState?.transitionState,
+        playerCount: gameState?.players?.length,
+        thisPlayerId: thisPlayer?.id
+      });
     }
     
-    console.log(`🔵 SHARED_CONTEXT: Transition check - transitionState: ${gameState?.transitionState}, isTransitioning: ${isTransitioning}`);
-
-    console.log(`🔵 SHARED_CONTEXT: Setting up real-time subscription for game ${gameId}`);
+    
+    console.log(`🔵 SUB_${subscriptionId}: Setting up STABLE real-time subscription for game ${gameId}`);
 
     const channel = supabase
-      .channel(`shared-game-updates-${gameId}`)
+      .channel(`shared-game-updates-${gameId}-${subscriptionId}`)
       .on('postgres_changes', 
           { event: '*', schema: 'public' }, 
           (payload) => {
-            console.log(`🔵 SHARED_CONTEXT: Real-time update received for game ${gameId}:`, payload.eventType, payload.table);
-            // Extra check to ensure we still have valid game state before processing updates
-            if (isMountedRef.current && gameState) {
-              refetchGameState();
+            console.log(`🔵 SUB_${subscriptionId}: Real-time update received for game ${gameId}:`, payload.eventType, payload.table);
+            
+            // Only refetch if it's actually relevant to this game
+            const shouldRefetch = 
+              payload.table === 'games' ||  // Game state changes
+              payload.table === 'players' ||  // Player changes  
+              payload.table === 'submitted_cards' ||  // Card submissions
+              payload.table === 'round_results';  // Round results
+            
+            if (shouldRefetch && isMountedRef.current) {
+              // Clear any pending subscription timeout to batch rapid updates
+              if (subscriptionTimeoutRef.current) {
+                clearTimeout(subscriptionTimeoutRef.current);
+              }
+              
+              // Debounce subscription updates to batch rapid-fire database changes
+              console.log(`🕒 SUB_${subscriptionId}: Debouncing subscription update (150ms delay) - Event: ${payload.eventType} on ${payload.table}`);
+              subscriptionTimeoutRef.current = setTimeout(() => {
+                if (!isMountedRef.current) return;
+                console.log(`🎯 SUB_${subscriptionId}: EXECUTING debounced update for game ${gameId} after 150ms delay`);
+                
+                // Call getGame directly to avoid closure dependencies
+                getGame(gameId).then(updatedGame => {
+                  if (updatedGame && isMountedRef.current) {
+                    // CRITICAL: Only update state if data actually changed
+                    const currentState = gameState;
+                    const hasActualChanges = !currentState || 
+                      updatedGame.gamePhase !== currentState.gamePhase ||
+                      updatedGame.transitionState !== currentState.transitionState ||
+                      updatedGame.players.length !== currentState.players.length ||
+                      JSON.stringify(updatedGame.players.map(p => ({ id: p.id, isReady: p.isReady, name: p.name }))) !== 
+                      JSON.stringify(currentState.players.map(p => ({ id: p.id, isReady: p.isReady, name: p.name })));
+                    
+                    if (hasActualChanges) {
+                      console.log(`🔵 SUB_${subscriptionId}: ACTUAL CHANGE DETECTED - updating state - phase: ${updatedGame.gamePhase}, players: ${updatedGame.players.length}`);
+                      
+                      // Use startTransition to batch state updates and mark them as non-urgent
+                      startTransition(() => {
+                        setGameState(updatedGame);
+                        
+                        // Update thisPlayer if needed
+                        const storedPlayerId = localStorage.getItem(`thisPlayerId_game_${gameId}`);
+                        if (storedPlayerId) {
+                          const playerDetail = updatedGame.players.find(p => p.id === storedPlayerId);
+                          if (playerDetail) {
+                            setThisPlayer(playerDetail);
+                          }
+                        }
+                      });
+                    } else {
+                      console.log(`🔇 SUB_${subscriptionId}: No meaningful changes detected - skipping state update`);
+                    }
+                  }
+                }).catch(error => {
+                  console.error('SHARED_CONTEXT: Error in subscription refetch:', error);
+                });
+              }, 150); // 150ms debounce to batch rapid subscription events
             } else {
-              console.log(`🔇 SHARED_CONTEXT: Ignoring real-time update - component unmounted or gameState cleared`);
+              console.log(`🔇 SUB_${subscriptionId}: Ignoring irrelevant update for table: ${payload.table}`);
             }
           }
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`🔵 SHARED_CONTEXT: ✅ Subscribed to real-time updates for game ${gameId}`);
+          console.log(`🔵 SUB_${subscriptionId}: ✅ Subscribed to STABLE updates for game ${gameId}`);
         }
       });
 
     return () => {
-      console.log(`SHARED_CONTEXT: Unsubscribing from real-time updates for game ${gameId}`);
+      console.log(`🚫 SUB_${subscriptionId}: Unsubscribing from STABLE updates for game ${gameId}`);
+      
+      // Clear any pending subscription timeout
+      if (subscriptionTimeoutRef.current) {
+        clearTimeout(subscriptionTimeoutRef.current);
+        subscriptionTimeoutRef.current = null;
+      }
+      
       supabase.removeChannel(channel);
     };
-  }, [gameState?.gameId, gameState?.transitionState, refetchGameState]);
+  }, [gameState?.gameId]); // Only depend on gameId - transition state shouldn't recreate subscriptions
+
+  // Separate effect for transition polling to avoid subscription recreation
+  useEffect(() => {
+    const gameId = gameState?.gameId;
+    const isTransitioning = gameState?.transitionState !== 'idle' && gameState?.transitionState !== null;
+    
+    if (!gameId || !isTransitioning || !isMountedRef.current) {
+      return;
+    }
+    
+    console.log(`🔄 TRANSITION_POLL: Setting up polling during transition (${gameState?.transitionState})`);
+    
+    // Poll every 500ms during transitions to catch completion
+    const pollInterval = setInterval(() => {
+      if (isMountedRef.current) {
+        console.log(`🔄 TRANSITION_POLL: Polling for transition completion...`);
+        // Call getGame directly to avoid closure dependencies
+        getGame(gameId).then(updatedGame => {
+          if (updatedGame && isMountedRef.current) {
+            setGameState(updatedGame);
+            
+            // Update thisPlayer if needed
+            const storedPlayerId = localStorage.getItem(`thisPlayerId_game_${gameId}`);
+            if (storedPlayerId) {
+              const playerDetail = updatedGame.players.find(p => p.id === storedPlayerId);
+              if (playerDetail) {
+                setThisPlayer(playerDetail);
+              }
+            }
+          }
+        }).catch(error => {
+          console.error('TRANSITION_POLL: Error in polling refetch:', error);
+        });
+      }
+    }, 500);
+    
+    // Cleanup interval
+    return () => {
+      console.log(`🔇 TRANSITION_POLL: Clearing transition polling`);
+      clearInterval(pollInterval);
+    };
+  }, [gameState?.gameId, gameState?.transitionState]);
 
   // CRITICAL: Clear state when reset flag is present - check on every render
   useEffect(() => {
