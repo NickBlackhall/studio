@@ -58,9 +58,11 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
       let fetchedGameState: GameClientState;
       
       if (roomCodeParam) {
-        console.log(`🔵 SHARED_CONTEXT: Room code found in URL: ${roomCodeParam} - Loading specific game`);
-        fetchedGameState = await getGameByRoomCode(roomCodeParam);
-        console.log(`🔵 SHARED_CONTEXT: Loaded game ${fetchedGameState.gameId} via room code ${roomCodeParam}`);
+        // Clean the room code - remove any query parameters that might be attached
+        const cleanRoomCode = roomCodeParam.split('?')[0].split('&')[0].trim().toUpperCase();
+        console.log(`🔵 SHARED_CONTEXT: Room code found in URL: ${roomCodeParam} (cleaned: ${cleanRoomCode}) - Loading specific game`);
+        fetchedGameState = await getGameByRoomCode(cleanRoomCode);
+        console.log(`🔵 SHARED_CONTEXT: Loaded game ${fetchedGameState.gameId} via room code ${cleanRoomCode}`);
       } else {
         console.log("🔵 SHARED_CONTEXT: No room code in URL, using default game loading");
         fetchedGameState = await getGame();
@@ -214,76 +216,73 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
 
     const channel = supabase
       .channel(`shared-game-updates-${gameId}-${subscriptionId}`)
+      // TEMPORARY: Revert to broad subscription while debugging filter issue
       .on('postgres_changes', 
           { event: '*', schema: 'public' }, 
           (payload) => {
-            console.log(`🔵 SUB_${subscriptionId}: Real-time update received for game ${gameId}:`, payload.eventType, payload.table);
+            console.log(`🔥 SUB_${subscriptionId}: Database update:`, payload.table, payload.eventType, 'gameId in payload:', payload.new?.game_id || payload.new?.id);
             
-            // Only refetch if it's actually relevant to this game
-            const shouldRefetch = 
-              payload.table === 'games' ||  // Game state changes
-              payload.table === 'players' ||  // Player changes  
-              payload.table === 'submitted_cards' ||  // Card submissions
-              payload.table === 'round_results';  // Round results
+            // Only process if it's relevant to this game
+            const isRelevant = 
+              (payload.table === 'games' && payload.new?.id === gameId) ||
+              (payload.table === 'players' && payload.new?.game_id === gameId) ||
+              (payload.table === 'submitted_cards' && payload.new?.game_id === gameId) ||
+              (payload.table === 'round_results' && payload.new?.game_id === gameId);
             
-            if (shouldRefetch && isMountedRef.current) {
-              // Clear any pending subscription timeout to batch rapid updates
-              if (subscriptionTimeoutRef.current) {
-                clearTimeout(subscriptionTimeoutRef.current);
-              }
-              
-              // Debounce subscription updates to batch rapid-fire database changes
-              console.log(`🕒 SUB_${subscriptionId}: Debouncing subscription update (150ms delay) - Event: ${payload.eventType} on ${payload.table}`);
-              subscriptionTimeoutRef.current = setTimeout(() => {
-                if (!isMountedRef.current) return;
-                console.log(`🎯 SUB_${subscriptionId}: EXECUTING debounced update for game ${gameId} after 150ms delay`);
-                
-                // Call getGame directly to avoid closure dependencies
-                getGame(gameId).then(updatedGame => {
-                  if (updatedGame && isMountedRef.current) {
-                    // CRITICAL: Only update state if data actually changed
-                    const currentState = gameState;
-                    const hasActualChanges = !currentState || 
-                      updatedGame.gamePhase !== currentState.gamePhase ||
-                      updatedGame.transitionState !== currentState.transitionState ||
-                      updatedGame.players.length !== currentState.players.length ||
-                      JSON.stringify(updatedGame.players.map(p => ({ id: p.id, isReady: p.isReady, name: p.name }))) !== 
-                      JSON.stringify(currentState.players.map(p => ({ id: p.id, isReady: p.isReady, name: p.name })));
-                    
-                    if (hasActualChanges) {
-                      console.log(`🔵 SUB_${subscriptionId}: ACTUAL CHANGE DETECTED - updating state - phase: ${updatedGame.gamePhase}, players: ${updatedGame.players.length}`);
-                      
-                      // Use startTransition to batch state updates and mark them as non-urgent
-                      startTransition(() => {
-                        setGameState(updatedGame);
-                        
-                        // Update thisPlayer if needed
-                        const storedPlayerId = localStorage.getItem(`thisPlayerId_game_${gameId}`);
-                        if (storedPlayerId) {
-                          const playerDetail = updatedGame.players.find(p => p.id === storedPlayerId);
-                          if (playerDetail) {
-                            setThisPlayer(playerDetail);
-                          }
-                        }
-                      });
-                    } else {
-                      console.log(`🔇 SUB_${subscriptionId}: No meaningful changes detected - skipping state update`);
-                    }
-                  }
-                }).catch(error => {
-                  console.error('SHARED_CONTEXT: Error in subscription refetch:', error);
-                });
-              }, 150); // 150ms debounce to batch rapid subscription events
+            if (isRelevant) {
+              console.log(`🎯 SUB_${subscriptionId}: RELEVANT update for game ${gameId} - ${payload.table}:${payload.eventType}`);
+              handleSubscriptionUpdate(subscriptionId, gameId, payload, payload.table);
             } else {
-              console.log(`🔇 SUB_${subscriptionId}: Ignoring irrelevant update for table: ${payload.table}`);
+              console.log(`🔇 SUB_${subscriptionId}: Ignoring irrelevant update - ${payload.table}:${payload.eventType}`);
             }
           }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`🔵 SUB_${subscriptionId}: ✅ Subscribed to STABLE updates for game ${gameId}`);
+      );
+
+    // Extracted handler function to avoid code duplication
+    const handleSubscriptionUpdate = (subId: string, gameId: string, payload: any, tableName: string) => {
+      if (isMountedRef.current) {
+        // Clear any pending subscription timeout to batch rapid updates
+        if (subscriptionTimeoutRef.current) {
+          clearTimeout(subscriptionTimeoutRef.current);
         }
-      });
+        
+        // Debounce subscription updates to batch rapid-fire database changes
+        console.log(`🕒 SUB_${subId}: Debouncing subscription update (150ms delay) - Event: ${payload.eventType} on ${tableName}`);
+        subscriptionTimeoutRef.current = setTimeout(() => {
+          if (!isMountedRef.current) return;
+          console.log(`🎯 SUB_${subId}: EXECUTING debounced update for game ${gameId} after 150ms delay`);
+          
+          // Call getGame directly to avoid closure dependencies
+          getGame(gameId).then(updatedGame => {
+            if (updatedGame && isMountedRef.current) {
+              console.log(`🔵 SUB_${subId}: RECEIVED UPDATE - updating state - phase: ${updatedGame.gamePhase}, players: ${updatedGame.players.length}`);
+              
+              // Use startTransition to batch state updates and mark them as non-urgent
+              startTransition(() => {
+                setGameState(updatedGame);
+                
+                // Update thisPlayer if needed
+                const storedPlayerId = localStorage.getItem(`thisPlayerId_game_${gameId}`);
+                if (storedPlayerId) {
+                  const playerDetail = updatedGame.players.find(p => p.id === storedPlayerId);
+                  if (playerDetail) {
+                    setThisPlayer(playerDetail);
+                  }
+                }
+              });
+            }
+          }).catch(error => {
+            console.error('SHARED_CONTEXT: Error in subscription refetch:', error);
+          });
+        }, 300); // Increased debounce to better batch rapid subscription events
+      }
+    };
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`🔵 SUB_${subscriptionId}: ✅ Subscribed to STABLE updates for game ${gameId}`);
+      }
+    });
 
     return () => {
       console.log(`🚫 SUB_${subscriptionId}: Unsubscribing from STABLE updates for game ${gameId}`);
@@ -396,21 +395,23 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
   }, []);
 
   const joinGameByRoomCode = useCallback(async (roomCode: string): Promise<GameClientState> => {
-    console.log(`SHARED_CONTEXT: joinGameByRoomCode - Joining game with code: ${roomCode}`);
+    // Clean the room code - remove any query parameters that might be attached
+    const cleanRoomCode = roomCode.split('?')[0].split('&')[0].trim().toUpperCase();
+    console.log(`SHARED_CONTEXT: joinGameByRoomCode - Joining game with code: ${roomCode} (cleaned: ${cleanRoomCode})`);
     setIsInitializing(true);
     
     try {
-      const gameState = await getGameByRoomCode(roomCode);
+      const gameState = await getGameByRoomCode(cleanRoomCode);
       
       if (isMountedRef.current && gameState?.gameId) {
-        console.log(`SHARED_CONTEXT: Joined game ${gameState.gameId} via room code ${roomCode}`);
+        console.log(`SHARED_CONTEXT: Joined game ${gameState.gameId} via room code ${cleanRoomCode}`);
         setGameState(gameState);
         setIsInitializing(false);
         return gameState;
       }
-      throw new Error(`Failed to join game with room code: ${roomCode}`);
+      throw new Error(`Failed to join game with room code: ${cleanRoomCode}`);
     } catch (error) {
-      console.error(`SHARED_CONTEXT: Error joining game with room code ${roomCode}:`, error);
+      console.error(`SHARED_CONTEXT: Error joining game with room code ${cleanRoomCode}:`, error);
       setIsInitializing(false);
       throw error;
     }
