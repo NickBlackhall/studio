@@ -20,11 +20,6 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_DB: postgres
           POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
-        command: >-
-          postgres
-          -c wal_level=logical
-          -c max_wal_senders=10
-          -c max_replication_slots=10
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
