@@ -24,6 +24,12 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        command: >
+          postgres
+          -c wal_level=logical
+          -c max_wal_senders=10
+          -c max_replication_slots=10
+          -c log_statement=all
 
       supabase:
         image: supabase/supabase-dev:latest
