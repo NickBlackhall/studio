@@ -10,41 +10,6 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_DB: postgres
-          POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      supabase:
-        image: supabase/supabase-dev:latest
-        ports:
-          - 54321:54321
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_HOST: postgres
-          POSTGRES_PORT: 5432
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          DB_HOST: postgres
-          DB_PORT: 5432
-          DB_USER: postgres
-          DB_PASS: postgres
-          DB_NAME: postgres
-          JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
-          ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-          SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -58,52 +23,78 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Wait for Postgres service to be ready
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase (optimized for CI)
+        run: supabase start -x vector,imgproxy,studio,edge-runtime
+
+      - name: Export Supabase environment variables
         run: |
-          echo "Waiting for Postgres logs to show ready state..."
-          for i in {1..60}; do
-            if docker logs $(docker ps -q --filter "ancestor=postgres:15") 2>&1 | grep -q "database system is ready to accept connections"; then
-              echo "Postgres is ready!"
-              break
+          set -euo pipefail
+          supabase status -o env > supa.env
+          # Extract environment variables from CLI output
+          API_URL=$(grep '^API_URL=' supa.env | cut -d= -f2- | tr -d '"')
+          ANON_KEY=$(grep '^ANON_KEY=' supa.env | cut -d= -f2- | tr -d '"')
+          DB_URL=$(grep '^DB_URL=' supa.env | cut -d= -f2- | tr -d '"')
+          
+          # Export for subsequent steps
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
+          echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+          echo "SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+          echo "DB_URL=$DB_URL" >> $GITHUB_ENV
+          
+          echo "Exported Supabase environment:"
+          echo "  API_URL: $API_URL"
+          echo "  ANON_KEY: ${ANON_KEY:0:20}..."
+          echo "  DB_URL: ${DB_URL:0:30}..."
+
+      - name: Wait for Kong→Auth health
+        run: |
+          set -euo pipefail
+          echo "Waiting for $NEXT_PUBLIC_SUPABASE_URL/auth/v1/health ..."
+          for i in {1..180}; do
+            if curl -fsS "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/health" >/dev/null; then
+              echo "Kong→Auth healthy (attempt $i)"; break
             fi
-            echo "Waiting for Postgres... ($i/60)"
-            sleep 3
+            echo "Waiting for Kong→Auth... ($i/180)"
+            sleep 2
           done
-          if [ $i -eq 60 ]; then
-            echo "ERROR: Postgres failed to become ready within 3 minutes"
-            docker logs $(docker ps -q --filter "ancestor=postgres:15") 2>&1 || echo "Could not get Postgres logs"
+          if [ $i -eq 180 ]; then
+            echo "ERROR: Kong→Auth failed to become ready within 6 minutes"
+            echo "Debug: Attempting to curl auth endpoint..."
+            curl -v "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/health" || true
             exit 1
           fi
 
-      - name: Wait for Supabase service to be ready
+      - name: Verify Postgres logical replication
         run: |
-          echo "Waiting for Supabase to be ready..."
-          for i in {1..60}; do
-            if pg_isready -h localhost -p 54321 -U postgres; then
-              echo "Supabase is ready!"
-              break
-            fi
-            echo "Waiting for Supabase... ($i/60)"
-            sleep 3
-          done
-          if [ $i -eq 60 ]; then
-            echo "ERROR: Supabase failed to become ready within 3 minutes"
-            docker logs $(docker ps -q --filter "ancestor=supabase/supabase-dev:latest") 2>&1 || echo "Could not get Supabase logs"
+          echo "Verifying Postgres logical replication configuration..."
+          WAL_LEVEL=$(echo "SHOW wal_level;" | psql "$DB_URL" -t)
+          echo "Current wal_level: $WAL_LEVEL"
+          if [[ "$WAL_LEVEL" =~ logical ]]; then
+            echo "✅ Logical replication is properly configured"
+          else
+            echo "❌ ERROR: wal_level is '$WAL_LEVEL', expected 'logical'"
+            echo "This will cause Realtime to fail"
             exit 1
           fi
 
       - name: Setup test database schema
         run: |
           echo "Setting up test database schema..."
-          PGPASSWORD=postgres psql -h localhost -p 54321 -U postgres -d postgres -f database/test-schema.sql
+          psql "$DB_URL" -f database/test-schema.sql
 
       - name: Verify database setup
         run: |
           echo "Verifying database setup..."
-          curl -X POST http://localhost:54321/rest/v1/rpc/exec \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU" \
-            -d '{"sql": "SELECT COUNT(*) as scenarios FROM scenarios; SELECT COUNT(*) as response_cards FROM response_cards;"}'
+          # Use direct SQL query via psql for more reliable verification
+          psql "$DB_URL" -c "SELECT COUNT(*) as scenarios FROM scenarios;"
+          psql "$DB_URL" -c "SELECT COUNT(*) as response_cards FROM response_cards;"
+          echo "✅ Database schema loaded and verified successfully"
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
@@ -120,9 +111,11 @@ jobs:
       - name: Run E2E tests
         run: npm run test:e2e
         env:
-          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
           CI: true
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
