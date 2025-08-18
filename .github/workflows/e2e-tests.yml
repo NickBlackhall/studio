@@ -12,7 +12,7 @@ jobs:
 
     services:
       postgres:
-        image: supabase/postgres:15
+        image: postgres:15
         ports:
           - 5432:5432
         env:
@@ -53,7 +53,7 @@ jobs:
         run: |
           echo "Waiting for Postgres logs to show ready state..."
           for i in {1..60}; do
-            if docker logs $(docker ps -q --filter "ancestor=supabase/postgres:15") 2>&1 | grep -q "database system is ready to accept connections"; then
+            if docker logs $(docker ps -q --filter "ancestor=postgres:15") 2>&1 | grep -q "database system is ready to accept connections"; then
               echo "Postgres is ready!"
               break
             fi
@@ -62,7 +62,7 @@ jobs:
           done
           if [ $i -eq 60 ]; then
             echo "ERROR: Postgres failed to become ready within 3 minutes"
-            docker logs $(docker ps -q --filter "ancestor=supabase/postgres:15") 2>&1 || echo "Could not get Postgres logs"
+            docker logs $(docker ps -q --filter "ancestor=postgres:15") 2>&1 || echo "Could not get Postgres logs"
             exit 1
           fi
 
