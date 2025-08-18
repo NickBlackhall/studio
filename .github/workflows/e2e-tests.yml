@@ -24,12 +24,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        command: >
-          postgres
-          -c wal_level=logical
-          -c max_wal_senders=10
-          -c max_replication_slots=10
-          -c log_statement=all
 
       supabase:
         image: supabase/supabase-dev:latest
@@ -79,6 +73,15 @@ jobs:
             docker logs $(docker ps -q --filter "ancestor=postgres:15") 2>&1 || echo "Could not get Postgres logs"
             exit 1
           fi
+
+      - name: Configure Postgres for Supabase
+        run: |
+          echo "Configuring Postgres for logical replication..."
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d postgres -c "ALTER SYSTEM SET wal_level = 'logical';"
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d postgres -c "ALTER SYSTEM SET max_wal_senders = 10;"
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d postgres -c "ALTER SYSTEM SET max_replication_slots = 10;"
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d postgres -c "SELECT pg_reload_conf();"
+          echo "Postgres configuration updated"
 
       - name: Wait for Supabase service to be ready
         run: |
