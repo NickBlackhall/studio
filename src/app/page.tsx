@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction, createRoom, findAvailableRoomForQuickJoin } from '@/app/game/actions';
 import { findGameByRoomCodeWithPlayers } from '@/lib/roomCodes';
-import { RefreshCw, Loader2, CheckSquare, XSquare, Lock } from 'lucide-react';
+import { RefreshCw, Loader2, Lock } from 'lucide-react';
 import type { PlayerClientState } from '@/lib/types';
 import { MIN_PLAYERS_TO_START } from '@/lib/types';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -15,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
 import Scoreboard from '@/components/game/Scoreboard';
-import ReadyToggle from '@/components/game/ReadyToggle';
 import PWAGameLayout from '@/components/PWAGameLayout';
 import type { Tables } from '@/lib/database.types';
 import { useAudio } from '@/contexts/AudioContext';
@@ -30,6 +29,10 @@ import MainMenu from '@/components/MainMenu';
 import CreateRoomModal, { type RoomSettings } from '@/components/room/CreateRoomModal';
 import JoinRoomModal from '@/components/room/JoinRoomModal';
 import RoomBrowserModal from '@/components/room/RoomBrowserModal';
+import LobbyLayout from '@/components/lobby/LobbyLayout';
+import LobbyPlayerList from '@/components/lobby/LobbyPlayerList';
+import LobbyStatusMessage from '@/components/lobby/LobbyStatusMessage';
+import LobbyStartButton from '@/components/lobby/LobbyStartButton';
 import { Volume2, VolumeX, Music, Zap, HelpCircle, Edit, Terminal } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -108,65 +111,18 @@ function WelcomePageContent() {
   const hasNavigatedRef = useRef(false);
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Safety timeout for stuck transitions
+  // Navigation is now purely server-driven via real-time subscriptions
+  // No client-side timeout fallback to prevent race conditions
   useEffect(() => {
+    // Server-driven navigation: Only navigate when game phase changes AND transition is complete
     if (internalGameState && 
         internalGameState.gamePhase !== 'lobby' && 
         internalGameState.gamePhase !== 'game_over' && 
-        internalGameState.transitionState && 
-        internalGameState.transitionState !== 'idle' && 
-        internalGameState.transitionState !== null && 
+        internalGameState.transitionState === 'idle' && // Wait for server to signal completion
         thisPlayer && 
         !hasNavigatedRef.current) {
       
-      
-      // Clear any existing timeout
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-      }
-      
-      // Set timeout to force navigation if transition gets stuck
-      transitionTimeoutRef.current = setTimeout(() => {
-        if (!hasNavigatedRef.current) {
-          hasNavigatedRef.current = true;
-          
-          const roomCode = searchParams.get('room');
-          const gameUrl = roomCode ? `/game?room=${roomCode}` : '/game';
-          
-          // Set loading state immediately to prevent gap
-          setGlobalLoading(true);
-          
-          // Small delay to ensure loading overlay appears before navigation
-          setTimeout(() => {
-            startTransition(() => {
-              router.push(gameUrl);
-            });
-          }, 50);
-        }
-      }, 5000);
-    } else {
-      // Clear timeout if conditions no longer met
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-        transitionTimeoutRef.current = null;
-      }
-    }
-    
-    // Cleanup on unmount
-    return () => {
-      if (transitionTimeoutRef.current) {
-        clearTimeout(transitionTimeoutRef.current);
-      }
-    };
-  }, [internalGameState, thisPlayer, router, setGlobalLoading, searchParams]);
-  
-  useEffect(() => {
-    if (internalGameState && 
-        internalGameState.gamePhase !== 'lobby' && 
-        internalGameState.gamePhase !== 'game_over' && 
-        (internalGameState.transitionState === 'idle' || internalGameState.transitionState === null) && 
-        thisPlayer && 
-        !hasNavigatedRef.current) {
+      console.log(`🔄 LOBBY: Server-driven navigation triggered - phase: ${internalGameState.gamePhase}, transition: ${internalGameState.transitionState}`);
       hasNavigatedRef.current = true; // Prevent multiple navigations
       
       // Preserve room code when navigating to game page
@@ -183,7 +139,7 @@ function WelcomePageContent() {
         });
       }, 50); // 50ms delay to ensure smooth overlay transition
     }
-  }, [internalGameState, thisPlayer, router, setGlobalLoading, searchParams]);
+  }, [internalGameState?.gamePhase, internalGameState?.transitionState, thisPlayer, router, setGlobalLoading, searchParams]);
 
   const sortedPlayersForDisplay = useMemo(() => {
     if (!internalGameState?.players) return [];
@@ -218,9 +174,15 @@ function WelcomePageContent() {
       try {
         console.log("LOBBY: handleResetGame - User clicked reset.");
         
-        // Call the server action first - it will handle the transition state and reset
-        console.log("LOBBY: handleResetGame - Calling server reset action");
-        await resetGameForTesting({ clientWillNavigate: true });
+        if (!internalGameState?.gameId) {
+          console.error("LOBBY: handleResetGame - No gameId available for reset");
+          toast({ title: "Reset Failed", description: "No active game to reset", variant: "destructive" });
+          return;
+        }
+        
+        // Call the server action with specific game ID - it will handle the transition state and reset
+        console.log(`LOBBY: handleResetGame - Calling server reset action for game ${internalGameState.gameId}`);
+        await resetGameForTesting({ clientWillNavigate: true, gameId: internalGameState.gameId });
         console.log("LOBBY: handleResetGame - Server reset completed");
       } catch (error: any) {
         if (typeof error?.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -256,7 +218,7 @@ function WelcomePageContent() {
   };
 
   const handleStartGame = async () => {
-    if (internalGameState?.gameId && internalGameState.gamePhase === 'lobby') {
+    if (internalGameState?.gameId && internalGameState.gamePhase === 'lobby' && thisPlayer?.id) {
       console.log("LOBBY: handleStartGame - User clicked Start Game.");
       
       // Temporarily set client-side transition state to block UI
@@ -268,7 +230,8 @@ function WelcomePageContent() {
       
       startPlayerActionTransition(async () => {
         try {
-          await startGameAction(internalGameState.gameId);
+          // Pass the current player's ID for host validation
+          await startGameAction(internalGameState.gameId, thisPlayer.id);
         } catch (error: any) {
           // Restore on error
           setGameState({
@@ -481,56 +444,29 @@ function WelcomePageContent() {
         const allPlayersReady = enoughPlayers && internalGameState.players.every(p => p.isReady);
         const showStartGameButton = thisPlayer.id === hostPlayerId && enoughPlayers && allPlayersReady;
 
-  
-        let lobbyMessage = "";
-        if (!enoughPlayers) lobbyMessage = `Need at least ${MIN_PLAYERS_TO_START} players. Waiting for ${MIN_PLAYERS_TO_START - (internalGameState.players?.length || 0)} more...`;
-        else if (!allPlayersReady) {
-          const unreadyCount = internalGameState.players.filter(p => !p.isReady).length;
-          lobbyMessage = `Waiting for ${unreadyCount} player${unreadyCount > 1 ? 's' : ''} to ready up.`;
-        } else if (!showStartGameButton) {
-          const hostPlayerForMsg = hostPlayerId && internalGameState.players.find(p => p.id === hostPlayerId);
-          lobbyMessage = `Waiting for ${(hostPlayerForMsg as any)?.name || 'The host'} to start the game.`;
-        }
-        
-        const PlayerRow = React.memo(function PlayerRow({ player }: { player: PlayerClientState }) {
-          return (
-            <div className="flex items-center justify-between p-3">
-              <div className="flex items-center min-w-0">
-                {player.avatar?.startsWith('/') ? <Image src={player.avatar} alt={`${(player.name as string) || "Player"}'s avatar`} width={56} height={56} className="mr-3 rounded-sm object-cover flex-shrink-0" data-ai-hint="player avatar" loading="lazy" /> : <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>}
-                <h2 className="text-3xl text-black truncate">{(player.name as string) || 'Player'}</h2>
-              </div>
-              <div className="flex-shrink-0 ml-2 flex items-center justify-center">
-                {player.id === thisPlayer?.id ? <ReadyToggle isReady={player.isReady} onToggle={() => handleToggleReady(player)} disabled={isProcessingAction} /> : (player.isReady ? <CheckSquare className="h-12 w-20 text-green-700" /> : <XSquare className="h-12 w-20 text-red-700" />)}
-              </div>
-            </div>
-          );
-        });
-        PlayerRow.displayName = 'PlayerRow';
-
         console.log("LOBBY: Rendering main lobby view.");
         return (
-          <div className="w-full h-screen animate-in fade-in duration-700 ease-out">
-            <div className="relative w-full h-full">
-              <Image src="/backgrounds/lobby-poster.jpg" alt="Lobby background" fill className="poster-image" data-ai-hint="lobby poster" />
-              <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 ease-out">
-                <div className="overflow-y-auto space-y-2">{sortedPlayersForDisplay.map((player) => <PlayerRow key={player.id} player={player} />)}</div>
-                <div className="flex-shrink-0 text-center px-4 pt-4 space-y-2">
-                  <p className="bg-transparent font-semibold text-black">{lobbyMessage}</p>
-                  {!enoughPlayers || !allPlayersReady ? <p className="bg-transparent font-semibold text-black">Tap the toggle to ready up</p> : null}
-                  {showStartGameButton && (
-                    <button onClick={handleStartGame} disabled={isProcessingAction} className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70">
-                      {isProcessingAction ? <div className="h-[71.52px] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-black" /></div> : <Image src="/ui/start-game-button.png" alt="Start the Mayhem" width={189.84 * 1.2 * 1.2} height={71.52 * 1.2 * 1.2} className="object-contain drop-shadow-xl" data-ai-hint="start button" priority />}
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="absolute bottom-[2%] left-0 right-0 flex items-center justify-center animate-in fade-in slide-in-from-bottom-2 duration-700 delay-500 ease-out">
-                <button onClick={() => setIsMenuModalOpen(true)} className="bg-transparent border-none p-0">
-                  <Image src="/ui/menu-button-v2.png" alt="Game Menu" width={118} height={44} className="object-contain" data-ai-hint="menu button" priority />
-                </button>
-              </div>
+          <LobbyLayout onOpenMenu={() => setIsMenuModalOpen(true)}>
+            <LobbyPlayerList
+              players={sortedPlayersForDisplay}
+              thisPlayer={thisPlayer}
+              onToggleReady={handleToggleReady}
+              isProcessingAction={isProcessingAction}
+            />
+            <div className="flex-shrink-0">
+              <LobbyStatusMessage
+                players={internalGameState.players}
+                hostPlayerId={hostPlayerId}
+                thisPlayerId={thisPlayer?.id || null}
+                showStartGameButton={showStartGameButton}
+              />
+              <LobbyStartButton
+                showStartButton={showStartGameButton}
+                isProcessingAction={isProcessingAction}
+                onStartGame={handleStartGame}
+              />
             </div>
-          </div>
+          </LobbyLayout>
         );
       } else if (!localStorage.getItem(`thisPlayerId_game_${internalGameState.gameId}`)) {
         console.log("LOBBY: Rendering spectator view for game in progress.");

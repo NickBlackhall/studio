@@ -370,35 +370,56 @@ export async function addPlayer(name: string, avatar: string, targetGameId?: str
   return newPlayer;
 }
 
-export async function resetGameForTesting(opts?: { clientWillNavigate?: boolean }) {
+export async function resetGameForTesting(opts?: { clientWillNavigate?: boolean, gameId?: string }) {
   console.warn("🔵 ACTION: resetGameForTesting - INITIATED. THIS IS A DESTRUCTIVE ACTION.");
 
   try {
-    const { data: existingGames, error: fetchError } = await supabase
-      .from('games')
-      .select('id, game_phase')
-      .order('created_at', { ascending: true })
-      .limit(1);
-
-    if (fetchError) {
-      console.error("🔴 ACTION: resetGameForTesting - Exception during game fetch:", fetchError.message);
-      throw new Error(`Exception during game fetch for reset: ${fetchError.message}`);
-    }
-
-    if (!existingGames || existingGames.length === 0) {
-      console.warn("🟡 ACTION: resetGameForTesting - No game found to reset.");
-      revalidatePath('/');
-      revalidatePath('/game');
-      revalidatePath('/?step=menu');
+    let gameId: string;
+    
+    if (opts?.gameId) {
+      // Target specific game
+      gameId = opts.gameId;
+      console.log(`🔵 ACTION: resetGameForTesting - Targeting specific game: ${gameId}`);
       
-      if (!opts?.clientWillNavigate) {
-        redirect('/?step=menu');
+      // Verify game exists
+      const { data: gameCheck, error: gameCheckError } = await supabase
+        .from('games')
+        .select('id, game_phase')
+        .eq('id', gameId)
+        .single();
+        
+      if (gameCheckError || !gameCheck) {
+        console.error(`🔴 ACTION: resetGameForTesting - Target game ${gameId} not found:`, gameCheckError?.message);
+        throw new Error(`Target game ${gameId} not found for reset`);
       }
-      return;
-    }
+    } else {
+      // Legacy behavior: find first game
+      console.warn("🟡 ACTION: resetGameForTesting - No specific gameId provided, using legacy behavior (first game)");
+      const { data: existingGames, error: fetchError } = await supabase
+        .from('games')
+        .select('id, game_phase')
+        .order('created_at', { ascending: true })
+        .limit(1);
 
-    const gameToReset = existingGames[0];
-    const gameId = gameToReset.id;
+      if (fetchError) {
+        console.error("🔴 ACTION: resetGameForTesting - Exception during game fetch:", fetchError.message);
+        throw new Error(`Exception during game fetch for reset: ${fetchError.message}`);
+      }
+
+      if (!existingGames || existingGames.length === 0) {
+        console.warn("🟡 ACTION: resetGameForTesting - No game found to reset.");
+        revalidatePath('/');
+        revalidatePath('/game');
+        revalidatePath('/?step=menu');
+        
+        if (!opts?.clientWillNavigate) {
+          redirect('/?step=menu');
+        }
+        return;
+      }
+
+      gameId = existingGames[0].id;
+    }
     console.log(`🔵 ACTION: resetGameForTesting - Starting reset for game ${gameId}.`);
 
     // STEP 1: First notify all clients that reset is happening
@@ -699,23 +720,39 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
   return { dealtCardIds, updatedUsedResponses: newlyDealtAndUsedInThisOperation };
 }
 
-export async function startGame(gameId: string): Promise<GameClientState | null> {
-  console.log(`🔵 ACTION: startGame - Initiated for gameId: ${gameId}`);
+export async function startGame(gameId: string, hostPlayerId?: string): Promise<GameClientState | null> {
+  console.log(`🔵 ACTION: startGame - Initiated for gameId: ${gameId} by player: ${hostPlayerId || 'unknown'}`);
+  
+  // First fetch game to validate host before setting transition state
+  const { data: game, error: gameFetchError } = await supabase
+    .from('games').select('*').eq('id', gameId).single();
+
+  if (gameFetchError || !game) {
+    console.error(`🔴 ACTION: startGame - Error fetching game:`, JSON.stringify(gameFetchError, null, 2));
+    throw new Error(`Failed to fetch game for start: ${gameFetchError?.message || 'Game not found'}`);
+  }
+  
+  // SECURITY: Validate that only the host player can start the game
+  if (hostPlayerId && game.ready_player_order && game.ready_player_order.length > 0) {
+    const hostId = game.ready_player_order[0];
+    if (hostPlayerId !== hostId) {
+      console.error(`🔴 ACTION: startGame - UNAUTHORIZED: Player ${hostPlayerId} tried to start game, but host is ${hostId}`);
+      throw new Error(`Only the host player can start the game. You are not the host.`);
+    }
+    console.log(`🔵 ACTION: startGame - Host validation passed: ${hostPlayerId}`);
+  } else if (hostPlayerId) {
+    console.error(`🔴 ACTION: startGame - UNAUTHORIZED: No ready player order established, cannot validate host`);
+    throw new Error(`Game is not ready to start. No host player established.`);
+  } else {
+    console.warn(`🟡 ACTION: startGame - No hostPlayerId provided, skipping host validation (legacy call)`);
+  }
   
   await supabase
     .from('games')
     .update({ transition_state: 'starting_game', transition_message: 'Preparing game...' })
     .eq('id', gameId);
   console.log(`🔵 ACTION: startGame - Set transition_state to 'starting_game'.`);
-
-  const { data: game, error: gameFetchError } = await supabase
-    .from('games').select('*').eq('id', gameId).single();
-
-  if (gameFetchError || !game) {
-    console.error(`🔴 ACTION: startGame - Error fetching game:`, JSON.stringify(gameFetchError, null, 2));
-    await supabase.from('games').update({ transition_state: 'idle', transition_message: 'Error fetching game' }).eq('id', gameId);
-    throw new Error(`Failed to fetch game for start: ${gameFetchError?.message || 'Game not found'}`);
-  }
+  
   console.log(`🔵 ACTION: startGame - Fetched game. Phase: ${game.game_phase}`);
 
   if (game.game_phase === 'lobby') {
