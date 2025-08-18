@@ -11,12 +11,27 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
+      postgres:
+        image: supabase/postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       supabase:
         image: supabase/supabase-dev:latest
         ports:
           - 54321:54321
         env:
           POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST: postgres
           JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
           ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
           SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
@@ -34,6 +49,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Wait for Postgres service to be ready
+        run: |
+          echo "Waiting for Postgres logs to show ready state..."
+          for i in {1..60}; do
+            if docker logs $(docker ps -q --filter "ancestor=supabase/postgres:15") 2>&1 | grep -q "database system is ready to accept connections"; then
+              echo "Postgres is ready!"
+              break
+            fi
+            echo "Waiting for Postgres... ($i/60)"
+            sleep 3
+          done
+          if [ $i -eq 60 ]; then
+            echo "ERROR: Postgres failed to become ready within 3 minutes"
+            docker logs $(docker ps -q --filter "ancestor=supabase/postgres:15") 2>&1 || echo "Could not get Postgres logs"
+            exit 1
+          fi
+
       - name: Wait for Supabase service to be ready
         run: |
           echo "Waiting for Supabase to be ready..."
@@ -42,9 +74,14 @@ jobs:
               echo "Supabase is ready!"
               break
             fi
-            echo "Waiting... ($i/60)"
+            echo "Waiting for Supabase... ($i/60)"
             sleep 3
           done
+          if [ $i -eq 60 ]; then
+            echo "ERROR: Supabase failed to become ready within 3 minutes"
+            docker logs $(docker ps -q --filter "ancestor=supabase/supabase-dev:latest") 2>&1 || echo "Could not get Supabase logs"
+            exit 1
+          fi
 
       - name: Setup test database schema
         run: |
