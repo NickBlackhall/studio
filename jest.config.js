@@ -1,23 +1,23 @@
-const nextJest = require('next/jest')
+const nextJest = require('next/jest');
+const createJestConfig = nextJest({ dir: './' });
 
-const createJestConfig = nextJest({
-  dir: './',
-})
+const config = {
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/e2e/'],
+  projects: [
+    {
+      displayName: 'unit',
+      testEnvironment: 'jsdom',
+      testMatch: ['<rootDir>/tests/unit/**/*.test.(ts|tsx)'],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup/jest.dom.setup.ts'],
+    },
+    {
+      displayName: 'integration',
+      testEnvironment: 'node',
+      testEnvironmentOptions: { customExportConditions: ['node'] },
+      testMatch: ['<rootDir>/tests/integration/**/*.test.ts'],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup/jest.node.setup.ts'],
+    }
+  ]
+};
 
-const customJestConfig = {
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testEnvironment: 'jest-environment-jsdom',
-  testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
-  collectCoverageFrom: [
-    'src/**/*.{js,jsx,ts,tsx}',
-    '!src/**/*.d.ts',
-  ],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
-  },
-  transformIgnorePatterns: [
-    'node_modules/(?!(lucide-react)/)',
-  ],
-}
-
-module.exports = createJestConfig(customJestConfig)
+module.exports = createJestConfig(config);

@@ -343,8 +343,46 @@ COMMENT ON TABLE player_hands IS 'Cards currently in each player''s hand';
 COMMENT ON TABLE responses IS 'Player submissions for each round';
 COMMENT ON TABLE winners IS 'Historical record of round winners';
 
+-- =====================================================================
+-- REALTIME CONFIGURATION (Critical for subscription tests)
+-- =====================================================================
+
+-- Ensure complete payloads for UPDATE/DELETE
+ALTER TABLE public.games   REPLICA IDENTITY FULL;
+ALTER TABLE public.players REPLICA IDENTITY FULL;
+
+-- Ensure publication exists and includes our tables
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime FOR ALL TABLES;
+  END IF;
+END$;
+
+-- If local publication is not FOR ALL TABLES, explicitly include targets:
+-- ALTER PUBLICATION supabase_realtime ADD TABLE public.games, public.players;
+
+-- FK: make cleanup easy and robust
+DO $
+DECLARE
+  cname text;
+BEGIN
+  SELECT conname INTO cname
+  FROM pg_constraint
+  WHERE conrelid = 'public.games'::regclass
+    AND confrelid = 'public.players'::regclass
+    AND conname LIKE '%current_judge_id%';
+  IF cname IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE public.games DROP CONSTRAINT %I', cname);
+  END IF;
+  ALTER TABLE public.games
+    ADD CONSTRAINT games_current_judge_id_fkey
+    FOREIGN KEY (current_judge_id) REFERENCES public.players(id)
+    ON DELETE SET NULL;
+END$;
+
 -- Final success message
 SELECT 'E2E Test Database Schema Setup Complete! 🎉' as status,
-       'Tables created with seed data and utility functions' as details,
+       'Tables created with seed data, utility functions, and realtime configuration' as details,
        (SELECT COUNT(*) FROM scenarios) as scenarios_count,
        (SELECT COUNT(*) FROM response_cards) as response_cards_count;

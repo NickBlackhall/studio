@@ -8,9 +8,10 @@ import {
   cleanupTestData, 
   createTestGame,
   createTestPlayer,
-  testSupabase,
   TEST_PREFIX
 } from '../helpers/testDatabase';
+import { testSupabase } from '../helpers/testSupabase';
+import { openSubscribedChannel, nextEvent } from '../helpers/realtime';
 
 describe('Integration - Subscription Timing Issues', () => {
   beforeAll(async () => {
@@ -25,42 +26,26 @@ describe('Integration - Subscription Timing Issues', () => {
     test('subscription receives database changes immediately', async () => {
       const game = await createTestGame({ game_phase: 'lobby' });
       
-      // Set up subscription to listen for changes
-      const receivedUpdates: any[] = [];
-      const channel = testSupabase
-        .channel(`test-game-updates-${game.id}`)
-        .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'games' }, 
-            (payload) => {
-              receivedUpdates.push({
-                eventType: payload.eventType,
-                table: payload.table,
-                new: payload.new,
-                timestamp: Date.now()
-              });
-            }
-        );
-
-      await channel.subscribe();
+      // Set up subscription using proper helper
+      const channel = await openSubscribedChannel(
+        testSupabase, 
+        `test-game-updates-${game.id}`,
+        ch => ch.on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {})
+      );
       
-      // Give subscription time to connect
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Make a database change
-      const updateTime = Date.now();
+      // Make a database change AFTER subscription is confirmed
       await testSupabase
         .from('games')
         .update({ game_phase: 'category_selection' })
         .eq('id', game.id);
       
-      // Wait for real-time notification
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait for real-time event using helper
+      const event = await nextEvent(channel);
       
       // Check if update was received
-      expect(receivedUpdates.length).toBeGreaterThan(0);
-      const gameUpdate = receivedUpdates.find(u => u.table === 'games');
-      expect(gameUpdate).toBeDefined();
-      expect(gameUpdate.new.game_phase).toBe('category_selection');
+      expect(event).toBeDefined();
+      expect(event.table).toBe('games');
+      expect(event.new.game_phase).toBe('category_selection');
       
       // Cleanup
       await testSupabase.removeChannel(channel);
@@ -71,21 +56,17 @@ describe('Integration - Subscription Timing Issues', () => {
       const player = await createTestPlayer(game.id);
       
       const receivedUpdates: any[] = [];
-      const channel = testSupabase
-        .channel(`test-rapid-updates-${game.id}`)
-        .on('postgres_changes', 
-            { event: '*', schema: 'public' }, 
-            (payload) => {
-              receivedUpdates.push({
-                eventType: payload.eventType,
-                table: payload.table,
-                timestamp: Date.now()
-              });
-            }
-        );
-
-      await channel.subscribe();
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const channel = await openSubscribedChannel(
+        testSupabase,
+        `test-rapid-updates-${game.id}`,
+        ch => ch.on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+          receivedUpdates.push({
+            eventType: payload.eventType,
+            table: payload.table,
+            timestamp: Date.now()
+          });
+        })
+      );
       
       // Rapid database changes (simulating multiple players acting)
       const changePromises = [
@@ -96,7 +77,9 @@ describe('Integration - Subscription Timing Issues', () => {
       ];
       
       await Promise.all(changePromises);
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Wait for events to be received - proper timing with subscription helper
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Check for update flooding
       expect(receivedUpdates.length).toBeGreaterThan(3);

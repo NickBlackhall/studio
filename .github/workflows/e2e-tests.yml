@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20.x'
           cache: 'npm'
 
       - name: Install dependencies
@@ -38,18 +38,21 @@ jobs:
           # Extract environment variables from CLI output
           API_URL=$(grep '^API_URL=' supa.env | cut -d= -f2- | tr -d '"')
           ANON_KEY=$(grep '^ANON_KEY=' supa.env | cut -d= -f2- | tr -d '"')
+          SERVICE_ROLE_KEY=$(grep '^SERVICE_ROLE_KEY=' supa.env | cut -d= -f2- | tr -d '"')
           DB_URL=$(grep '^DB_URL=' supa.env | cut -d= -f2- | tr -d '"')
           
           # Export for subsequent steps
-          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
           echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
-          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
           echo "SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
           echo "DB_URL=$DB_URL" >> $GITHUB_ENV
           
           echo "Exported Supabase environment:"
           echo "  API_URL: $API_URL"
           echo "  ANON_KEY: ${ANON_KEY:0:20}..."
+          echo "  SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:0:20}..."
           echo "  DB_URL: ${DB_URL:0:30}..."
 
       - name: Wait for Kong→Auth health
@@ -96,19 +99,22 @@ jobs:
           psql "$DB_URL" -c "SELECT COUNT(*) as response_cards FROM response_cards;"
           echo "✅ Database schema loaded and verified successfully"
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+      - name: Realtime readiness smoke test
+        run: node scripts/realtime-smoketest.mjs
 
       - name: Build application
         run: npm run build
 
-      - name: Run unit tests
+      - name: Run Jest tests (unit + integration)
         run: npm run test
 
       - name: Run TypeScript checks
         run: npm run typecheck
 
-      - name: Run E2E tests
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright E2E tests
         run: npm run test:e2e
         env:
           CI: true

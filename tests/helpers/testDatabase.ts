@@ -1,10 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+// Note: testSupabase client now imported from './testSupabase' 
+// This maintains backward compatibility for existing imports
+import { testSupabase } from './testSupabase';
 
-// Use environment variables for Supabase connection
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const testSupabase = createClient(supabaseUrl, supabaseKey);
+// Re-export for backward compatibility
+export { testSupabase };
 
 // Test data prefixes for safe isolation
 export const TEST_PREFIX = 'test_';
