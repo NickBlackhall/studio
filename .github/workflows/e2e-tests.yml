@@ -20,15 +20,16 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_DB: postgres
           POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+        command: >-
+          postgres
+          -c wal_level=logical
+          -c max_wal_senders=10
+          -c max_replication_slots=10
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          postgres:15
-          -c wal_level=logical
-          -c max_wal_senders=10
-          -c max_replication_slots=10
 
       supabase:
         image: supabase/supabase-dev:latest
@@ -135,3 +136,4 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+          if-no-files-found: ignore
