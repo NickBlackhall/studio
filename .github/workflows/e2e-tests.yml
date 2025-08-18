@@ -37,23 +37,18 @@ jobs:
       - name: Wait for Supabase service to be ready
         run: |
           echo "Waiting for Supabase to be ready..."
-          for i in {1..30}; do
-            if curl -s http://localhost:54321/rest/v1/ > /dev/null; then
+          for i in {1..60}; do
+            if pg_isready -h localhost -p 54321 -U postgres; then
               echo "Supabase is ready!"
               break
             fi
-            echo "Waiting... ($i/30)"
-            sleep 2
+            echo "Waiting... ($i/60)"
+            sleep 3
           done
 
       - name: Setup test database schema
         run: |
           echo "Setting up test database schema..."
-          curl -X POST http://localhost:54321/rest/v1/rpc/exec \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU" \
-            -d '{"sql": "'"$(cat database/test-schema.sql | tr '\n' ' ' | sed 's/"/\\"/g')"'"}' || \
-          # Fallback: Apply schema using psql directly
           PGPASSWORD=postgres psql -h localhost -p 54321 -U postgres -d postgres -f database/test-schema.sql
 
       - name: Verify database setup
