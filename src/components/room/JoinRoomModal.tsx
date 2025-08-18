@@ -172,6 +172,7 @@ export default function JoinRoomModal({
             onClick={handleJoin}
             className="flex-1 bg-green-500 hover:bg-green-600 text-white"
             disabled={!isValid || roomCode.length !== 6 || isJoining}
+            data-testid="join-room-button"
           >
             {isJoining ? (
               <div className="flex items-center space-x-2">

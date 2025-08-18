@@ -22,6 +22,7 @@ export default function LobbyStartButton({
       onClick={onStartGame} 
       disabled={isProcessingAction} 
       className="group animate-slow-scale-pulse disabled:animate-none disabled:opacity-70"
+      data-testid="start-game-button"
     >
       {isProcessingAction ? (
         <div className="h-[71.52px] flex items-center justify-center">

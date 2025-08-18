@@ -19,7 +19,7 @@ export default function LobbyLayout({ children, onOpenMenu }: LobbyLayoutProps) 
           className="poster-image" 
           data-ai-hint="lobby poster" 
         />
-        <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 ease-out">
+        <div className="absolute top-[23%] left-[10%] right-[10%] h-[68%] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300 ease-out" data-testid="lobby-interface">
           {children}
         </div>
         <div className="absolute bottom-[2%] left-0 right-0 flex items-center justify-center animate-in fade-in slide-in-from-bottom-2 duration-700 delay-500 ease-out">

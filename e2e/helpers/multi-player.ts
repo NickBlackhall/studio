@@ -2,9 +2,11 @@ import { test as base, expect, type BrowserContext, type Page } from '@playwrigh
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/types';
 
-// Test environment configuration
+// Test environment configuration  
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'test-key';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
+
+console.log(`🔧 Multi-Player: Using Supabase URL: ${SUPABASE_URL.substring(0, 30)}...`);
 
 export interface MultiPlayerFixture {
   multiPlayer: {
