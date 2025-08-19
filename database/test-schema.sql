@@ -324,6 +324,34 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to create smoke test table for deterministic Realtime testing
+CREATE OR REPLACE FUNCTION create_smoke_test_table()
+RETURNS VOID AS $$
+BEGIN
+    -- Create table if it doesn't exist
+    CREATE TABLE IF NOT EXISTS rt_smoke (
+        id SERIAL PRIMARY KEY,
+        test_value TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    
+    -- Configure for Realtime
+    ALTER TABLE rt_smoke REPLICA IDENTITY FULL;
+    
+    -- Ensure it's in the publication
+    IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        BEGIN
+            ALTER PUBLICATION supabase_realtime ADD TABLE rt_smoke;
+        EXCEPTION
+            WHEN duplicate_object THEN NULL; -- Table already in publication
+        END;
+    END IF;
+    
+    -- Clean up old test data
+    DELETE FROM rt_smoke WHERE created_at < NOW() - INTERVAL '1 hour';
+END;
+$$ LANGUAGE plpgsql;
+
 -- =====================================================================
 -- COMMENTS FOR DOCUMENTATION
 -- =====================================================================

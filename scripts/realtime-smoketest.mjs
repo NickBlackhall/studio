@@ -11,43 +11,68 @@ if (!url || !key) {
 }
 const supa = createClient(url, key, { realtime: { params: { eventsPerSecond: 1000 } } });
 
-const ch = supa.channel('smoke:games');
+// Create dedicated smoke test table to ensure deterministic event generation
+await supa.rpc('create_smoke_test_table');
+
+const ch = supa.channel('smoke:rt_smoke');
 let got = false;
 
-ch.on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => { got = true; });
-console.log('Attempting to subscribe to Realtime channel...');
-const status = await ch.subscribe();
-console.log('Subscription status:', status);
+ch.on('postgres_changes', { event: '*', schema: 'public', table: 'rt_smoke' }, (payload) => {
+  console.log('event received:', payload.eventType, payload);
+  got = true;
+});
 
-if (status !== 'SUBSCRIBED') {
-  console.error('Realtime not SUBSCRIBED. Status:', status);
-  console.error('Channel state:', ch.state);
-  console.error('Socket ready state:', ch.socket.conn.readyState);
-  console.error('Socket URL:', ch.socket.conn.url);
-  
-  // Wait a bit and check if it's a timing issue
-  console.log('Waiting 3 seconds and checking again...');
-  await new Promise(r => setTimeout(r, 3000));
-  console.log('Channel state after wait:', ch.state);
-  console.log('Socket ready state after wait:', ch.socket.conn.readyState);
-  
-  if (ch.state !== 'joined') {
-    console.error('Realtime failed to connect after waiting');
-    process.exit(2);
-  }
+console.log('Attempting to subscribe to Realtime channel...');
+await new Promise((resolve, reject) => {
+  let done = false;
+  ch.subscribe((status) => {
+    console.log('subscribe:', status);
+    if (status === 'SUBSCRIBED' && !done) { 
+      done = true; 
+      resolve(); 
+    }
+    if ((status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') && !done) {
+      done = true; 
+      reject(new Error('Subscribe failed: ' + status));
+    }
+  });
+  setTimeout(() => !done && reject(new Error('Subscribe timeout')), 15000);
+});
+
+// Allow subscription to fully establish
+await new Promise(r => setTimeout(r, 1000));
+
+// Guaranteed event generation: INSERT a test row
+console.log('Generating deterministic Realtime event...');
+const { data, error } = await supa.from('rt_smoke').insert({ 
+  test_value: 'smoke-' + Date.now() 
+}).select().single();
+
+if (error) {
+  console.error('Failed to insert smoke test row:', error);
+  process.exit(3);
 }
 
-// Touch something unlikely to match: no-op update for smoke gate
-await supa.rpc('pg_sleep', { seconds: 0 }); // harmless nudge (optional)
-await new Promise(r => setTimeout(r, 250)); // allow server settle
+console.log('insert ok:', data);
 
-const { error } = await supa.from('games').update({ updated_at: new Date().toISOString() }).eq('room_code', 'T__noexist__');
-if (error) console.warn('Update error (harmless if no rows):', error.message);
-
-// Wait up to 5s for any event (may be 0 if no rows matched; this is just a subscribe/signal gate)
+// Wait up to 3s for the guaranteed event
 await new Promise((resolve, reject) => {
-  const t = setTimeout(() => (got ? resolve() : reject(new Error('No realtime events observed'))), 5000);
-  if (got) { clearTimeout(t); resolve(); }
+  const t = setTimeout(() => {
+    if (got) {
+      resolve();
+    } else {
+      reject(new Error('No realtime events received despite successful INSERT'));
+    }
+  }, 3000);
+  
+  // Early resolution if event received
+  const checkInterval = setInterval(() => {
+    if (got) {
+      clearTimeout(t);
+      clearInterval(checkInterval);
+      resolve();
+    }
+  }, 100);
 });
 
 await supa.removeChannel(ch);
