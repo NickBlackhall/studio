@@ -28,8 +28,8 @@ jobs:
         with:
           version: latest
 
-      - name: Start Supabase (optimized for CI)
-        run: supabase start -x vector,imgproxy,studio,edge-runtime
+      - name: Start Supabase (essential services only)
+        run: supabase start -x vector,imgproxy
 
       - name: Export Supabase environment variables
         run: |
@@ -85,6 +85,27 @@ jobs:
             echo "This will cause Realtime to fail"
             exit 1
           fi
+
+      - name: Check Supabase services status
+        run: |
+          echo "Checking Supabase services status..."
+          supabase status
+          echo "Checking if Realtime is responding..."
+          curl -f "$NEXT_PUBLIC_SUPABASE_URL/realtime/v1/api/tenants" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" || echo "Realtime API not responding"
+
+      - name: Wait for Realtime to be fully ready
+        run: |
+          echo "Waiting for Realtime WebSocket to be ready..."
+          for i in {1..30}; do
+            if curl -f "$NEXT_PUBLIC_SUPABASE_URL/realtime/v1/api/tenants" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" >/dev/null 2>&1; then
+              echo "Realtime API responding (attempt $i)"
+              break
+            fi
+            echo "Waiting for Realtime API... ($i/30)"
+            sleep 2
+          done
+          echo "Giving Realtime extra time to initialize WebSocket server..."
+          sleep 5
 
       - name: Setup test database schema
         run: |
