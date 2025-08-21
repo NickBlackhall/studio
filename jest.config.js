@@ -3,12 +3,27 @@ const createJestConfig = nextJest({ dir: './' });
 
 const config = {
   testPathIgnorePatterns: ['/node_modules/', '<rootDir>/e2e/'],
+  // Explicitly add TypeScript transformation and module resolution
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  transform: {
+    '^.+\\.(ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
+  },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+  },
   projects: [
     {
       displayName: 'unit',
       testEnvironment: 'jsdom',
       testMatch: ['<rootDir>/tests/unit/**/*.test.(ts|tsx)'],
       setupFilesAfterEnv: ['<rootDir>/tests/setup/jest.dom.setup.ts'],
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+      transform: {
+        '^.+\\.(ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
+      },
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/src/$1',
+      },
     },
     {
       displayName: 'integration',
@@ -16,6 +31,13 @@ const config = {
       testEnvironmentOptions: { customExportConditions: ['node'] },
       testMatch: ['<rootDir>/tests/integration/**/*.test.ts'],
       setupFilesAfterEnv: ['<rootDir>/tests/setup/jest.node.setup.ts'],
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+      transform: {
+        '^.+\\.(ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
+      },
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/src/$1',
+      },
     }
   ]
 };

@@ -8,13 +8,13 @@ jest.retryTimes(1, { logErrorsBeforeRetry: true });
 
 // Polyfill WHATWG APIs for Next server imports (Node 20 still okay to be explicit)
 const { fetch, Headers, Request, Response, FormData, File, Blob } = require('undici');
-globalThis.fetch = fetch;
-globalThis.Headers = Headers;
-globalThis.Request = Request;
-globalThis.Response = Response;
-globalThis.FormData = FormData;
-globalThis.File = File;
-globalThis.Blob = Blob;
+(globalThis as any).fetch = fetch;
+(globalThis as any).Headers = Headers;
+(globalThis as any).Request = Request;
+(globalThis as any).Response = Response;
+(globalThis as any).FormData = FormData;
+(globalThis as any).File = File;
+(globalThis as any).Blob = Blob;
 
 // AbortController & URLPattern (belt-and-suspenders)
 require('urlpattern-polyfill');
