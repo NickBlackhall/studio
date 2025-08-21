@@ -1,493 +1,183 @@
-# Make It Terrible - A Party Game
+# Supabase CLI
 
-This project is a web-based, real-time multiplayer party game called "Make It Terrible," developed in collaboration with an AI assistant in Firebase Studio. The game is inspired by party games like Cards Against Humanity, where the goal is to provide the funniest, most outrageous, or most "terrible" response to a given scenario.
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
-## Game Concept & Flow
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
-The core of the game is simple and designed for hilarity:
+This repository contains all the functionality for Supabase CLI.
 
-1.  **Lobby & Setup:** Players join a game lobby by choosing a name and an avatar.
-2.  **The Judge:** In each round, one player is designated as the Judge.
-3.  **The Scenario:** The Judge selects a category, and a random scenario card is revealed to all players (e.g., "You have to explain a viral TikTok trend to your grandparents. How do you make it as confusing as possible?").
-4.  **Player Submissions:** All other players submit a response card from their hand. They can either use a pre-dealt card or write their own custom response for that round.
-5.  **Judging:** The Judge reviews all the anonymous submissions and chooses the one they find the best (or most terrible).
-6.  **Scoring:** The player who submitted the winning card gets a point.
-7.  **Winning:** The first player to reach the point goal wins the game.
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
-A key feature is that if a custom-written card wins a round, the Judge has the option to add that card to the main deck for future games.
+## Getting started
 
-## Development Status
+### Install the CLI
 
-The project is currently a **fully functional prototype**. The entire real-time game loop is implemented and operational.
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
-- **Backend & State Management:** The game uses **Supabase** for its backend, with database tables for games, players, cards, and submissions. Real-time updates are handled via Supabase subscriptions.
-- **Frontend:** The application is built with **Next.js** and **React**.
-- **UI & Styling:** The UI is built with **ShadCN UI components**, styled with **Tailwind CSS**, and includes animations from **Framer Motion**.
-
-## Solved Issues & Recent Updates
-
-This section tracks recent improvements and bug fixes that have impacted gameplay, UI, and UX.
-
-- **Implemented "Boondoggles" (Surprise Mini-Games):** Successfully integrated a major new gameplay feature. When a Judge selects a category, there is now a random chance for a "Boondoggle" round to occur. Instead of submitting cards, players perform a unique challenge (e.g., a physical task or word game), and the Judge awards a point directly to the best performer. This feature leverages the existing scenario architecture for a clean and efficient integration.
-- **Fixed Card Drawing Randomness:** Solved a critical gameplay flaw where players were repeatedly dealt cards from the same small pool of ~60 cards. The logic was updated to fetch a much larger, more random batch of cards from the database and shuffle them server-side, ensuring true variety and significantly improving replayability.
-- **Implemented Transition State Machine:** Addressed a core architectural issue where game state transitions (e.g., from lobby to game) were fragile, leading to UI flickering, awkward pauses, and potential race conditions. The fix involved implementing a state machine directly in the database with `transition_state` and `transition_message` columns. Now, the server explicitly communicates when it's busy, and the client displays a dedicated loading overlay, resulting in a smoother, more reliable, and professional user experience.
-- **Improved UI Responsiveness for Ready Toggle:** Fixed a noticeable delay when players toggled their ready status in the lobby. Implemented an "optimistic update" approach, where the UI updates instantly upon the user's click, while the actual state change is processed in the background. This provides immediate visual feedback and a much smoother user experience.
-- **Fixed Font Flickering in Lobby:** Resolved a persistent "Flash of Unstyled Content" (FOUC) where player names in the lobby would flicker between the default system font and the game's stylized `IM Fell` font during state updates (e.g., when a player toggled their ready status). The fix involved changing the player name element from a generic `<span>` to a semantic `<h2>` tag, ensuring the correct base styles are applied immediately on render.
-- **Fixed Real-Time Instability & Flickering:** Resolved a major bug where multiple, rapid database updates from Supabase would trigger excessive re-renders, causing visual flickering and instability. Implemented a debouncing mechanism to intelligently bundle these updates into a single, smooth refresh, dramatically improving UI stability and performance during gameplay. Also fixed a broken image path for the loading screen logo.
-- **Fixed Spectator Black Screen:** Resolved a critical bug where new users would see a black screen if they tried to join a game that was already in a non-lobby state (e.g., 'game_over'). The UI now correctly shows a "Game in Progress" spectator view.
-- **Corrected TypeScript Error:** Fixed a type error where the `isCustom` property was not correctly defined on the `PlayerHandCard` interface, improving code quality and type safety.
-- **UI Polish - Player Submission:** When a player submits their card, the UI now correctly hides the card stack and displays a clean "Submission Sent" graphic, preventing player confusion.
-- **UI Polish - Player Setup:** Adjusted the vertical alignment of the "name" input field on the player setup screen for better visual balance.
-- **UI Polish - Font Consistency:** Updated the font on the Judge's waiting screen to match the game's overall `IM Fell` aesthetic.
-- **Typography Standardization:** Eliminated inconsistent font declarations throughout the codebase. All components now use the standardized `font-im-fell` Tailwind class instead of mixing direct CSS font-family declarations, providing a single source of truth and easier maintenance.
-- **Card Swipe Gestures Implementation:** Added comprehensive swipe gesture functionality to player hand cards for mobile-first interaction:
-  - **Swipe Detection:** Implemented touch event handlers with distance and velocity thresholds (40px minimum distance OR 0.3px/ms velocity)
-  - **Card Shuffling:** Left/right swipes move the top card to bottom of hand stack, allowing players to browse through their cards naturally
-  - **Visual Drag Feedback:** Cards follow finger movement during swipe gestures for immediate tactile response
-  - **Interaction Restrictions:** Only the top card in the hand is interactive (swipeable/tappable), preventing state sync issues
-  - **Scroll Management:** Added global horizontal scroll prevention (`touch-action: pan-y`) while preserving vertical scrolling for different screen sizes
-  - **Touch Event Prevention:** All card interactions prevent page scrolling during active dragging to avoid interference
-  - **Animation Sequencing:** Implemented smooth 3-step animation: (1) card slides off screen in swipe direction (300ms), (2) remaining cards slide up to fill gap (500ms), (3) swiped card appears at bottom of stack
-  - **Direction Correction:** Fixed Y-axis inversion so dragging down moves card down on screen (not up)
-  - **Spring Effect Removal:** Eliminated bouncy spring animations during shuffle sequence for cleaner, linear card movement
-- **Shuffle Animation Fixes:** Completely resolved the "re-deal" animation artifacts that caused cards to briefly flip back to logo side during shuffle. Fixed by changing React component keys from index-based to ID-based, preserving card identity and flip states during reordering.
-- **Mobile Touch Optimization:** Implemented comprehensive touch event handling to prevent page scrolling during card interactions on mobile devices. Added dynamic CSS touch-action properties and proper event propagation control.
-- **Animation Performance:** Reduced shuffle animation timing from 400ms to 250ms and simplified transform logic from complex string concatenation to clean object-based properties, eliminating transform conflicts and improving responsiveness.
-- **Card Selection Restoration:** Fixed broken card selection and custom card editing functionality that was disrupted during animation improvements. Cards now properly respond to taps and custom card text input works reliably.
-- **Selection State Management:** Resolved edge case where selected cards would remain "stuck" in elevated position after being swiped away. Now automatically clears selection when a selected card is shuffled, while preserving any typed custom card content.
-- **Critical Card Fetching Fix (July 2025):** Resolved a game-breaking bug where the card dealing logic would request far more cards than existed in the database (e.g., requesting 2,250 cards when only 1,013 available), causing database errors and crashes. Implemented smart multiplier logic that adapts to different deal types:
-  - **Initial Deal**: Requests `count × 3` cards (45 × 3 = 135 cards for 9 players) for good randomness
-  - **Replacement Cards**: Requests `count × 5` cards (9 × 5 = 45 cards) for variety in single-card deals
-  - **Safety Limits**: Never requests more cards than are available in the database
-  - **Card Depletion Warning**: Logs warnings when fewer than 100 cards remain for the game
-  - **Graceful Degradation**: Handles edge cases where insufficient cards are available without crashing
-- **Game Stability Audit & Recovery (July 2025):** After experiencing critical errors during lobby optimization attempts (React hooks violations, webpack module loading errors, complete app failure with 500 server errors), performed emergency recovery:
-  - **Emergency Revert**: Used `git restore` to revert all optimization changes back to stable state
-  - **Cache Cleanup**: Cleared `.next` and `node_modules/.cache` to resolve webpack chunk corruption
-  - **Stability Prioritization**: Made strategic decision to maintain working app for family beta test over pursuing flickering optimizations
-  - **Comprehensive Documentation**: Created detailed LOBBY_DEVELOPMENT_GUIDE.md documenting the flickering root cause, optimization attempts, failures, and recovery process for future development
-- **Judge's Hand Swipe Mechanics (August 2025):** Solved critical UX issue discovered during 11-player family test where judge's hand became cramped and difficult to use with 10 response cards:
-  - **Problem Identified**: Cards stacked at 75px intervals created 750px height, overwhelming mobile screens and making card selection difficult
-  - **Solution Implemented**: Ported excellent swipe mechanics from PlayerView to JudgeView, allowing judge to browse cards by swiping left/right
-  - **Improved Card Layout**: Reduced stacking to 25px intervals, showing only 2-3 cards at once instead of overwhelming stack
-  - **Touch Optimization**: Added comprehensive touch event handling with drag feedback and momentum physics
-  - **Preserved Functionality**: Maintained all existing judge features (card selection, crown winner button, flip animations)
-  - **Scalable UX**: Now works seamlessly with 11+ players using familiar swipe gestures from player experience
-- **Main Menu Visual Redesign (August 2025):** Updated main menu buttons with custom background images and sound effects:
-  - **Custom Backgrounds**: Replaced generic card backgrounds with purpose-built images for "Join or Create Game" and "Settings & More" buttons
-  - **Image Integration**: Updated buttons to use 1536x600 custom background images with proper aspect ratio (384px × 150px display size)
-  - **Content Removal**: Eliminated overlaid text and icons since they're baked into the new background images
-  - **Sound Effects**: Added "Button Firm 2_01.wav" sound effect to both main menu buttons for tactile feedback
-  - **Hover Removal**: Disabled hover effects to prevent interference with custom button designs
-  - **Responsive Scaling**: Maintained 65% scale for proper mobile display while preserving image quality
-- **Reset Button Multi-Player Fix (August 2025):** Resolved critical reset functionality issues affecting game stability and multi-player coordination:
-  - **React Hooks Error Resolution**: Fixed "rendered fewer hooks than expected" error in GamePage component by ensuring consistent hook call order on every render, eliminating crashes when reset button was pressed
-  - **Server-First Reset Architecture**: Completely restructured reset flow to use server-side coordination instead of client-side cleanup, preventing race conditions and ensuring all connected players receive reset notifications
-  - **Transition State Integration**: Successfully implemented 'resetting_game' transition state with UnifiedTransitionOverlay showing "Resetting game... You will be redirected to the main menu" to all players for 1.5 seconds before server cleanup
-  - **Multi-Player Coordination**: Updated resetGameForTesting action to broadcast reset state to all connected players via real-time subscriptions, ensuring synchronized experience across all clients
-  - **Comprehensive Handler Updates**: Simplified all reset handlers (lobby reset, game page reset, play again reset) to use consistent server-first approach with proper error handling for redirect responses
-  - **TypeScript Compilation Fixes**: Resolved missing type exports (Player, Scenario) and unused variable errors that were preventing successful builds
-  - **Current Status**: Reset functionality works correctly for initiating player (proper notification and navigation), with remaining minor issue where other players land in lobby instead of main menu (investigation ongoing)
-
-### Known Issues (Resolved)
-- ~~**Shuffle Animation Artifacts:** Cards no longer exhibit "re-deal" animation during shuffle sequence. Fixed by preserving component identity through stable React keys.~~
-- ~~**Touch Area Coverage:** Touch events now work reliably across entire card surface with proper scroll prevention on mobile devices.~~
-- ~~**Swipe-up Submit Feature:** Planned functionality to allow swiping a selected card upward toward the scenario area to submit it (more intuitive than tap-to-reveal-submit-button workflow). Basic detection logic exists but submission behavior not implemented.~~ **IMPLEMENTED**: Swipe-up submission now works with momentum physics and smooth animations.
-
-## Production Deployment Guide
-
-### Ready for Production Deployment
-After comprehensive 11-player testing (July 2025), the game is stable and ready for production deployment to Netlify. This section contains detailed deployment instructions for when ready to move from localhost development to live production environment.
-
-#### Current Development Setup Analysis
-- ✅ **Next.js 15.2.3** with proper build scripts configured
-- ✅ **Supabase backend** fully functional with 1,014+ response cards
-- ✅ **Real-time multiplayer** tested and stable for 11+ players
-- ⚠️ **Hardcoded database credentials** in `src/lib/supabaseClient.ts` (needs environment variables)
-- ⚠️ **Build configuration** ignores TypeScript/ESLint errors (risky for production)
-
-#### Step-by-Step Netlify Deployment Process
-
-**1. Environment Variables Setup**
 ```bash
-# Create .env.local file in project root
-NEXT_PUBLIC_SUPABASE_URL=https://fpntcspwvpmrbbiekqsv.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwbnRjc3B3dnBtcmJiaWVrcXN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxMTk1MTMsImV4cCI6MjA2MzY5NTUxM30.OFddzp3_nHvGdQiRvm6z5MttpqS3YABgCqyHNqLpI5s
-
-# Add to .gitignore
-echo ".env.local" >> .gitignore
+npm i supabase --save-dev
 ```
 
-**2. Update Database Client Configuration**
-Edit `src/lib/supabaseClient.ts`:
-```typescript
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+To install the beta release channel:
+
+```bash
+npm i supabase@beta --save-dev
 ```
 
-**3. Production Build Optimization**
-Edit `next.config.ts`:
-```typescript
-const nextConfig: NextConfig = {
-  // Remove these for production:
-  // typescript: { ignoreBuildErrors: true },
-  // eslint: { ignoreDuringBuilds: true },
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
+
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
+```
+
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
+
+<details>
+  <summary><b>macOS</b></summary>
+
+  Available via [Homebrew](https://brew.sh). To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To install the beta release channel:
   
-  // Add production optimizations:
-  compress: true,
-  poweredByHeader: false,
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
   
-  images: {
-    formats: ['image/webp', 'image/avif'],
-    remotePatterns: [/* existing patterns */]
-  }
-};
-```
+  To upgrade:
 
-**4. Netlify Deployment Commands**
-```bash
-# Install Netlify CLI globally
-npm install -g netlify-cli
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
 
-# Login to Netlify account
-netlify login
+<details>
+  <summary><b>Windows</b></summary>
 
-# Initial deployment (from project root directory)
-netlify deploy --build
+  Available via [Scoop](https://scoop.sh). To install:
 
-# Production deployment after testing
-netlify deploy --prod --build
-```
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
 
-**5. Netlify Environment Variables Configuration**
-In Netlify dashboard, add environment variables:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  To upgrade:
 
-**6. Build Settings for Netlify**
-Create `netlify.toml` in project root:
-```toml
-[build]
-  command = "npm run build"
-  publish = ".next"
+  ```powershell
+  scoop update supabase
+  ```
+</details>
 
-[build.environment]
-  NODE_VERSION = "18"
-  NPM_VERSION = "9"
+<details>
+  <summary><b>Linux</b></summary>
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-```
+  Available via [Homebrew](https://brew.sh) and Linux packages.
 
-#### Performance Considerations for Family Gaming
-- **Large asset folder**: 100+ avatar images and backgrounds (~50MB total)
-- **Audio files**: Background music and sound effects for mobile browsers  
-- **Real-time performance**: 11 concurrent players with poor Wi-Fi connections
-- **Mobile optimization**: Touch gestures, responsive design, PWA capabilities
+  #### via Homebrew
 
-#### Post-Deployment Testing Checklist
-- [ ] Test with multiple devices on different networks
-- [ ] Verify real-time subscriptions work over internet (not just localhost)
-- [ ] Check mobile browser compatibility (especially iOS Safari audio)
-- [ ] Test poor connection scenarios
-- [ ] Validate 11-player lobby and game performance
-- [ ] Confirm Supabase rate limits handle concurrent users
+  To install:
 
-#### Performance Optimizations Completed (July 2025)
+  ```sh
+  brew install supabase/tap/supabase
+  ```
 
-**✅ Comprehensive Audio System Implementation (Major UX Enhancement)**
-*Completed: July 30, 2025 - Complete game audio experience*
+  To upgrade:
 
-**Impact:** Added immersive sound effects and music controls throughout entire gameplay experience
-**Action taken:** Implemented 8 distinct sound effects, compressed audio files (65% size reduction), and granular audio controls
+  ```sh
+  brew upgrade supabase
+  ```
 
-**Audio Features Added:**
-- **Music System**: Background music for lobby and game phases (3.6MB vs 10.3MB original)
-- **Sound Effects**: 8 comprehensive sound effects covering all major game interactions
-- **Audio Controls**: Separate mute controls for all audio, music only, and sound effects only
-- **Browser Compatibility**: Proper autoplay policy handling with user interaction detection
+  #### via Linux packages
 
-**Sound Effects Implemented:**
-1. **`'button-click'`** - General UI buttons and avatar selection (`Button Firm 2_01.wav`)
-2. **`'card-flip'`** - Card dealing sequence with 6-card audio (`6-card-deal.wav`)
-3. **`'boondoggle'`** - Devil laughter for surprise mini-games (`devil-laughter.wav`)
-4. **`'category-select'`** - Judge category navigation buttons (`scenario-select-button.wav`)
-5. **`'unleash-scenario'`** - Dramatic gong for scenario release (`Gong_01.mp3`)
-6. **`'card-submit'`** - Woosh sound for card submission swipes (`quick-woosh_01.wav`)
-7. **`'crown-winner'`** - Victory announcement for judge selections (`we-have-a-winner.mp3`)
-8. **`'round-winner'`** - Fanfare for winner announcement sequence (`round-winner-announcement.mp3`)
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
 
-**Files Modified:**
-- `src/contexts/AudioContext.tsx` - Enhanced with separate mute controls and 8 sound effects
-- `src/components/layout/MusicPlayer.tsx` - Updated with separate music mute functionality
-- `src/app/game/page.tsx` - Added granular audio controls to game menu modal
-- `src/components/PureMorphingModal.tsx` - Updated modals with white background and black text
-- `src/components/game/PlayerView.tsx` - Added card flip and submission sounds
-- `src/components/game/JudgeView.tsx` - Added boondoggle and winner selection sounds
-- `src/components/game/SwipeableCategorySelector.tsx` - Added category navigation sounds
-- `src/components/game/RecapSequenceDisplay.tsx` - Added winner announcement sound
-- `src/components/PWAGameLayout.tsx` - Added avatar selection button sounds
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
 
-**Audio File Optimization:**
-- Compressed music tracks from 10.3MB to 3.6MB (65% reduction)
-- Organized sound effects in `/public/Sound/sound-effects/` directory
-- Maintained high audio quality while optimizing for family test performance
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
 
-**✅ Genkit AI Framework Removal (Major Performance Win)**
-*Completed: July 29, 2025 - Pre-family test optimization*
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
 
-**Impact:** Removed 339 packages, significantly reduced bundle size and build time
-**Action taken:** Temporarily disabled AI features to optimize for 11-player family test
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
 
-**Files modified:**
-- `package.json` - Removed @genkit-ai/googleai, @genkit-ai/next, genkit-cli, genkit dependencies
-- `package.json` - Removed genkit:dev and genkit:watch scripts
-- `src/ai/` folder moved to `src/ai_disabled_for_family_test/`
-- `src/app/page.tsx` - Added Suspense boundary to fix useSearchParams() build error
+<details>
+  <summary><b>Other Platforms</b></summary>
 
-**Build results after optimization:**
-```
-Route (app)                     Size  First Load JS
-┌ ○ /                        5.59 kB         175 kB
-├ ○ /_not-found               978 B         102 kB
-└ ○ /game                   58.3 kB         228 kB
-+ First Load JS shared by all              101 kB
-```
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
 
-**How to restore Genkit when needed:**
-```bash
-# Restore AI capabilities after family test
-mv src/ai_disabled_for_family_test src/ai
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
 
-# Reinstall Genkit dependencies
-npm install @genkit-ai/googleai @genkit-ai/next genkit-cli genkit
+  Add a symlink to the binary in `$PATH` for easier access:
 
-# Add back to package.json scripts:
-"genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-"genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts"
-```
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
 
-**Remaining optimization opportunities:**
-- **Audio compression**: Music files are 5.6MB + 4.7MB (10.3MB total) - compress to ~2MB
-- **Image optimization**: Background posters 3-4MB each, avatar winners 3.6MB each
-- **Bundle analysis**: Use webpack-bundle-analyzer to identify remaining large dependencies
-- **Image preloading**: Preload critical assets during loading screens
+  This works on other non-standard Linux distros.
+</details>
 
-#### Future Production Enhancements 
-- **PWA Implementation**: Service workers for offline capabilities and better mobile performance
-- **CDN Optimization**: Compress and optimize image assets  
-- **Room System**: Multi-room architecture for scalability (see LOBBY_DEVELOPMENT_GUIDE.md)
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
 
----
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
 
-## Roadmap & Next Steps
+  ```bash
+  pkgx install supabase
+  ```
 
-This is a living document outlining the future direction of the project.
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
 
-### Immediate Priorities
-Our current focus is on refining the core experience and preparing the app for a wider audience.
-- **UI/UX Polish:** Finalize styling for key game states, including loading screens and the round/game winner announcement sequences to make them more engaging.
-- **Stability & Testing:** Ensure all existing features work flawlessly across different scenarios and user interactions.
-- **PWA Readiness:** Begin implementing the necessary architecture and features to make the game a fully installable Progressive Web App.
-
-### Upcoming Features
-These are the next major gameplay mechanics and features on the horizon.
-- **Audio Experience:** Add background music to the welcome, setup, and lobby screens. Implement sound effects for key game actions to enhance the user experience.
-
-### Major Room System Implementation (January 2025)
-Complete room/lobby system overhaul enabling multi-room gameplay and proper player isolation.
-
-**✅ Room Creation & Management System**
-*Completed: January 2025 - Full multi-room functionality*
-
-**Impact:** Transformed single-game app into multi-room platform supporting concurrent games
-**Action taken:** Implemented comprehensive room system with unique codes, public/private rooms, and player validation
-
-**Room Features Implemented:**
-- **Room Creation**: Generate unique 6-character room codes (ABC123 format) excluding confusing characters (0,O,1,I)
-- **Room Validation**: Check room existence, capacity limits, and game phase before joining
-- **Public Room Browser**: View all available public rooms with real-time player counts and game status
-- **Private Rooms**: Support for invite-only rooms via room codes
-- **Room Settings**: Configurable room names, public/private toggle, max player limits (4-12 players)
-- **Auto-cleanup**: Empty rooms automatically deleted after 10 minutes of inactivity
-
-**✅ Multi-Player Room Joining Bug Fixes**
-*Completed: January 2025 - "Same room, different worlds" issue resolved*
-
-**Problem Identified:** Players could see the same room in browser but end up in different game instances
-**Root Cause:** `handleJoinRoom` was placeholder code that didn't actually join specific rooms
-**Solution:** Complete room joining implementation with proper URL parameter handling
-
-**Technical Fixes:**
-- **Real Room Joining**: `handleJoinRoom` now validates room and redirects with room code parameter (`/?step=setup&room=ABC123`)
-- **Game Loading**: SharedGameContext loads specific games via room code instead of finding random games
-- **Player Targeting**: `addPlayer` action now accepts `targetGameId` parameter to join correct game
-- **Validation Layer**: Check room existence, capacity, and phase before allowing joins
-- **Debug Logging**: Enhanced console logging to track which game ID each player joins
-
-**Database Schema Updates:**
-- Added `room_code` (required), `room_name`, `is_public`, `max_players` columns to games table
-- Updated `findOrCreateGame()` to generate room codes for backward compatibility
-- Implemented `getGameByRoomCode()` and `findGameByRoomCodeWithPlayers()` functions
-
-**Files Modified:**
-- `src/app/game/actions.ts` - Added `createRoom()`, `getGameByRoomCode()`, `cleanupEmptyRooms()` functions
-- `src/lib/roomCodes.ts` - Complete room code generation, validation, and lookup system
-- `src/contexts/SharedGameContext.tsx` - URL parameter handling for room codes
-- `src/components/MainMenu.tsx` - New hierarchical menu with room options as sub-menu
-- `src/components/room/` - Complete room management UI (creation, browser, join modals)
-- `src/app/page.tsx` - Real `handleJoinRoom()` implementation replacing placeholder
-
-**User Experience Improvements:**
-- **Main Menu Reorganization**: Condensed main menu to 3 primary options with sub-menus for cleaner UX
-- **PIN-Protected Reset**: Added testing reset function to Settings & More sub-menu
-- **Room Browser**: Live view of all public rooms with join buttons and status indicators
-- **Error Handling**: Specific error messages for full rooms, games in progress, invalid codes
-
-**Flow Before Fix:**
-1. Player A creates Room ABC123 → Joins Game 1
-2. Player B browses rooms → Sees Room ABC123 → Clicks join
-3. **BUG**: Redirected to `/?step=setup` (no room code) → Loads Game 2
-4. **Result**: Players in different games, can't see each other
-
-**Flow After Fix:**
-1. Player A creates Room ABC123 → Joins Game 1  
-2. Player B browses rooms → Sees Room ABC123 → Clicks join
-3. **FIXED**: Validates Room ABC123 → Redirects to `/?step=setup&room=ABC123` → Loads Game 1
-4. **Result**: Both players in Game 1, see each other in lobby, real-time sync works
-
-### Immediate Priorities (Post-Family Testing)
-These are critical features needed based on real-world gameplay testing.
-- **Player Removal System:** Currently, the "Exit to Lobby" button doesn't properly remove players from active games, causing confusion and potential game-breaking scenarios when judges leave. This requires implementing proper database cleanup, judge reassignment logic, and real-time state updates for remaining players.
-
-### Long-Term Vision
-These are larger-scale ideas for the future evolution of the game.
-- **Multiple Game Modes:** Differentiate between "Remote" and "In-Person" play, potentially with different UI/UX considerations.
-- **Custom Rule Sets:** Introduce rule variations like a "Drinking Game Mode" or a "Family Friendly Mode" that filters adult content.
-- **Multi-Room Support:** Build the infrastructure to allow for multiple, separate game instances to run concurrently.
-- **Community Content:** Create forms for users to submit their own scenario and response card ideas, which can then be curated and added to the official game deck.
-- **Camera-to-Camera Communication:** Implement video chat capabilities for remote players to see and interact with each other face-to-face during gameplay. This could significantly enhance the social experience by allowing players to see reactions, expressions, and body language while playing. Technical implementation options include:
-  - **WebRTC Integration**: Browser-native peer-to-peer video using WebRTC APIs for direct player connections
-  - **Third-Party Video SDKs**: Services like Daily.co, Agora.io, or Twilio Video for managed video infrastructure
-  - **Hybrid Approach**: Optional video overlay that can be toggled on/off, with picture-in-picture layout during gameplay
-  - **Mobile Optimization**: Front-facing camera integration optimized for mobile browsers and PWA capabilities
-  - **Bandwidth Considerations**: Adaptive video quality based on connection speed, with audio-only fallback options
-
-## Testing Infrastructure (August 2025)
-
-### Comprehensive Testing Foundation
-**Status:** Complete with 120 total tests across unit, integration, and real-time analysis
-**Objective:** Build reliable test foundation + root cause analysis of transition issues
-**Outcome:** Successfully identified and validated specific causes of lobby/navigation problems
-
-#### Testing Architecture Implemented
-
-**✅ Unit Testing Framework (69 tests)**
-- **Jest + React Testing Library** configured for Next.js 15.2.3
-- **Mock data utilities** (`createMockPlayer`, `createMockGame`, `createMockGameInPhase`)
-- **Game logic testing** covering validation, phases, scoring, judge rotation
-- **Component rendering verification** for critical UI elements
-
-**✅ Integration Testing with Real Database (30 tests)**
-- **Live Supabase testing** with real database operations and cleanup
-- **Safe test isolation** using `TEST_` prefixes and automatic data cleanup
-- **Multi-player coordination scenarios** tested with actual database state
-- **Navigation flow testing** with concurrent player operations
-
-**✅ Root Cause Analysis Testing (21 tests)**
-- **Server actions behavior testing** (12 tests) - validates backend logic is sound
-- **Subscription timing analysis** (9 tests) - exposes real-time coordination issues
-- **Specific transition scenario testing** - identifies exact failure patterns
-
-#### Key Findings: Root Causes of Transition Issues
-
-**Primary Problem Validated:** Frontend subscription/state coordination issues, NOT backend logic
-**Evidence:** All server actions and database operations work correctly in isolation
-
-**Specific Root Causes Identified:**
-
-1. **Subscription Timing Gaps**
-   - Real-time updates don't fire immediately or cause flooding
-   - **Evidence:** "3 players changed ready state, received 6 notifications"
-   - **Impact:** Players see different game states during transitions
-
-2. **Polling vs Subscription Timing**
-   - 500ms polling in SharedGameContext misses rapid state changes
-   - **Evidence:** Subscription captured `['dealing_cards', 'ready', 'idle']` vs Polling captured `['idle', 'idle', 'ready', 'idle']`
-   - **Impact:** UI jumps or gets stuck in transition screens
-
-3. **State Synchronization Race Conditions**
-   - localStorage and database state become inconsistent
-   - **Evidence:** Players see "localStorage has player ID but database doesn't have player"
-   - **Impact:** SharedGameContext shows player as "in game" but they're not
-
-4. **Ready Player Order Coordination**
-   - ready_player_order array can contain players who aren't actually ready
-   - **Evidence:** Game starts but ready order contains players with `is_ready: false`
-   - **Impact:** Game coordination fails during transitions
-
-#### Files Created for Testing Infrastructure
-
-**Core Test Files:**
-```
-✅ jest.config.js                     - Jest configuration for Next.js
-✅ jest.setup.js                      - Global mocks and test setup
-✅ tests/fixtures/mockData.ts          - Mock data utilities (69 unit tests)
-✅ tests/helpers/testDatabase.ts       - Real Supabase integration testing
-✅ tests/helpers/test-utils.tsx        - Custom React testing utilities
-```
-
-**Integration Test Suites:**
-```
-✅ tests/integration/serverActionsBehavior.test.ts    - 12 tests validating backend logic
-✅ tests/integration/subscriptionTiming.test.ts       - 9 tests exposing real-time issues
-✅ tests/integration/transitionScenarios.test.ts      - 9 tests identifying coordination problems
-```
-
-**Component Tests:**
-```
-✅ tests/unit/components/MainMenu.test.tsx            - First component rendering test
-✅ tests/unit/gameLogic/                              - Game validation and logic tests
-```
-
-#### Testing Commands Available
+### Run the CLI
 
 ```bash
-# Run all tests once
-npm test
-
-# Run tests and watch for changes (continuous testing)
-npm run test:watch
-
-# Check test configuration
-npm test -- --listTests
+supabase bootstrap
 ```
 
-#### Impact on Development Workflow
+Or using npx:
 
-**Before Testing Infrastructure:**
-- Manual testing only - click through entire game to test changes
-- No regression protection - changes could break existing features  
-- Time-consuming setup for testing different game states
-- Transition issues remained mysterious and hard to reproduce
+```bash
+npx supabase bootstrap
+```
 
-**After Testing Infrastructure:**
-- `npm test` instantly verifies 120 test scenarios don't crash
-- Root causes of transition issues precisely identified and validated
-- Safe database testing environment for complex multi-player scenarios
-- Clear evidence that backend logic is sound - focus on frontend coordination
-- Foundation for implementing fixes with test-driven development
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
 
-#### Next Steps for Issue Resolution
+## Docs
 
-**Validated Focus Areas for Fixes:**
-1. **SharedGameContext subscription timing** - implement debouncing and coordination
-2. **Polling frequency optimization** - reduce gaps in rapid state change detection  
-3. **localStorage synchronization** - add validation and recovery mechanisms
-4. **Ready player order consistency** - implement atomic updates and validation
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
 
-**Testing Foundation Complete:** All infrastructure in place to test fixes and prevent regressions during implementation.
+## Breaking changes
 
----
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
+
+## Developing
+
+To run from source:
+
+```sh
+# Go >= 1.22
+go run . help
+```
