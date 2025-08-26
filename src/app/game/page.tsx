@@ -259,6 +259,25 @@ export default function GamePage() {
     });
   };
 
+  const handleKickedByHost = useCallback(() => {
+    if (!thisPlayer || !internalGameState?.gameId) {
+      router.push('/');
+      return;
+    }
+
+    startActionTransition(async () => {
+      try {
+        await removePlayerFromGame(
+          internalGameState.gameId,
+          thisPlayer.id,
+          'kicked'
+        );
+      } finally {
+        toast({ title: "You've been removed from the game by the host" });
+        router.push('/?step=menu&exitReason=kicked');
+      }
+    });
+  }, [internalGameState?.gameId, thisPlayer, router, toast]);
 
   // Let UnifiedTransitionOverlay handle the loading display
   // No need for local loader since overlay is global

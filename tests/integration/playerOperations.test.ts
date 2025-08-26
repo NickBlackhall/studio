@@ -298,8 +298,8 @@ describe('Integration - Player Operations', () => {
       .eq('id', game.id)
       .single();
     
-    // Judge should be reassigned to player2
-    expect(gameAfter?.current_judge_id).toBe(player2.id);
+    // Judge should be null since only 1 player remains (< MIN_PLAYERS_TO_START)
+    expect(gameAfter?.current_judge_id).toBeNull();
     
     // Ready order should be updated
     expect(gameAfter?.ready_player_order).toEqual([player2.id]);
@@ -331,5 +331,121 @@ describe('Integration - Player Operations', () => {
       .select('*')
       .eq('game_id', game.id);
     expect(playersAfter).toHaveLength(0);
+  });
+
+  test('judge leaves with enough players - next judge assigned', async () => {
+    const { removePlayerFromGame } = await import('../../src/app/game/actions');
+
+    const game = await createTestGame();
+    const player1 = await createTestPlayer(game.id, { is_ready: true });
+    const player2 = await createTestPlayer(game.id, { is_ready: true });
+    const player3 = await createTestPlayer(game.id, { is_ready: true });
+
+    await testSupabase
+      .from('games')
+      .update({
+        ready_player_order: [player1.id, player2.id, player3.id],
+        current_judge_id: player1.id,
+        game_phase: 'category_selection'
+      })
+      .eq('id', game.id);
+
+    const result = await removePlayerFromGame(game.id, player1.id, 'voluntary');
+
+    const { data: playersAfter } = await testSupabase
+      .from('players')
+      .select('id')
+      .eq('game_id', game.id);
+    expect(playersAfter).toHaveLength(2);
+
+    const { data: gameAfter } = await testSupabase
+      .from('games')
+      .select('current_judge_id, ready_player_order, game_phase')
+      .eq('id', game.id)
+      .single();
+
+    expect(gameAfter?.current_judge_id).toBe(player2.id);
+    expect(gameAfter?.ready_player_order).toEqual([player2.id, player3.id]);
+    expect(gameAfter?.game_phase).toBe('category_selection');
+
+    expect(result).toBeTruthy();
+    expect(result?.players).toHaveLength(2);
+  });
+
+  test('host leaves - game closes for others', async () => {
+    const { removePlayerFromGame } = await import('../../src/app/game/actions');
+
+    const game = await createTestGame();
+    const host = await createTestPlayer(game.id, { is_ready: true });
+    const other = await createTestPlayer(game.id, { is_ready: true });
+
+    await testSupabase
+      .from('games')
+      .update({
+        created_by_player_id: host.id,
+        ready_player_order: [host.id, other.id],
+        current_judge_id: host.id,
+        game_phase: 'category_selection'
+      })
+      .eq('id', game.id);
+
+    const result = await removePlayerFromGame(game.id, host.id, 'voluntary');
+    expect(result).toBeNull();
+
+    const { data: playersAfter } = await testSupabase
+      .from('players')
+      .select('id')
+      .eq('game_id', game.id);
+    expect(playersAfter).toHaveLength(1);
+
+    const { data: gameAfter } = await testSupabase
+      .from('games')
+      .select('transition_state, transition_message, ready_player_order')
+      .eq('id', game.id)
+      .single();
+
+    expect(gameAfter?.transition_state).toBe('resetting_game');
+    expect(gameAfter?.transition_message).toBe('Host ended the game');
+    expect(gameAfter?.ready_player_order).toEqual([other.id]);
+  });
+
+  test('rapid exits do not cause inconsistent state', async () => {
+    const { removePlayerFromGame } = await import('../../src/app/game/actions');
+
+    const game = await createTestGame();
+    const p1 = await createTestPlayer(game.id, { is_ready: true });
+    const p2 = await createTestPlayer(game.id, { is_ready: true });
+    const p3 = await createTestPlayer(game.id, { is_ready: true });
+    const p4 = await createTestPlayer(game.id, { is_ready: true });
+
+    await testSupabase
+      .from('games')
+      .update({
+        ready_player_order: [p1.id, p2.id, p3.id, p4.id],
+        current_judge_id: p1.id,
+        game_phase: 'category_selection'
+      })
+      .eq('id', game.id);
+
+    await Promise.all([
+      removePlayerFromGame(game.id, p2.id, 'voluntary'),
+      removePlayerFromGame(game.id, p3.id, 'voluntary'),
+    ]);
+
+    const { data: playersAfter } = await testSupabase
+      .from('players')
+      .select('id')
+      .eq('game_id', game.id);
+    const remainingIds = playersAfter?.map(p => p.id).sort();
+    expect(remainingIds).toEqual([p1.id, p4.id].sort());
+
+    const { data: gameAfter } = await testSupabase
+      .from('games')
+      .select('current_judge_id, ready_player_order')
+      .eq('id', game.id)
+      .single();
+
+    expect(gameAfter?.current_judge_id).toBe(p1.id);
+    expect(gameAfter?.ready_player_order).toEqual([p1.id, p4.id]);
   });
 });

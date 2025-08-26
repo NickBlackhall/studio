@@ -1270,7 +1270,7 @@ export async function removePlayerFromGame(gameId: string, playerId: string, rea
     // Fetch game and player data to understand current state
     const { data: game, error: gameError } = await supabase
       .from('games')
-      .select('current_judge_id, ready_player_order, game_phase, current_round')
+      .select('created_by_player_id, current_judge_id, ready_player_order, game_phase, current_round')
       .eq('id', gameId)
       .single();
     
@@ -1306,6 +1306,34 @@ export async function removePlayerFromGame(gameId: string, playerId: string, rea
 
     const remainingPlayersCount = (allPlayers?.length || 1) - 1;
     console.log(`🔵 ACTION: removePlayerFromGame - ${remainingPlayersCount} players will remain after removal`);
+
+    // Check if host is leaving - if so, close room for everyone
+    const isHostLeaving = game.created_by_player_id === playerId;
+    if (isHostLeaving) {
+      console.log(`🔵 ACTION: removePlayerFromGame - Host is leaving, closing room ${gameId}`);
+      
+      // Remove host's data first
+      await supabase.from('player_hands').delete().eq('player_id', playerId).eq('game_id', gameId);
+      await supabase.from('responses').delete().eq('player_id', playerId).eq('game_id', gameId);
+      await supabase.from('players').delete().eq('id', playerId).eq('game_id', gameId);
+      
+      // Update ready_player_order to remove host and set transition state
+      const updatedReadyOrder = (game.ready_player_order || []).filter(id => id !== playerId);
+      await supabase
+        .from('games')
+        .update({ 
+          ready_player_order: updatedReadyOrder,
+          current_judge_id: null,
+          transition_state: 'resetting_game',
+          transition_message: 'Host ended the game',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', gameId);
+      
+      revalidatePath('/');
+      revalidatePath('/game');
+      return null; // Host departure = room closed, no game state returned
+    }
 
     // Prepare game updates
     let gameUpdates: TablesUpdate<'games'> = { 
