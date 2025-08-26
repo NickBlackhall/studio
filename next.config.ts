@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        'localhost:9003',
+        'verbose-train-69p959w97j99h5jx9-9003.app.github.dev',
+        '*.app.github.dev'
+      ]
+    }
+  },
   images: {
     remotePatterns: [
       {

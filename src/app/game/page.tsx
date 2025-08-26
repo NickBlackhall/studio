@@ -8,7 +8,8 @@ import {
   selectCategory,
   selectWinner,
   nextRound,
-  resetGameForTesting
+  resetGameForTesting,
+  removePlayerFromGame
 } from '@/app/game/actions';
 import PinCodeModal from '@/components/PinCodeModal';
 import DevConsoleModal from '@/components/DevConsoleModal';
@@ -58,24 +59,6 @@ export default function GamePage() {
       isMountedRef.current = false;
     };
   }, []);
-  
-  // Early return after hooks are declared - this is safe
-  if (!internalGameState || !internalGameState.gameId) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-        <Image src="/ui/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
-        <h1 className="text-4xl font-bold text-destructive mb-4">Critical Game Error!</h1>
-        <p className="text-lg text-muted-foreground mb-8">
-          Could not load or initialize the game session. Please try again or reset.
-        </p>
-        <Link href="/?step=setup">
-          <Button variant="default" size="lg" className="bg-primary text-primary-foreground hover:bg-primary/80 text-lg">
-            <Home className="mr-2 h-5 w-5" /> Go to Lobby Setup
-          </Button>
-        </Link>
-      </div>
-    );
-  }
 
   // Clear global loading flag when game page is ready
   useEffect(() => {
@@ -103,6 +86,41 @@ export default function GamePage() {
         stopMusic();
     }
   }, [internalGameState?.gamePhase, playTrack, stopMusic]);
+
+  // Auto-redirect when game returns to lobby (reset scenario)
+  useEffect(() => {
+    if (internalGameState?.gamePhase === 'lobby' && !thisPlayer) {
+      console.log("GAME_PAGE: Game has returned to lobby, auto-redirecting to main menu and clearing URL state.");
+      
+      // Set reset flag to ensure clean state
+      localStorage.setItem('gameResetFlag', 'true');
+      
+      const timeoutId = setTimeout(() => {
+        // Navigate to main menu without any room code
+        router.push('/?step=menu');
+      }, 1000); // 1 second delay to avoid infinite loops
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [internalGameState?.gamePhase, thisPlayer, router]);
+  
+  // Early return after ALL hooks are declared - this is safe
+  if (!internalGameState || !internalGameState.gameId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
+        <Image src="/ui/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
+        <h1 className="text-4xl font-bold text-destructive mb-4">Critical Game Error!</h1>
+        <p className="text-lg text-muted-foreground mb-8">
+          Could not load or initialize the game session. Please try again or reset.
+        </p>
+        <Link href="/?step=setup">
+          <Button variant="default" size="lg" className="bg-primary text-primary-foreground hover:bg-primary/80 text-lg">
+            <Home className="mr-2 h-5 w-5" /> Go to Lobby Setup
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
 
 
@@ -206,28 +224,46 @@ export default function GamePage() {
     });
   };
 
+  const handleExitToLobby = async () => {
+    if (!thisPlayer || !internalGameState?.gameId) {
+      console.warn("GAME_PAGE: Cannot exit - no player or game ID");
+      router.push('/');
+      return;
+    }
+
+    console.log("GAME_PAGE: handleExitToLobby - Starting player removal");
+    setIsMenuModalOpen(false);
+    
+    startActionTransition(async () => {
+      try {
+        // Call the server action to properly remove player from game
+        await removePlayerFromGame(internalGameState.gameId, thisPlayer.id, 'voluntary');
+        console.log("GAME_PAGE: handleExitToLobby - Player removal completed");
+        
+        // Navigate to main menu with appropriate message
+        router.push('/?step=menu&exitReason=left');
+      } catch (error: any) {
+        console.error("GAME_PAGE: handleExitToLobby - Error:", error.message);
+        
+        if (isMountedRef.current) {
+          toast({
+            title: "Exit Failed", 
+            description: error.message || "Could not leave the game.",
+            variant: "destructive"
+          });
+        }
+        
+        // Even if removal failed, navigate away (player intention is clear)
+        router.push('/');
+      }
+    });
+  };
+
 
   // Let UnifiedTransitionOverlay handle the loading display
   // No need for local loader since overlay is global
   
   // UnifiedTransitionOverlay handles transition states globally
-
-  // Auto-redirect when game returns to lobby (reset scenario)
-  useEffect(() => {
-    if (internalGameState?.gamePhase === 'lobby' && !thisPlayer) {
-      console.log("GAME_PAGE: Game has returned to lobby, auto-redirecting to main menu and clearing URL state.");
-      
-      // Set reset flag to ensure clean state
-      localStorage.setItem('gameResetFlag', 'true');
-      
-      const timeoutId = setTimeout(() => {
-        // Navigate to main menu without any room code
-        router.push('/?step=menu');
-      }, 1000); // 1 second delay to avoid infinite loops
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [internalGameState?.gamePhase, thisPlayer, router]);
 
   // Determine what to render based on game state
   const shouldShowLobbyRedirect = internalGameState.gamePhase === 'lobby' && !thisPlayer;
@@ -451,11 +487,15 @@ export default function GamePage() {
               <Terminal className="mr-2 h-4 w-4" /> Dev Console
             </Button>
           )}
-          <Link href="/?step=setup" className="inline-block" onClick={() => setIsMenuModalOpen(false)}>
-            <Button variant="outline" className="w-full bg-black/10 hover:bg-black/20 text-black border-black/30">
-              <Home className="mr-2 h-4 w-4" /> Exit to Lobby
-            </Button>
-          </Link>
+          <Button 
+            variant="outline" 
+            className="w-full bg-black/10 hover:bg-black/20 text-black border-black/30"
+            onClick={handleExitToLobby}
+            disabled={isActionPending}
+          >
+            {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Home className="mr-2 h-4 w-4" />}
+            Exit to Lobby
+          </Button>
           <Button
             onClick={() => {
               setIsMenuModalOpen(false);

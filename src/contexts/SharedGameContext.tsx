@@ -220,14 +220,16 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
       .on('postgres_changes', 
           { event: '*', schema: 'public' }, 
           (payload) => {
-            console.log(`🔥 SUB_${subscriptionId}: Database update:`, payload.table, payload.eventType, 'gameId in payload:', payload.new?.game_id || payload.new?.id);
+            // Type guard for payload.new
+            const newRecord = payload.new as any;
+            console.log(`🔥 SUB_${subscriptionId}: Database update:`, payload.table, payload.eventType, 'gameId in payload:', newRecord?.game_id || newRecord?.id);
             
             // Only process if it's relevant to this game
             const isRelevant = 
-              (payload.table === 'games' && payload.new?.id === gameId) ||
-              (payload.table === 'players' && payload.new?.game_id === gameId) ||
-              (payload.table === 'submitted_cards' && payload.new?.game_id === gameId) ||
-              (payload.table === 'round_results' && payload.new?.game_id === gameId);
+              (payload.table === 'games' && newRecord?.id === gameId) ||
+              (payload.table === 'players' && newRecord?.game_id === gameId) ||
+              (payload.table === 'submitted_cards' && newRecord?.game_id === gameId) ||
+              (payload.table === 'round_results' && newRecord?.game_id === gameId);
             
             if (isRelevant) {
               console.log(`🎯 SUB_${subscriptionId}: RELEVANT update for game ${gameId} - ${payload.table}:${payload.eventType}`);

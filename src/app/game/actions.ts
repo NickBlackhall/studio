@@ -585,9 +585,8 @@ export async function cleanupEmptyRooms(): Promise<void> {
       }
     }
 
-    // Revalidate paths to update any cached data
-    revalidatePath('/');
-    revalidatePath('/?step=menu');
+    // Skip revalidatePath calls to avoid server action conflicts
+    // The cleanup is meant to be a background operation that doesn't affect UI state
     
     console.log(`🔵 ACTION: cleanupEmptyRooms - Cleanup complete. Deleted ${gamesToDelete.length} empty rooms.`);
 
@@ -1262,6 +1261,162 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   revalidatePath('/');
   revalidatePath('/game');
   return getGame(gameId); 
+}
+
+export async function removePlayerFromGame(gameId: string, playerId: string, reason: 'voluntary' | 'kicked' = 'voluntary'): Promise<GameClientState | null> {
+  console.log(`🔵 ACTION: removePlayerFromGame - Removing player ${playerId} from game ${gameId}, reason: ${reason}`);
+  
+  try {
+    // Fetch game and player data to understand current state
+    const { data: game, error: gameError } = await supabase
+      .from('games')
+      .select('current_judge_id, ready_player_order, game_phase, current_round')
+      .eq('id', gameId)
+      .single();
+    
+    if (gameError || !game) {
+      console.error(`🔴 ACTION: removePlayerFromGame - Error fetching game:`, gameError?.message);
+      throw new Error(`Failed to fetch game for player removal: ${gameError?.message || 'Game not found'}`);
+    }
+
+    const { data: playerData, error: playerError } = await supabase
+      .from('players')
+      .select('name, is_ready')
+      .eq('id', playerId)
+      .eq('game_id', gameId)
+      .single();
+    
+    if (playerError || !playerData) {
+      console.error(`🔴 ACTION: removePlayerFromGame - Player not found:`, playerError?.message);
+      throw new Error(`Player not found in game: ${playerError?.message || 'Player not found'}`);
+    }
+
+    console.log(`🔵 ACTION: removePlayerFromGame - Removing player "${playerData.name}" from game phase "${game.game_phase}"`);
+
+    // Check remaining player count
+    const { data: allPlayers, error: playersError } = await supabase
+      .from('players')
+      .select('id')
+      .eq('game_id', gameId);
+    
+    if (playersError) {
+      console.error(`🔴 ACTION: removePlayerFromGame - Error fetching all players:`, playersError.message);
+      throw new Error(`Failed to check player count: ${playersError.message}`);
+    }
+
+    const remainingPlayersCount = (allPlayers?.length || 1) - 1;
+    console.log(`🔵 ACTION: removePlayerFromGame - ${remainingPlayersCount} players will remain after removal`);
+
+    // Prepare game updates
+    let gameUpdates: TablesUpdate<'games'> = { 
+      updated_at: new Date().toISOString() 
+    };
+    
+    // Handle judge reassignment if current judge is leaving
+    if (game.current_judge_id === playerId) {
+      console.log(`🔵 ACTION: removePlayerFromGame - Current judge is leaving, reassigning...`);
+      
+      if (remainingPlayersCount >= MIN_PLAYERS_TO_START && game.ready_player_order && game.ready_player_order.length > 1) {
+        // Find next judge from ready player order
+        const remainingPlayers = game.ready_player_order.filter(id => id !== playerId);
+        
+        if (remainingPlayers.length > 0) {
+          const currentJudgeIndex = game.ready_player_order.findIndex(id => id === playerId);
+          // Get next player in rotation, wrap around if needed
+          const nextJudgeIndex = currentJudgeIndex >= remainingPlayers.length ? 0 : currentJudgeIndex;
+          const newJudgeId = remainingPlayers[nextJudgeIndex];
+          gameUpdates.current_judge_id = newJudgeId;
+          console.log(`🔵 ACTION: removePlayerFromGame - New judge assigned: ${newJudgeId}`);
+        }
+      } else {
+        // Not enough players for game continuation
+        gameUpdates.current_judge_id = null;
+        console.log(`🔵 ACTION: removePlayerFromGame - No judge assigned (insufficient players)`);
+      }
+    }
+
+    // Update ready_player_order by removing the leaving player
+    let updatedReadyOrder = game.ready_player_order || [];
+    if (playerData.is_ready && updatedReadyOrder.includes(playerId)) {
+      updatedReadyOrder = updatedReadyOrder.filter(id => id !== playerId);
+      gameUpdates.ready_player_order = updatedReadyOrder;
+      console.log(`🔵 ACTION: removePlayerFromGame - Updated ready order: [${updatedReadyOrder.join(', ')}]`);
+    }
+
+    // Reset to lobby if too few players remain and not already in lobby
+    if (remainingPlayersCount < MIN_PLAYERS_TO_START && game.game_phase !== 'lobby') {
+      console.log(`🔵 ACTION: removePlayerFromGame - Too few players remaining, resetting to lobby`);
+      gameUpdates.game_phase = 'lobby';
+      gameUpdates.current_round = 0;
+      gameUpdates.current_scenario_id = null;
+      if (!gameUpdates.current_judge_id) {
+        gameUpdates.current_judge_id = null;
+      }
+    }
+
+    // Remove player's hand cards first (foreign key constraint)
+    const { error: handDeleteError } = await supabase
+      .from('player_hands')
+      .delete()
+      .eq('player_id', playerId)
+      .eq('game_id', gameId);
+    
+    if (handDeleteError) {
+      console.error(`🔴 ACTION: removePlayerFromGame - Error removing player hand:`, handDeleteError.message);
+    }
+
+    // Remove player's responses for current round (if any)
+    const { error: responsesDeleteError } = await supabase
+      .from('responses')
+      .delete()
+      .eq('player_id', playerId)
+      .eq('game_id', gameId);
+    
+    if (responsesDeleteError) {
+      console.error(`🔴 ACTION: removePlayerFromGame - Error removing player responses:`, responsesDeleteError.message);
+    }
+
+    // Update game state first
+    const { error: gameUpdateError } = await supabase
+      .from('games')
+      .update(gameUpdates)
+      .eq('id', gameId);
+    
+    if (gameUpdateError) {
+      console.error(`🔴 ACTION: removePlayerFromGame - Error updating game:`, gameUpdateError.message);
+      throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
+    }
+
+    // Finally, remove the player
+    const { error: playerDeleteError } = await supabase
+      .from('players')
+      .delete()
+      .eq('id', playerId)
+      .eq('game_id', gameId);
+    
+    if (playerDeleteError) {
+      console.error(`🔴 ACTION: removePlayerFromGame - Error removing player:`, playerDeleteError.message);
+      throw new Error(`Failed to remove player: ${playerDeleteError.message}`);
+    }
+
+    console.log(`🔵 ACTION: removePlayerFromGame - Successfully removed player ${playerId} (${reason}) from game ${gameId}`);
+    
+    // Revalidate paths to update cached data
+    revalidatePath('/');
+    revalidatePath('/game');
+    
+    // Return updated game state for remaining players (null if no players left)
+    if (remainingPlayersCount === 0) {
+      console.log(`🔵 ACTION: removePlayerFromGame - No players remaining, game will be cleaned up`);
+      return null;
+    }
+    
+    return getGame(gameId);
+
+  } catch (error: any) {
+    console.error('🔴 ACTION: removePlayerFromGame - Unexpected error:', error.message);
+    throw error;
+  }
 }
 
     

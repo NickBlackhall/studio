@@ -2,6 +2,9 @@
 // We will rely on database.types.ts for the core database object.
 // These types can be specific to application logic or client-side state if needed.
 
+// Re-export Database type for e2e tests
+export type { Database } from './database.types';
+
 export type TransitionState = 
   | 'idle' 
   | 'starting_game' 

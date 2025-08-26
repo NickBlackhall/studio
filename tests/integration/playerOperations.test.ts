@@ -248,4 +248,88 @@ describe('Integration - Player Operations', () => {
     // Score should be either 1 or 2 (depending on timing)
     expect([1, 2]).toContain(finalPlayer.score);
   });
+
+  test('removePlayerFromGame removes player and updates game state', async () => {
+    // Import the function we're testing
+    const { removePlayerFromGame } = await import('../../src/app/game/actions');
+    
+    const game = await createTestGame();
+    const player1 = await createTestPlayer(game.id, { 
+      name: `${TEST_PREFIX}Player1`, 
+      is_ready: true 
+    });
+    const player2 = await createTestPlayer(game.id, { 
+      name: `${TEST_PREFIX}Player2`, 
+      is_ready: true 
+    });
+
+    // Set up ready player order and make player1 the judge
+    await testSupabase
+      .from('games')
+      .update({
+        ready_player_order: [player1.id, player2.id],
+        current_judge_id: player1.id,
+        game_phase: 'category_selection'
+      })
+      .eq('id', game.id);
+
+    // Verify initial state
+    const { data: playersBefore } = await testSupabase
+      .from('players')
+      .select('*')
+      .eq('game_id', game.id);
+    expect(playersBefore).toHaveLength(2);
+
+    // Remove player1 (the judge)
+    const result = await removePlayerFromGame(game.id, player1.id, 'voluntary');
+
+    // Verify player was removed
+    const { data: playersAfter } = await testSupabase
+      .from('players')
+      .select('*')
+      .eq('game_id', game.id);
+    expect(playersAfter).toHaveLength(1);
+    expect(playersAfter?.[0]?.id).toBe(player2.id);
+
+    // Verify game state was updated
+    const { data: gameAfter } = await testSupabase
+      .from('games')
+      .select('*')
+      .eq('id', game.id)
+      .single();
+    
+    // Judge should be reassigned to player2
+    expect(gameAfter?.current_judge_id).toBe(player2.id);
+    
+    // Ready order should be updated
+    expect(gameAfter?.ready_player_order).toEqual([player2.id]);
+    
+    // Should reset to lobby since only 1 player remains (< MIN_PLAYERS_TO_START)
+    expect(gameAfter?.game_phase).toBe('lobby');
+
+    // Result should return updated game state
+    expect(result).toBeTruthy();
+    expect(result?.players).toHaveLength(1);
+    expect(result?.players[0]?.id).toBe(player2.id);
+  });
+
+  test('removePlayerFromGame handles last player removal', async () => {
+    const { removePlayerFromGame } = await import('../../src/app/game/actions');
+    
+    const game = await createTestGame();
+    const player = await createTestPlayer(game.id, { name: `${TEST_PREFIX}OnlyPlayer` });
+
+    // Remove the only player
+    const result = await removePlayerFromGame(game.id, player.id, 'voluntary');
+
+    // Should return null when no players remain
+    expect(result).toBeNull();
+
+    // Verify player was removed
+    const { data: playersAfter } = await testSupabase
+      .from('players')
+      .select('*')
+      .eq('game_id', game.id);
+    expect(playersAfter).toHaveLength(0);
+  });
 });
