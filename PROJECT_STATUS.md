@@ -28,6 +28,15 @@
 - Clean state transitions back to lobby
 - Automatic navigation to main menu
 
+**✅ Host & Player Management** *(New - August 2025)*
+- **Host Room Ownership** - First player to create room becomes host (`created_by_player_id`)
+- **Player Removal System** - Clean database cleanup when players exit voluntarily
+- **Host Departure Handling** - When host leaves, room closes for all players with coordinated transition
+- **Judge Reassignment** - Automatic rotation when current judge leaves mid-game
+- **Lobby Reset Logic** - Game returns to lobby when <2 players remain
+- **Kicked Player Support** - Backend ready for host kicking with proper notifications
+- **Multi-Player Coordination** - Uses transition state system for real-time player management
+
 ### 🛠️ System Features
 
 **✅ Automatic Room Cleanup**

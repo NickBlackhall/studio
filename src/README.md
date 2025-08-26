@@ -40,6 +40,13 @@ This section tracks recent improvements and bug fixes that have impacted gamepla
 - **Improved UI Responsiveness for Ready Toggle:** Fixed a noticeable delay when players toggled their ready status in the lobby by implementing an "optimistic update" approach.
 - **Fixed Real-Time Instability & Flickering:** Resolved a major bug where multiple, rapid database updates would trigger excessive re-renders. Implemented a debouncing mechanism to intelligently bundle these updates into a single, smooth refresh, dramatically improving UI stability.
 - **Fixed Spectator Black Screen:** Resolved a critical bug where new users would see a black screen if they tried to join a game that was already in progress.
+- **Implemented Host & Player Management System (August 2025):** Added comprehensive player removal and host powers functionality:
+  - **Host Room Ownership:** First player to create a room becomes the host with special privileges
+  - **Host Departure Handling:** When host leaves, room closes gracefully for all players with transition coordination
+  - **Player Exit System:** Clean database cleanup when players leave voluntarily, with proper judge reassignment
+  - **Multi-Player Coordination:** Uses proven transition state architecture for real-time player management
+  - **Judge Rotation Logic:** Automatic reassignment when current judge leaves mid-game
+  - **Lobby Reset:** Game returns to lobby phase when fewer than 2 players remain
 
 ## Roadmap & Next Steps
 
