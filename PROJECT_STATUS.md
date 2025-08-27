@@ -28,14 +28,17 @@
 - Clean state transitions back to lobby
 - Automatic navigation to main menu
 
-**✅ Host & Player Management** *(New - August 2025)*
-- **Host Room Ownership** - First player to create room becomes host (`created_by_player_id`)
-- **Player Removal System** - Clean database cleanup when players exit voluntarily
+**✅ Host & Player Management** *(Implemented - August 2025)*
+- **Host Room Ownership** - Room creator becomes permanent host (`created_by_player_id`)
+- **Host Visual Indicators** - Crown (👑) emoji shows host in all player lists
+- **Host-Only Dev Console** - Secure access to player management tools (development mode)
+- **Player Kicking System** - Host can remove disruptive players with proper notifications
+- **Player Removal System** - Clean database cleanup when players exit voluntarily or are kicked
 - **Host Departure Handling** - When host leaves, room closes for all players with coordinated transition
 - **Judge Reassignment** - Automatic rotation when current judge leaves mid-game
-- **Lobby Reset Logic** - Game returns to lobby when <2 players remain
-- **Kicked Player Support** - Backend ready for host kicking with proper notifications
-- **Multi-Player Coordination** - Uses transition state system for real-time player management
+- **Lobby Reset Logic** - Game returns to lobby when <2 players remain (e.g., 2-player kick scenario)
+- **Multi-Player Coordination** - Uses proven transition state system for real-time notifications
+- **Toast Notifications** - Success/error feedback for hosts, notification toasts for kicked players
 
 ### 🛠️ System Features
 
@@ -77,12 +80,34 @@
 - System ready for continued feature development
 - Performance validated with multi-player scenarios
 
+### ⚠️ Immediate Testing Needs
+
+**Host Management System**: Implementation complete, but requires manual verification
+
+**Critical Tests Needed**:
+1. **Host Creation Flow** - Verify first player gets crown (👑) and host powers
+2. **Dev Console Access** - Test Menu → Dev Console flow, verify host-only access  
+3. **Player Kicking** - Test kick button functionality, success/error toasts, multi-player coordination
+4. **Visual Indicators** - Confirm crown appears in all player lists and UI
+5. **Edge Cases** - 2-player kick → lobby reset, host departure behavior
+
+**Testing Commands**:
+```bash
+# Start dev server
+npm run dev
+
+# Create game with 2+ players
+# HOST: Menu → Dev Console → PIN: 6425 → Test kick functionality
+# Verify host sees crown (👑) and kick buttons for other players only
+```
+
 ### 🔗 Key Documentation
 
-- `/workspaces/studio/CLAUDE.md` - Comprehensive session notes and technical solutions
-- `/workspaces/studio/e2e/` - End-to-end test specifications  
+- `/workspaces/studio/CLAUDE.md` - Comprehensive session notes and technical solutions  
+- `/workspaces/studio/HOST_SYSTEM_PLANNING_GUIDE.md` - Host system implementation roadmap
+- `/workspaces/studio/e2e/tests/host-kicking.spec.ts` - Playwright test suite for host functionality
 - `/workspaces/studio/tests/` - Unit and integration test suites
 
 ---
 
-**Status**: Production-ready foundation with stable core functionality. Ready for feature expansion and deployment.
+**Status**: Implementation complete with comprehensive host management system. Manual browser verification needed to confirm user experience before production deployment.

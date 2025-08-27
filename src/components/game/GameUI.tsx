@@ -110,6 +110,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
 
           {/* Scores Button */}
           <button
+            data-testid="scores-button"
             onClick={handleScoresClick}
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
             style={{
@@ -156,6 +157,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
 
           {/* Menu Button */}
           <button
+            data-testid="menu-button"
             onClick={handleMenuClick}
             className="absolute pointer-events-auto transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
             style={{

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { PureMorphingModal } from './PureMorphingModal';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -19,7 +20,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
-import { resetGameForTesting } from '@/app/game/actions';
+import { resetGameForTesting, removePlayerFromGame } from '@/app/game/actions';
 import { useToast } from '@/hooks/use-toast';
 
 interface DevConsoleModalProps {
@@ -41,8 +42,12 @@ export default function DevConsoleModal({
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isActionPending, setIsActionPending] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const { toast } = useToast();
+
+  // Check if current player is the host (room creator)
+  const isHost = gameState?.hostPlayerId === thisPlayer?.id;
 
   const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +81,6 @@ export default function DevConsoleModal({
     setError('');
     setIsSubmitting(false);
     setIsAuthenticated(false);
-    setIsActionPending(false);
     onClose();
   };
 
@@ -89,21 +93,46 @@ export default function DevConsoleModal({
   };
 
   const handleResetGame = async () => {
-    setIsActionPending(true);
-    try {
-      await resetGameForTesting();
-      toast({ title: "Game Reset", description: "Game has been reset successfully." });
-      handleClose();
-    } catch (error: any) {
-      toast({ 
-        title: "Reset Failed", 
-        description: error.message || "Failed to reset game.", 
-        variant: "destructive" 
-      });
-    } finally {
-      setIsActionPending(false);
-    }
+    startTransition(async () => {
+      try {
+        await resetGameForTesting();
+        toast({ title: "Game Reset", description: "Game has been reset successfully." });
+        handleClose();
+      } catch (error: any) {
+        toast({ 
+          title: "Reset Failed", 
+          description: error.message || "Failed to reset game.", 
+          variant: "destructive" 
+        });
+      }
+    });
   };
+
+  const handleKickPlayer = async (playerToKick: PlayerClientState) => {
+    if (!gameState?.gameId) return;
+    
+    startTransition(async () => {
+      try {
+        await removePlayerFromGame(gameState.gameId, playerToKick.id, 'kicked');
+        toast({ 
+          title: "Player Removed", 
+          description: `${playerToKick.name} has been removed from the game.` 
+        });
+      } catch (error: any) {
+        toast({ 
+          title: "Kick Failed", 
+          description: error.message || "Failed to remove player.", 
+          variant: "destructive" 
+        });
+      }
+    });
+  };
+
+  // Only hosts can access dev console (with fallback for development)
+  // In production this component won't even be reachable due to button visibility logic
+  if (!isHost && process.env.NODE_ENV !== 'development') {
+    return null;
+  }
 
   // Show PIN entry if not authenticated
   if (!isAuthenticated) {
@@ -227,30 +256,31 @@ export default function DevConsoleModal({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {gameState?.players.map(player => (
-              <div key={player.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium text-sm">{player.name}</span>
-                  {player.isJudge && <Crown className="h-3 w-3 text-yellow-500" />}
-                  <Badge variant="secondary" className="text-xs">{player.score} pts</Badge>
+            {gameState?.players.map(player => {
+              const isPlayerHost = gameState?.hostPlayerId === player.id;
+              const isCurrentPlayer = player.id === thisPlayer?.id;
+              
+              return (
+                <div key={player.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium text-sm">{player.name}</span>
+                    {isPlayerHost && <span className="text-xs">👑</span>}
+                    {player.isJudge && <Crown className="h-3 w-3 text-yellow-500" />}
+                    <Badge variant="secondary" className="text-xs">{player.score} pts</Badge>
+                  </div>
+                  {!isCurrentPlayer && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={isPending}
+                      onClick={() => handleKickPlayer(player)}
+                    >
+                      <UserMinus className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  disabled={isActionPending}
-                  onClick={() => {
-                    // TODO: Implement removePlayer action
-                    toast({ 
-                      title: "Coming Soon", 
-                      description: "Player removal will be implemented next.",
-                      variant: "default" 
-                    });
-                  }}
-                >
-                  <UserMinus className="h-3 w-3" />
-                </Button>
-              </div>
-            )) || <p className="text-sm text-muted-foreground">No players found</p>}
+              );
+            }) || <p className="text-sm text-muted-foreground">No players found</p>}
           </CardContent>
         </Card>
 
@@ -267,7 +297,7 @@ export default function DevConsoleModal({
               <Button 
                 size="sm" 
                 variant="outline"
-                disabled={isActionPending}
+                disabled={isPending}
                 onClick={() => {
                   // TODO: Implement phase controls
                   toast({ 
@@ -283,7 +313,7 @@ export default function DevConsoleModal({
               <Button 
                 size="sm" 
                 variant="outline"
-                disabled={isActionPending}
+                disabled={isPending}
                 onClick={() => {
                   // TODO: Implement round skip
                   toast({ 
@@ -313,10 +343,10 @@ export default function DevConsoleModal({
               onClick={handleResetGame}
               variant="destructive"
               size="sm"
-              disabled={isActionPending}
+              disabled={isPending}
               className="w-full"
             >
-              {isActionPending ? (
+              {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Resetting...
@@ -339,7 +369,7 @@ export default function DevConsoleModal({
             variant="outline" 
             onClick={handleClose}
             className="w-full"
-            disabled={isActionPending}
+            disabled={isPending}
           >
             Close Console
           </Button>

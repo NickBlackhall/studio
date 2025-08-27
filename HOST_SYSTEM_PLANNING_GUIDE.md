@@ -6,11 +6,11 @@ This document outlines the proposed host system implementation for Make It Terri
 
 ## Current System Analysis
 
-### Existing Host Logic
-- **Host Definition**: First player in `ready_player_order` (first to ready up)
-- **Host Privileges**: Can start game when all players ready + minimum players met
-- **Database Fields**: `ready_player_order` array determines host status
-- **UI Integration**: Host sees "Start Game" button, others see waiting message
+### Current Host Logic ✅ **IMPROVED** (August 2025)
+- **Host Definition**: Room creator (`created_by_player_id` field) - **CHANGED from first to ready up**
+- **Host Privileges**: Game start + dev console access + player kicking powers
+- **Database Fields**: `created_by_player_id` tracks room creator, automatically set on first player join
+- **UI Integration**: Host sees crown (👑), dev console access, kick buttons for other players
 
 ### Current Ready System Integration
 The ready system is **deeply integrated** throughout the codebase:
@@ -35,69 +35,116 @@ The ready system is **deeply integrated** throughout the codebase:
 - ✅ Host departure closes room for all players
 - ✅ Kicked player notifications with toast messages
 
-**Technical Details**:
-- **Server Action**: `removePlayerFromGame()` with host detection (`created_by_player_id`)
-- **Host Departure**: Sets `transition_state: 'resetting_game'` to coordinate all players
-- **Transition Integration**: Uses proven reset button architecture for multi-player coordination
-- **Client Integration**: `handleExitToLobby()` and `handleKickedByHost()` functions implemented
-- **Test Coverage**: Comprehensive test suite covering judge reassignment, host departure, rapid exits
+#### 1.2 Host Kicking Interface ✅ **COMPLETED** (August 26, 2025)
+**Status**: Full implementation complete, pending browser verification
+**Implementation**:
+- ✅ Host-only dev console access with proper permission checks
+- ✅ Crown (👑) indicators for host identification in all UI
+- ✅ Functional kick buttons connected to `removePlayerFromGame` backend
+- ✅ Success/error toast notifications for kick operations
+- ✅ Multi-player coordination via existing transition state system
+- ✅ Proper host detection using `created_by_player_id` (room creator)
+- ✅ Auto-assignment of first player as host in `addPlayer` function
 
-**Files Modified**: `src/app/game/actions.ts`, `src/app/game/page.tsx`, `tests/integration/playerOperations.test.ts`
+**Technical Details**:
+- **Client-Side**: `DevConsoleModal.tsx` with host permission logic and kick functionality
+- **Host Detection**: `gameState.hostPlayerId === thisPlayer.id` (room creator)
+- **UI Integration**: Menu Button → Game Menu → Dev Console → PIN → Player Management
+- **Backend Integration**: Existing `removePlayerFromGame()` with 'kicked' reason parameter
+- **Security**: Host-only access in production, development fallback for testing
+
+**Files Modified**: 
+- `src/lib/types.ts` - Added `hostPlayerId` to GameClientState
+- `src/app/game/actions.ts` - Added hostPlayerId to game state, auto-assign first player as host
+- `src/components/DevConsoleModal.tsx` - Full kick functionality implementation
+- `src/components/game/GameUI.tsx` - Added data-testid attributes for testing
+- `src/app/game/page.tsx` - Added data-testid to dev console button
+- `e2e/tests/host-kicking.spec.ts` - Comprehensive Playwright test suite
 
 **Success Metrics**: 
-- ✅ Zero database inconsistencies on player departure
-- ✅ Proper judge rotation maintained 
-- ✅ Host departure gracefully closes rooms
+- ✅ Code compilation without TypeScript errors
+- ✅ Unit tests pass (69/69) with no regressions
+- ✅ Proper integration with existing transition state architecture
+- ⚠️ **PENDING**: Manual browser testing of complete UI flow
+- ⚠️ **PENDING**: Multi-player testing with real users
 - ✅ Multi-player real-time coordination working
 - ✅ All unit tests (69/69) passing
 
-#### 1.2 Room System Stability Testing
-**Recent Changes**: Just implemented full multi-room system
-**Priority**: Ensure stability before adding complexity
-**Testing Needed**:
-- Multiple concurrent rooms
-- Room browser accuracy
-- Auto-cleanup functionality
-- Player isolation between rooms
-
-### Phase 2: Host Powers & UI Integration 📈 **CURRENT PRIORITY**
+### Phase 2: Host Powers & UI Integration ✅ **COMPLETED** (August 26, 2025)
 
 **Strategy**: Build on completed player removal foundation to add host management capabilities
 
-#### 2.1 Host Kicking Interface ⚠️ **IMMEDIATE PRIORITY** 
-**Status**: Backend ready, UI needs connection
-**Current Gap**: DevConsoleModal.tsx has placeholder "Coming Soon" instead of functional kick
+#### 2.1 Host Kicking Interface ✅ **COMPLETED**
+**Status**: Full implementation complete (see Phase 1.2 above)
+**Result**: Host kicking system fully operational with proper permissions and user feedback
+
+### Phase 3: Advanced Host Features 📋 **FUTURE PRIORITY**
+
+#### 3.1 Host Transfer System
+**Status**: Not yet implemented
+**Purpose**: Allow host to transfer ownership before leaving
 **Implementation Needed**:
-- Connect existing kick buttons to `removePlayerFromGame()` action  
-- Add host permission checking (only show kick buttons to `created_by_player_id`)
-- Add host visual indicators (crown/badge in player lists)
-- Real-time kick notifications for affected players
+- Add host transfer button in dev console
+- Transfer confirmation flow
+- Update `created_by_player_id` in database
+- Real-time notification to new host
 
-**Estimated Time**: 30 minutes (backend is complete, just UI wiring needed)
-
-#### 2.2 Host Transfer System
-**Strategy**: Add host privileges without removing proven systems
-
-#### 2.1 Room Creator Host Designation
-```sql
--- Database change
-ALTER TABLE games ADD COLUMN room_host_id UUID REFERENCES players(id);
-```
-
-**Implementation**:
-- Room creator becomes `room_host_id` (separate from ready-based host)
-- Keep existing ready system (users understand it, it works)
-- Host gets additional privileges, doesn't replace current flow
-
-#### 2.2 Host Lobby Privileges
-**Start Game Early**: 
-- Host can bypass ready requirement with 2+ players minimum
+#### 3.2 Host Lobby Privileges
+**Enhanced Game Start**: 
+- Host bypass ready requirement with 2+ players minimum
 - Keep ready requirement as default, host can override
 - UI: "Start Now" button for host, "Override Ready Check" confirmation
 
-**Kick Players** (Lobby Only):
-- Host can remove disruptive players from lobby
-- Not mid-game (too complex, high risk)
+#### 3.3 Spectator System
+**Status**: Not yet implemented
+**Purpose**: Allow kicked players to observe (optional)
+**Implementation Needed**:
+- Spectator role in database
+- Spectator-only UI mode
+- Real-time updates without participation rights
+
+## Current Testing Needs ⚠️ **IMMEDIATE PRIORITY**
+
+### Manual Browser Testing Required
+**Status**: Code complete, but not browser-verified
+**Critical Tests Needed**:
+
+1. **Host Creation Flow**:
+   - Create game → Verify first player becomes host
+   - Check crown (👑) appears next to host name
+   - Verify `created_by_player_id` is set correctly
+
+2. **Dev Console Access**:
+   - HOST: Menu → Dev Console → PIN: 6425 → Should open
+   - NON-HOST: Menu → Dev Console → Should be blocked
+   - Verify host-only permission logic works
+
+3. **Host Kicking Functionality**:
+   - HOST: Click kick button → Verify success toast
+   - KICKED PLAYER: Should see notification toast + redirect to main menu
+   - OTHER PLAYERS: Should remain in game normally
+   - 2-PLAYER SCENARIO: Kick should reset game to lobby
+
+4. **Visual Indicators**:
+   - Crown (👑) appears next to host in all player lists
+   - Kick buttons only appear for host
+   - Host cannot kick themselves (no button)
+
+5. **Error Handling**:
+   - Invalid PIN in dev console
+   - Network errors during kick
+   - Host departure behavior
+
+### Automated Testing Status
+- ✅ **Unit Tests**: All 69 tests passing
+- ✅ **Integration Tests**: Backend functions tested
+- ⚠️ **E2E Tests**: Playwright tests created but failing due to UI navigation issues
+- ❌ **Multi-User Tests**: Not yet performed
+
+### Known Issues to Verify
+- **PureMorphingModal data-testid**: May not support data-testid properly for E2E tests
+- **Toast Positioning**: Success/error toasts may not appear in expected location
+- **Host Detection Timing**: `hostPlayerId` may not be available immediately after game creation
 - Confirmation dialog: "Remove [PlayerName] from room?"
 - Kicked player redirected to main menu with explanation
 

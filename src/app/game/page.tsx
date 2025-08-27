@@ -454,6 +454,7 @@ export default function GamePage() {
         variant="settings"
         icon="⚙️"
         title="Game Menu"
+        data-testid="game-menu-modal"
       >
         <div className="text-black/90 mb-5">
           Options and actions for the game.
@@ -496,6 +497,7 @@ export default function GamePage() {
           </Button>
           {(process.env.NODE_ENV === 'development' || (typeof window !== 'undefined' && window.location.search.includes('dev'))) && (
             <Button 
+              data-testid="dev-console-button"
               variant="outline" 
               onClick={() => {
                 setIsMenuModalOpen(false);

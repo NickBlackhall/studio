@@ -272,6 +272,7 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
     categories: categories,
     lastWinner: lastWinnerDetails,
     winningPlayerId: gameRow.overall_winner_player_id,
+    hostPlayerId: gameRow.created_by_player_id,
     ready_player_order: dbReadyPlayerOrder,
     transitionState: gameRow.transition_state as GameClientState['transitionState'],
     transitionMessage: gameRow.transition_message,
@@ -362,6 +363,23 @@ export async function addPlayer(name: string, avatar: string, targetGameId?: str
   if (!newPlayer) {
     console.error('🔴 ACTION: addPlayer - New player data was null after insert.');
     throw new Error('Failed to add player, server returned no player data.');
+  }
+
+  // Check if this is the first player - if so, make them the host
+  const { data: allPlayers } = await supabase
+    .from('players')
+    .select('id')
+    .eq('game_id', gameId);
+  
+  const playerCount = allPlayers?.length || 0;
+  
+  // If this is the first player, set them as the host
+  if (playerCount === 1 && !gameRow.created_by_player_id) {
+    console.log(`🔵 ACTION: addPlayer - Setting ${newPlayer.id} as host (first player)`);
+    await supabase
+      .from('games')
+      .update({ created_by_player_id: newPlayer.id })
+      .eq('id', gameId);
   }
 
   console.log(`🔵 ACTION: addPlayer - Successfully added player ${newPlayer.id} ("${name}"). Revalidating paths.`);

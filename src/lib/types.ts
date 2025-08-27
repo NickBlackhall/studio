@@ -77,6 +77,7 @@ export interface GameClientState {
   };
   
   winningPlayerId?: string | null; // Overall game winner
+  hostPlayerId?: string | null; // Room creator/host player ID
 
   categories: string[]; 
   
