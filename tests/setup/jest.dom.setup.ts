@@ -1,6 +1,16 @@
 require('whatwg-fetch');
 import '@testing-library/jest-dom';
 
+// Polyfill TextEncoder/TextDecoder for jose JWT library
+const { TextEncoder, TextDecoder } = require('util');
+(globalThis as any).TextEncoder = TextEncoder;
+(globalThis as any).TextDecoder = TextDecoder;
+
+// Polyfill structuredClone for jose JWT library
+if (!globalThis.structuredClone) {
+  globalThis.structuredClone = (obj: any) => JSON.parse(JSON.stringify(obj));
+}
+
 // Mock lucide-react icons for unit tests
 jest.mock('lucide-react', () => ({
   Menu: () => 'Menu',

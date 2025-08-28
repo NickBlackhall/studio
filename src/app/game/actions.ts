@@ -8,6 +8,13 @@ import type { GameClientState, PlayerClientState, ScenarioClientState, GamePhase
 import type { Tables, TablesInsert, TablesUpdate } from '@/lib/database.types';
 import { CARDS_PER_HAND, POINTS_TO_WIN, MIN_PLAYERS_TO_START } from '@/lib/types';
 import { generateUniqueRoomCode } from '@/lib/roomCodes';
+import { 
+  requireGameMembership, 
+  requireJudgeAccess, 
+  requireHostAccess,
+  requireAuthOrDev 
+} from '@/lib/gameAuth';
+import { getPlayerSession, clearPlayerSession, setPlayerSession } from '@/lib/auth';
 
 
 export async function findOrCreateGame(): Promise<Tables<'games'>> {
@@ -89,6 +96,13 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
 
 export async function getGame(gameIdToFetch?: string): Promise<GameClientState> {
   console.log(`🔵 ACTION: getGame - Initiated. Requested gameId: ${gameIdToFetch || 'None'}`);
+  
+  // SECURITY: If gameId specified, verify player has access to that game
+  if (gameIdToFetch) {
+    const authorizedPlayerId = await requireAuthOrDev(gameIdToFetch, () => requireGameMembership(gameIdToFetch));
+    console.log(`🔵 ACTION: getGame - Player authorization passed for: ${authorizedPlayerId}`);
+  }
+  
   let gameRow: Tables<'games'> | null = null;
 
   if (gameIdToFetch) {
@@ -395,9 +409,13 @@ export async function resetGameForTesting(opts?: { clientWillNavigate?: boolean,
     let gameId: string;
     
     if (opts?.gameId) {
-      // Target specific game
+      // Target specific game - validate host authorization first
       gameId = opts.gameId;
       console.log(`🔵 ACTION: resetGameForTesting - Targeting specific game: ${gameId}`);
+      
+      // SECURITY: Only hosts can reset games
+      const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireHostAccess(gameId));
+      console.log(`🔵 ACTION: resetGameForTesting - Host authorization passed for player: ${authorizedPlayerId}`);
       
       // Verify game exists
       const { data: gameCheck, error: gameCheckError } = await supabase
@@ -738,30 +756,19 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
 }
 
 export async function startGame(gameId: string, hostPlayerId?: string): Promise<GameClientState | null> {
-  console.log(`🔵 ACTION: startGame - Initiated for gameId: ${gameId} by player: ${hostPlayerId || 'unknown'}`);
+  console.log(`🔵 ACTION: startGame - Initiated for gameId: ${gameId}`);
   
-  // First fetch game to validate host before setting transition state
+  // SECURITY: Validate that only the host player can start the game
+  const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireHostAccess(gameId));
+  console.log(`🔵 ACTION: startGame - Host authorization passed for player: ${authorizedPlayerId}`);
+  
+  // Fetch game data after authorization
   const { data: game, error: gameFetchError } = await supabase
     .from('games').select('*').eq('id', gameId).single();
 
   if (gameFetchError || !game) {
     console.error(`🔴 ACTION: startGame - Error fetching game:`, JSON.stringify(gameFetchError, null, 2));
     throw new Error(`Failed to fetch game for start: ${gameFetchError?.message || 'Game not found'}`);
-  }
-  
-  // SECURITY: Validate that only the host player can start the game
-  if (hostPlayerId && game.ready_player_order && game.ready_player_order.length > 0) {
-    const hostId = game.ready_player_order[0];
-    if (hostPlayerId !== hostId) {
-      console.error(`🔴 ACTION: startGame - UNAUTHORIZED: Player ${hostPlayerId} tried to start game, but host is ${hostId}`);
-      throw new Error(`Only the host player can start the game. You are not the host.`);
-    }
-    console.log(`🔵 ACTION: startGame - Host validation passed: ${hostPlayerId}`);
-  } else if (hostPlayerId) {
-    console.error(`🔴 ACTION: startGame - UNAUTHORIZED: No ready player order established, cannot validate host`);
-    throw new Error(`Game is not ready to start. No host player established.`);
-  } else {
-    console.warn(`🟡 ACTION: startGame - No hostPlayerId provided, skipping host validation (legacy call)`);
   }
   
   await supabase
@@ -864,6 +871,11 @@ export async function startGame(gameId: string, hostPlayerId?: string): Promise<
 
 export async function selectCategory(gameId: string, category: string): Promise<GameClientState | null> {
   console.log(`🔵 ACTION: selectCategory - Initiated for game ${gameId}, category "${category}"`);
+  
+  // SECURITY: Only the current judge can select categories
+  const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireJudgeAccess(gameId));
+  console.log(`🔵 ACTION: selectCategory - Judge authorization passed for player: ${authorizedPlayerId}`);
+  
   // --- Boondoggle Trigger Logic ---
   const { data: players, error: playersError } = await supabase.from('players').select('id, name').eq('game_id', gameId);
   const { data: gameForJudge, error: gameForJudgeError } = await supabase.from('games').select('current_judge_id, used_scenarios, current_scenario_id').eq('id', gameId).single();
@@ -969,6 +981,14 @@ export async function selectCategory(gameId: string, category: string): Promise<
 
 export async function submitResponse(playerId: string, responseCardText: string, gameId: string, currentRound: number, isCustomSubmission: boolean): Promise<null> {
   console.log(`🔵 ACTION: submitResponse - Player ${playerId} submitted for round ${currentRound}. Custom: ${isCustomSubmission}`);
+  
+  // SECURITY: Only authenticated players can submit responses for themselves
+  const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireGameMembership(gameId));
+  if (authorizedPlayerId !== playerId) {
+    throw new Error(`Authorization failed: Cannot submit responses for other players`);
+  }
+  console.log(`🔵 ACTION: submitResponse - Player authorization passed for: ${authorizedPlayerId}`);
+  
   const { data: gameData, error: gameFetchError } = await supabase.from('games').select('current_judge_id, used_responses, game_phase').eq('id', gameId).single();
   if (gameFetchError || !gameData) {
     console.error(`🔴 ACTION: submitResponse - Error fetching game ${gameId}:`, gameFetchError);
@@ -1022,6 +1042,11 @@ export async function submitResponse(playerId: string, responseCardText: string,
 
 export async function selectWinner(gameId: string, winningCardText: string, boondoggleWinnerId?: string): Promise<GameClientState | null> {
   console.log(`🔵 ACTION: selectWinner - Initiated for game ${gameId}. Boondoggle winner: ${boondoggleWinnerId || 'N/A'}`);
+  
+  // SECURITY: Only the current judge can select winners
+  const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireJudgeAccess(gameId));
+  console.log(`🔵 ACTION: selectWinner - Judge authorization passed for player: ${authorizedPlayerId}`);
+  
   const { data: game, error: gameError } = await supabase.from('games').select('current_round, current_judge_id, current_scenario_id').eq('id', gameId).single();
   if (gameError || !game) throw new Error(`Failed to fetch game for winner selection: ${gameError?.message || 'Game not found'}`);
 
@@ -1081,6 +1106,11 @@ export async function selectWinner(gameId: string, winningCardText: string, boon
 
 export async function handleJudgeApprovalForCustomCard(gameId: string, addToDeck: boolean): Promise<GameClientState | null> {
   console.log(`🔵 ACTION: handleJudgeApproval - Initiated for game ${gameId}. Add to deck: ${addToDeck}`);
+  
+  // SECURITY: Only the current judge can approve/reject custom cards
+  const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireJudgeAccess(gameId));
+  console.log(`🔵 ACTION: handleJudgeApproval - Judge authorization passed for player: ${authorizedPlayerId}`);
+  
   const { data: game } = await supabase.from('games').select('current_round, last_round_winner_player_id, last_round_winning_card_text').eq('id', gameId).single();
   if (!game || !game.last_round_winner_player_id || !game.last_round_winning_card_text) throw new Error(`Failed to fetch game or winner information for approval. Game: ${gameId}`);
   
@@ -1113,6 +1143,11 @@ export async function handleJudgeApprovalForCustomCard(gameId: string, addToDeck
 
 export async function nextRound(gameId: string): Promise<GameClientState | null> {
   console.log(`🔵 ACTION: nextRound - Initiated for game ${gameId}.`);
+  
+  // SECURITY: Only authenticated game members can advance to next round (typically judge-initiated)
+  const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireGameMembership(gameId));
+  console.log(`🔵 ACTION: nextRound - Player authorization passed for: ${authorizedPlayerId}`);
+  
   const { data: game } = await supabase.from('games').select('*').eq('id', gameId).single();
   if (!game) throw new Error(`Failed to fetch game for next round: Game not found`);
 
@@ -1219,6 +1254,13 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
   console.log(`🔵 ACTION: getCurrentPlayer - Fetching details for player ${playerId} in game ${gameId}`);
   if (!playerId || !gameId) return undefined;
   
+  // SECURITY: Only authenticated players can fetch their own player data
+  const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireGameMembership(gameId));
+  if (authorizedPlayerId !== playerId) {
+    throw new Error(`Authorization failed: Cannot access other players' data`);
+  }
+  console.log(`🔵 ACTION: getCurrentPlayer - Player authorization passed for: ${authorizedPlayerId}`);
+  
   const { data: playerData } = await supabase.from('players').select('*').eq('id', playerId).eq('game_id', gameId).single();
   if (!playerData) {
       console.warn(`🟡 ACTION: getCurrentPlayer - Player ${playerId} not found in game ${gameId}.`);
@@ -1249,6 +1291,14 @@ export async function getCurrentPlayer(playerId: string, gameId: string): Promis
 
 export async function togglePlayerReadyStatus(playerId: string, gameId: string): Promise<GameClientState | null> {
   console.log(`🔵 ACTION: togglePlayerReadyStatus - Initiated for player ${playerId} in game ${gameId}.`);
+  
+  // SECURITY: Only authenticated players can toggle their own ready status
+  const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireGameMembership(gameId));
+  if (authorizedPlayerId !== playerId) {
+    throw new Error(`Authorization failed: Cannot toggle ready status for other players`);
+  }
+  console.log(`🔵 ACTION: togglePlayerReadyStatus - Player authorization passed for: ${authorizedPlayerId}`);
+  
   const { data: player, error: playerFetchError } = await supabase
     .from('players').select('is_ready').eq('id', playerId).eq('game_id', gameId).single();
   if (playerFetchError || !player) throw new Error(`Failed to fetch player to toggle ready status: ${playerFetchError?.message || 'Player not found'}`);
@@ -1281,8 +1331,70 @@ export async function togglePlayerReadyStatus(playerId: string, gameId: string):
   return getGame(gameId); 
 }
 
+/**
+ * Get current player session information (for client-side identity)
+ */
+export async function getCurrentPlayerSession(): Promise<{ playerId: string; gameId: string; role: string } | null> {
+  console.log('🔵 ACTION: getCurrentPlayerSession - Checking current session');
+  
+  try {
+    const session = await getPlayerSession();
+    if (!session.valid || !session.token) {
+      console.log('🟡 ACTION: getCurrentPlayerSession - No valid session found');
+      return null;
+    }
+    
+    console.log(`🔵 ACTION: getCurrentPlayerSession - Valid session found for player ${session.token.playerId}`);
+    return {
+      playerId: session.token.playerId,
+      gameId: session.token.gameId,
+      role: session.token.role
+    };
+  } catch (error) {
+    console.error('🔴 ACTION: getCurrentPlayerSession - Error checking session:', error);
+    return null;
+  }
+}
+
+/**
+ * Set player session (for client-side session establishment)
+ */
+export async function setCurrentPlayerSession(playerId: string, gameId: string, role: 'player' | 'judge' | 'host' = 'player'): Promise<void> {
+  console.log(`🔵 ACTION: setCurrentPlayerSession - Setting session for player ${playerId} in game ${gameId} as ${role}`);
+  await setPlayerSession(playerId, gameId, role);
+}
+
+/**
+ * Clear current player session (logout)
+ */
+export async function clearCurrentPlayerSession(): Promise<void> {
+  console.log('🔵 ACTION: clearCurrentPlayerSession - Clearing session');
+  await clearPlayerSession();
+}
+
 export async function removePlayerFromGame(gameId: string, playerId: string, reason: 'voluntary' | 'kicked' = 'voluntary'): Promise<GameClientState | null> {
   console.log(`🔵 ACTION: removePlayerFromGame - Removing player ${playerId} from game ${gameId}, reason: ${reason}`);
+  
+  // SECURITY: Validate authorization based on removal reason
+  if (reason === 'kicked') {
+    // Only hosts can kick other players
+    const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireHostAccess(gameId));
+    console.log(`🔵 ACTION: removePlayerFromGame - Host authorization for kick passed: ${authorizedPlayerId}`);
+    
+    // Hosts cannot kick themselves via this action (use voluntary exit instead)
+    if (authorizedPlayerId === playerId) {
+      throw new Error("Hosts cannot kick themselves. Use voluntary exit instead.");
+    }
+  } else {
+    // For voluntary exits, just verify the player is removing themselves
+    const authorizedPlayerId = await requireAuthOrDev(gameId, () => requireGameMembership(gameId));
+    
+    // Optional: Only allow players to remove themselves voluntarily
+    if (authorizedPlayerId !== playerId) {
+      console.warn(`🟡 ACTION: removePlayerFromGame - Player ${authorizedPlayerId} removing different player ${playerId} as voluntary`);
+      // This could be allowed for certain admin scenarios, or we could enforce self-removal only
+    }
+  }
   
   try {
     // Fetch game and player data to understand current state

@@ -4,7 +4,7 @@
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction, createRoom, findAvailableRoomForQuickJoin } from '@/app/game/actions';
+import { resetGameForTesting, togglePlayerReadyStatus, startGame as startGameAction, createRoom, findAvailableRoomForQuickJoin, setCurrentPlayerSession } from '@/app/game/actions';
 import { findGameByRoomCodeWithPlayers } from '@/lib/roomCodes';
 import { RefreshCw, Loader2, Lock } from 'lucide-react';
 import type { PlayerClientState } from '@/lib/types';
@@ -80,8 +80,20 @@ function WelcomePageContent() {
   const handlePlayerAdded = useCallback(async (newPlayer: Tables<'players'>) => {
     if (newPlayer && newPlayer.id && internalGameState?.gameId && isMountedRef.current) {
       console.log(`🔵 LOBBY: handlePlayerAdded - Player ${newPlayer.name} (${newPlayer.id}) added to game ${internalGameState.gameId}.`);
-      const localStorageKey = `thisPlayerId_game_${internalGameState.gameId}`;
-      localStorage.setItem(localStorageKey, newPlayer.id);
+      
+      // SECURITY: Set server-side session instead of localStorage
+      try {
+        await setCurrentPlayerSession(newPlayer.id, internalGameState.gameId, 'player');
+        console.log(`🔵 LOBBY: Player session established for ${newPlayer.name}`);
+      } catch (error) {
+        console.error(`🔴 LOBBY: Failed to establish player session:`, error);
+        toast({
+          title: "Session Error", 
+          description: "Failed to establish secure session. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
       
       // Directly update thisPlayer in SharedGameContext
       const playerClientState: PlayerClientState = {

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, Suspense, startTransition } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
-import { getGame, getGameByRoomCode } from '@/app/game/actions';
+import { getGame, getGameByRoomCode, getCurrentPlayerSession } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
 import { useSearchParams } from 'next/navigation';
 
@@ -75,19 +75,24 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
         console.log(`🔵 SHARED_CONTEXT: Game ${fetchedGameState.gameId} loaded, phase: ${fetchedGameState.gamePhase}, players: ${fetchedGameState.players.length}`);
         setGameState(fetchedGameState);
 
-        // Check for stored player ID
-        const playerIdFromStorage = localStorage.getItem(`thisPlayerId_game_${fetchedGameState.gameId}`);
-        if (playerIdFromStorage) {
-          const playerInGame = fetchedGameState.players.find(p => p.id === playerIdFromStorage);
-          if (playerInGame) {
-            console.log(`SHARED_CONTEXT: Player ${playerIdFromStorage} confirmed`);
-            setThisPlayer(playerInGame);
+        // SECURITY: Check for server-side session instead of localStorage
+        try {
+          const sessionData = await getCurrentPlayerSession();
+          if (sessionData && sessionData.gameId === fetchedGameState.gameId) {
+            const playerInGame = fetchedGameState.players.find(p => p.id === sessionData.playerId);
+            if (playerInGame) {
+              console.log(`🔵 SHARED_CONTEXT: Player ${sessionData.playerId} confirmed via session`);
+              setThisPlayer(playerInGame);
+            } else {
+              console.log(`🟡 SHARED_CONTEXT: Player ${sessionData.playerId} not in game, session may be stale`);
+              setThisPlayer(null);
+            }
           } else {
-            console.log(`SHARED_CONTEXT: Player ${playerIdFromStorage} not in game, clearing storage`);
-            localStorage.removeItem(`thisPlayerId_game_${fetchedGameState.gameId}`);
+            console.log(`🟡 SHARED_CONTEXT: No valid session or session for different game`);
             setThisPlayer(null);
           }
-        } else {
+        } catch (error) {
+          console.error(`🔴 SHARED_CONTEXT: Error checking player session:`, error);
           setThisPlayer(null);
         }
       } else {

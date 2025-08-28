@@ -16,6 +16,16 @@ const { fetch, Headers, Request, Response, FormData, File, Blob } = require('und
 (globalThis as any).File = File;
 (globalThis as any).Blob = Blob;
 
+// Polyfill TextEncoder/TextDecoder for jose JWT library
+const { TextEncoder, TextDecoder } = require('util');
+(globalThis as any).TextEncoder = TextEncoder;
+(globalThis as any).TextDecoder = TextDecoder;
+
+// Polyfill structuredClone for jose JWT library
+if (!globalThis.structuredClone) {
+  globalThis.structuredClone = (obj: any) => JSON.parse(JSON.stringify(obj));
+}
+
 // AbortController & URLPattern (belt-and-suspenders)
 require('urlpattern-polyfill');
 if (!globalThis.AbortController) {
