@@ -200,7 +200,7 @@ describe('Authorization System Integration Tests', () => {
       // Test selectCategory requires judge access
       await setPlayerSession(testPlayerId, testGameId, 'player');
       
-      await expect(selectCategory(testGameId, 'test-category')).rejects.toThrow('Not the current judge');
+      await expect(selectCategory(testGameId, 'test-category')).rejects.toThrow(/not the current judge/i);
       
       // Should work for judge
       await setPlayerSession(testJudgeId, testGameId, 'judge');
@@ -210,7 +210,7 @@ describe('Authorization System Integration Tests', () => {
       } catch (error: any) {
         // Should be a game logic error, not an authorization error
         expect(error.message).not.toContain('Unauthorized');
-        expect(error.message).not.toContain('Not the current judge');
+        expect(error.message).not.toMatch(/not the current judge/i);
       }
     });
 
@@ -218,7 +218,7 @@ describe('Authorization System Integration Tests', () => {
       // Test startGame requires host access
       await setPlayerSession(testPlayerId, testGameId, 'player');
       
-      await expect(startGame(testGameId)).rejects.toThrow('Not the room host');
+      await expect(startGame(testGameId)).rejects.toThrow(/not the room host/i);
       
       // Should work for host
       await setPlayerSession(testHostId, testGameId, 'host');
@@ -228,7 +228,7 @@ describe('Authorization System Integration Tests', () => {
       } catch (error: any) {
         // Should be a game logic error, not an authorization error
         expect(error.message).not.toContain('Unauthorized');
-        expect(error.message).not.toContain('Not the room host');
+        expect(error.message).not.toMatch(/not the room host/i);
       }
     });
 

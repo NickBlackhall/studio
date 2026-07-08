@@ -96,7 +96,7 @@ describe('Security Vulnerability Regression Tests', () => {
       // Attack: Call with wrong role session
       await setPlayerSession(testPlayerId, testGameId, 'player');
       await expect(selectCategory(testGameId, 'test-category'))
-        .rejects.toThrow(/Not the current judge/);
+        .rejects.toThrow(/not the current judge/i);
     });
 
     test('should prevent unauthorized submitResponse calls', async () => {
@@ -118,7 +118,7 @@ describe('Security Vulnerability Regression Tests', () => {
       // Attack: Call with non-judge session
       await setPlayerSession(testPlayerId, testGameId, 'player');
       await expect(selectWinner(testGameId, 'winning text'))
-        .rejects.toThrow(/Not the current judge/);
+        .rejects.toThrow(/not the current judge/i);
     });
 
     test('should prevent unauthorized startGame calls', async () => {
@@ -129,7 +129,7 @@ describe('Security Vulnerability Regression Tests', () => {
       // Attack: Call with non-host session
       await setPlayerSession(testPlayerId, testGameId, 'player');
       await expect(startGame(testGameId))
-        .rejects.toThrow(/Not the room host/);
+        .rejects.toThrow(/not the room host/i);
     });
 
     test('should prevent unauthorized player data access', async () => {
@@ -162,7 +162,7 @@ describe('Security Vulnerability Regression Tests', () => {
       // Attack: Call with non-judge session
       await setPlayerSession(testPlayerId, testGameId, 'player');
       await expect(handleJudgeApprovalForCustomCard(testGameId, true))
-        .rejects.toThrow(/Not the current judge/);
+        .rejects.toThrow(/not the current judge/i);
     });
 
     test('should prevent unauthorized nextRound calls', async () => {
@@ -185,7 +185,7 @@ describe('Security Vulnerability Regression Tests', () => {
       // Attack: Try to use startGame as non-host (who is first in ready order)
       await setPlayerSession(testPlayerId, testGameId, 'player');
       await expect(startGame(testGameId))
-        .rejects.toThrow(/Not the room host/);
+        .rejects.toThrow(/not the room host/i);
 
       // Verify: Real host can still use host actions
       await setPlayerSession(testHostId, testGameId, 'host');
@@ -193,7 +193,7 @@ describe('Security Vulnerability Regression Tests', () => {
       try {
         await startGame(testGameId);
       } catch (error: any) {
-        expect(error.message).not.toContain('Not the room host');
+        expect(error.message).not.toMatch(/not the room host/i);
         expect(error.message).not.toContain('Unauthorized');
       }
     });
@@ -207,21 +207,21 @@ describe('Security Vulnerability Regression Tests', () => {
 
       await setPlayerSession(testPlayerId, testGameId, 'player');
       await expect(startGame(testGameId))
-        .rejects.toThrow(/Not the room host/);
+        .rejects.toThrow(/not the room host/i);
     });
 
     test('should prevent resetGame calls from non-host', async () => {
       // Attack: Try to reset game as non-host
       await setPlayerSession(testPlayerId, testGameId, 'player');
       await expect(resetGameForTesting({ gameId: testGameId }))
-        .rejects.toThrow(/Not the room host/);
+        .rejects.toThrow(/not the room host/i);
     });
 
     test('should prevent kick player calls from non-host', async () => {
       // Attack: Try to kick player as non-host
       await setPlayerSession(testPlayerId, testGameId, 'player');
       await expect(removePlayerFromGame(testGameId, testJudgeId, 'kicked'))
-        .rejects.toThrow(/Not the room host/);
+        .rejects.toThrow(/not the room host/i);
     });
   });
 

@@ -109,35 +109,31 @@ describe('Integration - Problematic Transition Scenarios', () => {
       const game = await createTestGame({ game_phase: 'lobby' });
       const player = await createTestPlayer(game.id);
       
-      // Simulate: localStorage gets set (frontend thinks join succeeded)
+      // Simulate: localStorage gets set (frontend thinks join succeeded).
+      // In-memory map stands in for the browser's localStorage — this suite
+      // runs in node where window doesn't exist.
+      const fakeLocalStorage = new Map<string, string>();
       const storageKey = `thisPlayerId_game_${game.id}`;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(storageKey, player.id);
-      }
-      
+      fakeLocalStorage.set(storageKey, player.id);
+
       // Simulate: Player gets removed from database (connection lost, server error, etc.)
       await testSupabase
         .from('players')
         .delete()
         .eq('id', player.id);
-      
+
       // Check for the mismatch
-      const storedId = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
+      const storedId = fakeLocalStorage.get(storageKey) ?? null;
       const { data: playerInDb } = await testSupabase
         .from('players')
         .select('*')
         .eq('id', player.id)
         .single();
-      
+
       expect(storedId).toBe(player.id); // Frontend thinks player exists
       expect(playerInDb).toBeNull(); // But database doesn't have player
-      
+
       // The issue: SharedGameContext shows player as "in game" but they're not
-      
-      // Cleanup
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(storageKey);
-      }
     });
   });
 
@@ -467,32 +463,27 @@ describe('Integration - Problematic Transition Scenarios', () => {
       expect(resetState?.transition_state).toBe('resetting_game');
       
       // Simulate: SharedGameContext detects reset and sets localStorage flag
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('gameResetFlag', 'true');
-      }
-      
+      // (in-memory map stands in for the browser's localStorage in node)
+      const fakeLocalStorage = new Map<string, string>();
+      fakeLocalStorage.set('gameResetFlag', 'true');
+
       // Simulate: Reset completes on server
       await testSupabase
         .from('games')
-        .update({ 
+        .update({
           game_phase: 'lobby',
           current_round: 1,
           transition_state: 'idle',
           transition_message: null
         })
         .eq('id', game.id);
-      
+
       // Check localStorage flag exists
-      const resetFlag = typeof window !== 'undefined' ? localStorage.getItem('gameResetFlag') : null;
+      const resetFlag = fakeLocalStorage.get('gameResetFlag') ?? null;
       expect(resetFlag).toBe('true');
-      
+
       // The issue: Multiple systems (localStorage, database, navigation) need to coordinate
       // If any part fails, players can get stuck in inconsistent states
-      
-      // Cleanup
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('gameResetFlag');
-      }
     });
   });
 });

@@ -224,18 +224,18 @@ describe('Integration - Subscription Timing Issues', () => {
       const results = await Promise.all(operations);
       results.forEach(result => expect(result.error).toBeNull());
       
-      // Check final state consistency
+      // Check final state consistency. Query the game alone — the embedded
+      // players(*) select is ambiguous for PostgREST because games and
+      // players are linked by two FKs (players.game_id and
+      // games.current_judge_id), which makes the join fail with null data.
       const { data: finalGame } = await testSupabase
         .from('games')
-        .select(`
-          *,
-          players (*)
-        `)
+        .select('*')
         .eq('id', game.id)
         .single();
-      
+
       // Both changes should be reflected
-      expect(finalGame.game_phase).toBe('category_selection');
+      expect(finalGame!.game_phase).toBe('category_selection');
       // Note: Supabase doesn't support nested selects in this test environment
       // So we query players separately
       const { data: playersData } = await testSupabase
@@ -250,39 +250,34 @@ describe('Integration - Subscription Timing Issues', () => {
     test('localStorage and database state can become inconsistent', async () => {
       const game = await createTestGame();
       const player = await createTestPlayer(game.id);
-      
-      // Simulate localStorage operations that happen during navigation
+
+      // Simulate the browser's localStorage with an in-memory map — this
+      // suite runs in the node environment where window doesn't exist, so
+      // the point of the test is the DB side of the inconsistency.
+      const fakeLocalStorage = new Map<string, string>();
       const playerIdKey = `thisPlayerId_game_${game.id}`;
-      
+
       // Store player ID (simulating successful join)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(playerIdKey, player.id);
-      }
-      
+      fakeLocalStorage.set(playerIdKey, player.id);
+
       // Simulate player gets removed from database (disconnect)
       await testSupabase
         .from('players')
         .delete()
         .eq('id', player.id);
-      
+
       // Check for inconsistency
-      const storedPlayerId = typeof window !== 'undefined' ? 
-        localStorage.getItem(playerIdKey) : null;
-      
+      const storedPlayerId = fakeLocalStorage.get(playerIdKey) ?? null;
+
       const { data: playerInDb } = await testSupabase
         .from('players')
         .select('*')
         .eq('id', player.id)
         .single();
-      
+
       // This reveals the inconsistency
       expect(storedPlayerId).toBe(player.id); // localStorage still has player
       expect(playerInDb).toBeNull(); // But player is gone from database
-      
-      // Cleanup
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(playerIdKey);
-      }
     });
   });
 

@@ -76,7 +76,22 @@ export async function cleanupTestData(): Promise<void> {
     if (gamesError && !gamesError.message.includes('No rows deleted')) {
       console.warn('Warning cleaning test games:', gamesError.message);
     }
-    
+
+    // Games created through findOrCreateGame()/createRoom() get random room
+    // codes without the T prefix and leak past the deletes above, breaking
+    // later tests that assume a clean slate (e.g. findOrCreateGame returning
+    // the oldest lobby). After test players are removed those games are
+    // empty, so remove all playerless games — same semantics as the app's
+    // own cleanupEmptyRooms().
+    const { data: allGames } = await testSupabase.from('games').select('id');
+    const { data: playerRows } = await testSupabase.from('players').select('game_id');
+    const occupied = new Set((playerRows ?? []).map((p: { game_id: string }) => p.game_id));
+    const emptyGameIds = (allGames ?? []).map((g: { id: string }) => g.id).filter((id: string) => !occupied.has(id));
+    if (emptyGameIds.length > 0) {
+      const { error: emptyError } = await testSupabase.from('games').delete().in('id', emptyGameIds);
+      if (emptyError) console.warn('Warning cleaning empty games:', emptyError.message);
+    }
+
     console.log('✅ Test data cleanup completed');
   } catch (error) {
     console.error('❌ Test cleanup failed:', error);

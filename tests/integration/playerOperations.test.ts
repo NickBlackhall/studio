@@ -280,7 +280,9 @@ describe('Integration - Player Operations', () => {
       .eq('game_id', game.id);
     expect(playersBefore).toHaveLength(2);
 
-    // Remove player1 (the judge)
+    // Remove player1 (the judge) — voluntary removal requires a member session
+    const { setPlayerSession } = await import('../../src/lib/auth');
+    await setPlayerSession(player1.id, game.id, 'player');
     const result = await removePlayerFromGame(game.id, player1.id, 'voluntary');
 
     // Verify player was removed
@@ -319,7 +321,9 @@ describe('Integration - Player Operations', () => {
     const game = await createTestGame();
     const player = await createTestPlayer(game.id, { name: `${TEST_PREFIX}OnlyPlayer` });
 
-    // Remove the only player
+    // Remove the only player — voluntary removal requires a member session
+    const { setPlayerSession } = await import('../../src/lib/auth');
+    await setPlayerSession(player.id, game.id, 'player');
     const result = await removePlayerFromGame(game.id, player.id, 'voluntary');
 
     // Should return null when no players remain
@@ -350,6 +354,8 @@ describe('Integration - Player Operations', () => {
       })
       .eq('id', game.id);
 
+    const { setPlayerSession } = await import('../../src/lib/auth');
+    await setPlayerSession(player1.id, game.id, 'player');
     const result = await removePlayerFromGame(game.id, player1.id, 'voluntary');
 
     const { data: playersAfter } = await testSupabase
@@ -389,6 +395,8 @@ describe('Integration - Player Operations', () => {
       })
       .eq('id', game.id);
 
+    const { setPlayerSession } = await import('../../src/lib/auth');
+    await setPlayerSession(host.id, game.id, 'host');
     const result = await removePlayerFromGame(game.id, host.id, 'voluntary');
     expect(result).toBeNull();
 
@@ -427,6 +435,10 @@ describe('Integration - Player Operations', () => {
       })
       .eq('id', game.id);
 
+    // One member session covers both concurrent voluntary removals
+    // (self-removal is not strictly enforced; mismatches only warn)
+    const { setPlayerSession } = await import('../../src/lib/auth');
+    await setPlayerSession(p1.id, game.id, 'player');
     await Promise.all([
       removePlayerFromGame(game.id, p2.id, 'voluntary'),
       removePlayerFromGame(game.id, p3.id, 'voluntary'),

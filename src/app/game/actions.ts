@@ -537,6 +537,12 @@ export async function resetGameForTesting(opts?: { clientWillNavigate?: boolean,
 
   } catch (e: any) {
     console.error('🔴 ACTION: resetGameForTesting - Unexpected exception:', e.message, e.stack);
+    // SECURITY: Authorization failures must propagate to the caller.
+    // Swallowing them here made a non-host's reset attempt look like a
+    // success and redirected them as if the game had been reset.
+    if (e instanceof Error && e.message.startsWith('Unauthorized')) {
+      throw e;
+    }
   }
 
   revalidatePath('/');

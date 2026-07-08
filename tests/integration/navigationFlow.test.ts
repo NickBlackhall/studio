@@ -20,6 +20,12 @@ import {
   getGame
 } from '../../src/app/game/actions';
 
+// Server actions are session-gated; tests authenticate like a real client.
+// getGame requires membership; toggling ready is self-only; startGame is
+// host-only (first player to join is auto-assigned host).
+import { setPlayerSession } from '../../src/lib/auth';
+import { runWithSession } from '../helpers/session';
+
 describe('Integration - Navigation Flow', () => {
   beforeAll(async () => {
     await setupTestDatabase();
@@ -39,7 +45,8 @@ describe('Integration - Navigation Flow', () => {
       const playerName = `${TEST_PREFIX}NewPlayer`;
       const player = await addPlayer(playerName, '🎮', game.id);
       expect(player).toBeDefined();
-      
+      await setPlayerSession(player!.id, game.id, 'player');
+
       // Simulate: Check lobby state after player joins
       const lobbyState = await getGame(game.id);
       expect(lobbyState.gamePhase).toBe('lobby');
@@ -60,7 +67,8 @@ describe('Integration - Navigation Flow', () => {
       expect(joinedGame.id).toBe(existingGame.id); // Should find existing game
       
       const newPlayer = await addPlayer(`${TEST_PREFIX}NewPlayer`, '🎭', joinedGame.id);
-      
+      await setPlayerSession(newPlayer!.id, existingGame.id, 'player');
+
       // Verify: Both players in same lobby
       const lobbyState = await getGame(existingGame.id);
       expect(lobbyState.players).toHaveLength(2);
@@ -75,16 +83,19 @@ describe('Integration - Navigation Flow', () => {
       const player1 = await addPlayer(`${TEST_PREFIX}Player1`, '🎮', game.id);
       const player2 = await addPlayer(`${TEST_PREFIX}Player2`, '🎭', game.id);
       
-      // Simulate: Players mark themselves ready
+      // Simulate: Players mark themselves ready (self-only action)
+      await setPlayerSession(player1!.id, game.id, 'player');
       await togglePlayerReadyStatus(player1!.id, game.id);
+      await setPlayerSession(player2!.id, game.id, 'player');
       await togglePlayerReadyStatus(player2!.id, game.id);
-      
+
       // Verify: Both players ready in lobby
+      await setPlayerSession(player1!.id, game.id, 'host');
       const readyLobby = await getGame(game.id);
       expect(readyLobby.gamePhase).toBe('lobby');
       expect(readyLobby.players.every(p => p.isReady)).toBe(true);
-      
-      // Simulate: Game start triggered
+
+      // Simulate: Game start triggered (player1 joined first → host)
       const startedGame = await startGame(game.id);
       
       // Verify: Transition to game successful
@@ -96,16 +107,17 @@ describe('Integration - Navigation Flow', () => {
     test('failed game start: insufficient ready players', async () => {
       // Setup: Game with players but not all ready
       const game = await createTestGame({ game_phase: 'lobby' });
-      await addPlayer(`${TEST_PREFIX}Player1`, '🎮', game.id);
+      const player1 = await addPlayer(`${TEST_PREFIX}Player1`, '🎮', game.id);
       await addPlayer(`${TEST_PREFIX}Player2`, '🎭', game.id);
-      
+
       // Only one player ready
-      const player1 = (await getGame(game.id)).players[0];
-      await togglePlayerReadyStatus(player1.id, game.id);
-      
-      // Verify: Game start should fail
+      await setPlayerSession(player1!.id, game.id, 'player');
+      await togglePlayerReadyStatus(player1!.id, game.id);
+
+      // Verify: Game start should fail (player1 is host but players unready)
+      await setPlayerSession(player1!.id, game.id, 'host');
       await expect(startGame(game.id)).rejects.toThrow();
-      
+
       // Verify: Game remains in lobby
       const stillLobby = await getGame(game.id);
       expect(stillLobby.gamePhase).toBe('lobby');
@@ -124,9 +136,12 @@ describe('Integration - Navigation Flow', () => {
       const player1 = await addPlayer(`${TEST_PREFIX}Player1`, '🎮', game.id);
       const player2 = await addPlayer(`${TEST_PREFIX}Player2`, '🎭', game.id);
       
+      await setPlayerSession(player1!.id, game.id, 'player');
       await togglePlayerReadyStatus(player1!.id, game.id);
+      await setPlayerSession(player2!.id, game.id, 'player');
       await togglePlayerReadyStatus(player2!.id, game.id);
-      
+
+      await setPlayerSession(player1!.id, game.id, 'host');
       const startedGame = await startGame(game.id);
       expect(startedGame!.gamePhase).toBe('category_selection');
       
@@ -143,19 +158,21 @@ describe('Integration - Navigation Flow', () => {
       const player2 = await addPlayer(`${TEST_PREFIX}Player2`, '🎭', game.id);
       const player3 = await addPlayer(`${TEST_PREFIX}Player3`, '🎪', game.id);
       
-      // Simulate: All players click ready simultaneously
+      // Simulate: All players click ready simultaneously, each with their
+      // own session scope (like three separate browsers)
       const readyPromises = [
-        togglePlayerReadyStatus(player1!.id, game.id),
-        togglePlayerReadyStatus(player2!.id, game.id),
-        togglePlayerReadyStatus(player3!.id, game.id)
+        runWithSession(player1!.id, game.id, 'player', () => togglePlayerReadyStatus(player1!.id, game.id)),
+        runWithSession(player2!.id, game.id, 'player', () => togglePlayerReadyStatus(player2!.id, game.id)),
+        runWithSession(player3!.id, game.id, 'player', () => togglePlayerReadyStatus(player3!.id, game.id))
       ];
-      
+
       const results = await Promise.all(readyPromises);
-      
+
       // Verify: All operations succeeded
       results.forEach(result => expect(result).toBeDefined());
-      
+
       // Verify: Final state has all players ready
+      await setPlayerSession(player1!.id, game.id, 'player');
       const finalState = await getGame(game.id);
       expect(finalState.players.every(p => p.isReady)).toBe(true);
     });
@@ -167,16 +184,19 @@ describe('Integration - Navigation Flow', () => {
       const player2 = await addPlayer(`${TEST_PREFIX}Player2`, '🎭', game.id);
       const player3 = await addPlayer(`${TEST_PREFIX}Player3`, '🎪', game.id);
       
+      await setPlayerSession(player1!.id, game.id, 'player');
       await togglePlayerReadyStatus(player1!.id, game.id);
+      await setPlayerSession(player2!.id, game.id, 'player');
       await togglePlayerReadyStatus(player2!.id, game.id);
-      
+
       // Simulate: Player 3 disconnects (gets removed)
       await testSupabase
         .from('players')
         .delete()
         .eq('id', player3!.id);
-      
+
       // Verify: Game still functional with remaining players
+      await setPlayerSession(player1!.id, game.id, 'host');
       const gameState = await getGame(game.id);
       expect(gameState.players).toHaveLength(2);
       expect(gameState.players.filter(p => p.isReady)).toHaveLength(2);
@@ -191,12 +211,13 @@ describe('Integration - Navigation Flow', () => {
     test('game recovery after server action failure', async () => {
       const game = await createTestGame({ game_phase: 'lobby' });
       const player = await addPlayer(`${TEST_PREFIX}Player`, '🎮', game.id);
-      
-      // Simulate: Invalid operation that should fail
+      await setPlayerSession(player!.id, game.id, 'player');
+
+      // Simulate: Invalid operation that should fail (self-only violation)
       await expect(
         togglePlayerReadyStatus('invalid-player-id', game.id)
       ).rejects.toThrow();
-      
+
       // Verify: Game state remains consistent
       const gameState = await getGame(game.id);
       expect(gameState.gamePhase).toBe('lobby');
@@ -206,11 +227,13 @@ describe('Integration - Navigation Flow', () => {
 
     test('transition state recovery', async () => {
       // Setup: Game in transition state
-      const game = await createTestGame({ 
+      const game = await createTestGame({
         game_phase: 'lobby',
         transition_state: 'starting_game' // Stuck in transition
       });
-      
+      const player = await createTestPlayer(game.id);
+      await setPlayerSession(player.id, game.id, 'player');
+
       // Verify: Can still read game state
       const gameState = await getGame(game.id);
       expect(gameState.gamePhase).toBe('lobby');
@@ -224,13 +247,15 @@ describe('Integration - Navigation Flow', () => {
   describe('Real-time State Synchronization', () => {
     test('database changes reflect immediately in getGame', async () => {
       const game = await createTestGame({ game_phase: 'lobby' });
-      
+      const player = await createTestPlayer(game.id);
+      await setPlayerSession(player.id, game.id, 'player');
+
       // Direct database change (simulating real-time update)
       await testSupabase
         .from('games')
         .update({ game_phase: 'category_selection' })
         .eq('id', game.id);
-      
+
       // Verify: getGame reflects the change
       const updatedState = await getGame(game.id);
       expect(updatedState.gamePhase).toBe('category_selection');
@@ -239,7 +264,8 @@ describe('Integration - Navigation Flow', () => {
     test('player changes propagate to game state', async () => {
       const game = await createTestGame({ game_phase: 'lobby' });
       const player = await createTestPlayer(game.id, { score: 0 });
-      
+      await setPlayerSession(player.id, game.id, 'player');
+
       // Direct player update
       await testSupabase
         .from('players')

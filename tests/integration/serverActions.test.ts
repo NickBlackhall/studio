@@ -18,6 +18,11 @@ import {
   resetGameForTesting
 } from '../../src/app/game/actions';
 
+// Server actions are session-gated (requireAuthOrDev enforces outside
+// NODE_ENV=development), so tests must establish a player session like a
+// real client would. cookies() is mocked in jest.node.setup.ts.
+import { setPlayerSession } from '../../src/lib/auth';
+
 describe('Integration - Server Actions', () => {
   beforeAll(async () => {
     await setupTestDatabase();
@@ -77,7 +82,8 @@ describe('Integration - Server Actions', () => {
     test('togglePlayerReadyStatus changes ready state', async () => {
       const game = await createTestGame();
       const player = await createTestPlayer(game.id, { is_ready: false });
-      
+      await setPlayerSession(player.id, game.id, 'player');
+
       // Toggle to ready
       const updatedGame = await togglePlayerReadyStatus(player.id, game.id);
       
@@ -94,8 +100,9 @@ describe('Integration - Server Actions', () => {
       
       expect(player1?.game_id).toBe(game.id);
       expect(player2?.game_id).toBe(game.id);
-      
-      // Verify both players in game
+
+      // Verify both players in game (getGame requires membership)
+      await setPlayerSession(player1!.id, game.id, 'player');
       const gameState = await getGame(game.id);
       expect(gameState.players).toHaveLength(2);
     });
@@ -109,9 +116,13 @@ describe('Integration - Server Actions', () => {
       const player1 = await addPlayer(`${TEST_PREFIX}Player1`, '🎮', game.id);
       const player2 = await addPlayer(`${TEST_PREFIX}Player2`, '🎭', game.id);
       
+      // First player to join is auto-assigned host (created_by_player_id)
+      await setPlayerSession(player1!.id, game.id, 'player');
       await togglePlayerReadyStatus(player1!.id, game.id);
+      await setPlayerSession(player2!.id, game.id, 'player');
       await togglePlayerReadyStatus(player2!.id, game.id);
-      
+
+      await setPlayerSession(player1!.id, game.id, 'host');
       const startedGame = await startGame(game.id);
       
       expect(startedGame).toBeDefined();
@@ -122,9 +133,10 @@ describe('Integration - Server Actions', () => {
     test('startGame fails with insufficient players', async () => {
       const game = await createTestGame({ game_phase: 'lobby' });
       
-      // Add only one player
-      await addPlayer(`${TEST_PREFIX}Player1`, '🎮', game.id);
-      
+      // Add only one player (auto-assigned host)
+      const player1 = await addPlayer(`${TEST_PREFIX}Player1`, '🎮', game.id);
+      await setPlayerSession(player1!.id, game.id, 'host');
+
       await expect(startGame(game.id)).rejects.toThrow('Not enough players');
     });
 
@@ -132,9 +144,10 @@ describe('Integration - Server Actions', () => {
       const game = await createTestGame({ game_phase: 'lobby' });
       
       // Add players but don't make them ready
-      await addPlayer(`${TEST_PREFIX}Player1`, '🎮', game.id);
+      const player1 = await addPlayer(`${TEST_PREFIX}Player1`, '🎮', game.id);
       await addPlayer(`${TEST_PREFIX}Player2`, '🎭', game.id);
-      
+      await setPlayerSession(player1!.id, game.id, 'host');
+
       await expect(startGame(game.id)).rejects.toThrow();
     });
   });
@@ -143,9 +156,10 @@ describe('Integration - Server Actions', () => {
     test('getGame returns complete game state', async () => {
       const game = await createTestGame();
       const player = await createTestPlayer(game.id);
-      
+      await setPlayerSession(player.id, game.id, 'player');
+
       const gameState = await getGame(game.id);
-      
+
       expect(gameState.gameId).toBe(game.id);
       expect(gameState.players).toHaveLength(1);
       expect(gameState.players[0].id).toBe(player.id);
@@ -161,15 +175,22 @@ describe('Integration - Server Actions', () => {
   describe('Reset and Cleanup', () => {
     test('resetGameForTesting clears game state', async () => {
       const game = await createTestGame({ game_phase: 'player_submission' });
-      const player = await createTestPlayer(game.id);
-      
-      await resetGameForTesting();
-      
-      // Verify game was reset to lobby
-      const gameState = await getGame(game.id);
-      expect(gameState.gamePhase).toBe('lobby');
-      expect(gameState.currentRound).toBe(1);
-      expect(gameState.transitionState).toBe('idle');
+      await createTestPlayer(game.id);
+
+      // clientWillNavigate skips the server-side redirect() (which throws
+      // NEXT_REDIRECT outside a real request). Reset also deletes all
+      // players, so verify via direct DB read instead of the
+      // membership-gated getGame.
+      await resetGameForTesting({ clientWillNavigate: true });
+
+      const { data: resetGame } = await testSupabase
+        .from('games')
+        .select('game_phase, current_round, transition_state')
+        .eq('id', game.id)
+        .single();
+      expect(resetGame!.game_phase).toBe('lobby');
+      expect(resetGame!.current_round).toBe(0);
+      expect(resetGame!.transition_state).toBe('idle');
     });
   });
 
@@ -179,8 +200,8 @@ describe('Integration - Server Actions', () => {
     });
 
     test('addPlayer handles invalid game ID', async () => {
-      const player = await addPlayer(`${TEST_PREFIX}Player`, '🎮', 'nonexistent-game');
-      expect(player).toBeNull();
+      await expect(addPlayer(`${TEST_PREFIX}Player`, '🎮', 'nonexistent-game'))
+        .rejects.toThrow(/Could not find game/);
     });
   });
 
@@ -189,17 +210,20 @@ describe('Integration - Server Actions', () => {
       const game = await createTestGame();
       const player1 = await createTestPlayer(game.id);
       const player2 = await createTestPlayer(game.id);
-      
-      // Both players toggle ready at same time
+
+      // Toggling is self-only, so each concurrent call gets its own
+      // session scope (like two separate browsers)
+      const { runWithSession } = await import('../helpers/session');
       const [result1, result2] = await Promise.all([
-        togglePlayerReadyStatus(player1.id, game.id),
-        togglePlayerReadyStatus(player2.id, game.id)
+        runWithSession(player1.id, game.id, 'player', () => togglePlayerReadyStatus(player1.id, game.id)),
+        runWithSession(player2.id, game.id, 'player', () => togglePlayerReadyStatus(player2.id, game.id))
       ]);
       
       expect(result1).toBeDefined();
       expect(result2).toBeDefined();
-      
+
       // Both should be ready
+      await setPlayerSession(player1.id, game.id, 'player');
       const finalState = await getGame(game.id);
       const readyCount = finalState.players.filter(p => p.isReady).length;
       expect(readyCount).toBe(2);

@@ -43,20 +43,33 @@ jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
 // Mock next/headers cookies() with an in-memory store. The real cookies()
 // only works inside a request scope, which Jest tests don't have — without
 // this, every session helper (src/lib/auth.ts) throws.
-const mockCookieStore = new Map<string, { name: string; value: string }>();
+//
+// Concurrency: some actions are self-only (e.g. togglePlayerReadyStatus), so
+// tests that fire concurrent calls for different players each need their own
+// cookie jar, like separate browsers. runWithCookieScope() gives the wrapped
+// async call an isolated store via AsyncLocalStorage; everything else shares
+// the global store.
+import { AsyncLocalStorage } from 'async_hooks';
+type MockCookie = { name: string; value: string };
+const mockCookieAls = new AsyncLocalStorage<Map<string, MockCookie>>();
+const mockGlobalCookies = new Map<string, MockCookie>();
+const mockActiveCookies = () => mockCookieAls.getStore() ?? mockGlobalCookies;
 jest.mock('next/headers', () => ({
   cookies: async () => ({
-    get: (name: string) => mockCookieStore.get(name),
-    getAll: () => Array.from(mockCookieStore.values()),
-    has: (name: string) => mockCookieStore.has(name),
+    get: (name: string) => mockActiveCookies().get(name),
+    getAll: () => Array.from(mockActiveCookies().values()),
+    has: (name: string) => mockActiveCookies().has(name),
     set: (name: string, value: string, _options?: unknown) => {
-      mockCookieStore.set(name, { name, value });
+      mockActiveCookies().set(name, { name, value });
     },
     delete: (name: string) => {
-      mockCookieStore.delete(name);
+      mockActiveCookies().delete(name);
     },
   }),
 }));
 
+(globalThis as any).__runWithCookieScope = <T,>(fn: () => Promise<T>): Promise<T> =>
+  mockCookieAls.run(new Map(), fn);
+
 // Fresh cookie state per test so sessions don't leak between tests
-beforeEach(() => mockCookieStore.clear());
+beforeEach(() => mockGlobalCookies.clear());

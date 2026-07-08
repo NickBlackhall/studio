@@ -383,8 +383,10 @@ COMMENT ON TABLE winners IS 'Historical record of round winners';
 -- =====================================================================
 
 -- Ensure complete payloads for UPDATE/DELETE
-ALTER TABLE public.games   REPLICA IDENTITY FULL;
-ALTER TABLE public.players REPLICA IDENTITY FULL;
+ALTER TABLE public.games        REPLICA IDENTITY FULL;
+ALTER TABLE public.players      REPLICA IDENTITY FULL;
+ALTER TABLE public.responses    REPLICA IDENTITY FULL;
+ALTER TABLE public.player_hands REPLICA IDENTITY FULL;
 
 -- Ensure publication exists and includes our tables
 DO $
@@ -394,8 +396,18 @@ BEGIN
   END IF;
 END$;
 
--- If local publication is not FOR ALL TABLES, explicitly include targets:
--- ALTER PUBLICATION supabase_realtime ADD TABLE public.games, public.players;
+-- The local Supabase CLI pre-creates an EMPTY supabase_realtime publication,
+-- so the FOR ALL TABLES branch above never runs in CI. Without these explicit
+-- adds, no game table broadcasts changes and every subscription test receives
+-- zero events.
+DO $
+BEGIN
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.games;        EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.players;      EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.responses;    EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.player_hands; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.winners;      EXCEPTION WHEN duplicate_object THEN NULL; END;
+END$;
 
 -- FK: make cleanup easy and robust
 DO $
