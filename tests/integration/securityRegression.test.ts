@@ -46,7 +46,7 @@ describe('Security Vulnerability Regression Tests', () => {
 
   beforeEach(async () => {
     // Create primary test game
-    const game = await createTestGame('Security Test Game');
+    const game = await createTestGame({ room_name: 'Security Test Game' });
     testGameId = game.id;
     
     // Create host player
@@ -75,7 +75,7 @@ describe('Security Vulnerability Regression Tests', () => {
       .eq('id', testGameId);
 
     // Create separate game for cross-game attack tests
-    const otherGame = await createTestGame('Other Game');
+    const otherGame = await createTestGame({ room_name: 'Other Game' });
     otherGameId = otherGame.id;
     
     const otherPlayer = await createTestPlayer(otherGameId, { name: 'OtherPlayer', avatar: '🔒' });

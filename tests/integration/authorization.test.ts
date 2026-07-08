@@ -52,7 +52,7 @@ describe('Authorization System Integration Tests', () => {
 
   beforeEach(async () => {
     // Create test game and players for each test
-    const game = await createTestGame('Authorization Test Game');
+    const game = await createTestGame({ room_name: 'Authorization Test Game' });
     testGameId = game.id;
     
     // Create host player (first player)
