@@ -163,10 +163,10 @@ describe('JWT Token System', () => {
   describe('Error Handling', () => {
     test('should handle edge cases gracefully', async () => {
       // Test with empty/null values - should still create valid tokens
-      const edgeCases = [
+      const edgeCases: Array<[string, string, 'player']> = [
         ['', testGameId, 'player'],
         [testPlayerId, '', 'player'],
-        [testPlayerId, testGameId, 'player' as const],
+        [testPlayerId, testGameId, 'player'],
       ];
       
       for (const [playerId, gameId, role] of edgeCases) {

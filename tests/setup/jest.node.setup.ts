@@ -1,3 +1,7 @@
+// Make this file a module so its top-level consts don't collide with the
+// global DOM lib declarations (WebSocket, fetch, TextEncoder, ...)
+export {};
+
 // Polyfill WebSocket for Node.js (required for Realtime subscriptions)
 const WebSocket = require('ws');
 globalThis.WebSocket = WebSocket;

@@ -52,7 +52,7 @@ describe('Integration - Player Operations', () => {
       .eq('id', player.id)
       .single();
 
-    expect(updatedPlayer.is_ready).toBe(true);
+    expect(updatedPlayer!.is_ready).toBe(true);
   });
 
   test('updates player score', async () => {
@@ -74,7 +74,7 @@ describe('Integration - Player Operations', () => {
       .eq('id', player.id)
       .single();
 
-    expect(updatedPlayer.score).toBe(1);
+    expect(updatedPlayer!.score).toBe(1);
   });
 
   test('assigns judge role', async () => {
@@ -96,10 +96,10 @@ describe('Integration - Player Operations', () => {
       .select('id, is_judge')
       .eq('game_id', game.id);
 
-    const judge = players.find(p => p.is_judge);
-    const nonJudges = players.filter(p => !p.is_judge);
+    const judge = players!.find(p => p.is_judge);
+    const nonJudges = players!.filter(p => !p.is_judge);
 
-    expect(judge.id).toBe(player1.id);
+    expect(judge!.id).toBe(player1.id);
     expect(nonJudges).toHaveLength(1);
     expect(nonJudges[0].id).toBe(player2.id);
   });
@@ -123,7 +123,7 @@ describe('Integration - Player Operations', () => {
       .eq('id', player.id)
       .single();
 
-    expect(updatedPlayer.avatar).toBe('🎮');
+    expect(updatedPlayer!.avatar).toBe('🎮');
   });
 
   test('retrieves players by game', async () => {
@@ -143,7 +143,7 @@ describe('Integration - Player Operations', () => {
 
     expect(error).toBeNull();
     expect(game1Players).toHaveLength(2);
-    expect(game1Players.every(p => p.game_id === game1.id)).toBe(true);
+    expect(game1Players!.every(p => p.game_id === game1.id)).toBe(true);
   });
 
   test('validates player constraints', async () => {
@@ -161,7 +161,7 @@ describe('Integration - Player Operations', () => {
       });
 
     expect(error).toBeDefined();
-    expect(error.message).toContain('uuid');
+    expect(error!.message).toContain('uuid');
   });
 
   test('deletes player from game', async () => {
@@ -213,8 +213,8 @@ describe('Integration - Player Operations', () => {
       .eq('id', game.id)
       .single();
 
-    expect(updatedGame.ready_player_order).toEqual([player1.id, player2.id]);
-    expect(updatedGame.ready_player_order).not.toContain(player3.id);
+    expect(updatedGame!.ready_player_order).toEqual([player1.id, player2.id]);
+    expect(updatedGame!.ready_player_order).not.toContain(player3.id);
   });
 
   test('handles concurrent player updates', async () => {
@@ -246,7 +246,7 @@ describe('Integration - Player Operations', () => {
       .single();
 
     // Score should be either 1 or 2 (depending on timing)
-    expect([1, 2]).toContain(finalPlayer.score);
+    expect([1, 2]).toContain(finalPlayer!.score);
   });
 
   test('removePlayerFromGame removes player and updates game state', async () => {

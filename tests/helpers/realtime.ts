@@ -8,8 +8,19 @@ export async function openSubscribedChannel(
   const ch = client.channel(name);
   const maybe = setup(ch);
   const channel = (maybe as RealtimeChannel) || ch;
-  const status = await channel.subscribe(); // supabase-js v2.43.5 resolves on 'SUBSCRIBED'
-  if (status !== 'SUBSCRIBED') throw new Error(`Channel not subscribed: ${status}`);
+  // subscribe() returns the channel, not a status — wait for the status callback
+  await new Promise<void>((resolve, reject) => {
+    let done = false;
+    channel.subscribe((status) => {
+      if (done) return;
+      if (status === 'SUBSCRIBED') { done = true; resolve(); }
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        done = true;
+        reject(new Error(`Channel not subscribed: ${status}`));
+      }
+    });
+    setTimeout(() => { if (!done) { done = true; reject(new Error('Channel subscribe timeout')); } }, 15_000);
+  });
   return channel;
 }
 

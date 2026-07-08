@@ -11,8 +11,13 @@ if (!url || !key) {
 }
 const supa = createClient(url, key, { realtime: { params: { eventsPerSecond: 1000 } } });
 
-// Create dedicated smoke test table to ensure deterministic event generation
-await supa.rpc('create_smoke_test_table');
+// Create dedicated smoke test table to ensure deterministic event generation.
+// The CI workflow also creates this table via psql before running this script;
+// this RPC is a fallback for local runs, so a failure here is only a warning.
+const { error: rpcError } = await supa.rpc('create_smoke_test_table');
+if (rpcError) {
+  console.warn('create_smoke_test_table RPC failed (table may already exist from schema setup):', rpcError.message);
+}
 
 const ch = supa.channel('smoke:rt_smoke');
 let got = false;
@@ -42,14 +47,21 @@ await new Promise((resolve, reject) => {
 // Allow subscription to fully establish
 await new Promise(r => setTimeout(r, 1000));
 
-// Guaranteed event generation: INSERT a test row
+// Guaranteed event generation: INSERT a test row.
+// Retry to ride out PostgREST schema cache reloads (PGRST205).
 console.log('Generating deterministic Realtime event...');
-const { data, error } = await supa.from('rt_smoke').insert({ 
-  test_value: 'smoke-' + Date.now() 
-}).select().single();
+let data, error;
+for (let attempt = 1; attempt <= 10; attempt++) {
+  ({ data, error } = await supa.from('rt_smoke').insert({
+    test_value: 'smoke-' + Date.now()
+  }).select().single());
+  if (!error) break;
+  console.warn(`insert attempt ${attempt}/10 failed: ${error.message}; retrying in 1s...`);
+  await new Promise(r => setTimeout(r, 1000));
+}
 
 if (error) {
-  console.error('Failed to insert smoke test row:', error);
+  console.error('Failed to insert smoke test row after retries:', error);
   process.exit(3);
 }
 

@@ -396,9 +396,9 @@ describe('Integration - Subscription Timing Issues', () => {
       
       // The ready_player_order should match actual ready players
       expect(readyPlayers).toHaveLength(2);
-      expect(finalGame.ready_player_order).toHaveLength(2);
-      expect(finalGame.ready_player_order).toContain(players[0].id);
-      expect(finalGame.ready_player_order).toContain(players[1].id);
+      expect(finalGame!.ready_player_order).toHaveLength(2);
+      expect(finalGame!.ready_player_order).toContain(players[0].id);
+      expect(finalGame!.ready_player_order).toContain(players[1].id);
     });
   });
 

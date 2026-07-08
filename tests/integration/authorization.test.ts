@@ -56,7 +56,7 @@ describe('Authorization System Integration Tests', () => {
     testGameId = game.id;
     
     // Create host player (first player)
-    const hostPlayer = await createTestPlayer(testGameId, 'TestHost', '👑');
+    const hostPlayer = await createTestPlayer(testGameId, { name: 'TestHost', avatar: '👑' });
     testHostId = hostPlayer.id;
     
     // Set host in game
@@ -66,11 +66,11 @@ describe('Authorization System Integration Tests', () => {
       .eq('id', testGameId);
     
     // Create regular player
-    const regularPlayer = await createTestPlayer(testGameId, 'TestPlayer', '😊');
+    const regularPlayer = await createTestPlayer(testGameId, { name: 'TestPlayer', avatar: '😊' });
     testPlayerId = regularPlayer.id;
     
     // Create judge player and set as current judge
-    const judgePlayer = await createTestPlayer(testGameId, 'TestJudge', '⚖️');
+    const judgePlayer = await createTestPlayer(testGameId, { name: 'TestJudge', avatar: '⚖️' });
     testJudgeId = judgePlayer.id;
     
     await testSupabase
@@ -207,7 +207,7 @@ describe('Authorization System Integration Tests', () => {
       // Note: This may fail due to game phase, but should pass authorization
       try {
         await selectCategory(testGameId, 'test-category');
-      } catch (error) {
+      } catch (error: any) {
         // Should be a game logic error, not an authorization error
         expect(error.message).not.toContain('Unauthorized');
         expect(error.message).not.toContain('Not the current judge');
@@ -225,7 +225,7 @@ describe('Authorization System Integration Tests', () => {
       // Note: This may fail due to game phase, but should pass authorization
       try {
         await startGame(testGameId);
-      } catch (error) {
+      } catch (error: any) {
         // Should be a game logic error, not an authorization error
         expect(error.message).not.toContain('Unauthorized');
         expect(error.message).not.toContain('Not the room host');
@@ -286,11 +286,11 @@ describe('Authorization System Integration Tests', () => {
     const originalNodeEnv = process.env.NODE_ENV;
     
     afterEach(() => {
-      process.env.NODE_ENV = originalNodeEnv;
+      (process.env as { NODE_ENV?: string }).NODE_ENV = originalNodeEnv;
     });
 
     test('should bypass auth in development mode when authorized', async () => {
-      process.env.NODE_ENV = 'development';
+      (process.env as { NODE_ENV?: string }).NODE_ENV = 'development';
       await setPlayerSession(testJudgeId, testGameId, 'judge');
       
       // Should work normally with valid auth
@@ -299,7 +299,7 @@ describe('Authorization System Integration Tests', () => {
     });
 
     test('should still enforce auth in production mode', async () => {
-      process.env.NODE_ENV = 'production';
+      (process.env as { NODE_ENV?: string }).NODE_ENV = 'production';
       // No session established
       
       await expect(requireGameMembership(testGameId)).rejects.toThrow('Unauthorized');

@@ -50,7 +50,7 @@ describe('Security Vulnerability Regression Tests', () => {
     testGameId = game.id;
     
     // Create host player
-    const hostPlayer = await createTestPlayer(testGameId, 'TestHost', '👑');
+    const hostPlayer = await createTestPlayer(testGameId, { name: 'TestHost', avatar: '👑' });
     testHostId = hostPlayer.id;
     
     await testSupabase
@@ -59,11 +59,11 @@ describe('Security Vulnerability Regression Tests', () => {
       .eq('id', testGameId);
     
     // Create regular player
-    const regularPlayer = await createTestPlayer(testGameId, 'TestPlayer', '😊');
+    const regularPlayer = await createTestPlayer(testGameId, { name: 'TestPlayer', avatar: '😊' });
     testPlayerId = regularPlayer.id;
     
     // Create judge player
-    const judgePlayer = await createTestPlayer(testGameId, 'TestJudge', '⚖️');
+    const judgePlayer = await createTestPlayer(testGameId, { name: 'TestJudge', avatar: '⚖️' });
     testJudgeId = judgePlayer.id;
     
     await testSupabase
@@ -78,7 +78,7 @@ describe('Security Vulnerability Regression Tests', () => {
     const otherGame = await createTestGame('Other Game');
     otherGameId = otherGame.id;
     
-    const otherPlayer = await createTestPlayer(otherGameId, 'OtherPlayer', '🔒');
+    const otherPlayer = await createTestPlayer(otherGameId, { name: 'OtherPlayer', avatar: '🔒' });
     otherPlayerId = otherPlayer.id;
   });
 
@@ -192,7 +192,7 @@ describe('Security Vulnerability Regression Tests', () => {
       // Should not throw authorization error (may throw game logic errors)
       try {
         await startGame(testGameId);
-      } catch (error) {
+      } catch (error: any) {
         expect(error.message).not.toContain('Not the room host');
         expect(error.message).not.toContain('Unauthorized');
       }

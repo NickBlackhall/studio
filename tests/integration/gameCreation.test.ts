@@ -66,7 +66,7 @@ describe('Integration - Game Creation', () => {
       .eq('id', game.id)
       .single();
 
-    expect(updatedGame.game_phase).toBe('category_selection');
+    expect(updatedGame!.game_phase).toBe('category_selection');
   });
 
   test('creates game with multiple players', async () => {
@@ -90,8 +90,8 @@ describe('Integration - Game Creation', () => {
 
     expect(error).toBeNull();
     expect(players).toHaveLength(2);
-    expect(players.find(p => p.id === player1.id)?.is_ready).toBe(true);
-    expect(players.find(p => p.id === player2.id)?.is_ready).toBe(false);
+    expect(players!.find(p => p.id === player1.id)?.is_ready).toBe(true);
+    expect(players!.find(p => p.id === player2.id)?.is_ready).toBe(false);
   });
 
   test('handles game creation errors gracefully', async () => {
@@ -104,7 +104,7 @@ describe('Integration - Game Creation', () => {
       });
 
     expect(error).toBeDefined();
-    expect(error.message).toContain('null value');
+    expect(error!.message).toContain('null value');
   });
 
   test('enforces unique room codes', async () => {
@@ -126,7 +126,7 @@ describe('Integration - Game Creation', () => {
       });
 
     expect(error).toBeDefined();
-    expect(error.message).toContain('duplicate');
+    expect(error!.message).toContain('duplicate');
   });
 
   test('validates game data constraints', async () => {

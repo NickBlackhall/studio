@@ -129,7 +129,7 @@ describe('Integration - Server Actions Behavior', () => {
         .eq('id', player.id)
         .single();
 
-      expect(updatedPlayer.is_ready).toBe(true);
+      expect(updatedPlayer!.is_ready).toBe(true);
     });
 
     test('ready player order management', async () => {
@@ -153,7 +153,7 @@ describe('Integration - Server Actions Behavior', () => {
         .eq('id', game.id)
         .single();
 
-      expect(updatedGame.ready_player_order).toEqual(readyOrder);
+      expect(updatedGame!.ready_player_order).toEqual(readyOrder);
     });
   });
 
@@ -169,8 +169,8 @@ describe('Integration - Server Actions Behavior', () => {
         .select('*')
         .eq('game_id', game.id);
 
-      expect(players.length).toBeGreaterThanOrEqual(2);
-      expect(players.every(p => p.is_ready)).toBe(true);
+      expect(players!.length).toBeGreaterThanOrEqual(2);
+      expect(players!.every(p => p.is_ready)).toBe(true);
 
       // Simulate game start transition
       const { error } = await testSupabase
@@ -214,8 +214,8 @@ describe('Integration - Server Actions Behavior', () => {
         .eq('id', game.id)
         .single();
 
-      expect(transitionGame.transition_state).toBe('starting_game');
-      expect(transitionGame.transition_message).toBe('Starting game...');
+      expect(transitionGame!.transition_state).toBe('starting_game');
+      expect(transitionGame!.transition_message).toBe('Starting game...');
 
       // Clear transition state
       await testSupabase
@@ -232,8 +232,8 @@ describe('Integration - Server Actions Behavior', () => {
         .eq('id', game.id)
         .single();
 
-      expect(clearedGame.transition_state).toBe('idle');
-      expect(clearedGame.transition_message).toBeNull();
+      expect(clearedGame!.transition_state).toBe('idle');
+      expect(clearedGame!.transition_message).toBeNull();
     });
   });
 
@@ -260,7 +260,7 @@ describe('Integration - Server Actions Behavior', () => {
         .select('is_ready')
         .eq('game_id', game.id);
 
-      expect(readyPlayers.every(p => p.is_ready)).toBe(true);
+      expect(readyPlayers!.every(p => p.is_ready)).toBe(true);
     });
 
     test('player disconnection during ready phase', async () => {
@@ -282,7 +282,7 @@ describe('Integration - Server Actions Behavior', () => {
         .eq('game_id', game.id);
 
       expect(remainingPlayers).toHaveLength(2);
-      expect(remainingPlayers.filter(p => p.is_ready)).toHaveLength(2);
+      expect(remainingPlayers!.filter(p => p.is_ready)).toHaveLength(2);
     });
   });
 
@@ -307,8 +307,8 @@ describe('Integration - Server Actions Behavior', () => {
       expect(gameError).toBeNull();
       expect(playersError).toBeNull();
       expect(playersData).toHaveLength(2);
-      expect(playersData[0].game_id).toBe(game.id);
-      expect(playersData[1].game_id).toBe(game.id);
+      expect(playersData![0].game_id).toBe(game.id);
+      expect(playersData![1].game_id).toBe(game.id);
     });
 
     test('foreign key constraints prevent orphaned data', async () => {
@@ -325,7 +325,7 @@ describe('Integration - Server Actions Behavior', () => {
         });
 
       expect(error).toBeDefined();
-      expect(error.message).toContain('uuid');
+      expect(error!.message).toContain('uuid');
     });
   });
 

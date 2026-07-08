@@ -52,7 +52,7 @@ describe('Integration - Problematic Transition Scenarios', () => {
       
       expect(dbGame.game_phase).toBe('lobby');
       expect(dbPlayers).toHaveLength(1);
-      expect(dbPlayers[0].name).toBe(`${TEST_PREFIX}NewPlayer`);
+      expect(dbPlayers![0].name).toBe(`${TEST_PREFIX}NewPlayer`);
       
       // But simulate: Frontend context still shows old state
       // This happens when subscription doesn't fire or is delayed
@@ -202,7 +202,7 @@ describe('Integration - Problematic Transition Scenarios', () => {
       expect(finalGame.game_phase).toBe('category_selection'); // Game started
       expect(finalGame.ready_player_order).toEqual([player1.id, player2.id]); // But ready order is stale
       
-      const player2State = finalPlayers.find(p => p.id === player2.id);
+      const player2State = finalPlayers!.find(p => p.id === player2.id);
       expect(player2State?.is_ready).toBe(false); // Player is no longer ready
       
       // The issue: ready_player_order contains a player who isn't actually ready

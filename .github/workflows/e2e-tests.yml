@@ -111,6 +111,14 @@ jobs:
         run: |
           echo "Setting up test database schema..."
           psql "$DB_URL" -f database/test-schema.sql
+          echo "Creating realtime smoke test table..."
+          psql "$DB_URL" -c "SELECT create_smoke_test_table();"
+          # PostgREST caches the DB schema at startup, which happened before the
+          # schema above existed. Without this reload every API call fails with
+          # PGRST205 "table not found in schema cache".
+          echo "Reloading PostgREST schema cache..."
+          psql "$DB_URL" -c "NOTIFY pgrst, 'reload schema';"
+          sleep 3
 
       - name: Verify database setup
         run: |
