@@ -1,8 +1,14 @@
 /**
+ * @jest-environment node
+ *
  * JWT Token System Unit Tests
  * 
  * Tests the core JWT token creation and verification logic
  * independently of Next.js request context.
+ * 
+ * NOTE: Must run in the node environment. In jsdom, Node's util.TextEncoder
+ * produces Uint8Arrays from a different realm, which fails jose's
+ * `instanceof Uint8Array` check ("payload must be an instance of Uint8Array").
  */
 
 import {
@@ -66,6 +72,8 @@ describe('JWT Token System', () => {
 
     test('should create tokens with proper HMAC signature', async () => {
       const token1 = await createPlayerToken(testPlayerId, testGameId, 'player');
+      // iat has 1-second resolution; wait so timestamps (and thus tokens) differ
+      await new Promise((resolve) => setTimeout(resolve, 1100));
       const token2 = await createPlayerToken(testPlayerId, testGameId, 'player');
       
       // Tokens for same data should be different (due to timestamps)
@@ -87,7 +95,8 @@ describe('JWT Token System', () => {
       
       const validation = await verifyPlayerToken(tamperedToken);
       expect(validation.valid).toBe(false);
-      expect(validation.error).toContain('Invalid');
+      // jose reports "signature verification failed" for tampered tokens
+      expect(validation.error).toMatch(/invalid|signature verification failed/i);
     });
 
     test('should include all required fields in token payload', async () => {

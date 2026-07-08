@@ -225,16 +225,23 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
       .on('postgres_changes', 
           { event: '*', schema: 'public' }, 
           (payload) => {
-            // Type guard for payload.new
-            const newRecord = payload.new as any;
+            // Type guard for payload records. For DELETE events the data is in
+            // payload.old, not payload.new — previously deletes (e.g. a player
+            // being removed) were always treated as irrelevant and dropped.
+            const newRecord = (payload.new && Object.keys(payload.new).length > 0 ? payload.new : payload.old) as any;
             console.log(`🔥 SUB_${subscriptionId}: Database update:`, payload.table, payload.eventType, 'gameId in payload:', newRecord?.game_id || newRecord?.id);
             
             // Only process if it's relevant to this game
+            // BUGFIX: This previously checked 'submitted_cards' and 'round_results',
+            // which are not real tables in this schema — so events on the actual
+            // 'responses', 'winners', and 'player_hands' tables were discarded and
+            // the UI only updated via incidental 'games' row updates.
             const isRelevant = 
               (payload.table === 'games' && newRecord?.id === gameId) ||
               (payload.table === 'players' && newRecord?.game_id === gameId) ||
-              (payload.table === 'submitted_cards' && newRecord?.game_id === gameId) ||
-              (payload.table === 'round_results' && newRecord?.game_id === gameId);
+              (payload.table === 'responses' && newRecord?.game_id === gameId) ||
+              (payload.table === 'player_hands' && newRecord?.game_id === gameId) ||
+              (payload.table === 'winners' && newRecord?.game_id === gameId);
             
             if (isRelevant) {
               console.log(`🎯 SUB_${subscriptionId}: RELEVANT update for game ${gameId} - ${payload.table}:${payload.eventType}`);

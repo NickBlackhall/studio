@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   title: 'Make It Terrible',
   description: 'The game of terrible choices and hilarious outcomes!',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Make It Terrible',
+  },
 };
 
 export const viewport: Viewport = {
@@ -26,11 +31,6 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'Make It Terrible',
-  },
 };
 
 export default function RootLayout({

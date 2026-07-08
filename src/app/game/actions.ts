@@ -34,23 +34,10 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
     console.log("🔵 ACTION: findOrCreateGame - Found existing lobby game:", lobbyGames[0].id);
     return lobbyGames[0];
   }
-  console.log("🔵 ACTION: findOrCreateGame - No lobby game found, checking for any existing game.");
-
-  const { data: existingGames, error: fetchError } = await supabase
-    .from('games')
-    .select('*')
-    .order('created_at', { ascending: true })
-    .limit(1);
-
-  if (fetchError) {
-    console.error("🔴 ACTION: findOrCreateGame - Error fetching any existing games:", JSON.stringify(fetchError, null, 2));
-  }
-
-  if (existingGames && existingGames.length > 0) {
-    console.log("🔵 ACTION: findOrCreateGame - Found existing game (not in lobby):", existingGames[0].id);
-    return existingGames[0];
-  }
-  console.log("🔵 ACTION: findOrCreateGame - No games found, creating a new one.");
+  // BUGFIX: Previously this fell back to returning ANY existing game — including one
+  // mid-play that new visitors could never join. Now, if no lobby exists, we always
+  // create a fresh lobby game instead.
+  console.log("🔵 ACTION: findOrCreateGame - No lobby game found, creating a new one.");
 
   // Generate room code for the new game
   const roomCode = await generateUniqueRoomCode();
@@ -107,12 +94,16 @@ export async function getGame(gameIdToFetch?: string): Promise<GameClientState> 
 
   if (gameIdToFetch) {
     const { data, error } = await supabase.from('games').select('*').eq('id', gameIdToFetch).single();
+    // BUGFIX: Previously a missing/deleted game fell back to findOrCreateGame(),
+    // silently dropping the player into the oldest lobby in the database — a
+    // different room they never joined. Now we fail loudly so the client can
+    // return the player to the main menu.
     if (error) {
-      console.warn(`🟡 ACTION: getGame - Error fetching game ${gameIdToFetch}, will find/create new.`, error.message);
-      gameRow = await findOrCreateGame();
+      console.warn(`🟡 ACTION: getGame - Error fetching game ${gameIdToFetch}:`, error.message);
+      throw new Error(`Game not found. It may have been closed or deleted.`);
     } else if (!data) {
-      console.warn(`🟡 ACTION: getGame - No game data found for ${gameIdToFetch}, will find/create new.`);
-      gameRow = await findOrCreateGame();
+      console.warn(`🟡 ACTION: getGame - No game data found for ${gameIdToFetch}.`);
+      throw new Error(`Game not found. It may have been closed or deleted.`);
     } else {
       console.log(`🔵 ACTION: getGame - Successfully fetched game ${gameIdToFetch}.`);
       gameRow = data;
@@ -340,7 +331,19 @@ export async function addPlayer(name: string, avatar: string, targetGameId?: str
   }
 
   if (existingPlayer) {
-    console.log(`🔵 ACTION: addPlayer - Player "${name}" already exists in game. Re-fetching full profile.`);
+    // SECURITY BUGFIX: Previously, joining with an existing player's name returned that
+    // player's record — letting anyone hijack another player's identity by typing the
+    // same name. Now only allow "reconnect" when the caller's session already owns
+    // this player; otherwise the name is taken.
+    const session = await getPlayerSession();
+    const isReconnect = session.valid && session.token?.playerId === existingPlayer.id && session.token?.gameId === gameId;
+
+    if (!isReconnect) {
+      console.warn(`🟡 ACTION: addPlayer - Name "${name}" is already taken in game ${gameId} and caller's session doesn't match.`);
+      throw new Error(`The name "${name}" is already taken in this room. Please pick a different name.`);
+    }
+
+    console.log(`🔵 ACTION: addPlayer - Player "${name}" reconnecting with valid session. Re-fetching full profile.`);
     const { data: fullExistingPlayer, error: fetchExistingError } = await supabase
         .from('players')
         .select('*')
@@ -351,6 +354,25 @@ export async function addPlayer(name: string, avatar: string, targetGameId?: str
         throw new Error(`Error re-fetching existing player: ${fetchExistingError.message}`);
     }
     return fullExistingPlayer;
+  }
+
+  // BUGFIX: Enforce max_players on the server. Previously this was only checked
+  // client-side, so races (two players joining the last slot) or direct server-action
+  // calls could overfill a room.
+  const { count: currentPlayerCount, error: countError } = await supabase
+    .from('players')
+    .select('id', { count: 'exact', head: true })
+    .eq('game_id', gameId);
+
+  if (countError) {
+    console.error('🔴 ACTION: addPlayer - Error counting players:', JSON.stringify(countError, null, 2));
+    throw new Error(`Error checking room capacity: ${countError.message}`);
+  }
+
+  const maxPlayers = gameRow.max_players ?? 8;
+  if ((currentPlayerCount ?? 0) >= maxPlayers) {
+    console.warn(`🟡 ACTION: addPlayer - Room ${gameId} is full (${currentPlayerCount}/${maxPlayers}).`);
+    throw new Error(`This room is full (${currentPlayerCount}/${maxPlayers} players). Cannot join.`);
   }
 
   console.log(`🔵 ACTION: addPlayer - Creating new player record for "${name}".`);
@@ -718,20 +740,17 @@ async function dealCardsFromSupabase(gameId: string, count: number, existingUsed
     }
   }
 
-  // Smart limit: Use different multipliers based on whether this is initial deal or replacement
-  const isInitialDeal = count > 10; // Heuristic: >10 cards likely means initial deal
-  const multiplier = isInitialDeal ? 3 : 5; // More variety for initial deal, less for replacement
-  const totalAvailable = 1013 - allKnownUsedResponses.length; // Approximate available cards
-  const smartLimit = Math.min(count * multiplier, Math.max(totalAvailable, count)); // Never less than count needed
-  
-  // Log warning if running low on cards
-  if (totalAvailable < 100) {
+  // BUGFIX: Previously this used .order('id').limit(count * multiplier) with a
+  // hardcoded deck size of 1013. Ordering by id + limiting meant only the
+  // lowest-UUID cards were ever candidates, so most of the deck was effectively
+  // never dealt. Card ids are small (UUIDs only), so fetch all unused active ids
+  // and shuffle in memory — true uniform sampling over the whole deck.
+  const { data: availableCards, error: fetchError } = await query;
+
+  const totalAvailable = availableCards?.length ?? 0;
+  if (totalAvailable > 0 && totalAvailable < 100) {
     console.warn(`⚠️ UTIL: dealCards - Running low on cards! Only ${totalAvailable} cards remaining for game ${gameId}`);
   }
-  
-  const { data: availableCards, error: fetchError } = await query
-    .order('id') // Add consistent ordering (using id instead of RANDOM() for now to avoid PostgreSQL function issues)
-    .limit(smartLimit);
 
   if (fetchError) {
     console.error(`🔴 UTIL: dealCards - Error fetching available response cards for game ${gameId}:`, JSON.stringify(fetchError, null, 2));
@@ -1154,7 +1173,12 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
   if (game.game_phase === 'game_over') {
     console.log(`🔵 ACTION: nextRound - Game is over, resetting.`);
     try {
-      await resetGameForTesting(); 
+      // BUGFIX: Previously called resetGameForTesting() with no gameId, which used
+      // legacy behavior and reset the OLDEST game in the database — in a multi-room
+      // world that could wipe out a completely different room's game.
+      // Now targets this specific game. Note: reset with an explicit gameId is
+      // host-gated in production, so only the host can trigger "play again".
+      await resetGameForTesting({ gameId }); 
       return null;
     } catch (e: any) {
       if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) throw e;
