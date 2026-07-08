@@ -43,20 +43,20 @@ jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
 // Mock next/headers cookies() with an in-memory store. The real cookies()
 // only works inside a request scope, which Jest tests don't have — without
 // this, every session helper (src/lib/auth.ts) throws.
-const cookieStore = new Map<string, { name: string; value: string }>();
+const mockCookieStore = new Map<string, { name: string; value: string }>();
 jest.mock('next/headers', () => ({
   cookies: async () => ({
-    get: (name: string) => cookieStore.get(name),
-    getAll: () => Array.from(cookieStore.values()),
-    has: (name: string) => cookieStore.has(name),
+    get: (name: string) => mockCookieStore.get(name),
+    getAll: () => Array.from(mockCookieStore.values()),
+    has: (name: string) => mockCookieStore.has(name),
     set: (name: string, value: string, _options?: unknown) => {
-      cookieStore.set(name, { name, value });
+      mockCookieStore.set(name, { name, value });
     },
     delete: (name: string) => {
-      cookieStore.delete(name);
+      mockCookieStore.delete(name);
     },
   }),
 }));
 
 // Fresh cookie state per test so sessions don't leak between tests
-beforeEach(() => cookieStore.clear());
+beforeEach(() => mockCookieStore.clear());
