@@ -47,45 +47,42 @@ await new Promise((resolve, reject) => {
 // Allow subscription to fully establish
 await new Promise(r => setTimeout(r, 1000));
 
-// Guaranteed event generation: INSERT a test row.
-// Retry to ride out PostgREST schema cache reloads (PGRST205).
-console.log('Generating deterministic Realtime event...');
-let data, error;
-for (let attempt = 1; attempt <= 10; attempt++) {
-  ({ data, error } = await supa.from('rt_smoke').insert({
-    test_value: 'smoke-' + Date.now()
-  }).select().single());
-  if (!error) break;
-  console.warn(`insert attempt ${attempt}/10 failed: ${error.message}; retrying in 1s...`);
-  await new Promise(r => setTimeout(r, 1000));
+// Generate events until one is delivered. Two failure modes to ride out:
+// - PostgREST schema cache reloads (insert fails with PGRST205)
+// - Realtime's WAL poller warming up on a cold instance: the first event
+//   after the first postgres_changes subscription can take >10s to arrive,
+//   so a single insert with a short wait produces false negatives.
+console.log('Generating deterministic Realtime events (up to 30s)...');
+const deadline = Date.now() + 30_000;
+let attempt = 0;
+let anyInsertOk = false;
+let lastError = null;
+while (!got && Date.now() < deadline) {
+  attempt++;
+  const { error } = await supa.from('rt_smoke').insert({
+    test_value: `smoke-${attempt}-${Date.now()}`
+  });
+  if (error) {
+    lastError = error;
+    console.warn(`insert attempt ${attempt} failed: ${error.message}`);
+  } else {
+    anyInsertOk = true;
+    console.log(`insert attempt ${attempt} ok, waiting for event...`);
+  }
+  // Poll for delivery for 3s before generating the next event
+  for (let i = 0; i < 30 && !got; i++) {
+    await new Promise(r => setTimeout(r, 100));
+  }
 }
 
-if (error) {
-  console.error('Failed to insert smoke test row after retries:', error);
+if (!anyInsertOk) {
+  console.error('All inserts failed; last error:', lastError);
   process.exit(3);
 }
-
-console.log('insert ok:', data);
-
-// Wait up to 3s for the guaranteed event
-await new Promise((resolve, reject) => {
-  const t = setTimeout(() => {
-    if (got) {
-      resolve();
-    } else {
-      reject(new Error('No realtime events received despite successful INSERT'));
-    }
-  }, 3000);
-  
-  // Early resolution if event received
-  const checkInterval = setInterval(() => {
-    if (got) {
-      clearTimeout(t);
-      clearInterval(checkInterval);
-      resolve();
-    }
-  }, 100);
-});
+if (!got) {
+  console.error('No realtime events received within 30s despite successful INSERTs');
+  process.exit(4);
+}
 
 await supa.removeChannel(ch);
 console.log('Realtime smoke OK');

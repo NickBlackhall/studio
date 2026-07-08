@@ -355,7 +355,9 @@ BEGIN
     GRANT SELECT, INSERT, UPDATE, DELETE ON rt_smoke TO anon, authenticated, service_role;
     GRANT USAGE, SELECT ON SEQUENCE rt_smoke_id_seq TO anon, authenticated, service_role;
 END;
-$$ LANGUAGE plpgsql;
+-- SECURITY DEFINER so the smoke test can call this via RPC as service_role:
+-- ALTER TABLE / GRANT inside require table ownership (postgres).
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =====================================================================
 -- COMMENTS FOR DOCUMENTATION
