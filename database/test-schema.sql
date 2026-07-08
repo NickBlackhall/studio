@@ -349,6 +349,11 @@ BEGIN
     
     -- Clean up old test data
     DELETE FROM rt_smoke WHERE created_at < NOW() - INTERVAL '1 hour';
+
+    -- The table is created here (after the blanket grants at the end of this
+    -- file have already run), so it needs its own grants for the API roles.
+    GRANT SELECT, INSERT, UPDATE, DELETE ON rt_smoke TO anon, authenticated, service_role;
+    GRANT USAGE, SELECT ON SEQUENCE rt_smoke_id_seq TO anon, authenticated, service_role;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -408,6 +413,30 @@ BEGIN
     FOREIGN KEY (current_judge_id) REFERENCES public.players(id)
     ON DELETE SET NULL;
 END$;
+
+-- =====================================================================
+-- API ROLE GRANTS (Critical: PostgREST access)
+-- =====================================================================
+-- This schema is loaded via psql as the postgres role, which does NOT give
+-- the Supabase API roles (anon / authenticated / service_role) any access.
+-- Without these grants every PostgREST request fails with 42501
+-- "permission denied", regardless of RLS.
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role;
+
+-- Let the smoke-test RPC create its table when run via the API (local fallback)
+GRANT CREATE ON SCHEMA public TO service_role;
+
+-- Apply the same grants to any tables/functions created later in this session
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
 
 -- Final success message
 SELECT 'E2E Test Database Schema Setup Complete! 🎉' as status,
