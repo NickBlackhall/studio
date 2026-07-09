@@ -117,7 +117,9 @@ jobs:
       - name: Setup test database schema
         run: |
           echo "Setting up test database schema..."
-          psql "$DB_URL" -f database/test-schema.sql
+          # ON_ERROR_STOP: without it psql logs SQL errors but exits 0, so
+          # schema breakage (e.g. a bad DO block) sails through unnoticed.
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f database/test-schema.sql
           echo "Creating realtime smoke test table..."
           psql "$DB_URL" -c "SELECT create_smoke_test_table();"
           # PostgREST caches the DB schema at startup, which happened before the

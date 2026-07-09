@@ -215,6 +215,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Atomic ready_player_order removal (see migration 004): a JS
+-- read-filter-write races with concurrent leavers; array_remove in a
+-- single UPDATE does not.
+CREATE OR REPLACE FUNCTION remove_player_from_ready_order(p_game_id UUID, p_player_id UUID)
+RETURNS VOID AS $$
+  UPDATE games
+  SET ready_player_order = array_remove(ready_player_order, p_player_id),
+      updated_at = NOW()
+  WHERE id = p_game_id;
+$$ LANGUAGE sql;
+
 -- View for active public games (useful for room browser)
 CREATE OR REPLACE VIEW public_games AS
 SELECT 
@@ -389,28 +400,28 @@ ALTER TABLE public.responses    REPLICA IDENTITY FULL;
 ALTER TABLE public.player_hands REPLICA IDENTITY FULL;
 
 -- Ensure publication exists and includes our tables
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
     CREATE PUBLICATION supabase_realtime FOR ALL TABLES;
   END IF;
-END$;
+END$$;
 
 -- The local Supabase CLI pre-creates an EMPTY supabase_realtime publication,
 -- so the FOR ALL TABLES branch above never runs in CI. Without these explicit
 -- adds, no game table broadcasts changes and every subscription test receives
 -- zero events.
-DO $
+DO $$
 BEGIN
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.games;        EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.players;      EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.responses;    EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.player_hands; EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.winners;      EXCEPTION WHEN duplicate_object THEN NULL; END;
-END$;
+END$$;
 
 -- FK: make cleanup easy and robust
-DO $
+DO $$
 DECLARE
   cname text;
 BEGIN
@@ -426,7 +437,7 @@ BEGIN
     ADD CONSTRAINT games_current_judge_id_fkey
     FOREIGN KEY (current_judge_id) REFERENCES public.players(id)
     ON DELETE SET NULL;
-END$;
+END$$;
 
 -- =====================================================================
 -- API ROLE GRANTS (Critical: PostgREST access)

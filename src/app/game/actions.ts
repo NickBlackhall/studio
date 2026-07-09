@@ -83,13 +83,21 @@ export async function findOrCreateGame(): Promise<Tables<'games'>> {
 
 export async function getGame(gameIdToFetch?: string): Promise<GameClientState> {
   console.log(`🔵 ACTION: getGame - Initiated. Requested gameId: ${gameIdToFetch || 'None'}`);
-  
+
   // SECURITY: If gameId specified, verify player has access to that game
   if (gameIdToFetch) {
     const authorizedPlayerId = await requireAuthOrDev(gameIdToFetch, () => requireGameMembership(gameIdToFetch));
     console.log(`🔵 ACTION: getGame - Player authorization passed for: ${authorizedPlayerId}`);
   }
-  
+
+  return getGameStateInternal(gameIdToFetch);
+}
+
+// Assembles GameClientState WITHOUT a membership check. For server-internal
+// use after the caller has already authorized the operation — e.g.
+// removePlayerFromGame must return the updated state to a player whose row
+// was just deleted, so re-running the membership check would always fail.
+async function getGameStateInternal(gameIdToFetch?: string): Promise<GameClientState> {
   let gameRow: Tables<'games'> | null = null;
 
   if (gameIdToFetch) {
@@ -1471,24 +1479,35 @@ export async function removePlayerFromGame(gameId: string, playerId: string, rea
     const isHostLeaving = game.created_by_player_id === playerId;
     if (isHostLeaving) {
       console.log(`🔵 ACTION: removePlayerFromGame - Host is leaving, closing room ${gameId}`);
-      
-      // Remove host's data first
-      await supabase.from('player_hands').delete().eq('player_id', playerId).eq('game_id', gameId);
-      await supabase.from('responses').delete().eq('player_id', playerId).eq('game_id', gameId);
-      await supabase.from('players').delete().eq('id', playerId).eq('game_id', gameId);
-      
-      // Update ready_player_order to remove host and set transition state
+
+      // Update the game FIRST: games.created_by_player_id (and possibly
+      // current_judge_id) reference the host's players row with a plain FK,
+      // so deleting the player before clearing those columns fails with an
+      // FK violation — which the deletes below don't surface, silently
+      // leaving the host in the game.
       const updatedReadyOrder = (game.ready_player_order || []).filter(id => id !== playerId);
-      await supabase
+      const { error: closeError } = await supabase
         .from('games')
-        .update({ 
+        .update({
           ready_player_order: updatedReadyOrder,
           current_judge_id: null,
+          created_by_player_id: null,
           transition_state: 'resetting_game',
           transition_message: 'Host ended the game',
           updated_at: new Date().toISOString()
         })
         .eq('id', gameId);
+      if (closeError) {
+        throw new Error(`Failed to close room on host departure: ${closeError.message}`);
+      }
+
+      // Now remove the host's data
+      await supabase.from('player_hands').delete().eq('player_id', playerId).eq('game_id', gameId);
+      await supabase.from('responses').delete().eq('player_id', playerId).eq('game_id', gameId);
+      const { error: hostDeleteError } = await supabase.from('players').delete().eq('id', playerId).eq('game_id', gameId);
+      if (hostDeleteError) {
+        throw new Error(`Failed to remove host: ${hostDeleteError.message}`);
+      }
       
       revalidatePath('/');
       revalidatePath('/game');
@@ -1523,12 +1542,17 @@ export async function removePlayerFromGame(gameId: string, playerId: string, rea
       }
     }
 
-    // Update ready_player_order by removing the leaving player
-    let updatedReadyOrder = game.ready_player_order || [];
-    if (playerData.is_ready && updatedReadyOrder.includes(playerId)) {
-      updatedReadyOrder = updatedReadyOrder.filter(id => id !== playerId);
-      gameUpdates.ready_player_order = updatedReadyOrder;
-      console.log(`🔵 ACTION: removePlayerFromGame - Updated ready order: [${updatedReadyOrder.join(', ')}]`);
+    // Remove the leaving player from ready_player_order atomically in the DB.
+    // A read-modify-write here races with concurrent leavers: each writes
+    // back its own stale copy of the array and one removal gets undone.
+    // (rpc cast: generated DB types predate this function — migration 004)
+    const { error: readyOrderError } = await (supabase.rpc as CallableFunction)('remove_player_from_ready_order', {
+      p_game_id: gameId,
+      p_player_id: playerId,
+    }) as { error: { message: string } | null };
+    if (readyOrderError) {
+      console.error(`🔴 ACTION: removePlayerFromGame - Error updating ready order:`, readyOrderError.message);
+      throw new Error(`Failed to update ready order: ${readyOrderError.message}`);
     }
 
     // Reset to lobby if too few players remain and not already in lobby
@@ -1598,8 +1622,10 @@ export async function removePlayerFromGame(gameId: string, playerId: string, rea
       console.log(`🔵 ACTION: removePlayerFromGame - No players remaining, game will be cleaned up`);
       return null;
     }
-    
-    return getGame(gameId);
+
+    // Internal (non-auth) fetch: the leaving player's row is already gone,
+    // so the membership-gated getGame would throw for their session.
+    return getGameStateInternal(gameId);
 
   } catch (error: any) {
     console.error('🔴 ACTION: removePlayerFromGame - Unexpected error:', error.message);

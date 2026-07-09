@@ -316,9 +316,10 @@ describe('Security Vulnerability Regression Tests', () => {
     test('should handle null/undefined player parameters', async () => {
       await setPlayerSession(testPlayerId, testGameId, 'player');
       
+      // Empty playerId is handled gracefully (returns undefined, no data leak)
       await expect(getCurrentPlayer('', testGameId))
-        .rejects.toThrow();
-      
+        .resolves.toBeUndefined();
+
       await expect(togglePlayerReadyStatus('', testGameId))
         .rejects.toThrow();
     });

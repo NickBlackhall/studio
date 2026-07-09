@@ -57,6 +57,17 @@ export async function cleanupTestData(): Promise<void> {
   console.log('🧹 Cleaning up test data...');
   
   try {
+    // games.created_by_player_id / current_judge_id reference players rows
+    // with plain FKs — clear them first or the player deletes below fail
+    // silently and the games survive, leaking into later tests.
+    const { error: unrefError } = await testSupabase
+      .from('games')
+      .update({ created_by_player_id: null, current_judge_id: null })
+      .not('id', 'is', null);
+    if (unrefError) {
+      console.warn('Warning clearing player references on games:', unrefError.message);
+    }
+
     // Clean up test players first (foreign key constraint)
     const { error: playersError } = await testSupabase
       .from('players')

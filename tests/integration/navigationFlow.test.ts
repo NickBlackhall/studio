@@ -126,9 +126,10 @@ describe('Integration - Navigation Flow', () => {
 
   describe('Game Phase Transitions', () => {
     test('category selection → player submission flow', async () => {
-      // Setup: Game in category_selection phase
-      const game = await createTestGame({ 
-        game_phase: 'category_selection',
+      // Setup: Game in lobby (players can only join lobby-phase games;
+      // startGame transitions it to category_selection)
+      const game = await createTestGame({
+        game_phase: 'lobby',
         current_judge_id: null // Will be set by startGame
       });
       

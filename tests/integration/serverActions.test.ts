@@ -40,7 +40,8 @@ describe('Integration - Server Actions', () => {
       expect(game.id).toBeDefined();
       expect(game.game_phase).toBe('lobby');
       expect(game.room_code).toMatch(/^[A-Z2-9]{6}$/);
-      expect(game.current_round).toBe(1);
+      // New games start at round 0; startGame advances to 1
+      expect(game.current_round).toBe(0);
     });
 
     test('findOrCreateGame returns existing lobby game', async () => {
@@ -175,13 +176,20 @@ describe('Integration - Server Actions', () => {
   describe('Reset and Cleanup', () => {
     test('resetGameForTesting clears game state', async () => {
       const game = await createTestGame({ game_phase: 'player_submission' });
-      await createTestPlayer(game.id);
+      const player = await createTestPlayer(game.id);
 
-      // clientWillNavigate skips the server-side redirect() (which throws
-      // NEXT_REDIRECT outside a real request). Reset also deletes all
-      // players, so verify via direct DB read instead of the
-      // membership-gated getGame.
-      await resetGameForTesting({ clientWillNavigate: true });
+      // Target this game explicitly (the no-arg legacy path resets the
+      // oldest game in the DB — nondeterministic). Explicit reset is
+      // host-gated, so mark the player as host. clientWillNavigate skips
+      // the server-side redirect() (which throws NEXT_REDIRECT outside a
+      // real request). Reset also deletes all players, so verify via
+      // direct DB read instead of the membership-gated getGame.
+      await testSupabase
+        .from('games')
+        .update({ created_by_player_id: player.id })
+        .eq('id', game.id);
+      await setPlayerSession(player.id, game.id, 'host');
+      await resetGameForTesting({ gameId: game.id, clientWillNavigate: true });
 
       const { data: resetGame } = await testSupabase
         .from('games')
