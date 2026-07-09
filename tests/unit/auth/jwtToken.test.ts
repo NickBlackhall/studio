@@ -89,10 +89,16 @@ describe('JWT Token System', () => {
 
     test('should prevent token tampering', async () => {
       const token = await createPlayerToken(testPlayerId, testGameId, 'player');
-      
-      // Attempt to tamper with the token by changing one character
-      const tamperedToken = token.slice(0, -1) + 'X';
-      
+
+      // Tamper with a character in the MIDDLE of the payload segment.
+      // (Changing the token's final character is unreliable: base64url
+      // padding bits mean several final characters decode to identical
+      // bytes, so the "tampered" token occasionally verifies fine.)
+      const [header, payload, signature] = token.split('.');
+      const i = Math.floor(payload.length / 2);
+      const flipped = payload[i] === 'A' ? 'B' : 'A';
+      const tamperedToken = `${header}.${payload.slice(0, i)}${flipped}${payload.slice(i + 1)}.${signature}`;
+
       const validation = await verifyPlayerToken(tamperedToken);
       expect(validation.valid).toBe(false);
       // jose reports "signature verification failed" for tampered tokens
