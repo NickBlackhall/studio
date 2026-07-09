@@ -583,9 +583,11 @@ export async function getGameByRoomCode(roomCode: string): Promise<GameClientSta
     }
 
     console.log(`🔵 ACTION: getGameByRoomCode - Found game ${gameData.id} for room code ${roomCode}`);
-    
-    // Use the existing getGame function with the found game ID
-    return await getGame(gameData.id);
+
+    // Internal (non-auth) fetch: room-code lookup happens BEFORE the player
+    // has joined, so they can't have a session for this game yet — the
+    // membership-gated getGame would reject every join attempt.
+    return await getGameStateInternal(gameData.id);
 
   } catch (error: any) {
     console.error('🔴 ACTION: getGameByRoomCode - Error:', error.message);
@@ -600,15 +602,14 @@ export async function cleanupEmptyRooms(): Promise<void> {
     // Find games that are older than 10 minutes and have no players
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     
-    const { data: emptyGames, error: fetchError } = await supabase
+    // Query games and player counts separately: the embedded
+    // players:players(count) join is ambiguous — games and players are
+    // linked by multiple FKs (players.game_id, games.created_by_player_id,
+    // games.current_judge_id) and the FK sets differ between environments,
+    // so PostgREST rejects or misresolves the embed.
+    const { data: oldGames, error: fetchError } = await supabase
       .from('games')
-      .select(`
-        id,
-        room_name,
-        room_code,
-        created_at,
-        players:players(count)
-      `)
+      .select('id, room_name, room_code, created_at')
       .lt('created_at', tenMinutesAgo);
 
     if (fetchError) {
@@ -616,16 +617,23 @@ export async function cleanupEmptyRooms(): Promise<void> {
       return;
     }
 
-    if (!emptyGames || emptyGames.length === 0) {
+    if (!oldGames || oldGames.length === 0) {
       console.log("🔵 ACTION: cleanupEmptyRooms - No games found older than 10 minutes");
       return;
     }
 
-    // Filter to only games with 0 players
-    const gamesToDelete = emptyGames.filter(game => {
-      const playerCount = (game.players as any)?.[0]?.count || 0;
-      return playerCount === 0;
-    });
+    const { data: occupiedRows, error: playersError } = await supabase
+      .from('players')
+      .select('game_id')
+      .in('game_id', oldGames.map(g => g.id));
+
+    if (playersError) {
+      console.error("🔴 ACTION: cleanupEmptyRooms - Error fetching players:", playersError.message);
+      return;
+    }
+
+    const occupiedGameIds = new Set((occupiedRows ?? []).map(p => p.game_id));
+    const gamesToDelete = oldGames.filter(game => !occupiedGameIds.has(game.id));
 
     if (gamesToDelete.length === 0) {
       console.log("🔵 ACTION: cleanupEmptyRooms - No empty games found to clean up");
