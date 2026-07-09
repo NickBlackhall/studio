@@ -14,8 +14,10 @@ concurrency:
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
-    # Setup ~5 min + chromium e2e suite; don't let a hung step squat for 6 hours
-    timeout-minutes: 60
+    # Setup ~5 min + chromium e2e suite. The rebuilt e2e tests play real
+    # 3-browser games (~1-2 min each), so the suite legitimately needs more
+    # than an hour; cap still guards against hangs.
+    timeout-minutes: 120
 
     steps:
       - name: Checkout code
