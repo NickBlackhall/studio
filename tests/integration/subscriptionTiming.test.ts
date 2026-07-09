@@ -191,8 +191,14 @@ describe('Integration - Subscription Timing Issues', () => {
       console.log('Subscription captured:', subscriptionUpdates);
       console.log('Polling captured:', pollingUpdates);
       
-      // Subscription should be more comprehensive than polling
-      expect(subscriptionUpdates.length).toBeGreaterThanOrEqual(pollingUpdates.length);
+      // Subscription should be more comprehensive than polling: it receives
+      // every state CHANGE, while polling samples on a timer and can skip
+      // intermediate states. (Comparing raw counts is meaningless — polling
+      // re-records the same state every tick, so its count just grows with
+      // elapsed time.)
+      expect(subscriptionUpdates).toEqual(
+        expect.arrayContaining(['dealing_cards', 'ready', 'idle'])
+      );
     });
   });
 
