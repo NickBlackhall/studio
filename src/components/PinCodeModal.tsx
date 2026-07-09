@@ -98,6 +98,7 @@ export default function PinCodeModal({
               onChange={handleInputChange}
               className="text-center text-lg tracking-widest"
               maxLength={6}
+              data-testid="pin-input"
               autoFocus
               disabled={isSubmitting}
             />
@@ -119,6 +120,7 @@ export default function PinCodeModal({
               type="submit"
               variant="destructive"
               disabled={isSubmitting || !pin.trim()}
+              data-testid="pin-submit"
             >
               {isSubmitting ? (
                 <>

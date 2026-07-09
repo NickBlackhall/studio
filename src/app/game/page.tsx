@@ -409,7 +409,7 @@ export default function GamePage() {
         />
       )}
       
-      <div className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 ${showRecap ? 'opacity-20 pointer-events-none' : ''}`}>
+      <div data-testid="game-interface" className={`flex flex-col md:flex-row gap-4 md:gap-8 py-4 md:py-8 ${showRecap ? 'opacity-20 pointer-events-none' : ''}`}>
         <main className="flex-grow w-full md:w-full lg:w-full relative order-1 md:order-2">
           {renderGameContent()}
         </main>
@@ -524,6 +524,7 @@ export default function GamePage() {
             }}
             className="bg-red-500/80 hover:bg-red-600/80 text-white"
             disabled={isActionPending}
+            data-testid="reset-game-button"
           >
             {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Reset Game (Testing)
