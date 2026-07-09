@@ -223,10 +223,56 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
     setTimeout(() => {
       swipeOccurredRef.current = false;
     }, 100);
-    
+
     touchStartRef.current = null;
   };
-  
+
+  // --- Mouse support (additive) ---
+  // Desktop regression fix: mirrors the touch swipe logic above so the judge
+  // can browse submissions with a mouse. Touch handlers are untouched.
+  // Window-level listeners keep the drag tracking past the card's edge.
+  const handleMouseDown = (e: React.MouseEvent, submissionIndex: number) => {
+    if (e.button !== 0) return; // left button only
+    e.preventDefault(); // stop text selection / native image drag
+    swipeOccurredRef.current = false;
+    setDraggingCardId(cardOrder[0]);
+    setDragOffset({ x: 0, y: 0 });
+    const start = { x: e.clientX, y: e.clientY, time: Date.now() };
+    touchStartRef.current = start;
+
+    const onMove = (ev: MouseEvent) => {
+      setDragOffset({ x: ev.clientX - start.x, y: ev.clientY - start.y });
+    };
+
+    const onUp = (ev: MouseEvent) => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+
+      const deltaX = ev.clientX - start.x;
+      const deltaY = ev.clientY - start.y;
+      const deltaTime = Date.now() - start.time;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      const velocity = distance / deltaTime;
+      const minDistance = 40;
+      const minVelocity = 0.3;
+      const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+
+      if ((distance > minDistance || velocity > minVelocity) && isHorizontal) {
+        swipeOccurredRef.current = true;
+        shuffleCard(submissionIndex, deltaX > 0 ? 'right' : 'left');
+      }
+
+      // Reset drag state (mirrors handleTouchEnd)
+      setDragOffset(null);
+      setDraggingCardId(null);
+      setTimeout(() => { swipeOccurredRef.current = false; }, 100);
+      touchStartRef.current = null;
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
   const handleUnleashScenario = (category: string) => {
     if (!category) {
       toast({ title: "Hold up!", description: "Please select a category first.", variant: "destructive" });
@@ -460,6 +506,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   onTouchStart={(e) => index === 0 ? handleTouchStart(e, originalIndex) : undefined}
                   onTouchMove={(e) => index === 0 ? handleTouchMove(e, originalIndex) : undefined}
                   onTouchEnd={(e) => index === 0 ? handleTouchEnd(e, originalIndex) : undefined}
+                  onMouseDown={(e) => index === 0 ? handleMouseDown(e, originalIndex) : undefined}
                 >
                   <motion.div
                     className="relative w-full h-full [transform-style:preserve-3d] shadow-lg rounded-xl"

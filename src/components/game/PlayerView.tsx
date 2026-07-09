@@ -334,8 +334,95 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
     setTimeout(() => {
       swipeOccurredRef.current = false;
     }, 100);
-    
+
     touchStartRef.current = null;
+  };
+
+  // --- Mouse support (additive) ---
+  // Desktop regression fix: the 2025-07-24 swipe-deck redesign bound all card
+  // gestures to touch events only, so mice could click but never browse or
+  // submit. This mirrors the touch logic above (same state, same thresholds).
+  // The touch handlers are intentionally untouched. Move/up listeners attach
+  // to window so drags keep tracking when the cursor leaves the card.
+  const handleMouseDown = (e: React.MouseEvent, cardId: string) => {
+    if (e.button !== 0) return; // left button only
+    if (exitingCardId !== null || slidingUp || hasSubmittedThisRound) return; // mid-shuffle/submitted
+    e.preventDefault(); // stop text selection / native image drag
+    swipeOccurredRef.current = false;
+    setDraggingCardId(cardId);
+    setDragOffset({ x: 0, y: 0 });
+    const start = { x: e.clientX, y: e.clientY, time: Date.now() };
+    touchStartRef.current = start;
+    let movingUp = false;
+
+    const onMove = (ev: MouseEvent) => {
+      const deltaX = ev.clientX - start.x;
+      const deltaY = ev.clientY - start.y;
+      setDragOffset({ x: deltaX, y: deltaY });
+
+      const isMovingUp = deltaY < -20; // same 20px hint threshold as touch
+      if (isMovingUp && !movingUp) {
+        movingUp = true;
+        setIsDraggingUp(true);
+        setDraggingUpCardId(cardId);
+      } else if (!isMovingUp && movingUp) {
+        movingUp = false;
+        setIsDraggingUp(false);
+        setDraggingUpCardId(null);
+      }
+    };
+
+    const onUp = (ev: MouseEvent) => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+
+      const deltaX = ev.clientX - start.x;
+      const deltaY = ev.clientY - start.y;
+      const deltaTime = Date.now() - start.time;
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      const velocity = distance / deltaTime;
+      const minDistance = 40;
+      const minVelocity = 0.3;
+      const isHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+      const isVertical = Math.abs(deltaY) > Math.abs(deltaX);
+
+      if (distance > minDistance || velocity > minVelocity) {
+        if (isHorizontal) {
+          swipeOccurredRef.current = true;
+          shuffleCard(cardId, deltaX > 0 ? 'right' : 'left');
+        } else if (isVertical && deltaY < 0) {
+          const upwardDistance = Math.abs(deltaY);
+          const upwardVelocity = upwardDistance / deltaTime;
+          const flickThreshold = upwardDistance > 40 && upwardVelocity > 0.4;
+          const dragThreshold = upwardDistance > window.innerHeight * 0.3;
+
+          if (flickThreshold || dragThreshold) {
+            swipeOccurredRef.current = true;
+            const currentPosition = { x: deltaX, y: deltaY };
+            const v = { x: deltaX / deltaTime, y: deltaY / deltaTime };
+            setSubmissionStartPosition(currentPosition);
+            setSubmissionVelocity(v);
+            setIsSubmittingCard(true);
+            setSubmittingCardId(cardId);
+            handleSwipeUpSubmit(cardId, currentPosition, v);
+            setTimeout(() => { swipeOccurredRef.current = false; }, 100);
+            touchStartRef.current = null;
+            return; // submit animation owns the drag state from here
+          }
+        }
+      }
+
+      // Reset drag state (mirrors handleTouchEnd)
+      setDragOffset(null);
+      setDraggingCardId(null);
+      setIsDraggingUp(false);
+      setDraggingUpCardId(null);
+      setTimeout(() => { swipeOccurredRef.current = false; }, 100);
+      touchStartRef.current = null;
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   };
 
   // Handle swipe up to submit
@@ -611,6 +698,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                 onTouchStart={(e) => index === 0 ? handleTouchStart(e, card.id) : undefined}
                 onTouchMove={(e) => index === 0 ? handleTouchMove(e, card.id) : undefined}
                 onTouchEnd={(e) => index === 0 ? handleTouchEnd(e, card.id) : undefined}
+                onMouseDown={(e) => index === 0 ? handleMouseDown(e, card.id) : undefined}
               >
                 <motion.div
                   className="relative w-full h-full [transform-style:preserve-3d] shadow-lg rounded-xl"
