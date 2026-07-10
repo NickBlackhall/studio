@@ -426,6 +426,13 @@ export async function addPlayer(name: string, avatar: string, targetGameId?: str
       .eq('id', gameId);
   }
 
+  // Set the session cookie IN THIS ACTION's response. Previously the client
+  // called setCurrentPlayerSession as a separate follow-up action, leaving a
+  // window where realtime-triggered refetches hit membership-gated actions
+  // with no cookie — "Unauthorized: No session token found" in production,
+  // where network latency makes the window wide.
+  await setPlayerSession(newPlayer.id, gameId, 'player');
+
   console.log(`🔵 ACTION: addPlayer - Successfully added player ${newPlayer.id} ("${name}"). Revalidating paths.`);
   revalidatePath('/');
   revalidatePath('/game');
