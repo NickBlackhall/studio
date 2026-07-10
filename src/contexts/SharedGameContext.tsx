@@ -327,7 +327,11 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     const gameId = gameState?.gameId;
     const isTransitioning = gameState?.transitionState !== 'idle' && gameState?.transitionState !== null;
 
-    if (!gameId || !isMountedRef.current) {
+    // Only heartbeat once this browser has JOINED the game being viewed.
+    // getGame is membership-gated; polling before joining — or from a stale
+    // tab left on a previous room after the cookie moved to a new one —
+    // just hammers the server with "Session is for different game" errors.
+    if (!gameId || !thisPlayer?.id || !isMountedRef.current) {
       return;
     }
 
@@ -360,7 +364,7 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     return () => {
       clearInterval(pollInterval);
     };
-  }, [gameState?.gameId, gameState?.transitionState]);
+  }, [gameState?.gameId, gameState?.transitionState, thisPlayer?.id]);
 
   // CRITICAL: Clear state when reset flag is present - check on every render
   useEffect(() => {
