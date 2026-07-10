@@ -45,3 +45,12 @@ Thumbs.db
 /public/sw.js.map
 /public/workbox-*.js
 /public/workbox-*.js.map
+
+# Playwright output (auto-generated per run)
+/test-results/
+/playwright-report/
+
+# Local database backups & one-off patches — never commit these
+*.backup*.gz
+*.storage*.zip
+*.patch
