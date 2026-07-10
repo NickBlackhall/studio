@@ -125,6 +125,30 @@ export async function findGameByRoomCode(roomCode: string) {
   return data && data.length > 0 ? data[0] : null;
 }
 
+
+/**
+ * Count players per game WITHOUT embedding players inside a games select.
+ * PostgREST rejects `players:players(count)` as ambiguous because games and
+ * players are linked by multiple foreign keys (players.game_id,
+ * games.created_by_player_id, games.current_judge_id).
+ */
+export async function countPlayersByGame(gameIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (gameIds.length === 0) return counts;
+  const { data, error } = await supabase
+    .from('players')
+    .select('game_id')
+    .in('game_id', gameIds);
+  if (error) {
+    console.error('Error counting players by game:', error);
+    throw new Error('Failed to count players');
+  }
+  for (const row of data ?? []) {
+    counts.set(row.game_id, (counts.get(row.game_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 /**
  * Finds a game by room code with player count for validation
  */
@@ -135,10 +159,7 @@ export async function findGameByRoomCodeWithPlayers(roomCode: string) {
 
   const { data, error } = await supabase
     .from('games')
-    .select(`
-      *,
-      players:players(count)
-    `)
+    .select('*')
     .eq('room_code', roomCode.toUpperCase())
     .limit(1);
 
@@ -152,10 +173,12 @@ export async function findGameByRoomCodeWithPlayers(roomCode: string) {
   }
 
   const game = data[0];
+  const counts = await countPlayersByGame([game.id]);
+  const currentPlayers = counts.get(game.id) ?? 0;
   return {
     ...game,
-    currentPlayers: (game.players as any)?.[0]?.count || 0,
-    availableSlots: game.max_players - ((game.players as any)?.[0]?.count || 0)
+    currentPlayers,
+    availableSlots: game.max_players - currentPlayers
   };
 }
 
@@ -173,15 +196,7 @@ export async function getPublicGames() {
 
   const { data, error } = await supabase
     .from('games')
-    .select(`
-      id,
-      room_code,
-      room_name,
-      game_phase,
-      max_players,
-      created_at,
-      players:players(count)
-    `)
+    .select('id, room_code, room_name, game_phase, max_players, created_at')
     .eq('is_public', true)
     .in('game_phase', ['lobby', 'category_selection', 'player_submission', 'judging', 'winner_announcement'])
     .order('created_at', { ascending: false });
@@ -192,11 +207,16 @@ export async function getPublicGames() {
   }
 
   // Calculate available slots for each game
-  return (data || []).map(game => ({
-    ...game,
-    currentPlayers: (game.players as any)?.[0]?.count || 0,
-    availableSlots: game.max_players - ((game.players as any)?.[0]?.count || 0)
-  })).filter(game => game.availableSlots > 0); // Only show games with space
+  const games = data || [];
+  const counts = await countPlayersByGame(games.map(g => g.id));
+  return games.map(game => {
+    const currentPlayers = counts.get(game.id) ?? 0;
+    return {
+      ...game,
+      currentPlayers,
+      availableSlots: game.max_players - currentPlayers
+    };
+  }).filter(game => game.availableSlots > 0); // Only show games with space
 }
 
 /**

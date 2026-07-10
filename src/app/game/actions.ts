@@ -1246,18 +1246,12 @@ export async function findAvailableRoomForQuickJoin(): Promise<string | null> {
     // Clean up empty rooms before searching (fire and forget)
     cleanupEmptyRooms().catch(err => console.error('Background cleanup failed:', err));
 
-    // Find public rooms that are joinable (lobby or early game phases)
+    // Find public rooms that are joinable (lobby or early game phases).
+    // Player counts fetched separately: the players(count) embed is ambiguous
+    // (games/players are linked by multiple FKs) and PostgREST rejects it.
     const { data: availableGames, error } = await supabase
       .from('games')
-      .select(`
-        id,
-        room_code,
-        room_name,
-        game_phase,
-        max_players,
-        created_at,
-        players:players(count)
-      `)
+      .select('id, room_code, room_name, game_phase, max_players, created_at')
       .eq('is_public', true)
       .eq('game_phase', 'lobby') // Only join lobbies for simplicity
       .order('created_at', { ascending: false }); // Newest first
@@ -1273,8 +1267,10 @@ export async function findAvailableRoomForQuickJoin(): Promise<string | null> {
     }
 
     // Filter to only games with available slots
+    const { countPlayersByGame } = await import('@/lib/roomCodes');
+    const playerCounts = await countPlayersByGame(availableGames.map(g => g.id));
     const joinableGames = availableGames.filter(game => {
-      const currentPlayers = (game.players as any)?.[0]?.count || 0;
+      const currentPlayers = playerCounts.get(game.id) ?? 0;
       const availableSlots = game.max_players - currentPlayers;
       return availableSlots > 0;
     });
