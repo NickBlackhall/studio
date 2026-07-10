@@ -87,6 +87,46 @@ export async function setPlayerSession(
   });
 }
 
+const CREATOR_CLAIM_COOKIE = 'room-creator-claim';
+
+/**
+ * Marks this browser as the creator of a room. addPlayer consumes the claim
+ * so the creator becomes host regardless of join order — without it, host
+ * went to whoever finished name entry first, so a faster second player
+ * (e.g. on a phone) silently stole hosting from the room's creator.
+ */
+export async function setRoomCreatorClaim(gameId: string): Promise<void> {
+  const token = await new SignJWT({ gameId })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(JWT_SECRET);
+  (await cookies()).set(CREATOR_CLAIM_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 60, // 1 hour — claims only matter while joining
+    path: '/',
+  });
+}
+
+/** Returns true (and clears the claim) if this browser created the game. */
+export async function consumeRoomCreatorClaim(gameId: string): Promise<boolean> {
+  const store = await cookies();
+  const token = store.get(CREATOR_CLAIM_COOKIE)?.value;
+  if (!token) return false;
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    if (payload.gameId === gameId) {
+      store.delete(CREATOR_CLAIM_COOKIE);
+      return true;
+    }
+  } catch {
+    // expired or invalid claim — ignore
+  }
+  return false;
+}
+
 /**
  * Gets the current player session from cookies
  */

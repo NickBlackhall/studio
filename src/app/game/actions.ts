@@ -14,7 +14,7 @@ import {
   requireHostAccess,
   requireAuthOrDev 
 } from '@/lib/gameAuth';
-import { getPlayerSession, clearPlayerSession, setPlayerSession } from '@/lib/auth';
+import { getPlayerSession, clearPlayerSession, setPlayerSession, setRoomCreatorClaim, consumeRoomCreatorClaim } from '@/lib/auth';
 
 
 export async function findOrCreateGame(): Promise<Tables<'games'>> {
@@ -409,17 +409,29 @@ export async function addPlayer(name: string, avatar: string, targetGameId?: str
     throw new Error('Failed to add player, server returned no player data.');
   }
 
-  // Check if this is the first player - if so, make them the host
+  // Host assignment. The room's CREATOR (browser holding the creator-claim
+  // cookie) always becomes host, even if another player finished name entry
+  // first — host used to go to whoever joined fastest, which let a quicker
+  // second player silently steal hosting from the person who made the room.
+  // Rooms joined without any claim (quick join, browser) fall back to
+  // first-player-becomes-host.
+  const isCreator = await consumeRoomCreatorClaim(gameId);
+
   const { data: allPlayers } = await supabase
     .from('players')
     .select('id')
     .eq('game_id', gameId);
-  
+
   const playerCount = allPlayers?.length || 0;
-  
-  // If this is the first player, set them as the host
-  if (playerCount === 1 && !gameRow.created_by_player_id) {
-    console.log(`🔵 ACTION: addPlayer - Setting ${newPlayer.id} as host (first player)`);
+
+  if (isCreator) {
+    console.log(`🔵 ACTION: addPlayer - Setting ${newPlayer.id} as host (room creator)`);
+    await supabase
+      .from('games')
+      .update({ created_by_player_id: newPlayer.id })
+      .eq('id', gameId);
+  } else if (playerCount === 1 && !gameRow.created_by_player_id) {
+    console.log(`🔵 ACTION: addPlayer - Setting ${newPlayer.id} as host (first player, no creator claim)`);
     await supabase
       .from('games')
       .update({ created_by_player_id: newPlayer.id })
@@ -431,7 +443,7 @@ export async function addPlayer(name: string, avatar: string, targetGameId?: str
   // window where realtime-triggered refetches hit membership-gated actions
   // with no cookie — "Unauthorized: No session token found" in production,
   // where network latency makes the window wide.
-  await setPlayerSession(newPlayer.id, gameId, 'player');
+  await setPlayerSession(newPlayer.id, gameId, isCreator ? 'host' : 'player');
 
   console.log(`🔵 ACTION: addPlayer - Successfully added player ${newPlayer.id} ("${name}"). Revalidating paths.`);
   revalidatePath('/');
@@ -767,7 +779,11 @@ export async function createRoom(roomName: string, isPublic: boolean, maxPlayers
     }
 
     console.log("🔵 ACTION: createRoom - Successfully created room:", newGame.id, "with code:", roomCode);
-    
+
+    // Mark this browser as the room's creator so addPlayer makes them host
+    // regardless of who finishes name entry first
+    await setRoomCreatorClaim(newGame.id);
+
     // Revalidate relevant paths
     revalidatePath('/');
     revalidatePath('/?step=setup');
