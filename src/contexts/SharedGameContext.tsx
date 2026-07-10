@@ -64,9 +64,16 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
         fetchedGameState = await getGameByRoomCode(cleanRoomCode);
         console.log(`🔵 SHARED_CONTEXT: Loaded game ${fetchedGameState.gameId} via room code ${cleanRoomCode}`);
       } else {
-        console.log("🔵 SHARED_CONTEXT: No room code in URL, using default game loading");
-        fetchedGameState = await getGame();
-        console.log(`🔵 SHARED_CONTEXT: Loaded default game ${fetchedGameState.gameId}`);
+        // No room in the URL: do NOT call getGame() — its no-argument path
+        // find-or-CREATES a lobby, so every plain homepage visit was minting
+        // an abandoned room (the "zombie room" graveyard).
+        console.log("🔵 SHARED_CONTEXT: No room code in URL, skipping game load");
+        if (isMountedRef.current) {
+          setGameState(null);
+          setThisPlayer(null);
+          setIsInitializing(false);
+        }
+        return;
       }
       
       if (!isMountedRef.current) return;

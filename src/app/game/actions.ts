@@ -602,9 +602,45 @@ export async function getGameByRoomCode(roomCode: string): Promise<GameClientSta
   }
 }
 
+/**
+ * Sweep abandoned games: rooms untouched for hours still hold their players
+ * (nobody "leaves" a closed tab), so the empty-room cleanup never catches
+ * them and they pile up as unstartable zombies in the room browser.
+ */
+async function cleanupStaleGames(): Promise<void> {
+  const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(); // 3 hours
+  const { data: staleGames, error } = await supabase
+    .from('games')
+    .select('id, room_code, updated_at')
+    .lt('updated_at', cutoff);
+  if (error || !staleGames || staleGames.length === 0) return;
+
+  console.log(`🔵 ACTION: cleanupStaleGames - Sweeping ${staleGames.length} abandoned games`);
+  for (const game of staleGames) {
+    // Clear player references first (created_by/current_judge FKs block
+    // player deletion), then children, players, and finally the game.
+    await supabase.from('games').update({ created_by_player_id: null, current_judge_id: null }).eq('id', game.id);
+    for (const table of ['player_hands', 'responses', 'winners'] as const) {
+      await supabase.from(table).delete().eq('game_id', game.id);
+    }
+    await supabase.from('players').delete().eq('game_id', game.id);
+    const { error: delError } = await supabase.from('games').delete().eq('id', game.id);
+    if (delError) {
+      console.error(`🔴 ACTION: cleanupStaleGames - Failed to delete ${game.room_code}:`, delError.message);
+    } else {
+      console.log(`✅ ACTION: cleanupStaleGames - Swept abandoned game ${game.room_code}`);
+    }
+  }
+}
+
 export async function cleanupEmptyRooms(): Promise<void> {
   console.log("🔵 ACTION: cleanupEmptyRooms - Starting cleanup of empty rooms");
-  
+
+  // Also sweep long-abandoned games that still contain players
+  await cleanupStaleGames().catch(err =>
+    console.error('🔴 ACTION: cleanupStaleGames - Unexpected error:', err?.message)
+  );
+
   try {
     // Find games that are older than 10 minutes and have no players
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
