@@ -318,21 +318,24 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     };
   }, [gameState?.gameId]); // Only depend on gameId - transition state shouldn't recreate subscriptions
 
-  // Separate effect for transition polling to avoid subscription recreation
+  // Heartbeat polling. Fast (500ms) during transitions; slow (5s) during
+  // normal play. The slow heartbeat matters: realtime is the only other
+  // state sync, so a single missed event left a client stale forever —
+  // e.g. round 2 starting with a new judge while another player's screen
+  // stayed frozen on round 1 ("the judge didn't change").
   useEffect(() => {
     const gameId = gameState?.gameId;
     const isTransitioning = gameState?.transitionState !== 'idle' && gameState?.transitionState !== null;
-    
-    if (!gameId || !isTransitioning || !isMountedRef.current) {
+
+    if (!gameId || !isMountedRef.current) {
       return;
     }
-    
-    console.log(`🔄 TRANSITION_POLL: Setting up polling during transition (${gameState?.transitionState})`);
-    
-    // Poll every 500ms during transitions to catch completion
+
+    const intervalMs = isTransitioning ? 500 : 5000;
+    console.log(`🔄 HEARTBEAT_POLL: Setting up ${intervalMs}ms polling (transition: ${gameState?.transitionState})`);
+
     const pollInterval = setInterval(() => {
       if (isMountedRef.current) {
-        console.log(`🔄 TRANSITION_POLL: Polling for transition completion...`);
         // Call getGame directly to avoid closure dependencies
         getGame(gameId).then(updatedGame => {
           if (updatedGame && isMountedRef.current) {
@@ -348,14 +351,13 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
             }
           }
         }).catch(error => {
-          console.error('TRANSITION_POLL: Error in polling refetch:', error);
+          console.error('HEARTBEAT_POLL: Error in polling refetch:', error);
         });
       }
-    }, 500);
-    
+    }, intervalMs);
+
     // Cleanup interval
     return () => {
-      console.log(`🔇 TRANSITION_POLL: Clearing transition polling`);
       clearInterval(pollInterval);
     };
   }, [gameState?.gameId, gameState?.transitionState]);
