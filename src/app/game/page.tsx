@@ -50,7 +50,7 @@ export default function GamePage() {
   const [isDevConsoleOpen, setIsDevConsoleOpen] = useState(false);
   
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, toggleMusicMute, toggleSfxMute } = useAudio();
-  const { gameState: internalGameState, thisPlayer, isInitializing } = useSharedGame();
+  const { gameState: internalGameState, thisPlayer, isInitializing, refetchGameState } = useSharedGame();
   const { setGlobalLoading } = useLoading();
 
   useEffect(() => {
@@ -147,6 +147,10 @@ export default function GamePage() {
         } catch (error: any) {
           if (isMountedRef.current) {
             toast({title: "Category Error", description: error.message || "Failed to select category.", variant: "destructive"});
+            // Self-heal: this fails most often because THIS screen is stale
+            // (e.g. still showing the old judge the category picker after
+            // rotation). Re-sync immediately instead of stranding the player.
+            refetchGameState().catch(() => {});
           }
         }
       });

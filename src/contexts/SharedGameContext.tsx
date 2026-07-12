@@ -327,24 +327,27 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     const gameId = gameState?.gameId;
     const isTransitioning = gameState?.transitionState !== 'idle' && gameState?.transitionState !== null;
 
-    // Only heartbeat once this browser has JOINED the game being viewed.
-    // getGame is membership-gated; polling before joining — or from a stale
-    // tab left on a previous room after the cookie moved to a new one —
-    // just hammers the server with "Session is for different game" errors.
-    if (!gameId || !thisPlayer?.id || !isMountedRef.current) {
+    // Heartbeat runs whenever we're viewing a game — no other preconditions.
+    // (Gating on thisPlayer risked silencing it exactly when identity
+    // resolution hiccuped, leaving screens permanently stale.) Stale tabs
+    // whose session moved to a newer room are handled by the circuit
+    // breaker below: auth rejections stop the polling for that tab.
+    if (!gameId || !isMountedRef.current) {
       return;
     }
 
     const intervalMs = isTransitioning ? 500 : 5000;
     console.log(`🔄 HEARTBEAT_POLL: Setting up ${intervalMs}ms polling (transition: ${gameState?.transitionState})`);
 
+    let authFailures = 0;
     const pollInterval = setInterval(() => {
       if (isMountedRef.current) {
         // Call getGame directly to avoid closure dependencies
         getGame(gameId).then(updatedGame => {
           if (updatedGame && isMountedRef.current) {
+            authFailures = 0;
             setGameState(updatedGame);
-            
+
             // Update thisPlayer if needed
             const storedPlayerId = localStorage.getItem(`thisPlayerId_game_${gameId}`);
             if (storedPlayerId) {
@@ -356,6 +359,14 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
           }
         }).catch(error => {
           console.error('HEARTBEAT_POLL: Error in polling refetch:', error);
+          // Circuit breaker: this tab isn't a member of this game (session
+          // belongs to another room, or was never established) — stop
+          // hammering the server from this tab.
+          authFailures++;
+          if (authFailures >= 3) {
+            console.warn('HEARTBEAT_POLL: repeated auth failures — stopping heartbeat for this tab');
+            clearInterval(pollInterval);
+          }
         });
       }
     }, intervalMs);
@@ -364,7 +375,7 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     return () => {
       clearInterval(pollInterval);
     };
-  }, [gameState?.gameId, gameState?.transitionState, thisPlayer?.id]);
+  }, [gameState?.gameId, gameState?.transitionState]);
 
   // CRITICAL: Clear state when reset flag is present - check on every render
   useEffect(() => {
