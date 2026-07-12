@@ -451,6 +451,64 @@ export async function addPlayer(name: string, avatar: string, targetGameId?: str
   return newPlayer;
 }
 
+/**
+ * Core reset: notify clients, clear all per-game data, return game to lobby.
+ * NOT exported — callers are responsible for authorization (host-gated in
+ * resetGameForTesting; membership-gated for the post-game_over flow in
+ * nextRound, where any player advancing past the final recap resets the
+ * room — requiring the HOST there stranded everyone whenever the last
+ * round's judge wasn't the host).
+ */
+async function performGameResetInternal(gameId: string): Promise<void> {
+  console.log(`🔵 ACTION: performGameReset - Starting reset for game ${gameId}.`);
+
+  // STEP 1: notify all clients that reset is happening
+  const { error: transitionError } = await supabase
+    .from('games')
+    .update({
+      transition_state: 'resetting_game',
+      transition_message: 'Game is being reset. You will be redirected to the main menu.',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', gameId);
+  if (transitionError) {
+    console.error(`🔴 ACTION: performGameReset - Error setting transition state:`, JSON.stringify(transitionError, null, 2));
+  }
+
+  // Give clients a moment to see the reset notification
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  // STEP 2: clear all game data
+  const { error: clearPlayerRefsError } = await supabase
+    .from('games')
+    .update({ current_judge_id: null, last_round_winner_player_id: null, overall_winner_player_id: null, created_by_player_id: null })
+    .eq('id', gameId);
+  if (clearPlayerRefsError) console.error(`🔴 ACTION: performGameReset - Error clearing player references in game ${gameId}:`, JSON.stringify(clearPlayerRefsError, null, 2));
+
+  const tablesToClear = ['player_hands', 'responses', 'winners'];
+  for (const table of tablesToClear) {
+    const { error: deleteError } = await supabase.from(table as any).delete().eq('game_id', gameId);
+    if (deleteError) console.error(`🔴 ACTION: performGameReset - Error deleting from ${table}:`, JSON.stringify(deleteError, null, 2));
+  }
+
+  const { error: playersDeleteError } = await supabase.from('players').delete().eq('game_id', gameId);
+  if (playersDeleteError) console.error(`🔴 ACTION: performGameReset - Error deleting players:`, JSON.stringify(playersDeleteError, null, 2));
+
+  // STEP 3: reset the game to lobby state
+  const updateData: TablesUpdate<'games'> = {
+    game_phase: 'lobby', current_round: 0, current_judge_id: null, current_scenario_id: null,
+    ready_player_order: [], last_round_winner_player_id: null, last_round_winning_card_text: null,
+    overall_winner_player_id: null, used_scenarios: [], used_responses: [],
+    updated_at: new Date().toISOString(), transition_state: 'idle', transition_message: null,
+  };
+  const { error: updateError } = await supabase.from('games').update(updateData).eq('id', gameId);
+  if (updateError) {
+    console.error(`🔴 ACTION: performGameReset - CRITICAL: Failed to update game to lobby phase:`, JSON.stringify(updateError, null, 2));
+    throw new Error(`Failed to update game ${gameId} during reset: ${updateError.message}`);
+  }
+  console.log(`✅ ACTION: performGameReset - Game ${gameId} reset to lobby.`);
+}
+
 export async function resetGameForTesting(opts?: { clientWillNavigate?: boolean, gameId?: string }) {
   console.warn("🔵 ACTION: resetGameForTesting - INITIATED. THIS IS A DESTRUCTIVE ACTION.");
 
@@ -505,58 +563,7 @@ export async function resetGameForTesting(opts?: { clientWillNavigate?: boolean,
 
       gameId = existingGames[0].id;
     }
-    console.log(`🔵 ACTION: resetGameForTesting - Starting reset for game ${gameId}.`);
-
-    // STEP 1: First notify all clients that reset is happening
-    console.log(`🔵 ACTION: resetGameForTesting - Setting transition state to notify all clients`);
-    const { error: transitionError } = await supabase
-      .from('games')
-      .update({ 
-        transition_state: 'resetting_game', 
-        transition_message: 'Game is being reset. You will be redirected to the main menu.',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', gameId);
-    
-    if (transitionError) {
-      console.error(`🔴 ACTION: resetGameForTesting - Error setting transition state:`, JSON.stringify(transitionError, null, 2));
-    }
-
-    // Give clients a moment to see the reset notification
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // STEP 2: Clear all game data
-    const { error: clearPlayerRefsError } = await supabase
-      .from('games')
-      .update({ current_judge_id: null, last_round_winner_player_id: null, overall_winner_player_id: null })
-      .eq('id', gameId);
-    if (clearPlayerRefsError) console.error(`🔴 ACTION: resetGameForTesting - Error clearing player references in game ${gameId}:`, JSON.stringify(clearPlayerRefsError, null, 2));
-
-    const tablesToClear = ['player_hands', 'responses', 'winners'];
-    for (const table of tablesToClear) {
-      console.log(`🔵 ACTION: resetGameForTesting - Clearing table: ${table}`);
-      const { error: deleteError } = await supabase.from(table as any).delete().eq('game_id', gameId);
-      if (deleteError) console.error(`🔴 ACTION: resetGameForTesting - Error deleting from ${table}:`, JSON.stringify(deleteError, null, 2));
-    }
-
-    console.log(`🔵 ACTION: resetGameForTesting - Clearing players table.`);
-    const { error: playersDeleteError } = await supabase.from('players').delete().eq('game_id', gameId);
-    if (playersDeleteError) console.error(`🔴 ACTION: resetGameForTesting - Error deleting players:`, JSON.stringify(playersDeleteError, null, 2));
-    
-    // STEP 3: Reset the game to lobby state
-    const updateData: TablesUpdate<'games'> = {
-      game_phase: 'lobby', current_round: 0, current_judge_id: null, current_scenario_id: null,
-      ready_player_order: [], last_round_winner_player_id: null, last_round_winning_card_text: null,
-      overall_winner_player_id: null, used_scenarios: [], used_responses: [],
-      updated_at: new Date().toISOString(), transition_state: 'idle', transition_message: null,
-    };
-    console.log(`🔵 ACTION: resetGameForTesting - Updating game table to lobby state.`);
-    const { error: updateError } = await supabase.from('games').update(updateData).eq('id', gameId);
-    if (updateError) {
-      console.error(`🔴 ACTION: resetGameForTesting - CRITICAL: Failed to update game to lobby phase:`, JSON.stringify(updateError, null, 2));
-      throw new Error(`Failed to update game ${gameId} during reset: ${updateError.message}`);
-    }
-
+    await performGameResetInternal(gameId);
     console.log(`🔵 ACTION: resetGameForTesting - Reset complete. Revalidating paths BEFORE redirect.`);
     revalidatePath('/');
     revalidatePath('/game');
@@ -1261,14 +1268,15 @@ export async function nextRound(gameId: string): Promise<GameClientState | null>
   if (!game) throw new Error(`Failed to fetch game for next round: Game not found`);
 
   if (game.game_phase === 'game_over') {
-    console.log(`🔵 ACTION: nextRound - Game is over, resetting.`);
+    console.log(`🔵 ACTION: nextRound - Game is over, resetting to lobby.`);
     try {
-      // BUGFIX: Previously called resetGameForTesting() with no gameId, which used
-      // legacy behavior and reset the OLDEST game in the database — in a multi-room
-      // world that could wipe out a completely different room's game.
-      // Now targets this specific game. Note: reset with an explicit gameId is
-      // host-gated in production, so only the host can trigger "play again".
-      await resetGameForTesting({ gameId }); 
+      // Membership (validated above) is sufficient here: after game_over the
+      // natural next state is the lobby, and the recap auto-advance usually
+      // fires from the last judge's client — requiring the HOST stranded
+      // every game whose final judge wasn't the host.
+      await performGameResetInternal(gameId);
+      revalidatePath('/');
+      revalidatePath('/game');
       return null;
     } catch (e: any) {
       if (typeof e.digest === 'string' && e.digest.startsWith('NEXT_REDIRECT')) throw e;
