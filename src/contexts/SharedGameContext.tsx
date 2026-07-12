@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { getGame, getGameByRoomCode, getCurrentPlayerSession } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
 import { installClientLogger, setLogContext } from '@/lib/clientLogger';
 
 interface SharedGameContextType {
@@ -27,6 +27,7 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
   const [isInitializing, setIsInitializing] = useState(true);
   const isMountedRef = useRef(true);
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   // Live diagnostics: mirror tagged console output into client_logs so
   // gameplay issues can be diagnosed without players copying console text
@@ -370,17 +371,27 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     };
   }, [gameState?.gameId, gameState?.transitionState]);
 
-  // CRITICAL: Clear state when reset flag is present - check on every render
+  // A reset leaves gameResetFlag behind to tell the client to wipe its game state.
+  //
+  // This has to run on every arrival at a non-room screen, NOT just on mount. This
+  // provider lives in the root layout, so a soft router.push() (which is how the
+  // game page leaves for the menu) never remounts it. While this was mount-only the
+  // flag survived forever — and a stuck flag silently blocks joining a room
+  // (handleJoinRoom returns early) and skips realtime subscription setup, which is
+  // how "clicking Join Room does nothing" happened.
+  //
+  // Keyed on pathname so the /game -> / navigation retriggers it; guarded on the
+  // room param so we never wipe state for someone actually sitting in a room.
   useEffect(() => {
-    const resetFlag = localStorage.getItem('gameResetFlag');
-    if (resetFlag === 'true') {
-      console.log('🔄 SHARED_CONTEXT: Reset flag detected → clearing all client state');
-      setGameState(null);
-      setThisPlayer(null);
-      // Clear the flag immediately to prevent re-triggering
-      localStorage.removeItem('gameResetFlag');
-    }
-  }, []); // Only run once on mount
+    if (typeof window === 'undefined') return;
+    if (searchParams?.get('room')) return;
+    if (localStorage.getItem('gameResetFlag') !== 'true') return;
+
+    console.log('🔄 SHARED_CONTEXT: Reset flag detected → clearing all client state');
+    setGameState(null);
+    setThisPlayer(null);
+    localStorage.removeItem('gameResetFlag');
+  }, [pathname, searchParams]);
 
   // Note: Automatic navigation removed to avoid circular dependencies
   // Pages should handle navigation based on shared game state

@@ -290,13 +290,20 @@ function WelcomePageContent() {
   };
 
   const handleJoinRoom = async (roomCode: string) => {
-    // CRITICAL: Block room joining during reset
+    // Block joining while a reset is still settling. Never do it silently: a bare
+    // return here turned Join Room into a dead button with no feedback whenever the
+    // flag got stuck, which is exactly how the join bug presented.
     const resetFlag = localStorage.getItem('gameResetFlag');
     if (resetFlag === 'true') {
       console.log(`MAIN: handleJoinRoom - Blocked due to reset flag`);
+      toast({
+        title: "Still finishing the last game",
+        description: "Give it a second and tap Join again.",
+        variant: "destructive"
+      });
       return;
     }
-    
+
     setIsJoiningRoom(true);
     try {
       console.log(`MAIN: handleJoinRoom - Attempting to join room with code: ${roomCode}`);

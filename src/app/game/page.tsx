@@ -94,12 +94,15 @@ export default function GamePage() {
       
       // Set reset flag to ensure clean state
       localStorage.setItem('gameResetFlag', 'true');
-      
+
       const timeoutId = setTimeout(() => {
-        // Navigate to main menu without any room code
-        router.push('/?step=menu');
+        // Hard navigation, matching the reset path in SharedGameContext. A soft
+        // router.push() does not remount SharedGameProvider (it lives in the root
+        // layout), which used to strand gameResetFlag set forever — and a stuck
+        // flag makes Join Room a silent no-op.
+        window.location.href = '/?step=menu';
       }, 1000); // 1 second delay to avoid infinite loops
-      
+
       return () => clearTimeout(timeoutId);
     }
   }, [internalGameState?.gamePhase, thisPlayer, router]);
