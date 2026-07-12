@@ -13,7 +13,7 @@ export default function LobbyLayout({ children, onOpenMenu }: LobbyLayoutProps) 
     <div className="w-full h-screen animate-in fade-in duration-700 ease-out">
       <div className="relative w-full h-full">
         <Image 
-          src="/backgrounds/lobby-poster.jpg" 
+          src="/backgrounds/lobby-poster.webp" 
           alt="Lobby background" 
           fill 
           className="poster-image" 
@@ -25,7 +25,7 @@ export default function LobbyLayout({ children, onOpenMenu }: LobbyLayoutProps) 
         <div className="absolute bottom-[2%] left-0 right-0 flex items-center justify-center animate-in fade-in slide-in-from-bottom-2 duration-700 delay-500 ease-out">
           <button onClick={onOpenMenu} className="bg-transparent border-none p-0">
             <Image 
-              src="/ui/menu-button-v2.png" 
+              src="/ui/menu-button-v2.webp" 
               alt="Game Menu" 
               width={118} 
               height={44} 

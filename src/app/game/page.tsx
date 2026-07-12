@@ -108,7 +108,7 @@ export default function GamePage() {
   if (!internalGameState || !internalGameState.gameId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-        <Image src="/ui/new-logo.png" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
+        <Image src="/ui/new-logo.webp" alt="Game Logo - Error" width={100} height={100} className="mb-6 opacity-70" data-ai-hint="game logo"/>
         <h1 className="text-4xl font-bold text-destructive mb-4">Critical Game Error!</h1>
         <p className="text-lg text-muted-foreground mb-8">
           Could not load or initialize the game session. Please try again or reset.
@@ -297,7 +297,7 @@ export default function GamePage() {
   if (shouldShowLobbyRedirect) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-        <Image src="/ui/new-logo.png" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
+        <Image src="/ui/new-logo.webp" alt="Game Logo - Lobby" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
         <h1 className="text-4xl font-bold text-primary mb-4">Game Reset</h1>
         <p className="text-lg text-muted-foreground mb-8">
           Returning to main menu...
@@ -325,7 +325,7 @@ export default function GamePage() {
       console.log("GAME_PAGE: Rendering spectator view.");
       return (
           <div className="flex flex-col items-center justify-center min-h-screen text-center py-12">
-              <Image src="/ui/new-logo.png" alt="Game in Progress" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
+              <Image src="/ui/new-logo.webp" alt="Game in Progress" width={100} height={100} className="mb-6" data-ai-hint="game logo"/>
               <h1 className="text-4xl font-bold text-primary mb-4">Game in Progress</h1>
               <p className="text-lg text-muted-foreground mb-8">
                   This game has already started. You can watch, but you can't join until it's over.
@@ -435,7 +435,7 @@ export default function GamePage() {
       >
         <div className="relative">
           <Image
-            src="/backgrounds/scoreboard-poster.png"
+            src="/backgrounds/scoreboard-poster.webp"
             alt="Leaderboard"
             width={512}
             height={768}

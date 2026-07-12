@@ -3,6 +3,7 @@
 
 import type { Player } from '@/lib/types';
 import Image from 'next/image';
+import { avatarSrc } from '@/lib/assets';
 import { Badge } from '@/components/ui/badge';
 
 interface ScoreboardProps {
@@ -33,7 +34,7 @@ export default function Scoreboard({ players, currentJudgeId }: ScoreboardProps)
           <li key={player.id} className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
               <Image
-                src={player.avatar}
+                src={avatarSrc(player.avatar)}
                 alt={`${player.name}'s avatar`}
                 width={48}
                 height={48}

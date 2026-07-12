@@ -131,7 +131,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
                   <span className="text-white text-2xl font-bold uppercase animate-pulse">Joining...</span>
                 ) : (
                   <Image
-                    src="/ui/join-game-button.png"
+                    src="/ui/join-game-button.webp"
                     alt="Join the Mayhem"
                     width={227}
                     height={86}
@@ -149,7 +149,7 @@ export default function PWAGameLayout({ gameId, onPlayerAdded }: PWAGameLayoutPr
       {/* Background Poster */}
       <div className="background-poster">
         <Image 
-          src="/backgrounds/join-screen-2.jpg"
+          src="/backgrounds/join-screen-2.webp"
           alt="Make It Terrible Game Background"
           fill
           className="poster-image"

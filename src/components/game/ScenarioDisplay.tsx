@@ -25,7 +25,7 @@ export default function ScenarioDisplay({ scenario, isBoondoggle = false, showSu
   }
 
   // Use the standard scenario card for all cases
-  const cardImage = "/ui/scenario-card-v2.png";
+  const cardImage = "/ui/scenario-card-v2.webp";
   const categoryColor = isBoondoggle ? "text-yellow-300" : "text-red-400";
   const aiHint = isBoondoggle ? "boondoggle card" : "scenario card";
 

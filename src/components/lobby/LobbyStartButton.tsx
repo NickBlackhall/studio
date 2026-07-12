@@ -30,7 +30,7 @@ export default function LobbyStartButton({
         </div>
       ) : (
         <Image 
-          src="/ui/start-game-button.png" 
+          src="/ui/start-game-button.webp" 
           alt="Start the Mayhem" 
           width={189.84 * 1.2 * 1.2} 
           height={71.52 * 1.2 * 1.2} 

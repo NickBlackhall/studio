@@ -548,7 +548,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       >
         <div className="relative">
           <Image
-            src="/ui/waiting-for-judge-v1.png"
+            src="/ui/waiting-for-judge-v1.webp"
             alt="Waiting for the Judge to select a category"
             width={600}
             height={750}
@@ -583,7 +583,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       >
         <div className="relative">
           <Image
-            src="/ui/time-for-judgement-poster.png"
+            src="/ui/time-for-judgement-poster.webp"
             alt="Judgement Time"
             width={600}
             height={475}
@@ -615,7 +615,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
         <ScenarioDisplay scenario={gameState.currentScenario} isBoondoggle={true} />
         <div className="text-center py-6">
           <Image
-            src="/backgrounds/boondoggle-poster.png"
+            src="/backgrounds/boondoggle-poster.webp"
             alt="A Boondoggle is afoot!"
             width={300}
             height={300}
@@ -660,7 +660,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
             className="absolute inset-0 bg-transparent backdrop-blur-sm rounded-lg z-50 flex flex-col items-center justify-start text-center p-4 pt-12"
           >
             <Image
-              src="/ui/waiting-v1.png"
+              src="/ui/waiting-v1.webp"
               alt="Waiting for other players"
               width={250}
               height={250}
@@ -780,7 +780,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                     "absolute w-full h-full [backface-visibility:hidden] rounded-xl"
                   )}>
                     <Image
-                      src="/ui/mit-card-back.png"
+                      src="/ui/mit-card-back.webp"
                       alt="Card Back"
                       fill
                       className="object-cover"
@@ -796,7 +796,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                     {card.isCustom ? (
                       <>
                         <Image
-                          src="/ui/write-in-card-front.png"
+                          src="/ui/write-in-card-front.webp"
                           alt="Write-in Response Card Front"
                           fill
                           className="object-cover"
@@ -835,7 +835,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                                       </div>
                                       ) : (
                                       <Image
-                                          src="/ui/submit-card-button.png"
+                                          src="/ui/submit-card-button.webp"
                                           alt="Submit Card"
                                           fill
                                           className="object-contain drop-shadow-lg transition-transform group-hover:scale-105"
@@ -853,7 +853,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                     ) : (
                       <>
                         <Image
-                          src="/ui/mit-card-front.png"
+                          src="/ui/mit-card-front.webp"
                           alt="Response Card Front"
                           fill
                           className="object-cover"
@@ -874,7 +874,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                                 </div>
                               ) : (
                                 <Image
-                                  src="/ui/submit-card-button.png"
+                                  src="/ui/submit-card-button.webp"
                                   alt="Submit Card"
                                   width={120}
                                   height={45}
@@ -898,7 +898,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                       >
                         <Image
-                          src="/ui/new-card-badge.png"
+                          src="/ui/new-card-badge.webp"
                           alt="New Card"
                           fill
                           sizes="10vw"

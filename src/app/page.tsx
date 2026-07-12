@@ -434,10 +434,10 @@ function WelcomePageContent() {
       // Default to welcome screen
       return (
         <div className="relative flex-grow flex flex-col bg-black">
-          <Image src="/backgrounds/mobile-background.jpg" alt="Make It Terrible background" fill className="poster-image" priority data-ai-hint="game poster" />
+          <Image src="/backgrounds/mobile-background.webp" alt="Make It Terrible background" fill className="poster-image" priority data-ai-hint="game poster" />
           <div className="relative z-10 flex flex-grow items-center justify-center">
             <button onClick={() => router.push('/?step=menu')} className="group animate-slow-scale-pulse" data-testid="enter-chaos-button">
-              <Image src="/ui/enter-the-chaos-button.png" alt="Enter the Chaos" width={252} height={95} className="object-contain drop-shadow-xl" data-ai-hint="chaos button" priority />
+              <Image src="/ui/enter-the-chaos-button.webp" alt="Enter the Chaos" width={252} height={95} className="object-contain drop-shadow-xl" data-ai-hint="chaos button" priority />
             </button>
           </div>
         </div>
@@ -487,7 +487,7 @@ function WelcomePageContent() {
             <div className="w-full max-w-md space-y-6 text-center p-4">
               <Card className="my-4 shadow-md border-2 border-destructive rounded-lg"><CardHeader className="p-4"><Lock className="h-8 w-8 mx-auto text-destructive mb-2" /><CardTitle className="text-xl font-semibold">Game in Progress!</CardTitle></CardHeader><CardContent className="p-4 pt-0 text-sm"><p>Sorry, you&apos;ll have to wait. But you can still watch.</p></CardContent></Card>
               <div className="my-6 relative w-full max-w-sm mx-auto">
-                <Image src="/backgrounds/scoreboard-poster.png" alt="Leaderboard" width={512} height={768} className="object-contain" data-ai-hint="scoreboard poster" />
+                <Image src="/backgrounds/scoreboard-poster.webp" alt="Leaderboard" width={512} height={768} className="object-contain" data-ai-hint="scoreboard poster" />
                 <div className="absolute left-[10%] right-[10%] bottom-[15%]" style={{ top: '45%' }}><Scoreboard players={internalGameState.players} currentJudgeId={internalGameState.currentJudgeId} /></div>
               </div>
               <Card className="shadow-md border-muted rounded-lg"><CardContent className="p-6"><p className="text-muted-foreground">The lobby will re-open once the current game finishes.</p></CardContent></Card>

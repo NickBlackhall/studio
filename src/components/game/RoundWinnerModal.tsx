@@ -4,6 +4,7 @@
 import Image from 'next/image';
 import { Dialog, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import type { PlayerClientState } from '@/lib/types';
+import { avatarSrc } from '@/lib/assets';
 import { cn } from '@/lib/utils';
 
 interface RoundWinnerModalProps {
@@ -24,7 +25,7 @@ export default function RoundWinnerModal({
     if (avatarPath && avatarPath.startsWith('/')) {
       return (
         <Image
-          src={avatarPath}
+          src={avatarSrc(avatarPath)}
           alt={`${playerName}'s avatar`}
           width={64}
           height={64}

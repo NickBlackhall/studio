@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { PlayerClientState } from '@/lib/types';
+import { avatarSrc } from '@/lib/assets';
 import { memo, useState, useEffect } from 'react';
 import Scoreboard from './Scoreboard';
 import AvatarLoadingSequence from './AvatarLoadingSequence';
@@ -45,7 +46,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
       case 1:
         return (
           <Image
-            src="/backgrounds/round-winner-poster.png"
+            src="/backgrounds/round-winner-poster.webp"
             alt="Round Winner"
             fill
             className="object-cover"
@@ -59,7 +60,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
         return (
           <>
             <Image
-              src="/backgrounds/winner-details-poster.png"
+              src="/backgrounds/winner-details-poster.webp"
               alt="Winner Details"
               fill
               className="object-cover"
@@ -70,7 +71,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
             <div className="absolute inset-0">
               <div className="absolute top-[14%] left-1/2 -translate-x-1/2 w-[48%]">
                 <Avatar className="w-full h-auto aspect-square rounded-md">
-                  <AvatarImage src={winner.avatar} alt={winner.name} />
+                  <AvatarImage src={avatarSrc(winner.avatar)} alt={winner.name} />
                   <AvatarFallback>{winner.name?.substring(0, 2).toUpperCase() || 'P'}</AvatarFallback>
                 </Avatar>
               </div>
@@ -84,7 +85,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
               </div>
               <div className="absolute bottom-[18%] left-1/2 -translate-x-1/2 w-[88%] aspect-[1536/600]">
                 <Image
-                  src="/ui/mit-card-front.png"
+                  src="/ui/mit-card-front.webp"
                   alt="Winning response card"
                   fill
                   className="object-contain"
@@ -108,7 +109,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
         return (
           <div className="relative w-full h-full">
             <Image
-              src="/backgrounds/scoreboard-poster.png"
+              src="/backgrounds/scoreboard-poster.webp"
               alt="Leaderboard"
               fill
               className="object-cover"
@@ -128,7 +129,7 @@ function FlippingWinnerCard({ rotation, winner, cardText, players, currentJudgeI
         return (
           <>
             <Image
-              src="/backgrounds/get-ready-poster.png"
+              src="/backgrounds/get-ready-poster.webp"
               alt="Get Ready for the next round"
               fill
               className="object-cover"

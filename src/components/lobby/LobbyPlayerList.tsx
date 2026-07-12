@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { CheckSquare, XSquare } from 'lucide-react';
 import ReadyToggle from '@/components/game/ReadyToggle';
 import type { PlayerClientState } from '@/lib/types';
+import { avatarSrc } from '@/lib/assets';
 
 interface LobbyPlayerListProps {
   players: PlayerClientState[];
@@ -29,8 +30,8 @@ const PlayerRow = React.memo(function PlayerRow({
       <div className="flex items-center min-w-0">
         {player.avatar?.startsWith('/') ? (
           <Image 
-            src={player.avatar} 
-            alt={`${player.name || "Player"}'s avatar`} 
+            src={avatarSrc(player.avatar)}
+            alt={`${player.name || "Player"}'s avatar`}
             width={56} 
             height={56} 
             className="mr-3 rounded-sm object-cover flex-shrink-0" 

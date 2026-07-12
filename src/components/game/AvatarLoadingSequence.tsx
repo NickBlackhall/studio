@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import type { PlayerClientState } from '@/lib/types';
+import { avatarSrc } from '@/lib/assets';
 import styles from '@/components/layout/AvatarLoadingOverlay.module.css';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
@@ -15,7 +16,7 @@ interface AvatarLoadingSequenceProps {
 export default function AvatarLoadingSequence({ players, message }: AvatarLoadingSequenceProps) {
   const [animationKey, setAnimationKey] = useState(0);
 
-  const logoPath = "/ui/new-logo.png";
+  const logoPath = "/ui/new-logo.webp";
   
   useEffect(() => {
     setAnimationKey(prev => prev + 1);
@@ -44,7 +45,7 @@ export default function AvatarLoadingSequence({ players, message }: AvatarLoadin
               key={`player-${player.id}-${animationKey}`}
               className={styles.avatarLayer}
               style={{
-                backgroundImage: `url(${player.avatar})`,
+                backgroundImage: `url(${avatarSrc(player.avatar)})`,
                 animationDuration: `${playerDuration}s`,
                 animationDelay: `${startTime}s`,
               }}

@@ -1,8 +1,8 @@
 
 import type { ScenarioClientState as Scenario } from "./types";
 
-// Generate paths for avatar1.png through avatar22.png
-export const AVATARS: string[] = Array.from({ length: 22 }, (_, i) => `/ui/avatar${i + 1}.png?v=3`);
+// Generate paths for avatar1.webp through avatar22.webp
+export const AVATARS: string[] = Array.from({ length: 22 }, (_, i) => `/ui/avatar${i + 1}.webp`);
 
 export const CATEGORIES: string[] = [
   "Pop Culture and Internet",

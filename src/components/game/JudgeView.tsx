@@ -417,7 +417,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                   exit={{ opacity: 0, scale: 0.8 }}
                 >
                   <div className="relative aspect-[1536/600] [backface-visibility:hidden] rounded-xl overflow-hidden shadow-lg">
-                    <Image src="/ui/mit-card-back.png" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" sizes="320px"/>
+                    <Image src="/ui/mit-card-back.webp" alt="Response Card Front" fill className="object-cover" data-ai-hint="card back" sizes="320px"/>
                     <div className="absolute inset-0 flex flex-col justify-center items-center">
                       <Loader2 className="h-10 w-10 animate-spin text-black/50"/>
                     </div>
@@ -519,7 +519,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                       "absolute w-full h-full [backface-visibility:hidden] rounded-xl overflow-hidden"
                     )}>
                       <Image
-                        src="/ui/mit-card-back.png"
+                        src="/ui/mit-card-back.webp"
                         alt="Card Back"
                         fill
                         className="object-cover"
@@ -534,7 +534,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                         "absolute w-full h-full [backface-visibility:hidden] [transform:rotateX(180deg)] rounded-xl overflow-hidden"
                     )}>
                       <Image
-                        src="/ui/mit-card-front.png"
+                        src="/ui/mit-card-front.webp"
                         alt="Response Card Front"
                         fill
                         className="object-cover"
@@ -561,7 +561,7 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                                 </div>
                               ) : (
                                 <Image
-                                  src="/ui/crown-winner-button-v1.png"
+                                  src="/ui/crown-winner-button-v1.webp"
                                   alt="Crown Winner"
                                   width={137}
                                   height={45}

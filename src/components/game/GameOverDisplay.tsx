@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Loader2 } from 'lucide-react';
 import type { GameClientState } from '@/lib/types';
+import { winnerAvatarSrc } from '@/lib/assets';
 import { cn } from '@/lib/utils';
 
 interface GameOverDisplayProps {
@@ -54,7 +55,7 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
     );
   }
 
-  const winnerAvatarPath = overallWinner.avatar.replace('.png', '-winner.png');
+  const winnerAvatarPath = winnerAvatarSrc(overallWinner.avatar);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -68,7 +69,7 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                 {/* Face 1: The Champion */}
                 <Face isFlipped={false}>
                     <Image
-                        src="/backgrounds/game-winner-poster.png"
+                        src="/backgrounds/game-winner-poster.webp"
                         alt="Game Winner"
                         fill
                         className="object-cover"
@@ -103,7 +104,7 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
                 {/* Face 2: Play Again? */}
                 <Face isFlipped={true}>
                     <Image
-                        src="/backgrounds/play-again-poster.png"
+                        src="/backgrounds/play-again-poster.webp"
                         alt="Play Again?"
                         fill
                         className="object-cover"

@@ -35,6 +35,17 @@ export default withPWA({
   disable: process.env.NODE_ENV === 'development',
   register: true,
   skipWaiting: true,
+  // next-pwa precaches all of public/ by default, which meant every player
+  // downloaded ~208MB of art on first visit. Art and audio are cached on
+  // demand instead, via the runtimeCaching rules below. Only the app shell
+  // (icons, fonts, manifest) stays in the precache manifest.
+  publicExcludes: [
+    '!ui/**/*',
+    '!backgrounds/**/*',
+    '!textures/**/*',
+    '!Sound/**/*',
+    '!screenshots/**/*',
+  ],
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

@@ -4,6 +4,7 @@
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
+import { avatarSrc } from '@/lib/assets';
 import { useAudio } from '@/contexts/AudioContext';
 
 interface GameUIProps {
@@ -32,7 +33,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
 
   const roundNumber = gameState.currentRound;
   const playerName = thisPlayer.name;
-  const playerAvatar = thisPlayer.avatar;
+  const playerAvatar = avatarSrc(thisPlayer.avatar);
   const playerInitials = playerName?.substring(0, 2).toUpperCase() || '??';
 
   return (
@@ -41,7 +42,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
       <div className="relative w-full max-w-lg mx-auto" style={{ aspectRatio: '1986 / 858' }}>
         {/* Background Image */}
         <Image
-          src="/ui/MIT-player-ui-v2.png"
+          src="/ui/MIT-player-ui-v2.webp"
           alt="Game UI Frame"
           fill
           priority
@@ -78,7 +79,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
                 }}
             >
                 <Image
-                    src="/ui/judge badge v2.png"
+                    src="/ui/judge badge v2.webp"
                     alt="Judge Badge"
                     fill
                     sizes="33vw"
@@ -123,7 +124,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             title="View Scoreboard"
           >
             <Image
-              src="/ui/scores-button-v2.png"
+              src="/ui/scores-button-v2.webp"
               alt="Scores"
               width={625}
               height={204}
@@ -170,7 +171,7 @@ export default function GameUI({ gameState, thisPlayer, onScoresClick, onMenuCli
             title="Open Game Menu"
           >
             <Image
-              src="/ui/menu-button-v2.png"
+              src="/ui/menu-button-v2.webp"
               alt="Menu"
               width={625}
               height={204}

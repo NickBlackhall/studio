@@ -24,16 +24,16 @@ export default function SwipeableCategorySelector({
 
   const enhancedCategories = useMemo(() => {
     const categoryImageMap: { [key: string]: string } = {
-        " R-Rated": "/ui/rated-r-panel.png",
-        "Absurd & Surreal": "/ui/absurd-and-surreal-panel.png",
-        "Life things": "/ui/Life-things-panel.png",
-        "Pop Culture & Internet ": "/ui/pop-culture-panel.png",
-        "Super Powers": "/ui/Super-Powers-panel.png",
+        " R-Rated": "/ui/rated-r-panel.webp",
+        "Absurd & Surreal": "/ui/absurd-and-surreal-panel.webp",
+        "Life things": "/ui/Life-things-panel.webp",
+        "Pop Culture & Internet ": "/ui/pop-culture-panel.webp",
+        "Super Powers": "/ui/Super-Powers-panel.webp",
     };
 
     return categories.map((name) => {
       const imagePath = categoryImageMap[name];
-      const finalImagePath = imagePath || "/ui/Super-Powers-panel.png"; // Fallback
+      const finalImagePath = imagePath || "/ui/Super-Powers-panel.webp"; // Fallback
       return { name, imagePath: finalImagePath };
     });
   }, [categories]);
@@ -129,7 +129,7 @@ export default function SwipeableCategorySelector({
       {/* Layer 2: The Frame Graphic (Middle) */}
       <div className="relative z-20 pointer-events-none">
         <Image
-          src="/ui/judge selection overlay.png"
+          src="/ui/judge selection overlay.webp"
           alt="Category selection frame"
           width={1028}
           height={1580}
@@ -151,7 +151,7 @@ export default function SwipeableCategorySelector({
             aria-label="Previous Category"
           >
             <Image
-              src="/ui/category-select-left-button.png"
+              src="/ui/category-select-left-button.webp"
               alt="Previous Category"
               width={56}
               height={56}
@@ -166,7 +166,7 @@ export default function SwipeableCategorySelector({
             aria-label="Next Category"
           >
             <Image
-              src="/ui/category-select-right-button.png"
+              src="/ui/category-select-right-button.webp"
               alt="Next Category"
               width={56}
               height={56}
@@ -189,7 +189,7 @@ export default function SwipeableCategorySelector({
               </div>
             ) : (
               <Image
-                src="/ui/unleash-scenario-button.png"
+                src="/ui/unleash-scenario-button.webp"
                 alt="Unleash Scenario"
                 width={214}
                 height={81}

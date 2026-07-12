@@ -148,7 +148,7 @@ export default function MainMenu({
       <div className="relative w-full h-full">
         {/* Background Image */}
         <Image 
-          src="/backgrounds/main-menu-background.jpg" 
+          src="/backgrounds/main-menu-background.webp" 
           alt="Main Menu background" 
           fill 
           className="poster-image" 
@@ -171,10 +171,10 @@ export default function MainMenu({
                     style={{
                       height: '150px',
                       backgroundImage: option.title === "Join or Create Game" 
-                        ? 'url(/ui/join-create-game-button-main-menu.jpg)'
+                        ? 'url(/ui/join-create-game-button-main-menu.webp)'
                         : option.title === "Settings & More"
-                        ? 'url(/ui/settings-more-button.jpg)'
-                        : 'url(/ui/mit-card-front.png)',
+                        ? 'url(/ui/settings-more-button.webp)'
+                        : 'url(/ui/mit-card-front.webp)',
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       backgroundRepeat: 'no-repeat'

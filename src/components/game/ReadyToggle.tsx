@@ -28,7 +28,7 @@ export default function ReadyToggle({ isReady, onToggle, disabled = false }: Rea
     >
       <span className="sr-only">{isReady ? "Status: Ready" : "Status: Not Ready"}</span>
       <Image
-        src={isReady ? "/ui/toggle-on.png" : "/ui/toggle-off.png"}
+        src={isReady ? "/ui/toggle-on.webp" : "/ui/toggle-off.webp"}
         alt={isReady ? "Ready toggle is on" : "Ready toggle is off"}
         width={64}
         height={36}
