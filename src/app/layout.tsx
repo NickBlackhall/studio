@@ -46,22 +46,22 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
       </head>
-      <body className={cn(
-          "antialiased flex flex-col min-h-screen",
-        )} suppressHydrationWarning={true}>
+      <body className={cn("antialiased")} suppressHydrationWarning={true}>
         <ErrorBoundary>
           <LoadingProvider>
             <AudioProvider>
               <SharedGameProvider>
-                <div className="flex min-h-screen w-full flex-col">
-                  <main className="flex-grow flex flex-col">
+                {/* Everything the player sees lives inside the frame, overlays
+                    included, so nothing spills onto the letterbox on desktop. */}
+                <div className="phone-frame">
+                  <main className="flex h-full flex-col">
                     {children}
                   </main>
+                  <Toaster />
+                  <MusicPlayer />
+                  <UnifiedTransitionOverlay />
+                  <DebugPanel />
                 </div>
-                <Toaster />
-                <MusicPlayer />
-                <UnifiedTransitionOverlay />
-                <DebugPanel />
               </SharedGameProvider>
             </AudioProvider>
           </LoadingProvider>

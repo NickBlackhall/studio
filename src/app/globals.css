@@ -150,10 +150,41 @@
   }
 }
 
+/* The game's art is composed for a portrait phone, so rather than stretching it
+   on desktop we letterbox: the frame keeps phone proportions and the body's wood
+   texture shows through around it. On a phone `100vw` always wins, so the frame
+   is a no-op there.
+
+   The transform is load-bearing, not decoration. It makes this element the
+   containing block for `position: fixed` descendants, so the game UI bar and the
+   win/recap overlays anchor to the frame instead of escaping to the window. */
+.phone-frame {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  margin-inline: auto;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+/* Letterbox only on screens bigger than a phone. Keying off width (not the
+   viewport's aspect ratio) matters: a phone showing browser chrome is short,
+   and a height-derived width would wrongly squeeze the game there.
+
+   min-width floors the frame at a real phone's width. Without it a short desktop
+   window (720px tall) derives a 332px frame — narrower than any phone — which
+   squeezes layouts that reasonably assume they have phone width to work with. */
+@media (min-width: 640px) {
+  .phone-frame {
+    width: min(100%, calc(100dvh * 9 / 19.5));
+    min-width: 390px;
+  }
+}
+
 /* PWA Game Layout Styles */
 .pwa-game-container {
   position: relative;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
   height: 100dvh; /* Dynamic viewport height for mobile */
   overflow: hidden;

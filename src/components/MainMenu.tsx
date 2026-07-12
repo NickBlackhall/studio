@@ -161,7 +161,10 @@ export default function MainMenu({
           {/* Main Menu Options */}
           <div className="pb-8">
             <div className="animate-in slide-in-from-bottom duration-700 delay-300">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8 scale-65 transform-gpu">
+              {/* Single column always. The app is locked to phone proportions, so a
+                  viewport-keyed breakpoint like md: would widen this to two columns
+                  inside a frame far narrower than the viewport, overflowing it. */}
+              <div className="grid grid-cols-1 gap-5 mb-8 scale-65 transform-gpu">
                 {mainMenuOptions.map((option) => (
                   <Card 
                     key={option.title}
