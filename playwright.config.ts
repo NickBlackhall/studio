@@ -15,7 +15,8 @@ export default defineConfig({
   testIgnore: process.env.CI ? ['**/visual-regression.spec.ts'] : [],
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:9003',
+    // E2E_BASE_URL lets probes target a deployed environment (e.g. Netlify)
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:9003',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -44,7 +45,8 @@ export default defineConfig({
           use: { ...devices['Desktop Safari'] },
         },
       ],
-  webServer: {
+  // No local server needed when probing a deployed environment
+  webServer: process.env.E2E_BASE_URL ? undefined : {
     command: process.env.CI ? 'npm start' : 'npm run dev',
     url: 'http://localhost:9003',
     reuseExistingServer: !process.env.CI,
