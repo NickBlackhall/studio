@@ -621,6 +621,15 @@ export async function getGameByRoomCode(roomCode: string): Promise<GameClientSta
  */
 async function cleanupStaleGames(): Promise<void> {
   const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(); // 3 hours
+
+  // Sweep diagnostic client logs older than 24h (fire and forget)
+  // (cast: generated DB types predate the client_logs diagnostics table)
+  const logCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  (supabase.from as CallableFunction)('client_logs').delete().lt('created_at', logCutoff)
+    .then(({ error: e }: { error: { message: string } | null }) => {
+      if (e) console.warn('client_logs sweep failed:', e.message);
+    });
+
   const { data: staleGames, error } = await supabase
     .from('games')
     .select('id, room_code, updated_at')

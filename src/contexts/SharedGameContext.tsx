@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { getGame, getGameByRoomCode, getCurrentPlayerSession } from '@/app/game/actions';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
 import { useSearchParams } from 'next/navigation';
+import { installClientLogger, setLogContext } from '@/lib/clientLogger';
 
 interface SharedGameContextType {
   gameState: GameClientState | null;
@@ -26,7 +27,16 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
   const [isInitializing, setIsInitializing] = useState(true);
   const isMountedRef = useRef(true);
   const searchParams = useSearchParams();
-  
+
+  // Live diagnostics: mirror tagged console output into client_logs so
+  // gameplay issues can be diagnosed without players copying console text
+  useEffect(() => {
+    installClientLogger();
+  }, []);
+  useEffect(() => {
+    setLogContext(searchParams?.get('room') ?? null, thisPlayer?.name ?? null);
+  }, [searchParams, thisPlayer?.name]);
+
   // Debouncing for subscription updates
   const subscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
