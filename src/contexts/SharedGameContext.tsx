@@ -144,28 +144,14 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
         }
         
         setGameState(updatedGame);
-        
-        // Check for stored player ID even if thisPlayer doesn't exist yet
-        const storedPlayerId = typeof window !== 'undefined' ? 
-          localStorage.getItem(`thisPlayerId_game_${updatedGame.gameId}`) : null;
-        
-        if (storedPlayerId) {
-          const playerDetail = updatedGame.players.find(p => p.id === storedPlayerId);
-          console.log(`SHARED_CONTEXT: Looking for stored player ${storedPlayerId}, found: ${!!playerDetail}`);
-          if (playerDetail) {
-            console.log(`SHARED_CONTEXT: Setting thisPlayer to ${playerDetail.name} (${playerDetail.id})`);
-            setThisPlayer(playerDetail);
-          } else {
-            console.log(`SHARED_CONTEXT: Stored player ${storedPlayerId} not found in game, clearing storage`);
-            localStorage.removeItem(`thisPlayerId_game_${updatedGame.gameId}`);
-            setThisPlayer(null);
-          }
-        } else if (thisPlayer?.id) {
-          // Fallback: update existing player
-          const playerDetail = updatedGame.players.find(p => p.id === thisPlayer.id);
-          console.log(`SHARED_CONTEXT: Updating existing player ${thisPlayer.id}, found: ${!!playerDetail}`);
-          setThisPlayer(playerDetail || null);
-        }
+
+        // Refresh thisPlayer (incl. isJudge) from the new state by id.
+        // Functional update: reading thisPlayer directly here was a stale
+        // closure (empty dependency array) that was permanently null, and
+        // the localStorage key is never written anymore.
+        setThisPlayer(prev =>
+          prev ? (updatedGame.players.find(p => p.id === prev.id) ?? null) : prev
+        );
       }
     } catch (error) {
       console.error('SHARED_CONTEXT: Error in refetchGameState:', error);
@@ -281,15 +267,15 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
               // Use startTransition to batch state updates and mark them as non-urgent
               startTransition(() => {
                 setGameState(updatedGame);
-                
-                // Update thisPlayer if needed
-                const storedPlayerId = localStorage.getItem(`thisPlayerId_game_${gameId}`);
-                if (storedPlayerId) {
-                  const playerDetail = updatedGame.players.find(p => p.id === storedPlayerId);
-                  if (playerDetail) {
-                    setThisPlayer(playerDetail);
-                  }
-                }
+
+                // CRITICAL: refresh thisPlayer from the new state by id.
+                // The old localStorage lookup key is never written anymore
+                // (session auth replaced it), so thisPlayer — including
+                // isJudge — froze at its round-1 value: the old judge kept
+                // JudgeView all game and the new judge never got it.
+                setThisPlayer(prev =>
+                  prev ? (updatedGame.players.find(p => p.id === prev.id) ?? null) : prev
+                );
               });
             }
           }).catch(error => {
@@ -348,14 +334,11 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
             authFailures = 0;
             setGameState(updatedGame);
 
-            // Update thisPlayer if needed
-            const storedPlayerId = localStorage.getItem(`thisPlayerId_game_${gameId}`);
-            if (storedPlayerId) {
-              const playerDetail = updatedGame.players.find(p => p.id === storedPlayerId);
-              if (playerDetail) {
-                setThisPlayer(playerDetail);
-              }
-            }
+            // Refresh thisPlayer (incl. isJudge) from the new state by id —
+            // see subscription handler comment; localStorage key is dead.
+            setThisPlayer(prev =>
+              prev ? (updatedGame.players.find(p => p.id === prev.id) ?? null) : prev
+            );
           }
         }).catch(error => {
           console.error('HEARTBEAT_POLL: Error in polling refetch:', error);
