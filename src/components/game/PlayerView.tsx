@@ -875,6 +875,12 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                         />
                         <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
                           <span className="font-im-fell text-black text-2xl leading-none px-4">{card.text}</span>
+                          {/* Recognition for player-submitted deck cards — deliberately tiny */}
+                          {card.authorName && (
+                            <span className="font-im-fell text-black/50 text-[11px] leading-none -mt-1">
+                              — submitted by {card.authorName}
+                            </span>
+                          )}
                           {isThisCardSelected && (
                             <button
                               type="button"

@@ -148,7 +148,7 @@ async function getGameStateInternal(gameIdToFetch?: string): Promise<GameClientS
       
     // Submissions query (only if needed)
     (gameRow.game_phase === 'judging' || gameRow.game_phase === 'player_submission' || gameRow.game_phase === 'judge_approval_pending') && gameRow.current_round > 0
-      ? supabase.from('responses').select('*, response_cards(id, text)').eq('game_id', gameId).eq('round_number', gameRow.current_round)
+      ? supabase.from('responses').select('*, response_cards(id, text, author_name)').eq('game_id', gameId).eq('round_number', gameRow.current_round)
       : Promise.resolve({ data: null, error: null })
   ]);
 
@@ -165,14 +165,14 @@ async function getGameStateInternal(gameIdToFetch?: string): Promise<GameClientS
   
   // Fetch player hands separately (needs playerIds from above)
   type HandDataWithCard = Tables<'player_hands'> & {
-    response_cards: Pick<Tables<'response_cards'>, 'id' | 'text'> | null;
+    response_cards: Pick<Tables<'response_cards'>, 'id' | 'text' | 'author_name'> | null;
   };
   let allHandsData: HandDataWithCard[] = [];
 
   if (playerIds.length > 0) {
     const { data: fetchedHandsData, error: handsError } = await supabase
       .from('player_hands')
-      .select('*, response_cards(id, text)')
+      .select('*, response_cards(id, text, author_name)')
       .in('player_id', playerIds)
       .eq('game_id', gameId);
 
@@ -193,11 +193,12 @@ async function getGameStateInternal(gameIdToFetch?: string): Promise<GameClientS
             id: h.response_cards.id,
             text: h.response_cards.text,
             isNew: h.is_new ?? false,
+            authorName: h.response_cards.author_name ?? null,
           };
         }
         return null;
       })
-      .filter((card): card is { id: string; text: string; isNew: boolean } => card !== null);
+      .filter((card): card is { id: string; text: string; isNew: boolean; authorName: string | null } => card !== null);
       
     return {
       id: p.id,
@@ -241,7 +242,7 @@ async function getGameStateInternal(gameIdToFetch?: string): Promise<GameClientS
   
   // Process submissions result
   type SubmissionWithCard = Tables<'responses'> & {
-    response_cards: Pick<Tables<'response_cards'>, 'id' | 'text'> | null;
+    response_cards: Pick<Tables<'response_cards'>, 'id' | 'text' | 'author_name'> | null;
   };
   let submissions: GameClientState['submissions'] = [];
   if (submissionsResult.status === 'fulfilled' && !submissionsResult.value.error && submissionsResult.value.data) {
@@ -254,6 +255,7 @@ async function getGameStateInternal(gameIdToFetch?: string): Promise<GameClientS
         playerId: s.player_id,
         cardId: cardId,
         cardText: cardText,
+        authorName: s.response_cards?.author_name ?? null,
       };
     });
     console.log(`🔵 ACTION: getGame - Loaded ${submissions.length} submissions for round ${gameRow.current_round}.`);

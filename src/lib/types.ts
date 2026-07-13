@@ -26,6 +26,7 @@ export interface PlayerHandCard { // Explicit type for cards in a player's hand
   text: string;
   isNew?: boolean; // Flag for newly dealt cards
   isCustom?: boolean;
+  authorName?: string | null; // Set on player-submitted deck cards — shown as a byline
 }
 
 export interface PlayerClientState { 
@@ -50,10 +51,11 @@ export interface ScenarioClientState {
 // Legacy alias for backwards compatibility
 export type Scenario = ScenarioClientState;
 
-export interface SubmissionClientState { 
+export interface SubmissionClientState {
   playerId: string;
   cardId: string; // Keep track of the card ID submitted
   cardText: string;
+  authorName?: string | null; // Set on player-submitted deck cards — shown as a byline
 }
 
 export type GamePhaseClientState =

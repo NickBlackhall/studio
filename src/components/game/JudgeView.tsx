@@ -546,6 +546,14 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
                       />
                       <div className="absolute inset-0 flex flex-col justify-center items-center gap-2 p-6 text-center">
                         <span className="font-im-fell text-black text-2xl leading-none px-4 flex-grow flex items-center">{submission.cardText}</span>
+                        {/* Recognition for player-submitted deck cards — deliberately tiny.
+                            The author is who WROTE the card (long ago), not who played it,
+                            so this doesn't identify the submitter. */}
+                        {submission.authorName && (
+                          <span className="font-im-fell text-black/50 text-[11px] leading-none flex-shrink-0">
+                            — submitted by {submission.authorName}
+                          </span>
+                        )}
                         {isSelected && isAnimationComplete && (
                           <div className="flex-shrink-0 py-2" style={{ transform: 'translateZ(20px)'}}>
                             <button
