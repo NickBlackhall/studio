@@ -233,6 +233,9 @@ export default function JudgeView({ gameState, judge, onSelectCategory, onSelect
   // Window-level listeners keep the drag tracking past the card's edge.
   const handleMouseDown = (e: React.MouseEvent, submissionIndex: number) => {
     if (e.button !== 0) return; // left button only
+    // A press on the crown button is a click, not a swipe: don't start drag
+    // tracking (and don't preventDefault) for interactive children.
+    if ((e.target as HTMLElement | null)?.closest?.('button, textarea, input')) return;
     e.preventDefault(); // stop text selection / native image drag
     swipeOccurredRef.current = false;
     setDraggingCardId(cardOrder[0]);

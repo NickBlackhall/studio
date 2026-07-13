@@ -44,7 +44,12 @@ export default function GameOverDisplay({ gameState, onPlayAgainYes, onPlayAgain
     }, 8000); // Flip after 8 seconds
 
     return () => clearTimeout(timer);
-  }, [overallWinner]);
+    // Keyed on the winner's ID, not the object: the 5s heartbeat rebuilds the
+    // players array on every poll, so an object dependency restarts this 8s
+    // timer before it can ever fire — the screen sat on the champion face
+    // forever. The ID is stable across refreshes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overallWinner?.id]);
 
   if (!overallWinner) {
     return (

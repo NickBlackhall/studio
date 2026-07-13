@@ -222,7 +222,17 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   };
 
   // Touch event handlers for swipe detection
+  // The write-in card carries a textarea and a submit button INSIDE the
+  // draggable card. A press that starts on those must not become a card drag:
+  // the mouse path preventDefault()s (which blocks focus — the default action
+  // of a mouse press is focusing the element under it), and the touch path
+  // hijacks the gesture into drag tracking. This is why nobody could type on
+  // the custom card, on any device.
+  const pressTargetsInteractive = (e: { target: EventTarget | null }) =>
+    (e.target as HTMLElement | null)?.closest?.('textarea, input, button') != null;
+
   const handleTouchStart = (e: React.TouchEvent, cardId: string) => {
+    if (pressTargetsInteractive(e)) return;
     // Note: Can't preventDefault in React touch events due to passive listeners
     // Will handle scroll prevention via CSS instead
     const touch = e.touches[0];
@@ -346,6 +356,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
   // to window so drags keep tracking when the cursor leaves the card.
   const handleMouseDown = (e: React.MouseEvent, cardId: string) => {
     if (e.button !== 0) return; // left button only
+    if (pressTargetsInteractive(e)) return; // typing/submitting, not dragging
     if (exitingCardId !== null || slidingUp || hasSubmittedThisRound) return; // mid-shuffle/submitted
     e.preventDefault(); // stop text selection / native image drag
     swipeOccurredRef.current = false;
@@ -808,6 +819,9 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
                               value={customCardText}
                               onChange={(e) => setCustomCardText(e.target.value)}
                               placeholder="Make it uniquely terrible..."
+                              // The card sets touchAction:'none' for drag tracking;
+                              // restore normal touch behavior inside the text field.
+                              style={{ touchAction: 'auto' }}
                               className="absolute top-[18%] left-[50%] -translate-x-1/2 w-[85%] h-[40%] bg-transparent border-none focus-visible:ring-0 resize-none text-center text-black font-im-fell text-2xl leading-none p-2"
                               onClick={(e) => {
                                 console.log('Custom card textarea clicked, current selected:', selectedCardId);
