@@ -292,6 +292,11 @@ export default function MainMenu({
             ))}
           </div>
         </div>
+        {/* Which deploy this device is actually running — the fastest way to spot
+            a phone stuck on a stale PWA bundle during a playtest. */}
+        <div className="mt-3 text-center text-xs text-black/50">
+          build {process.env.NEXT_PUBLIC_BUILD_SHA}
+        </div>
       </PureMorphingModal>
 
       {/* How to Play Modal */}

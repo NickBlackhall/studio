@@ -54,40 +54,10 @@ test.describe('Basic Game Flow', () => {
     }
   });
 
-  test('should join existing game', async ({ page, browser, gameCode, playerName }) => {
-    // First create a game with another browser context
-    const hostContext = await browser.newContext();
-    const hostPage = await hostContext.newPage();
-    
-    await hostPage.goto('/');
-    await hostPage.fill('[data-testid="player-name-input"]', 'Host_Player');
-    await hostPage.fill('[data-testid="game-code-input"]', gameCode);
-    await hostPage.click('[data-testid="create-game-button"]');
-    await hostPage.waitForURL(`/lobby/${gameCode}`);
-    
-    // Now join with the main page
-    await page.goto('/');
-    await page.fill('[data-testid="player-name-input"]', playerName);
-    await page.fill('[data-testid="game-code-input"]', gameCode);
-    await page.click('[data-testid="join-game-button"]');
-    
-    // Should join the lobby
-    await expect(page).toHaveURL(`/lobby/${gameCode}`);
-    await expect(page.locator('[data-testid="lobby-interface"]')).toBeVisible();
-    
-    // Clean up
-    await hostContext.close();
-  });
-
-  test('should handle invalid game codes', async ({ page, playerName }) => {
-    await page.goto('/');
-    
-    await page.fill('[data-testid="player-name-input"]', playerName);
-    await page.fill('[data-testid="game-code-input"]', 'INVALID123');
-    await page.click('[data-testid="join-game-button"]');
-    
-    // Should show error message
-    await expect(page.locator('[data-testid="error-message"]')).toBeVisible();
-    await expect(page.locator('[data-testid="error-message"]')).toContainText('Game not found');
-  });
+  // Two tests used to live here ("should join existing game", "should handle
+  // invalid game codes"). They were written against a UI that has never existed
+  // in this app — a /lobby/:code route and a name+code form on the homepage — so
+  // they had never passed, and their failures were routinely mistaken for the
+  // real join-room bug. The real join flow (menu → Join by Code modal) is
+  // covered by room-join.spec.ts.
 });

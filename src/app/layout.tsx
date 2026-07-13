@@ -9,6 +9,7 @@ import { LoadingProvider } from '@/contexts/LoadingContext';
 import { SharedGameProvider } from '@/contexts/SharedGameContext';
 import MusicPlayer from '@/components/layout/MusicPlayer';
 import UnifiedTransitionOverlay from '@/components/ui/UnifiedTransitionOverlay';
+import UpdateBanner from '@/components/UpdateBanner';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import DebugPanel from '@/components/DebugPanel';
 
@@ -60,6 +61,7 @@ export default function RootLayout({
                   <Toaster />
                   <MusicPlayer />
                   <UnifiedTransitionOverlay />
+                  <UpdateBanner />
                   <DebugPanel />
                 </div>
               </SharedGameProvider>

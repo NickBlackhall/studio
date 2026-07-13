@@ -3,6 +3,12 @@ import type {NextConfig} from 'next';
 import withPWA from 'next-pwa';
 
 const nextConfig: NextConfig = {
+  // Netlify sets COMMIT_REF to the deployed git SHA. Baking it in lets the
+  // settings screen show which build a device is actually running — the fastest
+  // way to spot a phone stuck on a stale PWA bundle.
+  env: {
+    NEXT_PUBLIC_BUILD_SHA: (process.env.COMMIT_REF || '').slice(0, 7) || 'dev',
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
