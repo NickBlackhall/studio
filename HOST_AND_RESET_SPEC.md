@@ -91,12 +91,27 @@ mechanism.
    may ever guess at its target. `resetGameForTesting` now throws without a `gameId`.
 
 2. **Nothing may fail silently.** A stuck `gameResetFlag` used to make "Join Room" a
-   dead button: it returned early with no toast, no error, no navigation. If an
-   action is refused, the player is told why.
+   dead button: it returned early with no toast, no error, no navigation. And
+   `resetGameForTesting` used to swallow every error and then *redirect the presser
+   to the menu as if the reset had worked*. Failures propagate; call sites toast them.
 
 3. **A reset flag must always get cleared.** It is set on reset and cleared on
    arriving at the menu. It must not depend on a component remounting, because a
    soft navigation does not remount the root layout.
+
+4. **Destructive server actions must be authorized server-side.** Every export in a
+   `"use server"` file is a public HTTP endpoint. The dev console's client-side PIN
+   gates nothing — the PIN constant ships in the JS bundle. `masterResetAllGames`
+   verifies the PIN on the server (`MASTER_RESET_PIN` env var; in production it
+   refuses to run until that var is set — **it must be added to Netlify** to use
+   master reset on the live site). Internal helpers that delete by raw id
+   (`deleteGameCascade`) are not exported at all.
+
+5. **A deleted room must never strand a client.** The teardown broadcast lives ~2.5s
+   and the heartbeat is 5s, so a client can miss the warning and refetch a room that
+   no longer exists. The dead-room detector in SharedGameContext confirms the row is
+   truly gone (not a network blip) and returns that client to the main menu, instead
+   of leaving them frozen on a dead game screen.
 
 ---
 

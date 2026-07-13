@@ -566,18 +566,13 @@ export async function resetGameForTesting(opts?: { clientWillNavigate?: boolean,
     revalidatePath('/?step=menu');
 
   } catch (e: any) {
-    console.error('🔴 ACTION: resetGameForTesting - Unexpected exception:', e.message, e.stack);
-    // SECURITY: Authorization failures must propagate to the caller.
-    // Swallowing them here made a non-host's reset attempt look like a
-    // success and redirected them as if the game had been reset.
-    if (e instanceof Error && e.message.startsWith('Unauthorized')) {
-      throw e;
-    }
+    console.error('🔴 ACTION: resetGameForTesting - Exception:', e.message, e.stack);
+    // Every failure propagates. This used to swallow everything except
+    // Unauthorized and then fall through to the redirect below — so a failed
+    // reset walked the presser to the main menu as if it had worked, and nobody
+    // ever saw an error. All call sites toast thrown errors.
+    throw e;
   }
-
-  revalidatePath('/');
-  revalidatePath('/game');
-  revalidatePath('/?step=menu');
 
   if (!opts?.clientWillNavigate) {
     redirect('/?step=menu');
@@ -627,8 +622,12 @@ export async function getGameByRoomCode(roomCode: string): Promise<GameClientSta
  *
  * Order matters: games.created_by_player_id and games.current_judge_id are FKs
  * onto players, so they have to be nulled before the players can go.
+ *
+ * Deliberately NOT exported: every export in a "use server" file is a public
+ * HTTP endpoint, and this one takes an arbitrary gameId with no auth. Callers
+ * inside this module are responsible for having already authorized the deletion.
  */
-export async function deleteGameCascade(gameId: string, roomCode?: string): Promise<void> {
+async function deleteGameCascade(gameId: string, roomCode?: string): Promise<void> {
   const label = roomCode ?? gameId;
   await supabase.from('games').update({ created_by_player_id: null, current_judge_id: null }).eq('id', gameId);
   for (const table of ['player_hands', 'responses', 'winners'] as const) {
@@ -667,13 +666,28 @@ async function cleanupStaleGames(): Promise<void> {
 }
 
 /**
- * The PIN-gated "master" reset: wipe every room in the database.
+ * The "master" reset: wipe every room in the database. Testing only.
  *
- * This is the only reset that is allowed to touch rooms other than your own, and
- * it exists purely for testing. Ordinary resets must name their target game —
- * see resetGameForTesting.
+ * This is the only reset that is allowed to touch rooms other than your own.
+ * Ordinary resets must name their target game — see resetGameForTesting.
+ *
+ * The PIN is verified HERE, not just in the dev-console UI: this is a public
+ * server endpoint, and the client-side PIN is visible to anyone who reads the
+ * shipped JS bundle. In production it refuses to run at all until a
+ * MASTER_RESET_PIN env var is set.
  */
-export async function masterResetAllGames(): Promise<{ deleted: number }> {
+export async function masterResetAllGames(pin: string): Promise<{ deleted: number }> {
+  const expectedPin =
+    process.env.MASTER_RESET_PIN ??
+    (process.env.NODE_ENV !== 'production' ? '6425' : null);
+  if (!expectedPin) {
+    throw new Error('Master reset is disabled: set the MASTER_RESET_PIN environment variable to enable it.');
+  }
+  if (pin !== expectedPin) {
+    console.warn('🟠 ACTION: masterResetAllGames - REFUSED: wrong PIN');
+    throw new Error('Master reset refused: wrong PIN.');
+  }
+
   console.warn("🟠 ACTION: masterResetAllGames - WIPING ALL ROOMS. THIS IS DESTRUCTIVE.");
 
   const { data: games, error } = await supabase.from('games').select('id, room_code');
@@ -682,6 +696,20 @@ export async function masterResetAllGames(): Promise<{ deleted: number }> {
     console.log("🟠 ACTION: masterResetAllGames - No rooms to delete");
     return { deleted: 0 };
   }
+
+  // Warn every connected client before the floor disappears: broadcast the
+  // teardown transition, give their overlays a beat to show and navigate, then
+  // delete. Clients that still miss it are caught by the dead-room detector in
+  // SharedGameContext.
+  await supabase
+    .from('games')
+    .update({
+      transition_state: 'resetting_game',
+      transition_message: 'Game reset by administrator',
+      updated_at: new Date().toISOString()
+    })
+    .not('id', 'is', null);
+  await new Promise(resolve => setTimeout(resolve, 2500));
 
   let deleted = 0;
   for (const game of games) {

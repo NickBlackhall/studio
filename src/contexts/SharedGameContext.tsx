@@ -41,6 +41,33 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
   // Debouncing for subscription updates
   const subscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Dead-room detector. Rooms are now really deleted (host leaves, last player
+  // out, master reset), and the teardown broadcast lives ~2.5s — shorter than
+  // the 5s heartbeat — so a client can easily miss it and then refetch a row
+  // that no longer exists. Without this, that client froze on the game screen
+  // forever while its heartbeat errored.
+  //
+  // Distinguishes "room gone" from a network blip by asking for the row
+  // directly: only a clean not-found ejects; a failed check does nothing.
+  const ejectIfRoomDeleted = useCallback(async (gameId: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select('id')
+        .eq('id', gameId)
+        .maybeSingle();
+      if (!error && !data) {
+        console.warn(`💀 SHARED_CONTEXT: Game ${gameId} no longer exists — returning to main menu`);
+        localStorage.setItem('gameResetFlag', 'true');
+        window.location.href = '/?step=menu';
+        return true;
+      }
+    } catch {
+      // Network hiccup: can't tell whether the room is gone, so stay put.
+    }
+    return false;
+  }, []);
+
   const initializeGame = useCallback(async () => {
     console.log("SHARED_CONTEXT: initializeGame - Started");
     setIsInitializing(true);
@@ -166,6 +193,7 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
       }
     } catch (error) {
       console.error('SHARED_CONTEXT: Error in refetchGameState:', error);
+      void ejectIfRoomDeleted(currentGameId);
     }
   }, []); // Empty dependency array - uses current gameState via closure
 
@@ -364,14 +392,23 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
           }
         }).catch(error => {
           console.error('HEARTBEAT_POLL: Error in polling refetch:', error);
-          // Circuit breaker: this tab isn't a member of this game (session
-          // belongs to another room, or was never established) — stop
-          // hammering the server from this tab.
-          authFailures++;
-          if (authFailures >= 3) {
-            console.warn('HEARTBEAT_POLL: repeated auth failures — stopping heartbeat for this tab');
-            clearInterval(pollInterval);
-          }
+          // A deleted room and an auth failure both surface here as errors.
+          // Check for the deleted room first — it must eject the player, not
+          // just silence the heartbeat like the circuit breaker below does.
+          void ejectIfRoomDeleted(gameId).then(gone => {
+            if (gone) {
+              clearInterval(pollInterval);
+              return;
+            }
+            // Circuit breaker: this tab isn't a member of this game (session
+            // belongs to another room, or was never established) — stop
+            // hammering the server from this tab.
+            authFailures++;
+            if (authFailures >= 3) {
+              console.warn('HEARTBEAT_POLL: repeated auth failures — stopping heartbeat for this tab');
+              clearInterval(pollInterval);
+            }
+          });
         });
       }
     }, intervalMs);

@@ -43,6 +43,7 @@ export default function DevConsoleModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const authenticatedPinRef = React.useRef('');
   const router = useRouter();
   const { toast } = useToast();
 
@@ -64,6 +65,9 @@ export default function DevConsoleModal({
     await new Promise(resolve => setTimeout(resolve, 500));
 
     if (pin === RESET_PIN) {
+      // Keep the entered PIN around: masterResetAllGames re-verifies it
+      // server-side, since the client-side check alone gates nothing.
+      authenticatedPinRef.current = pin;
       setPin('');
       setError('');
       setIsSubmitting(false);
@@ -98,17 +102,21 @@ export default function DevConsoleModal({
   const handleResetGame = async () => {
     startTransition(async () => {
       try {
-        const { deleted } = await masterResetAllGames();
+        const { deleted } = await masterResetAllGames(authenticatedPinRef.current);
         toast({
           title: "All rooms wiped",
           description: `${deleted} room${deleted === 1 ? '' : 's'} deleted.`
         });
-        handleClose();
+        // Every room is gone, including whichever one this screen was showing.
+        // Hard-nav to the menu (the flag wipes client game state; arriving at
+        // the menu clears the flag).
+        localStorage.setItem('gameResetFlag', 'true');
+        window.location.href = '/?step=menu';
       } catch (error: any) {
         toast({
           title: "Reset Failed",
           description: error.message || "Failed to reset game.",
-          variant: "destructive" 
+          variant: "destructive"
         });
       }
     });

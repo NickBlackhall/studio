@@ -317,7 +317,7 @@ describe('Integration - Player Operations', () => {
 
   test('removePlayerFromGame handles last player removal', async () => {
     const { removePlayerFromGame } = await import('../../src/app/game/actions');
-    
+
     const game = await createTestGame();
     const player = await createTestPlayer(game.id, { name: `${TEST_PREFIX}OnlyPlayer` });
 
@@ -335,6 +335,15 @@ describe('Integration - Player Operations', () => {
       .select('*')
       .eq('game_id', game.id);
     expect(playersAfter).toHaveLength(0);
+
+    // HOST_AND_RESET_SPEC.md: last one out deletes the room. Emptied rooms used
+    // to linger for the idle sweep, which is how the browser filled with corpses.
+    const { data: gameAfter } = await testSupabase
+      .from('games')
+      .select('id')
+      .eq('id', game.id)
+      .maybeSingle();
+    expect(gameAfter).toBeNull();
   });
 
   test('judge leaves with enough players - next judge assigned', async () => {
@@ -400,22 +409,23 @@ describe('Integration - Player Operations', () => {
     const result = await removePlayerFromGame(game.id, host.id, 'voluntary');
     expect(result).toBeNull();
 
+    // HOST_AND_RESET_SPEC.md: the host leaving ends the room for everyone. After
+    // the resetting_game broadcast window, the whole room is torn down — players,
+    // children, and the game row itself. Clients that miss the broadcast get
+    // caught by the dead-room detector in SharedGameContext.
     const { data: playersAfter } = await testSupabase
       .from('players')
       .select('id')
       .eq('game_id', game.id);
-    expect(playersAfter).toHaveLength(1);
+    expect(playersAfter).toHaveLength(0);
 
     const { data: gameAfter } = await testSupabase
       .from('games')
-      .select('transition_state, transition_message, ready_player_order')
+      .select('id')
       .eq('id', game.id)
-      .single();
-
-    expect(gameAfter?.transition_state).toBe('resetting_game');
-    expect(gameAfter?.transition_message).toBe('Host ended the game');
-    expect(gameAfter?.ready_player_order).toEqual([other.id]);
-  });
+      .maybeSingle();
+    expect(gameAfter).toBeNull();
+  }, 15000); // includes the 2.5s client-notification window before deletion
 
   test('rapid exits do not cause inconsistent state', async () => {
     const { removePlayerFromGame } = await import('../../src/app/game/actions');
