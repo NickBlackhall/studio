@@ -30,6 +30,7 @@ import CreateRoomModal, { type RoomSettings } from '@/components/room/CreateRoom
 import JoinRoomModal from '@/components/room/JoinRoomModal';
 import RoomBrowserModal from '@/components/room/RoomBrowserModal';
 import LobbyLayout from '@/components/lobby/LobbyLayout';
+import InvitePanel from '@/components/lobby/InvitePanel';
 import LobbyPlayerList from '@/components/lobby/LobbyPlayerList';
 import LobbyStatusMessage from '@/components/lobby/LobbyStatusMessage';
 import LobbyStartButton from '@/components/lobby/LobbyStartButton';
@@ -458,7 +459,11 @@ function WelcomePageContent() {
           return <PWAGameLayout gameId={internalGameState.gameId} onPlayerAdded={handlePlayerAdded} />;
         }
   
-        const hostPlayerId = internalGameState.ready_player_order.length > 0 ? internalGameState.ready_player_order[0] : null;
+        // Host = room creator (HOST_AND_RESET_SPEC.md). The old first-in-ready-
+        // order fallback is only for legacy rows that predate host tracking —
+        // it was how "whoever readied up first stole host" happened.
+        const hostPlayerId = internalGameState.hostPlayerId
+          ?? (internalGameState.ready_player_order.length > 0 ? internalGameState.ready_player_order[0] : null);
         const enoughPlayers = internalGameState.players.length >= MIN_PLAYERS_TO_START;
         const allPlayersReady = enoughPlayers && internalGameState.players.every(p => p.isReady);
         const showStartGameButton = thisPlayer.id === hostPlayerId && enoughPlayers && allPlayersReady;
@@ -469,10 +474,12 @@ function WelcomePageContent() {
             <LobbyPlayerList
               players={sortedPlayersForDisplay}
               thisPlayer={thisPlayer}
+              hostPlayerId={hostPlayerId}
               onToggleReady={handleToggleReady}
               isProcessingAction={isProcessingAction}
             />
             <div className="flex-shrink-0">
+              <InvitePanel roomCode={roomCodeParam} />
               <LobbyStatusMessage
                 players={internalGameState.players}
                 hostPlayerId={hostPlayerId}

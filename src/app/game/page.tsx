@@ -49,6 +49,7 @@ export default function GamePage() {
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isDevConsoleOpen, setIsDevConsoleOpen] = useState(false);
+  const [endGameArmed, setEndGameArmed] = useState(false);
   
   const { playTrack, stop: stopMusic, state: audioState, toggleMute, toggleMusicMute, toggleSfxMute } = useAudio();
   const { gameState: internalGameState, thisPlayer, isInitializing, refetchGameState } = useSharedGame();
@@ -189,8 +190,20 @@ export default function GamePage() {
     }
   };
 
+  const isHost = Boolean(
+    thisPlayer && internalGameState?.hostPlayerId === thisPlayer.id
+  );
+  const hostName =
+    internalGameState?.players.find(p => p.id === internalGameState?.hostPlayerId)?.name ?? 'the host';
+
   const handlePlayAgainYes = async () => {
     if (!internalGameState?.gameId) return;
+    // Restarting the room is a host power (server-enforced). Telling non-hosts to
+    // hang tight beats letting them tap into an "Unauthorized" error.
+    if (!isHost) {
+      toast({ title: `Waiting for ${hostName}`, description: "Only the host can restart the game." });
+      return;
+    }
     console.log("GAME_PAGE: handlePlayAgainYes - Starting server reset");
 
     try {
@@ -540,20 +553,33 @@ export default function GamePage() {
             disabled={isActionPending}
           >
             {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Home className="mr-2 h-4 w-4" />}
-            Exit to Lobby
+            Leave Game
           </Button>
-          <Button
-            onClick={() => {
-              setIsMenuModalOpen(false);
-              handleResetGameFromGamePageWithPin();
-            }}
-            className="bg-red-500/80 hover:bg-red-600/80 text-white"
-            disabled={isActionPending}
-            data-testid="reset-game-button"
-          >
-            {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Reset Game (Testing)
-          </Button>
+          {/* Ending the game is a host power (HOST_AND_RESET_SPEC.md): everyone
+              goes back to this room's lobby, seats kept, scores zeroed. Armed on
+              first tap so a stray thumb can't end the table's game. */}
+          {isHost && (
+            <Button
+              onClick={() => {
+                if (!endGameArmed) {
+                  setEndGameArmed(true);
+                  setTimeout(() => setEndGameArmed(false), 4000);
+                  return;
+                }
+                setEndGameArmed(false);
+                setIsMenuModalOpen(false);
+                handleResetGameFromGamePage();
+              }}
+              className={endGameArmed
+                ? "bg-red-600 hover:bg-red-700 text-white animate-pulse"
+                : "bg-red-500/80 hover:bg-red-600/80 text-white"}
+              disabled={isActionPending}
+              data-testid="reset-game-button"
+            >
+              {isActionPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              {endGameArmed ? 'Tap again to end the game for everyone' : 'End Game (back to lobby)'}
+            </Button>
+          )}
         </div>
       </PureMorphingModal>
 

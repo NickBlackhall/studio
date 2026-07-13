@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { PureMorphingModal } from '@/components/PureMorphingModal';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
+import AddToHomeScreen from '@/components/AddToHomeScreen';
 import { useAudio } from '@/contexts/AudioContext';
 
 interface MainMenuProps {
@@ -145,6 +146,7 @@ export default function MainMenu({
 
   return (
     <div className="w-full h-screen animate-in fade-in duration-700 ease-out" data-testid="main-menu">
+      <AddToHomeScreen />
       <div className="relative w-full h-full">
         {/* Background Image */}
         <Image 

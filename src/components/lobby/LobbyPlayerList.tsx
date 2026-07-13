@@ -10,18 +10,21 @@ import { avatarSrc } from '@/lib/assets';
 interface LobbyPlayerListProps {
   players: PlayerClientState[];
   thisPlayer: PlayerClientState | null;
+  hostPlayerId?: string | null;
   onToggleReady: (player: PlayerClientState) => void;
   isProcessingAction: boolean;
 }
 
-const PlayerRow = React.memo(function PlayerRow({ 
-  player, 
-  thisPlayer, 
-  onToggleReady, 
-  isProcessingAction 
-}: { 
+const PlayerRow = React.memo(function PlayerRow({
+  player,
+  thisPlayer,
+  isHost,
+  onToggleReady,
+  isProcessingAction
+}: {
   player: PlayerClientState;
   thisPlayer: PlayerClientState | null;
+  isHost: boolean;
   onToggleReady: (player: PlayerClientState) => void;
   isProcessingAction: boolean;
 }) {
@@ -41,7 +44,12 @@ const PlayerRow = React.memo(function PlayerRow({
         ) : (
           <span className="text-5xl mr-3 flex-shrink-0">{player.avatar}</span>
         )}
-        <h2 className="text-3xl text-black truncate">{player.name || 'Player'}</h2>
+        <h2 className="text-3xl text-black truncate">
+          {player.name || 'Player'}
+          {isHost && (
+            <span className="ml-2" title="Room host" aria-label="Room host">👑</span>
+          )}
+        </h2>
       </div>
       <div className="flex-shrink-0 ml-2 flex items-center justify-center">
         {player.id === thisPlayer?.id ? (
@@ -62,19 +70,21 @@ const PlayerRow = React.memo(function PlayerRow({
 
 PlayerRow.displayName = 'PlayerRow';
 
-export default function LobbyPlayerList({ 
-  players, 
-  thisPlayer, 
-  onToggleReady, 
-  isProcessingAction 
+export default function LobbyPlayerList({
+  players,
+  thisPlayer,
+  hostPlayerId,
+  onToggleReady,
+  isProcessingAction
 }: LobbyPlayerListProps) {
   return (
     <div className="overflow-y-auto space-y-2">
       {players.map((player) => (
-        <PlayerRow 
-          key={player.id} 
-          player={player} 
+        <PlayerRow
+          key={player.id}
+          player={player}
           thisPlayer={thisPlayer}
+          isHost={player.id === hostPlayerId}
           onToggleReady={onToggleReady}
           isProcessingAction={isProcessingAction}
         />
