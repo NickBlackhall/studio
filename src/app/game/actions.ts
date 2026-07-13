@@ -536,32 +536,14 @@ export async function resetGameForTesting(opts?: { clientWillNavigate?: boolean,
         throw new Error(`Target game ${gameId} not found for reset`);
       }
     } else {
-      // Legacy behavior: find first game
-      console.warn("🟡 ACTION: resetGameForTesting - No specific gameId provided, using legacy behavior (first game)");
-      const { data: existingGames, error: fetchError } = await supabase
-        .from('games')
-        .select('id, game_phase')
-        .order('created_at', { ascending: true })
-        .limit(1);
-
-      if (fetchError) {
-        console.error("🔴 ACTION: resetGameForTesting - Exception during game fetch:", fetchError.message);
-        throw new Error(`Exception during game fetch for reset: ${fetchError.message}`);
-      }
-
-      if (!existingGames || existingGames.length === 0) {
-        console.warn("🟡 ACTION: resetGameForTesting - No game found to reset.");
-        revalidatePath('/');
-        revalidatePath('/game');
-        revalidatePath('/?step=menu');
-        
-        if (!opts?.clientWillNavigate) {
-          redirect('/?step=menu');
-        }
-        return;
-      }
-
-      gameId = existingGames[0].id;
+      // A reset MUST name its target. The old fallback here picked the oldest game
+      // in the entire database and reset that — so an in-game reset button (which
+      // never passed a gameId) wiped some unrelated player's room while leaving the
+      // presser's own game untouched. That is where "reset breaks the game" came
+      // from. Refuse instead of guessing.
+      throw new Error(
+        'resetGameForTesting requires an explicit gameId. To reset every room, use masterResetAllGames().'
+      );
     }
     await performGameResetInternal(gameId);
     console.log(`🔵 ACTION: resetGameForTesting - Reset complete. Revalidating paths BEFORE redirect.`);
@@ -626,6 +608,27 @@ export async function getGameByRoomCode(roomCode: string): Promise<GameClientSta
  * (nobody "leaves" a closed tab), so the empty-room cleanup never catches
  * them and they pile up as unstartable zombies in the room browser.
  */
+/**
+ * Delete a room and everything hanging off it.
+ *
+ * Order matters: games.created_by_player_id and games.current_judge_id are FKs
+ * onto players, so they have to be nulled before the players can go.
+ */
+export async function deleteGameCascade(gameId: string, roomCode?: string): Promise<void> {
+  const label = roomCode ?? gameId;
+  await supabase.from('games').update({ created_by_player_id: null, current_judge_id: null }).eq('id', gameId);
+  for (const table of ['player_hands', 'responses', 'winners'] as const) {
+    await supabase.from(table).delete().eq('game_id', gameId);
+  }
+  await supabase.from('players').delete().eq('game_id', gameId);
+  const { error } = await supabase.from('games').delete().eq('id', gameId);
+  if (error) {
+    console.error(`🔴 ACTION: deleteGameCascade - Failed to delete ${label}:`, error.message);
+    throw new Error(`Failed to delete room ${label}: ${error.message}`);
+  }
+  console.log(`✅ ACTION: deleteGameCascade - Deleted room ${label}`);
+}
+
 async function cleanupStaleGames(): Promise<void> {
   const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(); // 3 hours
 
@@ -645,20 +648,41 @@ async function cleanupStaleGames(): Promise<void> {
 
   console.log(`🔵 ACTION: cleanupStaleGames - Sweeping ${staleGames.length} abandoned games`);
   for (const game of staleGames) {
-    // Clear player references first (created_by/current_judge FKs block
-    // player deletion), then children, players, and finally the game.
-    await supabase.from('games').update({ created_by_player_id: null, current_judge_id: null }).eq('id', game.id);
-    for (const table of ['player_hands', 'responses', 'winners'] as const) {
-      await supabase.from(table).delete().eq('game_id', game.id);
-    }
-    await supabase.from('players').delete().eq('game_id', game.id);
-    const { error: delError } = await supabase.from('games').delete().eq('id', game.id);
-    if (delError) {
-      console.error(`🔴 ACTION: cleanupStaleGames - Failed to delete ${game.room_code}:`, delError.message);
-    } else {
-      console.log(`✅ ACTION: cleanupStaleGames - Swept abandoned game ${game.room_code}`);
+    await deleteGameCascade(game.id, game.room_code).catch(() => {});
+  }
+}
+
+/**
+ * The PIN-gated "master" reset: wipe every room in the database.
+ *
+ * This is the only reset that is allowed to touch rooms other than your own, and
+ * it exists purely for testing. Ordinary resets must name their target game —
+ * see resetGameForTesting.
+ */
+export async function masterResetAllGames(): Promise<{ deleted: number }> {
+  console.warn("🟠 ACTION: masterResetAllGames - WIPING ALL ROOMS. THIS IS DESTRUCTIVE.");
+
+  const { data: games, error } = await supabase.from('games').select('id, room_code');
+  if (error) throw new Error(`masterResetAllGames: could not list games: ${error.message}`);
+  if (!games || games.length === 0) {
+    console.log("🟠 ACTION: masterResetAllGames - No rooms to delete");
+    return { deleted: 0 };
+  }
+
+  let deleted = 0;
+  for (const game of games) {
+    try {
+      await deleteGameCascade(game.id, game.room_code);
+      deleted++;
+    } catch (e: any) {
+      console.error(`🔴 ACTION: masterResetAllGames - Failed on ${game.room_code}:`, e?.message);
     }
   }
+
+  console.warn(`🟠 ACTION: masterResetAllGames - Deleted ${deleted}/${games.length} rooms`);
+  revalidatePath('/');
+  revalidatePath('/game');
+  return { deleted };
 }
 
 export async function cleanupEmptyRooms(): Promise<void> {

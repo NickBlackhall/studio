@@ -20,7 +20,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import type { GameClientState, PlayerClientState } from '@/lib/types';
-import { resetGameForTesting, removePlayerFromGame } from '@/app/game/actions';
+import { resetGameForTesting, removePlayerFromGame, masterResetAllGames } from '@/app/game/actions';
 import { useToast } from '@/hooks/use-toast';
 
 interface DevConsoleModalProps {
@@ -92,16 +92,22 @@ export default function DevConsoleModal({
     }
   };
 
+  // The dev console's reset is the "master" reset: it wipes every room, not just
+  // this one. It is PIN-gated for that reason. Resetting only the current room is
+  // the reset button in the normal game menu.
   const handleResetGame = async () => {
     startTransition(async () => {
       try {
-        await resetGameForTesting();
-        toast({ title: "Game Reset", description: "Game has been reset successfully." });
+        const { deleted } = await masterResetAllGames();
+        toast({
+          title: "All rooms wiped",
+          description: `${deleted} room${deleted === 1 ? '' : 's'} deleted.`
+        });
         handleClose();
       } catch (error: any) {
-        toast({ 
-          title: "Reset Failed", 
-          description: error.message || "Failed to reset game.", 
+        toast({
+          title: "Reset Failed",
+          description: error.message || "Failed to reset game.",
           variant: "destructive" 
         });
       }
@@ -354,12 +360,13 @@ export default function DevConsoleModal({
               ) : (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Reset Entire Game
+                  Wipe ALL Rooms
                 </>
               )}
             </Button>
             <p className="text-xs text-muted-foreground mt-2">
-              This will completely reset the game and remove all players.
+              Master reset. Deletes <strong>every room in the database</strong>, not just this
+              one, including games other people are playing. For testing only.
             </p>
           </CardContent>
         </Card>

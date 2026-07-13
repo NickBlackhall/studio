@@ -178,10 +178,11 @@ export default function GamePage() {
   const handlePlayAgainYes = async () => {
     if (!internalGameState?.gameId) return;
     console.log("GAME_PAGE: handlePlayAgainYes - Starting server reset");
-    
+
     try {
-      // Call the server action first - it will handle the transition state and reset
-      await resetGameForTesting({ clientWillNavigate: true });
+      // Must name the game. Without a gameId this used to reset the OLDEST game in
+      // the database — i.e. somebody else's room — and leave this one running.
+      await resetGameForTesting({ clientWillNavigate: true, gameId: internalGameState.gameId });
       console.log("GAME_PAGE: handlePlayAgainYes - Server reset completed");
     } catch (error: any) {
       if (typeof error?.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
@@ -207,11 +208,14 @@ export default function GamePage() {
 
   const handleResetGameFromGamePage = async () => {
     console.log("GAME_PAGE: handleResetGameFromGamePage triggered.");
+    const gameId = internalGameState?.gameId;
+    if (!gameId) return;
     startActionTransition(async () => {
       try {
-        // Call the server action first - it will handle the transition state and reset
+        // Resets THIS room only. Wiping every room is a separate, explicit action
+        // (masterResetAllGames, in the dev console).
         console.log("GAME_PAGE: handleResetGameFromGamePage - Calling server reset action");
-        await resetGameForTesting({ clientWillNavigate: true });
+        await resetGameForTesting({ clientWillNavigate: true, gameId });
         console.log("GAME_PAGE: handleResetGameFromGamePage - Server reset completed");
       } catch (error: any) {
         if (typeof error?.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
