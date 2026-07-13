@@ -86,7 +86,7 @@ export default function PlayerView({ gameState, player }: PlayerViewProps) {
       return 0;
     });
 
-    const customCard = { id: CUSTOM_CARD_ID, text: customCardText, isCustom: true, isNew: false };
+    const customCard = { id: CUSTOM_CARD_ID, text: customCardText, isCustom: true, isNew: false, authorName: null };
     const baseCards = [...sortedHand, customCard];
     
     // If cardOrder is empty or doesn't match current cards, initialize it
