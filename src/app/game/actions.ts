@@ -459,15 +459,25 @@ export async function addPlayer(name: string, avatar: string, targetGameId?: str
  * room — requiring the HOST there stranded everyone whenever the last
  * round's judge wasn't the host).
  */
+/**
+ * End the game in this room and put everyone back on the lobby / ready screen.
+ *
+ * The players STAY. They keep their seats, the room keeps its code, and the host
+ * stays host — see HOST_AND_RESET_SPEC.md. This used to delete every player row,
+ * which is why an "end game" ejected the whole table out to the main menu.
+ *
+ * Only round state is destroyed: hands, responses, winners, scores, readiness.
+ */
 async function performGameResetInternal(gameId: string): Promise<void> {
-  console.log(`🔵 ACTION: performGameReset - Starting reset for game ${gameId}.`);
+  console.log(`🔵 ACTION: performGameReset - Returning game ${gameId} to lobby.`);
 
-  // STEP 1: notify all clients that reset is happening
+  // STEP 1: tell every client what is about to happen, and give the overlay a
+  // beat to appear before the phase flips under them.
   const { error: transitionError } = await supabase
     .from('games')
     .update({
-      transition_state: 'resetting_game',
-      transition_message: 'Game is being reset. You will be redirected to the main menu.',
+      transition_state: 'returning_to_lobby',
+      transition_message: 'The host ended the game. Back to the lobby...',
       updated_at: new Date().toISOString()
     })
     .eq('id', gameId);
@@ -475,13 +485,13 @@ async function performGameResetInternal(gameId: string): Promise<void> {
     console.error(`🔴 ACTION: performGameReset - Error setting transition state:`, JSON.stringify(transitionError, null, 2));
   }
 
-  // Give clients a moment to see the reset notification
   await new Promise(resolve => setTimeout(resolve, 1500));
 
-  // STEP 2: clear all game data
+  // STEP 2: drop round state. Note created_by_player_id is deliberately NOT
+  // cleared — the host stays host across an End Game.
   const { error: clearPlayerRefsError } = await supabase
     .from('games')
-    .update({ current_judge_id: null, last_round_winner_player_id: null, overall_winner_player_id: null, created_by_player_id: null })
+    .update({ current_judge_id: null, last_round_winner_player_id: null, overall_winner_player_id: null })
     .eq('id', gameId);
   if (clearPlayerRefsError) console.error(`🔴 ACTION: performGameReset - Error clearing player references in game ${gameId}:`, JSON.stringify(clearPlayerRefsError, null, 2));
 
@@ -491,10 +501,14 @@ async function performGameResetInternal(gameId: string): Promise<void> {
     if (deleteError) console.error(`🔴 ACTION: performGameReset - Error deleting from ${table}:`, JSON.stringify(deleteError, null, 2));
   }
 
-  const { error: playersDeleteError } = await supabase.from('players').delete().eq('game_id', gameId);
-  if (playersDeleteError) console.error(`🔴 ACTION: performGameReset - Error deleting players:`, JSON.stringify(playersDeleteError, null, 2));
+  // Players stay in the room; they just go back to square one.
+  const { error: playersResetError } = await supabase
+    .from('players')
+    .update({ score: 0, is_ready: false, is_judge: false })
+    .eq('game_id', gameId);
+  if (playersResetError) console.error(`🔴 ACTION: performGameReset - Error resetting players:`, JSON.stringify(playersResetError, null, 2));
 
-  // STEP 3: reset the game to lobby state
+  // STEP 3: back to the lobby.
   const updateData: TablesUpdate<'games'> = {
     game_phase: 'lobby', current_round: 0, current_judge_id: null, current_scenario_id: null,
     ready_player_order: [], last_round_winner_player_id: null, last_round_winning_card_text: null,
@@ -506,7 +520,7 @@ async function performGameResetInternal(gameId: string): Promise<void> {
     console.error(`🔴 ACTION: performGameReset - CRITICAL: Failed to update game to lobby phase:`, JSON.stringify(updateError, null, 2));
     throw new Error(`Failed to update game ${gameId} during reset: ${updateError.message}`);
   }
-  console.log(`✅ ACTION: performGameReset - Game ${gameId} reset to lobby.`);
+  console.log(`✅ ACTION: performGameReset - Game ${gameId} returned to lobby with players intact.`);
 }
 
 export async function resetGameForTesting(opts?: { clientWillNavigate?: boolean, gameId?: string }) {
@@ -1542,7 +1556,7 @@ export async function removePlayerFromGame(gameId: string, playerId: string, rea
     // Fetch game and player data to understand current state
     const { data: game, error: gameError } = await supabase
       .from('games')
-      .select('created_by_player_id, current_judge_id, ready_player_order, game_phase, current_round')
+      .select('created_by_player_id, current_judge_id, ready_player_order, game_phase, current_round, room_code')
       .eq('id', gameId)
       .single();
     
@@ -1605,17 +1619,30 @@ export async function removePlayerFromGame(gameId: string, playerId: string, rea
         throw new Error(`Failed to close room on host departure: ${closeError.message}`);
       }
 
-      // Now remove the host's data
-      await supabase.from('player_hands').delete().eq('player_id', playerId).eq('game_id', gameId);
-      await supabase.from('responses').delete().eq('player_id', playerId).eq('game_id', gameId);
-      const { error: hostDeleteError } = await supabase.from('players').delete().eq('id', playerId).eq('game_id', gameId);
-      if (hostDeleteError) {
-        throw new Error(`Failed to remove host: ${hostDeleteError.message}`);
-      }
-      
+      // Give the other players time to see the notice and navigate out (their
+      // clients leave ~2s after seeing the transition) before the room disappears
+      // from under them, then tear the whole room down. Leaving it behind is how
+      // dead rooms piled up in the browser.
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      await deleteGameCascade(gameId, game.room_code ?? undefined).catch(err =>
+        console.error(`🔴 ACTION: removePlayerFromGame - Failed to delete room on host departure:`, err?.message)
+      );
+
       revalidatePath('/');
       revalidatePath('/game');
       return null; // Host departure = room closed, no game state returned
+    }
+
+    // Last one out deletes the room. Waiting for the idle sweep to do this is why
+    // abandoned rooms lingered in the browser for hours.
+    if (remainingPlayersCount <= 0) {
+      console.log(`🔵 ACTION: removePlayerFromGame - Last player left, deleting room ${gameId}`);
+      await deleteGameCascade(gameId, game.room_code ?? undefined).catch(err =>
+        console.error(`🔴 ACTION: removePlayerFromGame - Failed to delete emptied room:`, err?.message)
+      );
+      revalidatePath('/');
+      revalidatePath('/game');
+      return null;
     }
 
     // Prepare game updates

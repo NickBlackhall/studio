@@ -3,7 +3,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState, useTransition, useCallback, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   selectCategory,
   selectWinner,
@@ -41,6 +41,7 @@ export default function GamePage() {
   // Always declare all hooks first - no early returns before hooks!
   const [isActionPending, startActionTransition] = useTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const [isHowToPlayModalOpen, setIsHowToPlayModalOpen] = useState(false);
@@ -87,25 +88,38 @@ export default function GamePage() {
     }
   }, [internalGameState?.gamePhase, playTrack, stopMusic]);
 
-  // Auto-redirect when game returns to lobby (reset scenario)
+  // The game page has no business showing a game that is back in the lobby. Drive
+  // this off the PHASE, not off the transition flag: the server clears the flag
+  // ~1.5s after setting it, so any client whose refetch lands after that never
+  // sees it. Clients that missed the flag used to sit here forever, stranded in a
+  // dead game. Phase is durable, so this catches them regardless.
+  //
+  //   still a member -> back to this room's lobby (host ended the game)
+  //   no longer a member -> out to the main menu (removed, kicked, room torn down)
   useEffect(() => {
-    if (internalGameState?.gamePhase === 'lobby' && !thisPlayer) {
-      console.log("GAME_PAGE: Game has returned to lobby, auto-redirecting to main menu and clearing URL state.");
-      
-      // Set reset flag to ensure clean state
+    if (internalGameState?.gamePhase !== 'lobby') return;
+
+    const roomCode = searchParams?.get('room');
+    const stillInRoom = Boolean(thisPlayer);
+
+    console.log(
+      `GAME_PAGE: Game is back in the lobby (member=${stillInRoom}). Leaving the game screen.`
+    );
+
+    if (!stillInRoom) {
       localStorage.setItem('gameResetFlag', 'true');
-
-      const timeoutId = setTimeout(() => {
-        // Hard navigation, matching the reset path in SharedGameContext. A soft
-        // router.push() does not remount SharedGameProvider (it lives in the root
-        // layout), which used to strand gameResetFlag set forever — and a stuck
-        // flag makes Join Room a silent no-op.
-        window.location.href = '/?step=menu';
-      }, 1000); // 1 second delay to avoid infinite loops
-
-      return () => clearTimeout(timeoutId);
     }
-  }, [internalGameState?.gamePhase, thisPlayer, router]);
+
+    const timeoutId = setTimeout(() => {
+      // Hard navigation: a soft router.push() does not remount SharedGameProvider
+      // (it lives in the root layout), which is how gameResetFlag used to get
+      // stranded set forever — and a stuck flag makes Join Room a silent no-op.
+      window.location.href =
+        stillInRoom && roomCode ? `/?room=${roomCode}` : '/?step=menu';
+    }, 1000); // brief delay so the transition overlay is seen
+
+    return () => clearTimeout(timeoutId);
+  }, [internalGameState?.gamePhase, searchParams, thisPlayer]);
   
   // Early return after ALL hooks are declared - this is safe
   if (!internalGameState || !internalGameState.gameId) {

@@ -15,6 +15,10 @@ export type TransitionState =
   | 'announcing_winner'
   | 'next_round'
   | 'game_ending'
+  // Host ended the game: players STAY in the room and land back on the lobby /
+  // ready screen. Distinct from 'resetting_game', which tears the room down and
+  // sends everyone out to the main menu.
+  | 'returning_to_lobby'
   | 'resetting_game';
 
 export interface PlayerHandCard { // Explicit type for cards in a player's hand

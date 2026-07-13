@@ -169,23 +169,34 @@ function SharedGameProviderContent({ children }: { children: React.ReactNode }) 
     }
   }, []); // Empty dependency array - uses current gameState via closure
 
-  // Handle automatic navigation for reset transition
+  // The two teardown transitions go to different places (HOST_AND_RESET_SPEC.md):
+  //
+  //   returning_to_lobby — host ended the game. Players KEEP their seats, so send
+  //                        them to this room's lobby, not out to the main menu.
+  //   resetting_game     — the room is being torn down (host left, master reset).
+  //                        Everyone out to the main menu.
   useEffect(() => {
-    if (gameState?.transitionState === 'resetting_game') {
-      console.log('🔄 SHARED_CONTEXT: Reset transition detected - scheduling navigation to main menu');
-      
-      // Wait for the transition overlay to be visible, then navigate
-      const timeoutId = setTimeout(() => {
-        console.log('🔄 SHARED_CONTEXT: Navigating to main menu after reset');
-        // Set reset flag to ensure clean state
-        localStorage.setItem('gameResetFlag', 'true');
-        // Use window.location for hard navigation to ensure clean state
-        window.location.href = '/?step=menu';
-      }, 2000); // Give 2 seconds to see the reset message
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [gameState?.transitionState]);
+    const transition = gameState?.transitionState;
+    if (transition !== 'resetting_game' && transition !== 'returning_to_lobby') return;
+
+    const roomCode = searchParams?.get('room');
+
+    const timeoutId = setTimeout(() => {
+      if (transition === 'returning_to_lobby' && roomCode) {
+        console.log('🔄 SHARED_CONTEXT: Game ended - returning to this room\'s lobby');
+        // No reset flag: the player is still in the room, so client state must NOT
+        // be wiped. Hard nav so the lobby remounts against the fresh game row.
+        window.location.href = `/?room=${roomCode}`;
+        return;
+      }
+
+      console.log('🔄 SHARED_CONTEXT: Room torn down - navigating to main menu');
+      localStorage.setItem('gameResetFlag', 'true');
+      window.location.href = '/?step=menu';
+    }, 2000); // let the transition overlay be seen
+
+    return () => clearTimeout(timeoutId);
+  }, [gameState?.transitionState, searchParams]);
 
   // Real-time subscription effect - STABLE (no dynamic dependencies)
   useEffect(() => {

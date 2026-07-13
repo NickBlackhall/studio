@@ -102,6 +102,8 @@ function getTransitionMessage(transitionState: TransitionState): string {
       return 'Preparing next round...';
     case 'game_ending':
       return 'Ending game...';
+    case 'returning_to_lobby':
+      return 'The host ended the game. Back to the lobby...';
     case 'resetting_game':
       return 'Resetting game... You will be redirected to the main menu.';
     default:
