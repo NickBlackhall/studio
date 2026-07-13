@@ -1202,11 +1202,20 @@ export async function submitResponse(playerId: string, responseCardText: string,
 
   let gameUsedResponses = gameData.used_responses || [];
   const usedResponsesBeforeNewDeal = responseCardIdToStore ? [...new Set([...gameUsedResponses, responseCardIdToStore])] : gameUsedResponses;
-  const { dealtCardIds: replacementCardIds, updatedUsedResponses: finalUsedResponsesAfterPlayAndDeal } = await dealCardsFromSupabase(gameId, 1, usedResponsesBeforeNewDeal);
-  if (replacementCardIds.length > 0) {
-    await supabase.from('player_hands').insert({ game_id: gameId, player_id: playerId, response_card_id: replacementCardIds[0], is_new: true });
+
+  // Replace only what was spent. A write-in submission consumes no hand card
+  // (the custom card is an extra option, not one of the five), so dealing it a
+  // replacement grew the hand by one on every write-in play — invisible for a
+  // year only because the write-in textarea itself was broken until now.
+  if (!isCustomSubmission) {
+    const { dealtCardIds: replacementCardIds, updatedUsedResponses: finalUsedResponsesAfterPlayAndDeal } = await dealCardsFromSupabase(gameId, 1, usedResponsesBeforeNewDeal);
+    if (replacementCardIds.length > 0) {
+      await supabase.from('player_hands').insert({ game_id: gameId, player_id: playerId, response_card_id: replacementCardIds[0], is_new: true });
+    }
+    await supabase.from('games').update({ used_responses: finalUsedResponsesAfterPlayAndDeal, updated_at: new Date().toISOString() }).eq('id', gameId);
+  } else {
+    await supabase.from('games').update({ used_responses: usedResponsesBeforeNewDeal, updated_at: new Date().toISOString() }).eq('id', gameId);
   }
-  await supabase.from('games').update({ used_responses: finalUsedResponsesAfterPlayAndDeal, updated_at: new Date().toISOString() }).eq('id', gameId);
 
   const { data: nonJudgePlayers } = await supabase.from('players').select('id', { count: 'exact' }).eq('game_id', gameId).neq('id', gameData.current_judge_id || '00000000-0000-0000-0000-000000000000');
   const totalNonJudgePlayers = nonJudgePlayers?.length || 0;
