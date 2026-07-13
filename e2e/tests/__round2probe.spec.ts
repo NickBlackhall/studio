@@ -1,5 +1,10 @@
 import { multiPlayerTest as test, createGameWithPlayers, startGame } from '../helpers/multi-player';
 
+// Manual diagnostic probe for driving a deployed environment
+// (E2E_BASE_URL=https://... npx playwright test __round2probe). Not part of the
+// suite: in CI it would just replay a full round for no assertion value.
+test.skip(!process.env.E2E_BASE_URL, 'probe only runs when E2E_BASE_URL is set');
+
 test('probe round 2 category error', async ({ multiPlayer }) => {
   const { pages } = multiPlayer;
   for (const [i, p] of pages.entries()) p.on('console', m => {
