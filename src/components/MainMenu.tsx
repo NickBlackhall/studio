@@ -16,7 +16,7 @@ import {
   Volume2,
   VolumeX,
   Music,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import { PureMorphingModal } from '@/components/PureMorphingModal';
 import HowToPlayModalContent from '@/components/game/HowToPlayModalContent';
@@ -131,6 +131,15 @@ export default function MainMenu({
       icon: <User className="h-6 w-6" />,
       onClick: () => {},
       comingSoon: true
+    },
+    {
+      title: "Admin Content Lab",
+      description: "PIN-protected card generator and review queue",
+      icon: <Edit className="h-6 w-6" />,
+      onClick: () => {
+        setIsSettingsModalOpen(false);
+        window.location.assign("/admin/login");
+      }
     },
     ...(onResetGame ? [{
       title: "Reset Game (Testing)",

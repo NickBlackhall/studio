@@ -1,0 +1,502 @@
+[
+  {
+    "id": "96cd1739-b506-4c0b-aadb-8872e3885cfe",
+    "text": "from people selling extended warranties",
+    "is_active": true
+  },
+  {
+    "id": "5d4c608d-ab62-4184-9d8c-a8d724e7b3ce",
+    "text": "but the venue is your high school gymnasium",
+    "is_active": true
+  },
+  {
+    "id": "f944942f-391e-4074-a9ca-5be9e1462086",
+    "text": "but it's worth negative money somehow",
+    "is_active": true
+  },
+  {
+    "id": "25625b17-c970-4372-9652-2d49c5f7fccd",
+    "text": "that only discusses your relationship failures",
+    "is_active": true
+  },
+  {
+    "id": "86427330-1f99-482e-97e6-d0583b1630ad",
+    "text": "to help them move apartments",
+    "is_active": true
+  },
+  {
+    "id": "33563a64-90f7-4b2d-886c-d68742c97cf1",
+    "text": "but it's lukewarm and tastes like regret",
+    "is_active": true
+  },
+  {
+    "id": "d94f72ec-fa55-4ddf-8042-4ea474ea0296",
+    "text": "but you have to bring your own food",
+    "is_active": true
+  },
+  {
+    "id": "939be03e-3b37-4b31-a975-c01401e2a091",
+    "text": "but the refund is in store credit to Blockbuster",
+    "is_active": true
+  },
+  {
+    "id": "6f92dd0e-26c8-454f-9b95-bbeec52973b5",
+    "text": "but you spend it all on shipping",
+    "is_active": true
+  },
+  {
+    "id": "654e5d95-4a6e-415b-805c-79498d336ba3",
+    "text": "but it's for a company that doesn't exist",
+    "is_active": true
+  },
+  {
+    "id": "106bce2d-8672-405e-8f8b-2671b7b712e5",
+    "text": "but it's actually just a performance review",
+    "is_active": true
+  },
+  {
+    "id": "2d1fd378-1b91-44cb-bfed-ba3c9f5fa000",
+    "text": "but it's from 1998 and doesn't work",
+    "is_active": true
+  },
+  {
+    "id": "e61e5fca-ee71-4fda-bc3c-efb85f16bcb4",
+    "text": "about tax law exclusively",
+    "is_active": true
+  },
+  {
+    "id": "ae41aadd-a185-4537-81bb-1ca902435a1c",
+    "text": "but it's actually community service",
+    "is_active": true
+  },
+  {
+    "id": "ad59f5ba-528f-4143-8730-8041fa8eafe2",
+    "text": "for people with worse problems than you",
+    "is_active": true
+  },
+  {
+    "id": "61821c86-57e1-4a81-8b0f-12a26a3c72f6",
+    "text": "but it's all theoretical and useless",
+    "is_active": true
+  },
+  {
+    "id": "e50fdc67-9ee2-423a-b596-9ef1c1c14e51",
+    "text": "but the network is just you talking to yourself",
+    "is_active": true
+  },
+  {
+    "id": "ce389a11-58f5-419b-8bd6-04400f516dc0",
+    "text": "but it's your ex documenting your decline",
+    "is_active": true
+  },
+  {
+    "id": "5522a577-14b5-4824-a5de-9c297db90edf",
+    "text": "but everything is beige and disappointing",
+    "is_active": true
+  },
+  {
+    "id": "c74451b7-7740-47ba-ae10-a366bd9a2424",
+    "text": "but it's about your relationship with your mother",
+    "is_active": true
+  },
+  {
+    "id": "7749525f-c82f-46d5-ad27-633ec621d434",
+    "text": "but you still owe taxes on it",
+    "is_active": true
+  },
+  {
+    "id": "40dad7e0-e506-40f4-aadd-3bd69834595d",
+    "text": "where you teach people to give up",
+    "is_active": true
+  },
+  {
+    "id": "0656a7de-50e5-4760-b389-a6d77485791b",
+    "text": "but the entertainment is just static",
+    "is_active": true
+  },
+  {
+    "id": "d04d797a-dccd-491a-97d4-3d46c9f5c77e",
+    "text": "for people who sell supplements",
+    "is_active": true
+  },
+  {
+    "id": "8c772d10-9453-4a52-a651-2d0aeaf9006b",
+    "text": "but you have to explain why you're disappointing",
+    "is_active": true
+  },
+  {
+    "id": "a7dbbbf6-d368-4b84-8510-5e18c1e1232d",
+    "text": "but all the appliances are broken",
+    "is_active": true
+  },
+  {
+    "id": "873776c3-db14-4843-b877-a9ab863361ad",
+    "text": "but you have to judge yourself",
+    "is_active": true
+  },
+  {
+    "id": "1fae88d9-cb63-4758-bb47-e01ff3ea4584",
+    "text": "but the group just complains about millennials",
+    "is_active": true
+  },
+  {
+    "id": "d6fae537-8de8-4ec2-b541-1c7fe682200f",
+    "text": "but it's cancelled after one session",
+    "is_active": true
+  },
+  {
+    "id": "21c767ac-7b31-4dc9-ae2e-e497bc11e1ac",
+    "text": "but it only covers anxiety about money",
+    "is_active": true
+  },
+  {
+    "id": "9d1d4e77-1461-4350-85e3-b2c6141ad878",
+    "text": "but they charge you for wasting their time",
+    "is_active": true
+  },
+  {
+    "id": "14264548-f8cc-42d2-aa86-b7343ff67825",
+    "text": "for people who have given up on love",
+    "is_active": true
+  },
+  {
+    "id": "b05c6481-320b-4000-b6a8-e069e4d24761",
+    "text": "who lectures you about your choices",
+    "is_active": true
+  },
+  {
+    "id": "560c785c-ce83-4b2f-a78c-c11721b51c84",
+    "text": "but it only picks up emergency broadcasts",
+    "is_active": true
+  },
+  {
+    "id": "22f7ffda-4378-4ef3-a1f0-4a6db6620529",
+    "text": "but you're actually the subject",
+    "is_active": true
+  },
+  {
+    "id": "fea73d4a-6127-4b83-9be9-d7a352d3e50f",
+    "text": "that's just pictures of your failures",
+    "is_active": true
+  },
+  {
+    "id": "308446a4-e3a5-4ce2-9b24-d7aa4b0878e4",
+    "text": "where you're the only patient",
+    "is_active": true
+  },
+  {
+    "id": "6b93a7c9-6629-440b-b0f4-577926489b67",
+    "text": "but it only plays during anxiety attacks",
+    "is_active": true
+  },
+  {
+    "id": "ac9f1814-1408-454f-aede-c6bd3f27a489",
+    "text": "who takes more of your money",
+    "is_active": true
+  },
+  {
+    "id": "420bac58-3c0a-4228-823d-4f4ad1a6b741",
+    "text": "but the class is about managing disappointment",
+    "is_active": true
+  },
+  {
+    "id": "b53a6428-655e-4025-bee8-58b00d11c725",
+    "text": "but it's actually a Ponzi scheme",
+    "is_active": true
+  },
+  {
+    "id": "882351b5-1558-45b3-90e5-1dff4a3fb0c5",
+    "text": "that won't return your calls",
+    "is_active": true
+  },
+  {
+    "id": "586951c6-ed5e-44dd-87cf-6f48af0bfe95",
+    "text": "but the video is about your poor choices",
+    "is_active": true
+  },
+  {
+    "id": "523b8243-f8b4-4b41-8065-1061d1c204b0",
+    "text": "who seems personally offended by your existence",
+    "is_active": true
+  },
+  {
+    "id": "18b7e367-c3c0-4a53-9320-a1dd3053a4ab",
+    "text": "but the therapist is more disappointed than you are",
+    "is_active": true
+  },
+  {
+    "id": "6963ba43-c3d1-4b80-806b-bc5a249dd3de",
+    "text": "but they only take appointments during your work hours",
+    "is_active": true
+  },
+  {
+    "id": "52590f0b-b667-4927-838b-97c17139f66e",
+    "text": "but the game involves explaining your life failures",
+    "is_active": true
+  },
+  {
+    "id": "66d09810-e346-4d1f-a8c6-863edf6447a4",
+    "text": "for the sequel to Cats",
+    "is_active": true
+  },
+  {
+    "id": "0635bc13-986c-4b37-aa6a-f4ca4c230351",
+    "text": "while he mansplains blockchain technology",
+    "is_active": true
+  },
+  {
+    "id": "e61f920e-9b0f-4038-bc29-c7d50db50687",
+    "text": "about tax preparation methods",
+    "is_active": true
+  },
+  {
+    "id": "a4081f5c-8c48-48fc-a657-95bfd2db9667",
+    "text": "where you learn you're the disappointment",
+    "is_active": true
+  },
+  {
+    "id": "168e0674-e251-4ab2-9ff4-ecd8d4b56075",
+    "text": "about people more successful than you",
+    "is_active": true
+  },
+  {
+    "id": "8b2e764a-42a7-46e1-a4b4-a3d649d6c156",
+    "text": "that reveals your browser history",
+    "is_active": true
+  },
+  {
+    "id": "e04ced75-0789-42b2-931e-0e161505c812",
+    "text": "but everyone just wants to sell you insurance",
+    "is_active": true
+  },
+  {
+    "id": "52b5cee0-33e2-41a1-aee9-3ed04de9f9c4",
+    "text": "at a 2% annual rate",
+    "is_active": true
+  },
+  {
+    "id": "38ea2683-e0db-4f9c-9d9e-182c456c6030",
+    "text": "but it gets cancelled for being too depressing",
+    "is_active": true
+  },
+  {
+    "id": "772089ba-b8c3-43ec-8986-57e41a365c54",
+    "text": "but they only call during dinner",
+    "is_active": true
+  },
+  {
+    "id": "accf1a33-2fd1-4bff-b780-34c2d61c6f0e",
+    "text": "that costs more than your monthly rent",
+    "is_active": true
+  },
+  {
+    "id": "414ebb8e-0b90-4574-9747-10ca62f3fccf",
+    "text": "assuming you can handle mild criticism",
+    "is_active": true
+  },
+  {
+    "id": "64ab8296-9976-4e55-97eb-7d7e4e9e3acf",
+    "text": "whose powers include crippling student debt",
+    "is_active": true
+  },
+  {
+    "id": "9eb68f46-9a5e-44b8-b0ec-883278837201",
+    "text": "for the worst video ever made",
+    "is_active": true
+  },
+  {
+    "id": "56547701-0f13-46f9-acd9-bd2bbafa7731",
+    "text": "while your relatives ask when you're getting married",
+    "is_active": true
+  },
+  {
+    "id": "91b316e6-4766-4925-b016-eaf0c460ac98",
+    "text": "but it's all in quarters from 1987",
+    "is_active": true
+  },
+  {
+    "id": "98c45ed4-48e4-430c-ac58-613d0cbea6aa",
+    "text": "where you play the villain's accountant",
+    "is_active": true
+  },
+  {
+    "id": "3cbc4cfb-dd18-4427-8f74-6cd01addda51",
+    "text": "but it's just him reading his grocery list",
+    "is_active": true
+  },
+  {
+    "id": "94cf7286-5b5c-4e9f-b1f0-bbd70a72fc7d",
+    "text": "for people who collect participation trophies",
+    "is_active": true
+  },
+  {
+    "id": "383cad48-1f00-4a90-a57a-333639e47ae9",
+    "text": "but you're the backup dancer for rejection",
+    "is_active": true
+  },
+  {
+    "id": "1c655d86-84ac-4340-958a-e1baf55a4c92",
+    "text": "by falling into an open manhole",
+    "is_active": true
+  },
+  {
+    "id": "ddc3ca9a-c48c-4981-987b-8a8008f3cd70",
+    "text": "while they're busy promoting their new tax preparation service",
+    "is_active": true
+  },
+  {
+    "id": "bc679356-99b5-45a6-88fe-4bb2b263054e",
+    "text": "with your high school guidance counselor as co-host",
+    "is_active": true
+  },
+  {
+    "id": "78f03e43-c78c-4004-8d09-435dbb2c27f5",
+    "text": "for making people feel better about themselves",
+    "is_active": true
+  },
+  {
+    "id": "d8c2b76c-504c-43fd-8121-f9ffa1f45117",
+    "text": "whose role is getting killed by the opening credits",
+    "is_active": true
+  },
+  {
+    "id": "e95a8031-4123-4b6d-b3c8-e6db62dca534",
+    "text": "about proper investment strategies",
+    "is_active": true
+  },
+  {
+    "id": "cd75a5d1-2413-46c9-9a86-2f1dabbb09c1",
+    "text": "for \"Most Disappointing Sequel to Your Life\"",
+    "is_active": true
+  },
+  {
+    "id": "f9088387-09f7-4357-8d7d-a589c0e247d5",
+    "text": "assuming anyone watches television anymore",
+    "is_active": true
+  },
+  {
+    "id": "851e50b3-c62f-4f61-bc52-d68b549f09eb",
+    "text": "whose superpower is explaining why everyone's disappointed",
+    "is_active": true
+  },
+  {
+    "id": "171aafb6-acdc-44d1-a205-791555db9527",
+    "text": "but it's just elevator music being played badly",
+    "is_active": true
+  },
+  {
+    "id": "91d6d751-0f1f-432d-b426-bf91e319459b",
+    "text": "while your family explains where you went wrong",
+    "is_active": true
+  },
+  {
+    "id": "3e67a21f-75e7-4c49-b04e-18069962d7ac",
+    "text": "that's somehow pay-to-win",
+    "is_active": true
+  },
+  {
+    "id": "fec734b0-3524-4fb9-b8ae-0033ba2c58d3",
+    "text": "of disappointment and student loans",
+    "is_active": true
+  },
+  {
+    "id": "825c64b4-a97c-4be7-b005-7e0f0716b8f3",
+    "text": "but it's just Gordon Ramsay explaining your life choices",
+    "is_active": true
+  },
+  {
+    "id": "5c682eb6-8740-4715-8570-c9f08a11a7bb",
+    "text": "about accepting mediocrity",
+    "is_active": true
+  },
+  {
+    "id": "769da98e-a650-4630-8bdd-531a15b85436",
+    "text": "with people who vote for reality TV stars",
+    "is_active": true
+  },
+  {
+    "id": "19c0152b-291d-4685-b2eb-b4d40069b726",
+    "text": "whose only qualification is being related to Batman",
+    "is_active": true
+  },
+  {
+    "id": "987a5d21-2423-46c9-bfcc-730f0ebfe2ff",
+    "text": "assuming they don't fact-check you live on air",
+    "is_active": true
+  },
+  {
+    "id": "bf8f6c48-ed9b-4719-a4e2-74fb36e951e7",
+    "text": "to discuss your relationship with your parents",
+    "is_active": true
+  },
+  {
+    "id": "e901c615-6f21-43a3-a267-b983625002c3",
+    "text": "for helping people feel superior",
+    "is_active": true
+  },
+  {
+    "id": "0dbe6c9d-103a-4304-ba2a-51b62d48320d",
+    "text": "but he makes a three-hour documentary about your poor choices",
+    "is_active": true
+  },
+  {
+    "id": "b94a6d5b-e78f-4781-bd46-035c244f36cf",
+    "text": "assuming you don't have a panic attack from mild spice",
+    "is_active": true
+  },
+  {
+    "id": "96a139db-6518-4efe-9042-8d0bf81f4573",
+    "text": "but they're on strike indefinitely",
+    "is_active": true
+  },
+  {
+    "id": "1d8270e9-5d09-46e1-8a25-204a6eb9d4f9",
+    "text": "while he just points out everything wrong with your appearance",
+    "is_active": true
+  },
+  {
+    "id": "a868f2f8-b620-468c-bc65-6914a3511890",
+    "text": "whose special talent is disappointing everyone immediately",
+    "is_active": true
+  },
+  {
+    "id": "41019c8f-ab08-4cd7-aae6-a5209e9cc4b7",
+    "text": "while he explains all the ways you've failed as a person",
+    "is_active": true
+  },
+  {
+    "id": "a8db12d0-1665-4e7c-9c59-623b00f08325",
+    "text": "based on their ability to handle disappointment",
+    "is_active": true
+  },
+  {
+    "id": "7cbeeefb-8e58-4cdc-9313-4a87a26786c6",
+    "text": "that are just you wandering around Walmart",
+    "is_active": true
+  },
+  {
+    "id": "8e1e459d-f7d0-4a8d-b40f-f57ce58f2636",
+    "text": "but he just roasts your personality for two hours",
+    "is_active": true
+  },
+  {
+    "id": "240f52ab-e3ca-4f7a-a1bf-229c1f0354c0",
+    "text": "as the person who can't figure out how elevators work",
+    "is_active": true
+  },
+  {
+    "id": "5cd82b77-4d93-4484-9a04-50f2ac64ed25",
+    "text": "for \"Most Creative Use of Disappointment\"",
+    "is_active": true
+  },
+  {
+    "id": "bc7c09dd-9469-4895-8be2-50703889b3eb",
+    "text": "assuming you don't cry during the talent portion",
+    "is_active": true
+  },
+  {
+    "id": "4d0115fd-0ce9-42e2-a257-d28549e0b9a3",
+    "text": "but it's decaf and room temperature",
+    "is_active": true
+  }
+]

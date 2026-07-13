@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "@supabase/ssr": "latest",
+    "@supabase/supabase-js": "latest",
+    "openai": "latest",
+    "papaparse": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/papaparse": "latest"
+  }
+}

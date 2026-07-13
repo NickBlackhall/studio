@@ -1,0 +1,65 @@
+[
+  {
+    "response_text": "but it sounds exactly like the relative whose ashes it knocked off the shelf.",
+    "status": "Maybe",
+    "notes": "Funny, but too specific to this scenario.",
+    "origin": "AI",
+    "source_category": "Absurd & Surreal",
+    "source_scenario": "You discover your pet can talk",
+    "source_scenario_id": "eaf82280-b674-4313-8716-2fcd31cbbb11"
+  },
+  {
+    "response_text": "but everyone remembers you screaming a racial slur at a children's hospital.",
+    "status": "Maybe",
+    "notes": "User said it was fine but was still thinking about it.",
+    "origin": "AI",
+    "source_category": "Super Powers",
+    "source_scenario": "You gain the power to control time",
+    "source_scenario_id": "156c2da4-f97b-4d77-94c0-e22e7a3a6ef7"
+  },
+  {
+    "response_text": "but all you hear is Portuguese.",
+    "status": "Reference",
+    "notes": "Good corrupted-output structure; avoid repeating this exact language.",
+    "origin": "User",
+    "source_category": "Super Powers",
+    "source_scenario": "You can read minds",
+    "source_scenario_id": null
+  },
+  {
+    "response_text": "but the voice in your head is just Fran Drescher laughing.",
+    "status": "Reference",
+    "notes": "Strong structure; dated celebrity reference.",
+    "origin": "User",
+    "source_category": "Super Powers",
+    "source_scenario": "You can read minds",
+    "source_scenario_id": null
+  },
+  {
+    "response_text": "but you can only spend it while being pegged by an adult witch.",
+    "status": "Needs Rewrite",
+    "notes": "Adult-safe rewrite of the user's fictional-character example; spicy pass later.",
+    "origin": "Edited",
+    "source_category": "Life Things",
+    "source_scenario": "You win the lottery jackpot",
+    "source_scenario_id": "7d7568db-b665-45a6-9c65-d992232d0504"
+  },
+  {
+    "response_text": "but tomorrow you go back to being Satan's proctologist.",
+    "status": "Maybe",
+    "notes": "User said this was okay.",
+    "origin": "AI",
+    "source_category": "Life Things",
+    "source_scenario": "You just had the greatest vacation of your life",
+    "source_scenario_id": null
+  },
+  {
+    "response_text": "but the destination is always a timeshare presentation.",
+    "status": "Reference",
+    "notes": "Suggested after user requested a terrible destination; not explicitly approved.",
+    "origin": "AI",
+    "source_category": "Life Things",
+    "source_scenario": "You get free first-class flights for life",
+    "source_scenario_id": null
+  }
+]

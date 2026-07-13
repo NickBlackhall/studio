@@ -25,5 +25,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "tests/**/*.ts", "tests/**/*.tsx"],
-  "exclude": ["node_modules", "src/ai_disabled_for_family_test"]
+  "exclude": ["node_modules", "src/ai_disabled_for_family_test", "make-it-terrible-admin-content-lab-kit"]
 }
