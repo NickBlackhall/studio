@@ -24,15 +24,13 @@ const nextConfig: NextConfig = {
       ]
     }
   },
+  // The art library is pre-sized WebP (max 1280px wide, matching the phone
+  // frame at 3x DPR), so the optimizer has nothing left to do — and its
+  // /_next/image?... URLs defeat the service-worker precache below, which
+  // matches raw /ui/... paths. Serving the files as-is lets the precache
+  // intercept every art request.
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-    ],
+    unoptimized: true,
   },
 };
 
@@ -41,14 +39,19 @@ export default withPWA({
   disable: process.env.NODE_ENV === 'development',
   register: true,
   skipWaiting: true,
-  // next-pwa precaches all of public/ by default, which meant every player
-  // downloaded ~208MB of art on first visit. Art and audio are cached on
-  // demand instead, via the runtimeCaching rules below. Only the app shell
-  // (icons, fonts, manifest) stays in the precache manifest.
+  // next-pwa puts .next/app-build-manifest.json in the precache manifest, but
+  // Next 15 never serves that URL — it 404s, and one failed fetch aborts the
+  // ENTIRE service-worker install (workbox precache is all-or-nothing), so no
+  // caching happened at all. Known next-pwa + App Router incompatibility.
+  buildExcludes: [/app-build-manifest\.json$/],
+  // Art (ui/, backgrounds/, textures/, ~32MB of pre-sized WebP) is
+  // precached deliberately: it downloads once in the background and every
+  // screen paints from cache afterwards — on-demand caching caused visible
+  // flicker/pop-in whenever the browser evicted an image mid-session. Audio
+  // stays on-demand (runtimeCaching below); screenshots are dev-only.
+  // Historical note: precaching was a disaster when the art was 208MB of
+  // raw PNGs — it's fine now only because the library is WebP at phone size.
   publicExcludes: [
-    '!ui/**/*',
-    '!backgrounds/**/*',
-    '!textures/**/*',
     '!Sound/**/*',
     '!screenshots/**/*',
   ],
