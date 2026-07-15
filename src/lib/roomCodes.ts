@@ -31,7 +31,7 @@ function generateRandomCode(): string {
  */
 async function isRoomCodeInUse(roomCode: string): Promise<boolean> {
   // Skip database check in test environment if Supabase is unreachable
-  if (process.env.NODE_ENV === 'test' || process.env.PLAYWRIGHT_TEST) {
+  if (process.env.NODE_ENV === 'test') {
     console.log('🧪 TEST MODE: Skipping room code uniqueness check');
     return false; // Assume code is available in tests
   }

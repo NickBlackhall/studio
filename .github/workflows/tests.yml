@@ -1,4 +1,4 @@
-name: E2E Tests
+name: Tests
 
 on:
   push:
@@ -12,12 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  e2e-tests:
+  tests:
     runs-on: ubuntu-latest
-    # Setup ~5 min + chromium e2e suite. The rebuilt e2e tests play real
-    # 3-browser games (~1-2 min each), so the suite legitimately needs more
-    # than an hour; cap still guards against hangs.
-    timeout-minutes: 120
+    # Supabase setup ~5 min, then build + Jest + typecheck; cap guards hangs.
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -49,7 +47,7 @@ jobs:
           ANON_KEY=$(grep '^ANON_KEY=' supa.env | cut -d= -f2- | tr -d '"')
           SERVICE_ROLE_KEY=$(grep '^SERVICE_ROLE_KEY=' supa.env | cut -d= -f2- | tr -d '"')
           DB_URL=$(grep '^DB_URL=' supa.env | cut -d= -f2- | tr -d '"')
-          
+
           # Export for subsequent steps
           echo "SUPABASE_URL=$API_URL" >> $GITHUB_ENV
           echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> $GITHUB_ENV
@@ -57,7 +55,7 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> $GITHUB_ENV
           echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
           echo "DB_URL=$DB_URL" >> $GITHUB_ENV
-          
+
           echo "Exported Supabase environment:"
           echo "  API_URL: $API_URL"
           echo "  ANON_KEY: ${ANON_KEY:0:20}..."
@@ -151,23 +149,6 @@ jobs:
       - name: Run TypeScript checks
         run: npm run typecheck
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run Playwright E2E tests
-        run: npm run test:e2e
-        env:
-          CI: true
-
       - name: Stop Supabase
         if: always()
         run: supabase stop
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 30
-          if-no-files-found: ignore

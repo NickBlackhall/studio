@@ -8,7 +8,6 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "ms-playwright.playwright",
         "bradlc.vscode-tailwindcss",
         "esbenp.prettier-vscode",
         "ms-vscode.vscode-typescript-next",
@@ -21,9 +20,7 @@
       "settings": {
         "typescript.preferences.includePackageJsonAutoImports": "on",
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "playwright.reuseBrowser": true,
-        "playwright.showTrace": true
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
       }
     }
   },
@@ -42,8 +39,8 @@
       "onAutoForward": "silent"
     }
   },
-  "postCreateCommand": "npm install && npx playwright install --with-deps",
-  "postStartCommand": "echo '🎮 Ready for multi-player game development!' && echo '📝 Run: npm run dev (Next.js)' && echo '🧪 Run: npm run test:e2e:ui (Playwright UI)'",
+  "postCreateCommand": "npm install",
+  "postStartCommand": "echo '🎮 Ready for multi-player game development!' && echo '📝 Run: npm run dev (Next.js)' && echo '🧪 Run: npm test (Jest unit + integration)'",
   "remoteUser": "node",
   "containerEnv": {
     "NODE_ENV": "development"

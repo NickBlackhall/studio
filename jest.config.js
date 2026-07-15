@@ -2,7 +2,7 @@ const nextJest = require('next/jest');
 const createJestConfig = nextJest({ dir: './' });
 
 const config = {
-  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/e2e/'],
+  testPathIgnorePatterns: ['/node_modules/'],
   // Handle ES modules in node_modules (like jose library)
   transformIgnorePatterns: [
     'node_modules/(?!(jose)/)'
